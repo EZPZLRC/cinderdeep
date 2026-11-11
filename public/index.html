@@ -15,7 +15,7 @@ button:hover{background:#523d24;border-color:#d0a050}
 button.big{font-size:18px;padding:12px 34px;letter-spacing:.06em}
 #top{position:fixed;left:14px;top:12px;text-shadow:0 1px 3px #000;pointer-events:none}
 #top .n{font-size:16px;font-weight:600}#top .g{color:#ffd84a;margin-top:2px}#top .z{color:#a9b3a0;margin-top:2px;font-size:12px}
-#mini{position:fixed;right:12px;top:12px;width:170px;height:170px;border:1px solid #5a4a30;border-radius:4px;background:rgba(5,8,6,.55);pointer-events:none}
+#mini{position:fixed;right:12px;top:12px;width:170px;height:170px;border:2px solid #c9a45a;border-radius:4px;background:rgba(5,8,6,.72);pointer-events:none;box-shadow:0 0 0 1px #000,0 2px 10px #000}
 #bossbar{position:fixed;left:50%;top:16px;transform:translateX(-50%);width:min(520px,60vw);text-align:center;pointer-events:none}
 #bossbar .bn{font-size:17px;font-weight:600;letter-spacing:.08em;text-shadow:0 1px 4px #000;margin-bottom:4px}
 #bossbar .bb{height:14px;background:#1a0c0a;border:1px solid #7a3a2a;border-radius:3px;overflow:hidden}#bossbar .bf{height:100%;background:linear-gradient(#e0482a,#8a1c10);width:100%}
@@ -35,13 +35,6 @@ button.big{font-size:18px;padding:12px 34px;letter-spacing:.06em}
 .sk .key{position:absolute;left:3px;top:1px;font-size:10px;color:#d8c9a4;font-weight:600}.sk .cd{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.72);height:0}.sk .cdt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;text-shadow:0 1px 3px #000}
 .sk.lock{opacity:.35}.sk.dim .ic{opacity:.4}.sk .cost{position:absolute;right:3px;bottom:1px;font-size:10px;color:#ffb85a}
 #xp{width:100%;height:7px;background:#14110c;border:1px solid #5a4a30;border-radius:3px;overflow:hidden}#xp div{height:100%;background:linear-gradient(90deg,#7a5cff,#c0a0ff);width:0}
-#inv{position:fixed;right:12px;top:196px;bottom:130px;width:min(760px,72vw);background:rgba(14,12,9,.94);border:1px solid #6a5636;border-radius:6px;padding:12px;display:flex;gap:12px;overflow:auto}
-#inv h3{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#c9a45a;margin-bottom:8px;font-weight:600}
-#eq{display:grid;grid-template-columns:repeat(2,52px);gap:6px;align-content:start}
-#grid{display:grid;grid-template-columns:repeat(8,44px);gap:4px}
-.cell{width:44px;height:44px;border:1px solid #3a3226;background:#16130e;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:20px;position:relative;cursor:pointer}
-#eq .cell{width:52px;height:52px}.cell .lv{position:absolute;right:2px;bottom:0;font-size:9px;color:#b9b09a}.cell.empty{color:#3a3226;cursor:default}.cell.up::after{content:"▲";position:absolute;left:2px;top:0;font-size:9px;color:#5aff7a}
-#stats{font-size:12px;line-height:1.55;color:#cfc6b0;min-width:210px}#stats b{color:#f3ead6;font-weight:600}
 #tip{position:fixed;z-index:20;max-width:290px;background:rgba(8,7,5,.96);border:1px solid #6a5636;border-radius:4px;padding:9px 11px;pointer-events:none;font-size:12.5px;line-height:1.5}
 #tip .tn{font-size:15px;font-weight:600}#tip .ts{color:#9a917c}#tip .tb{color:#f3ead6;font-size:14px;margin:3px 0}#tip .ta{color:#8fb4ff}#tip .tp{color:#ff9a4a;margin-top:4px}#tip .tc{margin-top:5px;border-top:1px solid #3a3226;padding-top:4px}#tip .up{color:#5aff7a}#tip .dn{color:#ff6a5a}#tip .th{color:#8a826e;margin-top:4px;font-size:11.5px}
 .ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;background:radial-gradient(ellipse at center,rgba(20,26,18,.86),rgba(3,4,3,.97));z-index:30}
@@ -52,11 +45,11 @@ button.big{font-size:18px;padding:12px 34px;letter-spacing:.06em}
 #tip.pin{pointer-events:auto;z-index:40;max-width:min(320px,90vw);font-size:14px}#tip .acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}#tip .acts button{flex:1;padding:10px 8px}
 #tbtns{position:fixed;right:10px;bottom:150px;z-index:25;display:none;flex-direction:column;gap:10px}#tbtns button{width:62px;height:62px;border-radius:50%;padding:0;font-size:13px;background:rgba(40,30,18,.85)}
 #err{position:fixed;left:8px;right:8px;top:8px;z-index:50;background:#5a1410;border:1px solid #ff6a5a;border-radius:4px;padding:8px 10px;font-size:13px}
-@media (pointer:coarse){#tbtns{display:flex}.sk .key{display:none}#inv{right:80px!important}.mouseOnly{display:none!important}}
+@media (pointer:coarse){#tbtns{display:flex}.sk .key{display:none}.mouseOnly{display:none!important}}
 @media (pointer:fine){.touchOnly{display:none!important}}
 @media (max-width:760px){.globe{width:62px;height:62px;border-width:2px}.globe .txt{font-size:10px}.sk{width:46px;height:46px;font-size:21px}#hud{gap:6px;bottom:6px}#bar{gap:4px}#mini{width:104px;height:104px}
- #inv{left:6px;right:6px;width:auto;top:50px;bottom:86px;flex-wrap:wrap}#grid{grid-template-columns:repeat(8,36px)}#grid .cell{width:36px;height:36px}.ov h1{font-size:34px;letter-spacing:.16em}#banner .b1{font-size:22px}#streak .s1{font-size:30px}#streak{top:30%;right:10px}#hints{bottom:92px;font-size:12px;right:80px}#bossbar{top:48px;width:56vw}#tbtns{bottom:92px}#top{font-size:12px}#top .n{font-size:14px}}
-@media (max-height:480px){.globe{width:72px;height:72px}.sk{width:50px;height:50px;font-size:22px}#hud{bottom:4px}#mini{width:110px;height:110px}#inv{top:6px;bottom:6px;left:6px;right:84px;width:auto}.ov{gap:8px;justify-content:flex-start}.ov h1{font-size:30px}.keys{font-size:12px}#tbtns{bottom:10px}#hints{bottom:86px}#banner{top:14%}}
+ .ov h1{font-size:34px;letter-spacing:.16em}#banner .b1{font-size:22px}#streak .s1{font-size:30px}#streak{top:30%;right:10px}#hints{bottom:92px;font-size:12px;right:80px}#bossbar{top:48px;width:56vw}#tbtns{bottom:92px}#top{font-size:12px}#top .n{font-size:14px}}
+@media (max-height:480px){.globe{width:72px;height:72px}.sk{width:50px;height:50px;font-size:22px}#hud{bottom:4px}#mini{width:110px;height:110px}.ov{gap:8px;justify-content:flex-start}.ov h1{font-size:30px}.keys{font-size:12px}#tbtns{bottom:10px}#hints{bottom:86px}#banner{top:14%}}
 #skl{position:fixed;left:12px;top:70px;bottom:130px;width:min(400px,92vw);background:rgba(14,12,9,.94);border:1px solid #6a5636;border-radius:6px;padding:12px;overflow:auto}
 #skl h3{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#c9a45a;margin-bottom:8px;font-weight:600}#skl .tabs{display:flex;gap:6px;margin-bottom:10px}#skl .tabs button{flex:1;padding:6px 2px;font-size:11px}#skl .tabs button span{font-size:20px}#skl .tabs button.on{border-color:#ffd84a;background:#523d24}
 .srow{display:flex;gap:10px;padding:8px;border:1px solid #3a3226;border-radius:4px;margin-bottom:6px;cursor:pointer;align-items:flex-start}.srow:hover{border-color:#8a6a3a}.srow.on{border-color:#ffd84a;background:#2a2114}.srow.lock{opacity:.45;cursor:default}.srow .si{font-size:26px;width:36px;text-align:center}.sm{color:#9a917c;font-size:12px}.sd{color:#cfc6b0;font-size:12.5px;margin-top:2px;line-height:1.4}
@@ -67,6 +60,31 @@ button.big{font-size:18px;padding:12px 34px;letter-spacing:.06em}
 @media (max-width:760px){#ctl{top:60px;left:8px}#chat{bottom:96px;left:8px}}
 #classes{display:grid;grid-template-columns:repeat(5,minmax(0,170px));gap:8px;max-width:920px}.ccard{border:1px solid #5a4a30;border-radius:6px;padding:10px;background:rgba(20,17,12,.8);cursor:pointer;text-align:left}.ccard:hover{border-color:#a8843a}.ccard.on{border-color:#ffd84a;background:#2a2114;box-shadow:0 0 14px #ffb03a44}.ct{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#c9a45a}.cn{font-size:18px;font-weight:600;margin:2px 0 4px}.cd2{font-size:12px;color:#b9b09a;line-height:1.4;min-height:66px}.cl{font-size:12px;color:#8fd08a;margin-top:6px}
 @media (max-width:760px){#classes{grid-template-columns:repeat(2,minmax(0,1fr))}.cd2{min-height:0}.ov h1{font-size:28px}}
+#inv,#town{--c:40px;--d:36px;position:fixed;top:196px;bottom:128px;background:rgba(14,12,9,.95);border:1px solid #6a5636;border-radius:6px;padding:12px;overflow:auto;z-index:10}
+#inv{right:196px;top:12px;width:calc(var(--c)*10 + 62px)}#town{left:12px;top:110px;width:calc(var(--c)*10 + 62px)}
+.ph{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.ph h3,#inv h3,#town h3{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#c9a45a;font-weight:600;margin:0}
+.xb{width:30px;height:30px;padding:0;font-size:20px;line-height:1;border-radius:50%}#chatX{position:fixed;left:calc(14px + min(360px,70vw) + 6px);bottom:126px;z-index:26}
+.itop{display:flex;gap:12px;margin-bottom:10px}#stats{flex:1;font-size:12px;line-height:1.5;color:#cfc6b0;min-width:0}#stats b{color:#f3ead6;font-weight:600}
+.hl{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid #3a3226;padding:2px 0;margin-bottom:2px}.hl span{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#c9a45a}.hl b{font-size:18px}
+#doll{display:grid;grid-template-columns:repeat(3,calc(var(--d) + 8px));grid-auto-rows:var(--d);gap:4px;align-content:start}
+#grid,#sgrid{display:grid;grid-template-columns:repeat(10,var(--c));grid-auto-rows:var(--c);gap:2px}#sgrid{margin-top:8px}
+.bc,.ds.empty{border:1px solid #2e281e;background:#12100c;border-radius:3px}.ds.empty{display:flex;align-items:center;justify-content:center;color:#3a3226}.ds.empty svg{width:60%;max-height:70%}
+.it{position:relative;border:1px solid;border-radius:3px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:1;min-width:var(--c);min-height:var(--c)}.it svg{width:70%;max-height:76%;filter:drop-shadow(0 1px 2px #000)}#doll .it{min-width:0;min-height:0}
+.it.r0{background:linear-gradient(#34322e,#191816);border-color:#6a665e;color:#cfcbc2}.it.r1{background:linear-gradient(#22386e,#0e1830);border-color:#5878d8;color:#a8c0ff}.it.r2{background:linear-gradient(#6a5412,#2a2106);border-color:#d8b030;color:#ffe890}.it.r3{background:linear-gradient(#7a3a10,#2c1204);border-color:#ff8a2a;color:#ffc890}
+.it .lv{position:absolute;right:2px;bottom:0;font-size:9px;color:#e8e2d4;text-shadow:0 1px 2px #000}.it.up::after{content:"▲";position:absolute;left:2px;top:0;font-size:9px;color:#5aff7a}.it:hover{filter:brightness(1.25)}
+.ghost{position:fixed;width:40px;height:40px;pointer-events:none;z-index:60;opacity:.9}
+.ifoot{display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap;font-size:13px}.gold{color:#ffd84a}.shards{color:#9ad0ff}#scrapBox{margin-left:auto;border:1px dashed #8a6a3a;border-radius:4px;padding:6px 10px;color:#b9b09a;font-size:12px}.ifoot button{padding:6px 10px;font-size:12px}
+#shop{display:grid;gap:6px;margin-top:8px}.srow2{display:flex;gap:10px;align-items:center;border:1px solid #3a3226;border-radius:4px;padding:6px;cursor:pointer}.srow2:hover{border-color:#8a6a3a}.srow2 .it{width:var(--c);height:var(--c);flex:none}.srow2 .it.tall{height:calc(var(--c)*1.5)}
+.abox{border:1px solid #3a3226;border-radius:4px;padding:8px;margin-top:8px}.abox .srow2{border:none;padding:0;cursor:default;margin-bottom:6px}.aline{display:block;width:100%;text-align:left;margin-top:5px;color:#a8c0ff;font-size:13px;padding:7px 10px}.aline.on{border-color:#ffd84a;background:#2a2114}.aline:disabled,button:disabled{opacity:.4;cursor:default}
+.odds{border:1px solid #6a5636;border-radius:4px;padding:8px;margin:8px 0;background:#17130d}.olist{columns:2;font-size:11.5px;color:#cfc6b0;margin-top:6px;line-height:1.5}
+#tip .up,.up{color:#5aff7a}.dn{color:#ff6a5a}
+@media (max-width:760px){#inv,#town{--c:27px;--d:25px;left:6px;right:80px;width:auto;top:50px;bottom:86px;padding:8px}#town{z-index:11;bottom:auto;max-height:46vh}#inv{top:calc(46vh + 56px)}#town.hide+#inv{top:50px}.olist{columns:1}.hl b{font-size:14px}#stats{font-size:11px}}
+@media (max-height:480px){#inv,#town{--c:27px;--d:22px;top:6px;bottom:6px}#inv{left:auto;right:84px;width:calc(var(--c)*10 + 44px)}#town{left:6px;right:auto;max-height:none;width:calc(100vw - var(--c)*10 - 150px)}}
+#set{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:45;width:min(380px,92vw);max-height:90vh;overflow:auto;background:rgba(14,12,9,.97);border:1px solid #8a6a3a;border-radius:6px;padding:14px;text-align:left}#set label{display:flex;align-items:center;gap:10px;justify-content:space-between;margin:10px 0;font-size:14px;flex-wrap:wrap}#set input[type=range]{width:100%}#set input[type=checkbox]{width:20px;height:20px;order:-1}#set label:has(input[type=checkbox]){justify-content:flex-start}select{font:inherit;color:#f3ead6;background:#14110c;border:1px solid #8a6a3a;border-radius:4px;padding:6px 8px}#ctl{flex-wrap:wrap;max-width:60vw}
+#questBox{position:fixed;right:12px;top:194px;width:174px;background:rgba(5,8,6,.72);border:1px solid #6a5636;border-radius:4px;padding:6px 8px;font-size:12.5px;line-height:1.35;pointer-events:none}#questBox span{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#ffd84a}
+@media (max-width:760px){#questBox{top:122px;right:12px;width:104px;font-size:11px;padding:4px 6px}}@media (max-height:480px){#questBox{top:128px;width:110px;font-size:11px}}
+#menu{background:linear-gradient(rgba(3,4,3,.9),rgba(3,4,3,.12) 16%,rgba(3,4,3,.12) 44%,rgba(3,4,3,.93) 56%)}#stage{height:30vh;min-height:150px;flex:none;pointer-events:none}#menu h1{font-size:38px;margin:0}#menuMsg{margin:0;text-shadow:0 1px 4px #000}
+@media (max-width:760px){#stage{height:24vh}}@media (max-height:480px){#stage{height:34vh;min-height:110px}}
 #death{background:rgba(40,0,0,.6)}#death h1{color:#ff5a4a;font-size:48px}
 </style>
 </head>
@@ -75,6 +93,7 @@ button.big{font-size:18px;padding:12px 34px;letter-spacing:.06em}
 <div id="game" class="hide">
   <div id="top"><div class="n" id="tName"></div><div class="g" id="tGold"></div><div class="z" id="tZone"></div></div>
   <canvas id="mini" width="170" height="170"></canvas>
+  <div id="questBox" class="hide"><span>Quest</span><div id="quest"></div></div>
   <div id="bossbar" class="hide"><div class="bn" id="bossName"></div><div class="bb"><div class="bf" id="bossFill"></div></div></div>
   <div id="banner"><div class="b1" id="ban1"></div><div class="b2" id="ban2"></div></div>
   <div id="streak" class="hide"><div class="s1" id="st1"></div><div class="s2">KILL STREAK</div><div class="s3" id="st3"></div></div>
@@ -84,32 +103,29 @@ button.big{font-size:18px;padding:12px 34px;letter-spacing:.06em}
     <div id="mid"><div id="bar"></div><div id="xp"><div></div></div></div>
     <div class="globe" id="gFury"><div class="fill"></div><div class="txt"></div></div>
   </div>
-  <div id="ctl"><button id="bAuto">Auto-play: off</button><button id="bSpd">Speed 1×</button></div>
-  <input id="chat" class="hide" maxlength="140" placeholder="Say something, then press Enter">
-  <div id="tbtns"><button id="tChat" class="hide">Chat</button><button id="tLoot">Loot</button><button id="tSkl">Skills</button><button id="tBag">Bag</button></div>
+  <div id="ctl"><button id="bMenu">Menu</button><button id="bSet">Settings</button><button id="bTown">Town</button><button id="bAuto">Auto-play: off</button><button id="bSpd">Speed 1×</button></div>
+  <input id="chat" class="hide" maxlength="140" placeholder="Say something, then press Enter"><button id="chatX" class="hide xb" aria-label="Close chat">×</button>
+  <div id="tbtns"><button id="tChat" class="hide">Chat</button><button id="tTown">Town</button><button id="tLoot">Loot</button><button id="tSkl">Skills</button><button id="tBag">Bag</button></div>
   <div id="skl" class="hide"></div>
-  <div id="inv" class="hide">
-    <div><h3>Equipped</h3><div id="eq"></div></div>
-    <div><h3>Bag <span id="bagN"></span></h3><div id="grid"></div>
-      <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap"><button id="scr0">Scrap all Common</button><button id="scr1">Scrap Common + Magic</button></div>
-      <div style="margin-top:8px;color:#8a826e;font-size:12px"><span class="mouseOnly">Click to equip · Right-click to scrap for gold</span><span class="touchOnly">Tap an item to equip or scrap it</span></div></div>
-    <div><h3>Hero</h3><div id="stats"></div></div>
-  </div>
+  <div id="town" class="hide"></div>
+  <div id="inv" class="hide"></div>
 </div>
+<div id="set" class="hide"></div>
 <div id="tip" class="hide"></div>
 <div id="err" class="hide"></div>
-<div id="death" class="ov hide"><h1>You have fallen</h1><button class="big" id="revive">Rise again</button></div>
+<div id="death" class="ov hide"><h1>You have fallen</h1><button class="big" id="revive">Rise again</button><button id="deathMenu">Exit to menu</button></div>
 <div id="menu" class="ov">
   <h1>Cinderdeep</h1>
+  <div id="stage"></div>
   <p id="menuMsg">Pick a hero, carve through the Blighted Hollow, slay its guardian, and take the portal deeper.</p>
   <div id="classes"></div>
-  <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center"><button class="big" id="btnNew">Play</button><button id="btnReset" class="hide">Reset this hero</button></div>
+  <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center"><button class="big" id="btnNew">Play</button><button id="btnReset" class="hide">Reset this hero</button><button id="mSet">Settings</button></div>
   <div id="online" class="hide"><input id="oName" maxlength="16" placeholder="Your name"><input id="oRoom" maxlength="12" placeholder="Party code (blank = public)"><button class="big" id="btnOnline">Play online</button></div>
   <div class="keys touchOnly">
     <b>Tap or hold the ground</b><span>Move</span>
     <b>Tap or hold an enemy</b><span>Attack it</span>
     <b>Skill buttons</b><span>Aim at the nearest enemy by themselves</span>
-    <b>Loot · Skills · Bag</b><span>Pick up loot · swap skills · inventory</span>
+    <b>Town · Loot · Skills · Bag</b><span>Town portal · pick up loot · swap skills · inventory</span>
     <b>Tap an item name</b><span>Walk over and pick it up</span>
     <b>Pinch</b><span>Zoom in and out</span>
     <b>Auto-play · Speed</b><span>Buttons at the top left</span>
@@ -121,9 +137,12 @@ button.big{font-size:18px;padding:12px 34px;letter-spacing:.06em}
     <b>S</b><span>Skills: swap any slot at any time</span>
     <b>1</b><span>Health potion (30s cooldown)</span>
     <b>Space</b><span>Pick up nearby loot</span>
+    <b>T</b><span>Teleport to town: stash, trader, altar</span>
     <b>I</b><span>Inventory and hero stats</span>
     <b>Z · M · wheel</b><span>Loot filter · mute · zoom</span>
     <b>A · X</b><span>Auto-play on/off · game speed</span>
+    <b>O · Esc</b><span>Settings · close any menu</span>
+    <b>G</b><span>Quest path on the ground on/off</span>
   </div>
 </div>
 <script src="js/gl.js"></script>

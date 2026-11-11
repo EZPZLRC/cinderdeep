@@ -36,10 +36,11 @@ function onMessage(p, m) {
   }
   const room = p.room; if (!room) return;
   switch (m.t) {
-    case 'p': { const x = +m.x, z = +m.z; if (!isFinite(x) || !isFinite(z)) return; const sp = room.ctx.SP[p.id]; sp.x = x; sp.z = z; sp.dead = !!m.dead; sp.lvl = p.lvl = Math.max(1, Math.min(60, m.lvl | 0)); p.st = [p.id, x, z, +m.r || 0, m.mv ? 1 : 0, m.a | 0, Math.max(0, Math.min(100, m.hp | 0)), p.lvl, m.dead ? 1 : 0]; break; }
+    case 'p': { const x = +m.x, z = +m.z; if (!isFinite(x) || !isFinite(z)) return; const sp = room.ctx.SP[p.id]; sp.x = x; sp.z = z; sp.dead = !!m.dead; sp.lvl = p.lvl = Math.max(1, Math.min(60, m.lvl | 0)); p.st = [p.id, x, z, +m.r || 0, m.mv ? 1 : 0, m.a | 0, Math.max(0, Math.min(100, m.hp | 0)), p.lvl, m.dead ? 1 : 0, clean(m.g, 24)]; break; }
     case 'hit': room.ctx.srvHit(p.id, m); break;
     case 'fx': cast(room, { t: 'fx', k: clean(m.k, 2), x: +m.x || 0, z: +m.z || 0, rot: +m.rot || 0, r: Math.min(80, +m.r || 0), arc: +m.arc || 0, c: m.c | 0 }, p.id); break;
     case 'chat': { const s = clean(m.m, 140); if (s) cast(room, { t: 'chat', n: p.name, m: s }); break; }
+    case 'sync': p.conn.send(Object.assign(room.ctx.srvState(), { sync: 1 })); break;
     case 'next': if (room.ctx.srvCleared()) { let lv = 1; for (const q of room.players.values()) lv = Math.max(lv, q.lvl); cast(room, room.ctx.srvNewZone(lv, room.players.size)); } break;
     case 'give': { const q = room.players.get(m.to | 0); if (q && m.item && typeof m.item === 'object' && JSON.stringify(m.item).length < 2000) q.conn.send({ t: 'give', from: p.id, n: p.name, item: m.item, back: !!m.back }); break; }
   }

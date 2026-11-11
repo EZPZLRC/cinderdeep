@@ -7,49 +7,154 @@ const UI = (() => {
   U.zoneBanner = (a, b) => { $('ban1').textContent = a; $('ban2').textContent = b || ''; $('banner').classList.add('on'); banT = 3.4; };
   U.showDeath = () => { $('death').classList.remove('hide'); };
 
+  // ---- item icons ----
+  const IC = {
+    sword: '<path d="M12 1l2.2 3.5V15H9.8V4.5z"/><rect x="6.5" y="15" width="11" height="2.2"/><rect x="11" y="17" width="2" height="5"/>',
+    axe: '<rect x="11" y="2" width="2" height="20"/><path d="M13 3.5c5.5 0 7.5 3 7.5 5.5S18.5 14.5 13 14.5z"/>',
+    maul: '<rect x="11" y="8" width="2" height="14"/><rect x="5" y="2" width="14" height="7.5" rx="1"/>',
+    staff: '<rect x="11.2" y="7" width="1.6" height="15"/><path d="M12 1l3 3.5-3 3.5-3-3.5z"/>',
+    wand: '<rect x="11.3" y="9" width="1.4" height="12"/><circle cx="12" cy="6" r="3"/>',
+    bow: '<path d="M8 1.5c10 4.5 10 16.5 0 21" fill="none" stroke-width="2.2"/><path d="M8 1.5v21" fill="none" stroke-width=".9"/>',
+    fist: '<path d="M6 10h12v7a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3z"/><rect x="6" y="6" width="2.7" height="5" rx="1.2"/><rect x="9.1" y="5" width="2.7" height="6" rx="1.2"/><rect x="12.2" y="5" width="2.7" height="6" rx="1.2"/><rect x="15.3" y="6" width="2.7" height="5" rx="1.2"/>',
+    helm: '<path d="M4 15a8 8 0 0 1 16 0v5h-5v-6h-6v6H4z"/><rect x="11" y="3" width="2" height="6"/>',
+    chest: '<path d="M5 4l4-2 3 2.5L15 2l4 2 2.5 5.5-3 2V22h-13V11.5l-3-2z"/>',
+    shoulders: '<path d="M1.5 15a6.5 6.5 0 0 1 9.5-5.7V16H1.5zM22.5 15a6.5 6.5 0 0 0-9.5-5.7V16h9.5z"/>',
+    gloves: '<path d="M7 22v-8l-2-4V6h2v4h1V3h2.2v6h1V2.5h2.2V9h1V4h2.2v9.5L15 17v5z"/>',
+    bracers: '<path d="M7 2h10l-1.2 20H8.2z"/><path d="M8 8h8M8.5 15h7" stroke="#000" stroke-opacity=".45" stroke-width="1.4" fill="none"/>',
+    belt: '<rect x="1.5" y="9" width="21" height="6" rx="1"/><rect x="9" y="7" width="6" height="10" fill="none" stroke-width="2"/>',
+    pants: '<path d="M6 2h12l1.5 20h-5.5L12 9l-2 13H4.5z"/>',
+    boots: '<path d="M8 2h6.5v11.5l6 4V22H8z"/>',
+    amulet: '<path d="M5 2c0 9.5 14 9.5 14 0" fill="none" stroke-width="1.6"/><path d="M12 10l4.2 5.5L12 22l-4.2-6.5z"/>',
+    ring: '<circle cx="12" cy="14.5" r="6" fill="none" stroke-width="2.6"/><path d="M12 2.5l3.2 3.2-3.2 3.2-3.2-3.2z"/>',
+    o_Shield: '<path d="M4 3h16v8c0 6-4 9-8 11-4-2-8-5-8-11z"/>',
+    o_Quiver: '<path d="M8 8h8l-1 14H9z"/><path d="M9.5 8L8.5 2M12 8V1M14.5 8l1-6" fill="none" stroke-width="1.5"/>',
+    o_Orb: '<circle cx="12" cy="10.5" r="7"/><path d="M7 22h10l-2-3.5H9z"/>',
+    o_Tome: '<path d="M5 3h14v18H5z"/><path d="M8.5 8h7M8.5 12h7" stroke="#000" stroke-opacity=".5" stroke-width="1.5" fill="none"/>',
+    o_Charm: '<path d="M12 2l6 8-6 12-6-12z"/>'
+  };
+  function iconSvg(it) { const k = it.slot === 'weapon' ? (it.base === 'Wand' ? 'wand' : it.wt) : it.slot === 'offhand' ? 'o_' + it.base : it.slot; return '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="0">' + (IC[k] || IC.ring) + '</svg>'; }
+  function slotSvg(sl) { const k = sl === 'weapon' ? 'sword' : sl === 'offhand' ? 'o_' + OFFHAND[G.hero.cls].n : sl.replace(/\d/, ''); return '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="0">' + (IC[k] || IC.ring) + '</svg>'; }
+  function itemEl(it, attr, cls, style) { return `<div class="it r${it.rar} ${cls || ''}" ${attr} style="${style || ''}">${iconSvg(it)}<span class="lv">${it.ilvl}</span></div>`; }
+  function gridHtml(inv, key, mark) {
+    let h = ''; for (let i = 0; i < inv.length; i++) h += `<div class="bc" data-${key}c="${i}" style="grid-column:${i % 10 + 1};grid-row:${(i / 10 | 0) + 1}"></div>`;
+    inv.forEach((it, i) => { if (it) h += itemEl(it, `data-${key}="${i}"`, (mark && mark(it, i) ? 'up ' : '') + (itemH(it) === 2 ? 'tall' : ''), `grid-column:${i % 10 + 1};grid-row:${(i / 10 | 0) + 1} / span ${itemH(it)}`); }); return h;
+  }
+
   // ---- tooltips ----
+  let townMode = null, altarSel = null, altarLine = null;
   function wdps(it) { return (it.dmg[0] + it.dmg[1]) / 2 * it.spd; }
   const score = itemScore;
-  function eqFor(it) { const h = G.hero; if (it.slot === 'ring') return h.eq.ring1 && h.eq.ring2 ? (score(h.eq.ring1) <= score(h.eq.ring2) ? h.eq.ring1 : h.eq.ring2) : null; return h.eq[it.slot] || null; }
-  function tipHtml(it, cmp, equipped) {
-    let h = `<div class="tn" style="color:${RAR[it.rar].c}">${it.name}</div><div class="ts">${RAR[it.rar].n} ${it.rar > 1 ? it.base : SLOT_NAME[it.slot]} · Item level ${it.ilvl}</div>`;
+  function eqSlotFor(it) { const h = G.hero; if (it.slot !== 'ring') return it.slot; return !h.eq.ring1 ? 'ring1' : !h.eq.ring2 ? 'ring2' : (score(h.eq.ring1) <= score(h.eq.ring2) ? 'ring1' : 'ring2'); }
+  function eqFor(it) { return G.hero.eq[eqSlotFor(it)] || null; }
+  function tipHtml(it, mode) {
+    const pc = (a, b) => b ? Math.round((a / b - 1) * 1000) / 10 : 0, sg = v => (v > 0 ? '+' : '') + v;
+    let h = `<div class="tn" style="color:${RAR[it.rar].c}">${it.name}</div><div class="ts">${RAR[it.rar].n} ${it.rar > 1 || it.slot === 'offhand' ? it.base : SLOT_NAME[it.slot]} · Item level ${it.ilvl}</div>`;
     if (it.dmg) h += `<div class="tb">${it.dmg[0]}–${it.dmg[1]} damage · ${it.spd.toFixed(2)} attacks/s</div>`;
     if (it.armor) h += `<div class="tb">${it.armor} armor</div>`;
-    for (const a of it.aff) h += `<div class="ta">${statText(a.k, a.v)}</div>`;
+    it.aff.forEach((a, i) => { h += `<div class="ta">${statText(a.k, a.v)}${it.ench === i ? ' <span class="ts">(altered)</span>' : ''}</div>`; });
     if (it.power) h += `<div class="tp">${POWERS[it.power].d}</div>`;
-    if (cmp && cmp !== it) {
-      if (it.dmg && cmp.dmg) { const d = Math.round((wdps(it) / wdps(cmp) - 1) * 100); h += `<div class="tc ${d >= 0 ? 'up' : 'dn'}">${d >= 0 ? '+' : ''}${d}% weapon damage vs equipped</div>`; }
-      else if (it.armor !== undefined && cmp.armor !== undefined) { const d = it.armor - cmp.armor; h += `<div class="tc ${d >= 0 ? 'up' : 'dn'}">${d >= 0 ? '+' : ''}${d} armor vs equipped</div>`; }
-    }
-    h += `<div class="th">${equipped ? 'Click to unequip' : 'Click to equip · Right-click to scrap (' + itemValue(it) + ' gold)' + (G.online ? ' · Shift-click to give to the nearest player' : '')}</div>`; return h;
+    if (!canUse(it)) h += `<div class="tc dn">Your ${CLASSES[G.hero.cls].n} cannot use this</div>`;
+    else if (mode !== 'eq') { const eq = Object.assign({}, G.hero.eq); eq[eqSlotFor(it)] = it; const a = P.stats, b = calcStats(eq), d = pc(b.dps, a.dps), t = pc(b.tough, a.tough); h += `<div class="tc">If equipped: <span class="${d >= 0 ? 'up' : 'dn'}">${sg(d)}% Damage</span> · <span class="${t >= 0 ? 'up' : 'dn'}">${sg(t)}% Toughness</span></div>`; }
+    const tips = { eq: 'Click to unequip', stash: 'Click to take', shop: 'Click to buy for ' + (mode === 'shop' ? buyPrice(it) : 0) + ' gold', bag: townMode === 'stash' ? 'Click to put in the stash' : townMode === 'vendor' ? 'Click to sell for ' + itemValue(it) + ' gold' : townMode === 'altar' ? 'Click to place on the altar' : 'Click to equip · Drag to move, drop or scrap (' + itemShards(it) + ' shards)' + (G.online ? ' · Shift-click to give' : '') };
+    return h + `<div class="th">${tips[mode] || ''}</div>`;
   }
-  function showTip(html, x, y) { tip.innerHTML = html; tip.classList.remove('hide'); const r = tip.getBoundingClientRect(); let tx = x - r.width - 14, ty = y + 12; if (tx < 6) tx = x + 16; if (ty + r.height > innerHeight - 6) ty = innerHeight - r.height - 6; tip.style.left = tx + 'px'; tip.style.top = Math.max(6, ty) + 'px'; }
+  function showTip(html, x, y) { if (tip.classList.contains('pin')) return; tip.innerHTML = html; tip.classList.remove('hide'); const r = tip.getBoundingClientRect(); let tx = x - r.width - 14, ty = y + 12; if (tx < 6) tx = x + 16; if (ty + r.height > innerHeight - 6) ty = innerHeight - r.height - 6; tip.style.left = tx + 'px'; tip.style.top = Math.max(6, ty) + 'px'; }
   function hideTip() { if (!tip.classList.contains('pin')) tip.classList.add('hide'); }
   function unpin() { tip.classList.remove('pin'); tip.classList.add('hide'); tip.style.transform = ''; }
-  function sheet(it, key, equipped) {
-    tip.innerHTML = tipHtml(it, equipped ? null : eqFor(it), equipped).replace(/<div class="th">.*?<\/div>/, '') + `<div class="acts">${equipped ? '<button data-a="un">Unequip</button>' : '<button data-a="eq">Equip</button><button data-a="sc">Scrap · ' + itemValue(it) + 'g</button>' + (G.online ? '<button data-a="gv">Give to nearest</button>' : '')}<button data-a="x">Close</button></div>`;
+  function sheet(it, key, mode) {
+    const b = (a, t) => `<button data-a="${a}">${t}</button>`; let acts = '';
+    if (mode === 'eq') acts = b('un', 'Unequip'); else if (mode === 'stash') acts = b('tk', 'Take'); else if (mode === 'shop') acts = b('buy', 'Buy · ' + buyPrice(it) + 'g');
+    else acts = (townMode === 'stash' ? b('st', 'Stash') : townMode === 'vendor' ? b('sell', 'Sell · ' + itemValue(it) + 'g') : townMode === 'altar' ? b('al', 'Place on altar') : '') + b('eq', 'Equip') + b('sc', 'Scrap · ' + itemShards(it)) + b('dr', 'Drop') + (G.online ? b('gv', 'Give to nearest') : '');
+    tip.innerHTML = tipHtml(it, mode).replace(/<div class="th">.*?<\/div>/, '') + `<div class="acts">${acts}${b('x', 'Close')}</div>`;
     tip.dataset.k = key; tip.classList.remove('hide'); tip.classList.add('pin'); tip.style.left = '50%'; tip.style.top = '50%'; tip.style.transform = 'translate(-50%,-50%)';
   }
-  tip.addEventListener('click', e => { const a = e.target.dataset && e.target.dataset.a; if (!a) return; const k = tip.dataset.k; if (a === 'eq') equipFromInv(+k); else if (a === 'sc') scrapItem(+k); else if (a === 'un') unequip(k); else if (a === 'gv') giveItem(+k); unpin(); renderInv(); });
+  tip.addEventListener('click', e => {
+    const a = e.target.dataset && e.target.dataset.a; if (!a) return; const k = tip.dataset.k;
+    if (a === 'eq') equipFromInv(+k); else if (a === 'sc') scrapItem(+k); else if (a === 'un') unequip(k); else if (a === 'gv') giveItem(+k); else if (a === 'dr') dropFromInv(+k); else if (a === 'st') toStash(+k); else if (a === 'tk') fromStash(+k); else if (a === 'sell') sellItem(+k); else if (a === 'buy') buyItem(+k); else if (a === 'al') { altarSel = +k; altarLine = null; }
+    unpin(); refresh();
+  });
 
   // ---- inventory ----
-  function cellHtml(it, attr, up) { if (!it) return `<div class="cell empty" ${attr}></div>`; return `<div class="cell${up ? ' up' : ''}" ${attr} style="border-color:${RAR[it.rar].c};color:${RAR[it.rar].c}">${SLOT_ICON[it.slot]}<span class="lv">${it.ilvl}</span></div>`; }
+  const DOLL = { shoulders: [1, 1, 2], helm: [2, 1, 2], amulet: [3, 2, 1], gloves: [1, 3, 2], chest: [2, 3, 2], bracers: [3, 3, 2], ring1: [1, 5, 1], belt: [2, 5, 1], ring2: [3, 5, 1], weapon: [1, 6, 2], pants: [2, 6, 2], offhand: [3, 6, 2], boots: [2, 8, 2] };
+  const fmt = n => n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : n >= 1e4 ? (n / 1e3).toFixed(1) + 'k' : String(Math.round(n));
   function renderInv() {
-    const h = G.hero, s = P.stats; U.invDirty = false;
-    $('eq').innerHTML = SLOTS.map(sl => h.eq[sl] ? cellHtml(h.eq[sl], `data-e="${sl}"`) : `<div class="cell empty" title="${SLOT_NAME[sl]}">${SLOT_ICON[sl.replace(/\d/, '')]}</div>`).join('');
-    $('grid').innerHTML = h.inv.map((it, i) => { let up = false; if (it) { const e = eqFor(it); up = !e || score(it) > score(e); } return cellHtml(it, `data-i="${i}"`, up); }).join('');
-    $('bagN').textContent = '(' + h.inv.filter(x => x).length + '/40)';
-    const L = (a, b) => `<div>${a}: <b>${b}</b></div>`;
-    $('stats').innerHTML = L('Level', h.level) + L('Damage per second', s.dps) + L('Weapon', s.wmin + '–' + s.wmax) + L('Life', s.maxLife) + L('Armor', s.armorT) + L('Critical chance', s.critT.toFixed(1) + '%') + L('Critical damage', Math.round(s.critM * 100) + '%')
-      + L('Attack speed', '+' + Math.round(s.aspd) + '%') + L('Move speed', '+' + Math.round(s.ms) + '%') + L('Fire / Cold / Lightning res', Math.round(s.rfire) + ' / ' + Math.round(s.rcold) + ' / ' + Math.round(s.rlight) + '%')
-      + L('Dodge', Math.round(s.dodgeT) + '%') + L('Magic find', '+' + Math.round(s.mf) + '%') + L('Gold find', '+' + Math.round(s.gf) + '%') + L('Kills', h.kills) + L('Best streak', h.best || 0) + L('Guardians slain', h.runs);
+    const h = G.hero, s = P.stats; U.invDirty = false; let d = '';
+    for (const sl in DOLL) { const p = DOLL[sl], it = h.eq[sl], st = `grid-column:${p[0]};grid-row:${p[1]} / span ${p[2]}`; d += it ? itemEl(it, `data-slot="${sl}"`, 'ds', st) : `<div class="ds empty" data-slot="${sl}" style="${st}" title="${SLOT_NAME[sl]}">${slotSvg(sl)}</div>`; }
+    const L = (a, b) => `<div>${a} <b>${b}</b></div>`;
+    $('inv').innerHTML = `<div class="ph"><h3>Inventory</h3><button class="xb" data-x="inv" aria-label="Close">×</button></div>
+      <div class="itop"><div id="stats"><div class="hl"><span>Damage</span><b>${fmt(s.dps)}</b></div><div class="hl"><span>Toughness</span><b>${fmt(s.tough)}</b></div><div class="hl"><span>Recovery</span><b>${s.recov}</b></div>
+        ${L('Life', s.maxLife) + L('Armor', s.armorT) + L('Crit chance', s.critT.toFixed(1) + '%') + L('Crit damage', Math.round(s.critM * 100) + '%') + L('Attack speed', '+' + Math.round(s.aspd) + '%') + L('Move speed', '+' + Math.round(s.ms) + '%') + L('Resist F/C/L', Math.round(s.rfire) + '/' + Math.round(s.rcold) + '/' + Math.round(s.rlight)) + L('Dodge', Math.round(s.dodgeT) + '%') + L('Magic find', '+' + Math.round(s.mf) + '%') + L('Kills', h.kills) + L('Best streak', h.best || 0) + L('Guardians', h.runs)}</div>
+        <div id="doll">${d}</div></div>
+      <div id="grid">${gridHtml(h.inv, 'i', it => { if (!canUse(it)) return false; const e = eqFor(it); return !e || score(it) > score(e); })}</div>
+      <div class="ifoot"><span class="gold">${h.gold.toLocaleString()} gold</span><span class="shards">${(h.shards || 0).toLocaleString()} shards</span><span id="scrapBox">Drag here to scrap</span></div>
+      <div class="ifoot"><button data-b="sort">Sort</button><button data-b="s0">Scrap all Common</button><button data-b="s1">Scrap Common + Magic</button></div>`;
   }
-  function toggleInv(v) { invOpen = v === undefined ? !invOpen : v; $('inv').classList.toggle('hide', !invOpen); hideTip(); if (invOpen) renderInv(); }
-  $('inv').addEventListener('click', e => { const c = e.target.closest('.cell'); if (!c) return; if (lastTouch) { const h = G.hero; if (c.dataset.i !== undefined && h.inv[+c.dataset.i]) sheet(h.inv[+c.dataset.i], c.dataset.i, false); else if (c.dataset.e) sheet(h.eq[c.dataset.e], c.dataset.e, true); return; } if (c.dataset.i !== undefined) { if (e.shiftKey && G.online) giveItem(+c.dataset.i); else equipFromInv(+c.dataset.i); } else if (c.dataset.e) unequip(c.dataset.e); hideTip(); renderInv(); });
-  $('inv').addEventListener('contextmenu', e => { e.preventDefault(); const c = e.target.closest('.cell'); if (c && c.dataset.i !== undefined) { scrapItem(+c.dataset.i); hideTip(); renderInv(); } });
-  $('inv').addEventListener('mousemove', e => { if (lastTouch) return; const c = e.target.closest('.cell'); if (!c) return hideTip(); const h = G.hero; if (c.dataset.i !== undefined) { const it = h.inv[+c.dataset.i]; if (it) showTip(tipHtml(it, eqFor(it), false), e.clientX, e.clientY); else hideTip(); } else if (c.dataset.e) showTip(tipHtml(h.eq[c.dataset.e], null, true), e.clientX, e.clientY); else hideTip(); });
+  function toggleInv(v) { invOpen = v === undefined ? !invOpen : v; $('inv').classList.toggle('hide', !invOpen); hideTip(); if (invOpen) renderInv(); else if (townMode) closeTown(); }
+  function refresh() { if (invOpen) renderInv(); if (townMode) renderTown(); }
+  function bagClick(i, e) {
+    const it = G.hero.inv[i]; if (!it) return; if (lastTouch) { sheet(it, i, 'bag'); return; }
+    if (e.shiftKey && G.online) giveItem(i); else if (townMode === 'stash') toStash(i); else if (townMode === 'vendor') sellItem(i); else if (townMode === 'altar') { altarSel = i; altarLine = null; } else equipFromInv(i);
+    hideTip(); refresh();
+  }
+  let noClick = false, drag = null;
+  $('inv').addEventListener('click', e => {
+    if (noClick) return; const x = e.target.closest('[data-x]'); if (x) { toggleInv(false); return; } const b = e.target.closest('[data-b]'); if (b) { if (b.dataset.b === 'sort') sortBag(G.hero.inv); else scrapAll(b.dataset.b === 's1' ? 1 : 0); refresh(); return; }
+    const c = e.target.closest('[data-i]'); if (c) { bagClick(+c.dataset.i, e); return; }
+    const sl = e.target.closest('.it[data-slot]'); if (sl) { if (lastTouch) sheet(G.hero.eq[sl.dataset.slot], sl.dataset.slot, 'eq'); else { unequip(sl.dataset.slot); hideTip(); refresh(); } }
+  });
+  $('inv').addEventListener('contextmenu', e => { e.preventDefault(); const c = e.target.closest('[data-i]'); if (c) { equipFromInv(+c.dataset.i); hideTip(); refresh(); } });
+  $('inv').addEventListener('mousemove', e => { if (lastTouch || (drag && drag.on)) return; const c = e.target.closest('.it'); if (!c) return hideTip(); const h = G.hero; if (c.dataset.i !== undefined) { const it = h.inv[+c.dataset.i]; if (it) showTip(tipHtml(it, 'bag'), e.clientX, e.clientY); } else if (c.dataset.slot && h.eq[c.dataset.slot]) showTip(tipHtml(h.eq[c.dataset.slot], 'eq'), e.clientX, e.clientY); });
   $('inv').addEventListener('mouseleave', hideTip);
-  $('scr0').onclick = () => { scrapAll(0); renderInv(); }; $('scr1').onclick = () => { scrapAll(1); renderInv(); };
+  $('inv').addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse' || e.button !== 0) return; const el = e.target.closest('.it[data-i]'); if (el) drag = { i: +el.dataset.i, x: e.clientX, y: e.clientY, on: false, g: null }; });
+  window.addEventListener('pointermove', e => {
+    if (!drag) return; if (!drag.on) { if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 7) return; const it = G.hero.inv[drag.i]; if (!it) { drag = null; return; } drag.on = true; hideTip(); const g = document.createElement('div'); g.className = 'ghost it r' + it.rar; g.innerHTML = iconSvg(it); document.body.appendChild(g); drag.g = g; }
+    drag.g.style.left = e.clientX - 20 + 'px'; drag.g.style.top = e.clientY - 20 + 'px';
+  });
+  window.addEventListener('pointerup', e => {
+    if (!drag) return; const d = drag; drag = null; if (!d.on) return; d.g.remove(); noClick = true; setTimeout(() => { noClick = false; }, 0);
+    const t = document.elementFromPoint(e.clientX, e.clientY), cl = q => t && t.closest(q); let m;
+    if ((m = cl('[data-ic]'))) moveItem(d.i, +m.dataset.ic); else if ((m = cl('.it[data-i]'))) moveItem(d.i, +m.dataset.i); else if ((m = cl('[data-slot]'))) equipFromInv(d.i, m.dataset.slot);
+    else if (cl('#scrapBox')) scrapItem(d.i); else if (cl('#town')) { if (townMode === 'stash') toStash(d.i); else if (townMode === 'vendor') sellItem(d.i); else if (townMode === 'altar') { altarSel = d.i; altarLine = null; } }
+    else if (!cl('#inv') && !cl('#skl')) dropFromInv(d.i);
+    refresh();
+  });
+
+  // ---- town: stash, trader, altar ----
+  function renderTown() {
+    const h = G.hero, T = $('town'), head = t => `<div class="ph"><h3>${t}</h3><button class="xb" data-x="town" aria-label="Close">×</button></div>`;
+    if (townMode === 'stash') T.innerHTML = head('Stash') + `<div class="sm">Shared by all your heroes on this device. Click an item to move it. <button data-ss="1" style="padding:4px 10px;font-size:12px;margin-left:6px">Sort</button></div><div id="sgrid">${gridHtml(G.stash, 's')}</div>`;
+    else if (townMode === 'vendor') T.innerHTML = head('Mirel the Trader') + `<div class="sm">Click an item to buy it. Click items in your bag to sell them. You have <b style="color:#ffd84a">${h.gold.toLocaleString()} gold</b>.</div><div id="shop">${(h.stock || []).map((it, k) => it ? `<div class="srow2" data-v="${k}">${itemEl(it, '', itemH(it) === 2 ? 'tall' : '')}<div><b style="color:${RAR[it.rar].c}">${it.name}</b><div class="sm">${SLOT_NAME[it.slot]} · level ${it.ilvl}</div><div class="${h.gold >= buyPrice(it) ? 'gold' : 'dn'}">${buyPrice(it).toLocaleString()} gold</div></div></div>` : '').join('') || '<div class="sm">Sold out. New stock arrives after you have been out fighting.</div>'}</div>`;
+    else if (townMode === 'altar') {
+      const it = altarSel !== null ? h.inv[altarSel] : null; let b = head('Altar of Embers') + `<div class="sm">Reroll ONE line of an item. The first line you change is the only one that item can ever change again. You have <b style="color:#9ad0ff">${h.shards || 0} shards</b> and <b style="color:#ffd84a">${h.gold.toLocaleString()} gold</b>.</div>`;
+      if (!it) b += '<div class="abox sm">Click an item in your bag to place it on the altar.</div>';
+      else {
+        const c = altarCost(it); b += `<div class="abox"><div class="srow2">${itemEl(it, '', itemH(it) === 2 ? 'tall' : '')}<div><b style="color:${RAR[it.rar].c}">${it.name}</b><div class="sm">${SLOT_NAME[it.slot]} · level ${it.ilvl}</div></div></div>`;
+        if (!it.aff.length) b += '<div class="sm">This item has no lines to change.</div>';
+        it.aff.forEach((a, i) => { const lock = it.ench !== undefined && it.ench !== i; b += `<button class="aline${altarLine === i ? ' on' : ''}" data-l="${i}" ${lock ? 'disabled' : ''}>${statText(a.k, a.v)}${lock ? ' · locked' : ''}</button>`; });
+        if (altarLine !== null && it.aff[altarLine]) {
+          const pool = altarPool(it, altarLine), pc = pool.length ? Math.round(1000 / pool.length) / 10 : 0;
+          b += `<div class="odds"><b>The odds</b><div class="sm">You get one of these ${pool.length} lines. Each is equally likely: ${pc}% (1 in ${pool.length}). The value is rolled evenly inside the range shown.</div><div class="olist">${pool.map(a => { const r = affixRange(a, it.ilvl); return `<div>${statText(a[0], r[0]).replace(/([\d.]+)/, r[0] + '–' + r[1])}</div>`; }).join('')}</div></div>
+            <button class="big" data-rr="1" ${(h.shards || 0) >= c.shards && h.gold >= c.gold ? '' : 'disabled'}>Reroll · ${c.shards} shards + ${c.gold.toLocaleString()} gold</button>`;
+        } else if (it.aff.length) b += '<div class="sm" style="margin-top:8px">Pick the line you want to replace to see the odds and the cost.</div>';
+        b += '</div>';
+      }
+      T.innerHTML = b;
+    }
+  }
+  function closeTown() { townMode = null; altarSel = altarLine = null; $('town').classList.add('hide'); hideTip(); if (invOpen) renderInv(); }
+  U.closeTown = closeTown;
+  U.openTown = kind => { townMode = kind; altarSel = altarLine = null; if (sklOpen) toggleSkl(false); $('town').classList.remove('hide'); invOpen = true; $('inv').classList.remove('hide'); refresh(); };
+  $('town').addEventListener('click', e => {
+    if (e.target.closest('[data-x]')) { closeTown(); return; } let m;
+    if (e.target.closest('[data-ss]')) sortBag(G.stash);
+    else if ((m = e.target.closest('[data-s]'))) { if (lastTouch) sheet(G.stash[+m.dataset.s], m.dataset.s, 'stash'); else fromStash(+m.dataset.s); }
+    else if ((m = e.target.closest('[data-v]'))) { if (lastTouch) sheet(G.hero.stock[+m.dataset.v], m.dataset.v, 'shop'); else buyItem(+m.dataset.v); }
+    else if ((m = e.target.closest('[data-l]'))) altarLine = +m.dataset.l;
+    else if (e.target.closest('[data-rr]')) { if (altarSel !== null && altarLine !== null) altarReroll(altarSel, altarLine); }
+    else return; hideTip(); refresh();
+  });
+  $('town').addEventListener('mousemove', e => { if (lastTouch) return; let m; if ((m = e.target.closest('[data-s]')) && G.stash[+m.dataset.s]) showTip(tipHtml(G.stash[+m.dataset.s], 'stash'), e.clientX, e.clientY); else if ((m = e.target.closest('[data-v]')) && G.hero.stock[+m.dataset.v]) showTip(tipHtml(G.hero.stock[+m.dataset.v], 'shop'), e.clientX, e.clientY); else hideTip(); });
+  $('town').addEventListener('mouseleave', hideTip);
 
   // ---- hud ----
   function buildBar() {
@@ -66,15 +171,15 @@ const UI = (() => {
   // ---- skills panel ----
   let sklOpen = false, sklSlot = 1;
   function renderSkl() {
-    const h = G.hero; let html = '<h3>Skills</h3><div class="tabs">' + [0, 1, 2, 3].map(i => `<button data-s="${i}" class="${i === sklSlot ? 'on' : ''}">${SLOT_KEY[i]}<br><span>${h.bar[i] ? SKILLS[h.bar[i]].i : '＋'}</span></button>`).join('') + '</div><div class="list">';
+    const h = G.hero; let html = '<div class="ph"><h3>Skills</h3><button class="xb" data-x="skl" aria-label="Close">×</button></div><div class="tabs">' + [0, 1, 2, 3].map(i => `<button data-s="${i}" class="${i === sklSlot ? 'on' : ''}">${SLOT_KEY[i]}<br><span>${h.bar[i] ? SKILLS[h.bar[i]].i : '＋'}</span></button>`).join('') + '</div><div class="list">';
     const RN = CLASSES[h.cls].res.n; for (const id of CLASSES[h.cls].skills) {
       const sk = SKILLS[id]; if (!!sk.basic !== (sklSlot === 0)) continue; const locked = h.level < sk.lv, on = h.bar[sklSlot] === id, else_ = !on && h.bar.includes(id);
       html += `<div class="srow${on ? ' on' : ''}${locked ? ' lock' : ''}" data-k="${id}"><div class="si">${sk.i}</div><div><b>${sk.n}</b> <span class="sm">${locked ? 'Unlocks at level ' + sk.lv : (sk.cost ? sk.cost + ' ' + RN : sk.gen ? 'Builds ' + RN : 'Free') + (sk.cd ? ' · ' + sk.cd + 's cooldown' : '') + (on ? ' · equipped here' : else_ ? ' · on ' + SLOT_KEY[h.bar.indexOf(id)] : '')}</span><div class="sd">${sk.d}</div></div></div>`;
     }
     $('skl').innerHTML = html + '</div><div class="sm" style="margin-top:8px">Pick a slot, then pick a skill. You can swap at any time, even mid-fight.</div>';
   }
-  function toggleSkl(v, slot) { sklOpen = v === undefined ? !sklOpen : v; if (slot !== undefined) sklSlot = slot; $('skl').classList.toggle('hide', !sklOpen); if (sklOpen) renderSkl(); }
-  $('skl').addEventListener('click', e => { const t = e.target.closest('[data-s]'); if (t) { sklSlot = +t.dataset.s; renderSkl(); return; } const r = e.target.closest('.srow'); if (r && setSkill(sklSlot, r.dataset.k)) { buildBar(); renderSkl(); } });
+  function toggleSkl(v, slot) { sklOpen = v === undefined ? !sklOpen : v; if (sklOpen && townMode) closeTown(); if (slot !== undefined) sklSlot = slot; $('skl').classList.toggle('hide', !sklOpen); if (sklOpen) renderSkl(); }
+  $('skl').addEventListener('click', e => { if (e.target.closest('[data-x]')) { toggleSkl(false); return; } const t = e.target.closest('[data-s]'); if (t) { sklSlot = +t.dataset.s; renderSkl(); return; } const r = e.target.closest('.srow'); if (r && setSkill(sklSlot, r.dataset.k)) { buildBar(); renderSkl(); } });
   U.buildBar = () => { buildBar(); if (sklOpen) renderSkl(); };
   function hud(dt) {
     const h = G.hero, s = P.stats, cls = CLASSES[h.cls];
@@ -87,12 +192,13 @@ const UI = (() => {
     }
     $('xp').firstElementChild.style.width = (h.level >= MAX_LEVEL ? 100 : h.xp / xpNeed(h.level) * 100) + '%';
     $('tName').textContent = cls.n + ' · Level ' + h.level + (G.online ? ' · Online: ' + NET.room + ' (' + (NET.count || 1) + ')' : '');
-    $('bAuto').textContent = 'Auto-play: ' + (G.auto ? 'ON' : 'off'); $('bAuto').classList.toggle('on', G.auto); $('bSpd').textContent = 'Speed ' + (G.online ? 1 : G.speed) + '×'; $('bSpd').classList.toggle('hide', G.online); $('tChat').classList.toggle('hide', !G.online); $('tGold').textContent = h.gold.toLocaleString() + ' gold'; $('tZone').textContent = G.zone.def.name + ' · monster level ' + G.zone.def.lvl + (h.filter ? ' · hiding ' + (h.filter === 1 ? 'Common' : 'Common + Magic') + ' loot' : '');
+    $('bAuto').textContent = 'Auto-play: ' + (G.auto ? 'ON' : 'off'); $('bAuto').classList.toggle('on', G.auto); $('bSpd').textContent = 'Speed ' + (G.online ? 1 : G.speed) + '×'; $('bSpd').classList.toggle('hide', G.online); $('tChat').classList.toggle('hide', !G.online); $('tGold').textContent = h.gold.toLocaleString() + ' gold · ' + (h.shards || 0).toLocaleString() + ' shards';
+    $('bTown').textContent = G.inTown ? 'Leave town' : 'Town'; if ($('quest').textContent !== GPS.text) $('quest').textContent = GPS.text; $('questBox').classList.toggle('hide', !GPS.text); if (townMode) { const o = G.zone.objs.find(o => o.kind === townMode); if (!G.inTown || !o || Math.hypot(o.x - P.x, o.z - P.z) > 9) closeTown(); } $('tZone').textContent = G.zone.def.name + (G.inTown ? ' · safe' : ' · monster level ' + G.zone.def.lvl) + (h.filter ? ' · hiding ' + (h.filter === 1 ? 'Common' : 'Common + Magic') + ' loot' : '');
     const b = G.boss; $('bossbar').classList.toggle('hide', !(b && b.awake && b.alive)); if (b && b.awake) { $('bossName').textContent = b.name; $('bossFill').style.width = clamp(b.hp / b.maxHp * 100, 0, 100) + '%'; }
     $('streak').classList.toggle('hide', G.streak < 3); if (G.streak >= 3) { $('st1').textContent = G.streak; $('st3').textContent = '+' + Math.min(G.streak, 50) * 2 + '% drop luck'; $('streak').style.opacity = clamp(G.streakT / 1.2, .25, 1); }
     if (banT > 0) { banT -= dt; if (banT <= 0) $('banner').classList.remove('on'); }
     const hs = G.hints.map(x => x.t).join('\n'); if (hs !== hud.last) { hud.last = hs; $('hints').innerHTML = ''; for (const x of G.hints) { const d = document.createElement('div'); d.textContent = x.t; $('hints').appendChild(d); } }
-    if (invOpen && U.invDirty) renderInv();
+    if (invOpen && U.invDirty && !(drag && drag.on)) renderInv();
   }
 
   // ---- overlay ----
@@ -119,22 +225,39 @@ const UI = (() => {
     }
     for (const t of G.texts) { const sp = GLX.toScreen(t.x, t.y, t.z); if (!sp) continue; ctx.globalAlpha = clamp(t.life / t.max * 2, 0, 1); txt(t.txt, sp[0], sp[1], t.col, '700 ' + t.size + 'px system-ui,sans-serif'); }
     ctx.globalAlpha = 1;
-    if (G.online) for (const id in NET.peers) { const q = NET.peers[id]; if (q.dead) continue; const sp = GLX.toScreen(q.x, 2.9, q.z); if (!sp) continue; txt(q.name + ' · ' + (q.lvl || 1), sp[0], sp[1] - 8, '#9fd0ff', '600 12px system-ui,sans-serif'); ctx.fillStyle = 'rgba(0,0,0,.7)'; ctx.fillRect(sp[0] - 23, sp[1] + 1, 46, 5); ctx.fillStyle = '#4ad06a'; ctx.fillRect(sp[0] - 22, sp[1] + 2, 44 * clamp((q.hp || 0) / 100, 0, 1), 3); }
+    if (G.online && !G.inTown) for (const id in NET.peers) { const q = NET.peers[id]; if (q.dead) continue; const sp = GLX.toScreen(q.x, 2.9, q.z); if (!sp) continue; txt(q.name + ' · ' + (q.lvl || 1), sp[0], sp[1] - 8, '#9fd0ff', '600 12px system-ui,sans-serif'); ctx.fillStyle = 'rgba(0,0,0,.7)'; ctx.fillRect(sp[0] - 23, sp[1] + 1, 46, 5); ctx.fillStyle = '#4ad06a'; ctx.fillRect(sp[0] - 22, sp[1] + 2, 44 * clamp((q.hp || 0) / 100, 0, 1), 3); }
+    if (G.online && !G.inTown) for (const id in NET.peers) {
+      const q = NET.peers[id]; if (q.dead) continue; const sp = GLX.toScreen(q.x, 1.4, q.z); if (sp && sp[0] > 30 && sp[1] > 30 && sp[0] < w - 30 && sp[1] < h - 140) continue;
+      const dx = q.x - P.x, dz = q.z - P.z, a = Math.atan2(dz, dx), rxe = w / 2 - 70, rye = h / 2 - 120, ex = w / 2 + Math.cos(a) * rxe, ey = h / 2 - 30 + Math.sin(a) * rye;
+      ctx.save(); ctx.translate(ex, ey); ctx.rotate(a); ctx.fillStyle = '#ffd84a'; ctx.strokeStyle = 'rgba(0,0,0,.85)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(20, 0); ctx.lineTo(-10, -13); ctx.lineTo(-3, 0); ctx.lineTo(-10, 13); ctx.closePath(); ctx.stroke(); ctx.fill(); ctx.restore();
+      txt(q.name + ' · ' + Math.round(Math.hypot(dx, dz)) + ' m', ex - Math.cos(a) * 34, ey - Math.sin(a) * 26, '#ffe9a8', '600 12px system-ui,sans-serif');
+    }
     if (G.hoverObj) { const o = G.hoverObj, sp = GLX.toScreen(o.x, 3.4, o.z); if (sp) txt(o.name, sp[0], sp[1], '#ffe9a8', '600 13px system-ui,sans-serif'); }
     if (++frameN % 3 === 0) drawMini();
   }
   function drawMini() {
     const Z = G.zone, S = 170, k = 4.2, pcx = P.x / CS, pcz = P.z / CS; mctx.clearRect(0, 0, S, S);
-    const X = cx => S / 2 + (cx - pcx) * k, Y = cz => S / 2 + (cz - pcz) * k; mctx.fillStyle = 'rgba(190,200,170,.5)';
+    const X = cx => S / 2 + (cx - pcx) * k, Y = cz => S / 2 + (cz - pcz) * k, wall = (x, y) => x < 0 || y < 0 || x >= GW || y >= GW || Z.cell[y * GW + x] === 1;
     const x0 = Math.max(0, Math.floor(pcx - 21)), x1 = Math.min(GW - 1, Math.ceil(pcx + 21)), y0 = Math.max(0, Math.floor(pcz - 21)), y1 = Math.min(GW - 1, Math.ceil(pcz + 21));
-    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (Z.seen[y * GW + x] && !Z.cell[y * GW + x]) mctx.fillRect(X(x), Y(y), k + .5, k + .5);
+    mctx.fillStyle = 'rgba(150,160,130,.38)'; mctx.strokeStyle = '#f0e2b8'; mctx.lineWidth = 1.8; mctx.lineCap = 'square'; mctx.beginPath();
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      if (!Z.seen[y * GW + x] || Z.cell[y * GW + x]) continue; const a = X(x), b = Y(y); mctx.fillRect(a, b, k + .5, k + .5);
+      if (wall(x - 1, y)) { mctx.moveTo(a, b); mctx.lineTo(a, b + k); } if (wall(x + 1, y)) { mctx.moveTo(a + k, b); mctx.lineTo(a + k, b + k); } if (wall(x, y - 1)) { mctx.moveTo(a, b); mctx.lineTo(a + k, b); } if (wall(x, y + 1)) { mctx.moveTo(a, b + k); mctx.lineTo(a + k, b + k); }
+    }
+    mctx.stroke();
     const dot = (wx, wz, c, r) => { const x = X(wx / CS), y = Y(wz / CS); if (x < 0 || y < 0 || x > S || y > S) return; mctx.fillStyle = c; mctx.beginPath(); mctx.arc(x, y, r, 0, 6.3); mctx.fill(); };
-    for (const o of Z.objs) { if (o.used || !Z.seen[Math.floor(o.z / CS) * GW + Math.floor(o.x / CS)]) continue; dot(o.x, o.z, o.kind === 'chest' ? '#ffd84a' : o.kind === 'shrine' ? '#7affc0' : '#7ad0ff', o.kind === 'portal' ? 5 : 3); }
+    for (const o of Z.objs) { if (o.used || !Z.seen[Math.floor(o.z / CS) * GW + Math.floor(o.x / CS)]) continue; dot(o.x, o.z, o.kind === 'chest' || o.kind === 'stash' || o.kind === 'vendor' ? '#ffd84a' : o.kind === 'shrine' ? '#7affc0' : o.kind === 'altar' ? '#ff8a2a' : '#7ad0ff', o.kind === 'portal' || o.kind === 'tportal' ? 5 : 3.2); }
     for (const e of G.ents) if (e.alive && e.awake) dot(e.x, e.z, e.boss ? '#ff3a2a' : e.elite ? '#ffb03a' : '#e0482a', e.boss ? 5 : e.elite ? 3 : 1.8);
     for (const d of G.drops) if (d.item && d.item.rar >= 2) dot(d.x, d.z, RAR[d.item.rar].c, 2.5);
     if (G.boss && !G.boss.awake) { const bx = clamp(X(Z.bossAt[0] / CS), 8, S - 8), by = clamp(Y(Z.bossAt[1] / CS), 8, S - 8); mctx.fillStyle = '#ff3a2a'; mctx.font = '700 14px system-ui'; mctx.textAlign = 'center'; mctx.textBaseline = 'middle'; mctx.fillText('☠', bx, by); }
-    if (G.online) for (const id in NET.peers) dot(NET.peers[id].x, NET.peers[id].z, '#5ab0ff', 3);
-    mctx.fillStyle = '#fff'; mctx.beginPath(); mctx.arc(S / 2, S / 2, 3, 0, 6.3); mctx.fill();
+    if (GPS.pts.length > 1 && G.set.gps) { mctx.strokeStyle = '#ffd84a'; mctx.lineWidth = 1.6; mctx.setLineDash([3, 3]); mctx.beginPath(); GPS.pts.forEach((q, i) => { const x = X(q[0] / CS), y = Y(q[1] / CS); if (i) mctx.lineTo(x, y); else mctx.moveTo(x, y); }); mctx.stroke(); mctx.setLineDash([]); }
+    if (GPS.goal) { const gx = X(GPS.goal.x / CS), gy = Y(GPS.goal.z / CS); if (gx > 4 && gy > 4 && gx < S - 4 && gy < S - 4) { mctx.fillStyle = '#ffd84a'; mctx.font = '700 13px system-ui'; mctx.textAlign = 'center'; mctx.textBaseline = 'middle'; mctx.fillText('★', gx, gy); } }
+    if (G.online && !G.inTown) for (const id in NET.peers) {
+      const q = NET.peers[id]; if (q.dead) continue; const x = X(q.x / CS), y = Y(q.z / CS);
+      if (x > 6 && y > 6 && x < S - 6 && y < S - 6) { mctx.fillStyle = '#5ab0ff'; mctx.strokeStyle = '#fff'; mctx.lineWidth = 1.2; mctx.beginPath(); mctx.arc(x, y, 4, 0, 6.3); mctx.fill(); mctx.stroke(); }
+      else { const a = Math.atan2(y - S / 2, x - S / 2), ex = S / 2 + Math.cos(a) * (S / 2 - 10), ey = S / 2 + Math.sin(a) * (S / 2 - 10); mctx.save(); mctx.translate(ex, ey); mctx.rotate(a); mctx.fillStyle = '#ffd84a'; mctx.strokeStyle = '#000'; mctx.lineWidth = 1; mctx.beginPath(); mctx.moveTo(8, 0); mctx.lineTo(-5, -6); mctx.lineTo(-2, 0); mctx.lineTo(-5, 6); mctx.closePath(); mctx.fill(); mctx.stroke(); mctx.restore(); }
+    }
+    const px = S / 2, py = S / 2, r = P.rot; mctx.fillStyle = '#fff'; mctx.strokeStyle = '#000'; mctx.lineWidth = 1; mctx.beginPath(); mctx.moveTo(px + Math.sin(r) * 6, py + Math.cos(r) * 6); mctx.lineTo(px + Math.sin(r + 2.5) * 5, py + Math.cos(r + 2.5) * 5); mctx.lineTo(px + Math.sin(r - 2.5) * 5, py + Math.cos(r - 2.5) * 5); mctx.closePath(); mctx.fill(); mctx.stroke();
   }
 
   // ---- input ----
@@ -161,36 +284,72 @@ const UI = (() => {
   glc.addEventListener('contextmenu', e => e.preventDefault());
   glc.addEventListener('wheel', e => { e.preventDefault(); G.zoom = clamp(G.zoom + Math.sign(e.deltaY) * .08, .4, 1.6); }, { passive: false });
   window.addEventListener('blur', () => { IN.lmb = IN.rmb = IN.shift = false; IN.keys = {}; IN.tb = [false, false, false, false]; mvId = null; });
-  $('tBag').onclick = () => { toggleSkl(false); toggleInv(); }; $('tSkl').onclick = () => { toggleInv(false); toggleSkl(); }; $('tLoot').onclick = () => pickupNear();
+  $('tBag').onclick = () => { toggleSkl(false); toggleInv(); }; loadStash(); $('tSkl').onclick = () => { toggleInv(false); toggleSkl(); }; $('tLoot').onclick = () => pickupNear();
   window.addEventListener('error', e => { const d = $('err'); d.textContent = 'Something went wrong: ' + (e.message || 'unknown error'); d.classList.remove('hide'); });
   window.addEventListener('keydown', e => {
-    if (e.target && (e.target.tagName === 'INPUT')) { if (e.target.id === 'chat') { if (e.key === 'Enter') { const v = e.target.value.trim(); if (v) NET.send({ t: 'chat', m: v }); e.target.value = ''; e.target.classList.add('hide'); e.target.blur(); } else if (e.key === 'Escape') { e.target.classList.add('hide'); e.target.blur(); } } return; }
+    if (e.target && (e.target.tagName === 'INPUT')) { if (e.target.id === 'chat') { if (e.key === 'Enter') { const v = e.target.value.trim(); if (v) NET.send({ t: 'chat', m: v }); e.target.value = ''; e.target.classList.add('hide'); $('chatX').classList.add('hide'); e.target.blur(); } else if (e.key === 'Escape') { e.target.classList.add('hide'); $('chatX').classList.add('hide'); e.target.blur(); } } return; }
     IN.shift = e.shiftKey; if (G.state !== 'play' || e.ctrlKey || e.metaKey) return; const k = e.key.toLowerCase(); IN.keys[k] = true;
     if (e.repeat) return;
     if (k === '1') useFlask(); else if (k === 'i' || k === 'c' || k === 'b') toggleInv(); else if (k === 's' || k === 'k') toggleSkl(); else if (k === ' ' || k === 'f') { e.preventDefault(); pickupNear(); }
     else if (k === 'z') { G.hero.filter = (G.hero.filter + 1) % 3; hint(['Showing all loot.', 'Hiding Common loot.', 'Hiding Common and Magic loot.'][G.hero.filter]); }
-    else if (k === 'm') hint(SFX.toggle() ? 'Sound off.' : 'Sound on.'); else if (k === 'a') toggleAuto(); else if (k === 'x') cycleSpeed(); else if (k === 'enter' && G.online) { e.preventDefault(); openChat(); } else if (k === 'escape') { toggleInv(false); toggleSkl(false); }
+    else if (k === 'm') { G.set.vol = G.set.vol > 0 ? 0 : 70; applySet(); hint(G.set.vol ? 'Sound on.' : 'Sound off.'); } else if (k === 'o') toggleSet(); else if (k === 'g') { G.set.gps = !G.set.gps; GPS.t = 0; applySet(); hint(G.set.gps ? 'Quest path on.' : 'Quest path off.'); } else if (k === 'a') toggleAuto(); else if (k === 'x') cycleSpeed(); else if (k === 'enter' && G.online) { e.preventDefault(); openChat(); } else if (k === 't') { if (G.inTown) leaveTown(); else enterTown(); } else if (k === 'escape') { if (tip.classList.contains('pin')) unpin(); else if (!$('set').classList.contains('hide')) toggleSet(false); else if (townMode) closeTown(); else if (invOpen) toggleInv(false); else toggleSkl(false); }
   });
   window.addEventListener('keyup', e => { IN.shift = e.shiftKey; IN.keys[e.key.toLowerCase()] = false; });
   function toggleAuto() { G.auto = !G.auto; BOT.path = null; P.move = P.atk = null; hint(G.auto ? 'Auto-play on. The hero now plays by itself; you can still step in.' : 'Auto-play off.'); }
   function cycleSpeed() { if (G.online) return; G.speed = G.speed === 1 ? 2 : G.speed === 2 ? 4 : G.speed === 4 ? 8 : 1; }
-  function openChat() { const c = $('chat'); c.classList.remove('hide'); c.focus(); }
+  function openChat() { const c = $('chat'); c.classList.remove('hide'); $('chatX').classList.remove('hide'); c.focus(); }
+  // ---- settings ----
+  function loadSet() { try { const o = JSON.parse(localStorage.getItem('cinderdeep_settings')); if (o && typeof o === 'object') Object.assign(G.set, o); } catch (e) { } applySet(); }
+  function applySet() { const st = G.set; SFX.vol(clamp(st.vol, 0, 100) / 100); if (st.gfx !== 'auto') GLX.env.q = clamp(+st.gfx | 0, 0, 2); $('mini').classList.toggle('hide', !st.map); try { localStorage.setItem('cinderdeep_settings', JSON.stringify(st)); } catch (e) { } }
+  function renderSet() {
+    const st = G.set, sel = (id, cur, opts) => `<select data-set="${id}">${opts.map(o => `<option value="${o[0]}"${String(cur) === String(o[0]) ? ' selected' : ''}>${o[1]}</option>`).join('')}</select>`, chk = (id, on) => `<input type="checkbox" data-set="${id}"${on ? ' checked' : ''}>`;
+    $('set').innerHTML = `<div class="ph"><h3>Settings</h3><button class="xb" data-x="set" aria-label="Close">×</button></div>
+      <label>Sound volume <span id="volN">${st.vol}%</span><input type="range" min="0" max="100" step="5" value="${st.vol}" data-set="vol"></label>
+      <label>Graphics quality ${sel('gfx', st.gfx, [['auto', 'Automatic'], [2, 'High'], [1, 'Medium'], [0, 'Low (fastest)']])}</label>
+      <label>Loot labels ${sel('filter', G.hero ? G.hero.filter : 0, [[0, 'Show all loot'], [1, 'Hide Common'], [2, 'Hide Common and Magic']])}</label>
+      <label>${chk('gps', st.gps)} Quest path on the ground (GPS)</label><label>${chk('shake', st.shake)} Screen shake</label><label>${chk('nums', st.nums)} Damage numbers</label><label>${chk('map', st.map)} Minimap</label>
+      <div class="sm">Automatic lowers the picture quality by itself if the game runs slowly. Settings are saved on this device.</div>`;
+  }
+  function toggleSet(v) { const el = $('set'), open = v === undefined ? el.classList.contains('hide') : v; el.classList.toggle('hide', !open); if (open) renderSet(); }
+  $('set').addEventListener('click', e => { if (e.target.closest('[data-x]')) toggleSet(false); });
+  $('set').addEventListener('input', e => {
+    const k = e.target.dataset && e.target.dataset.set; if (!k) return; const st = G.set;
+    if (k === 'vol') { st.vol = +e.target.value; $('volN').textContent = st.vol + '%'; applySet(); SFX.unlock(); SFX.play('pickup'); return; }
+    if (k === 'gfx') { st.gfx = e.target.value === 'auto' ? 'auto' : +e.target.value; if (st.gfx === 'auto') GLX.env.q = 2; } else if (k === 'filter') { if (G.hero) G.hero.filter = +e.target.value; } else st[k] = e.target.checked;
+    applySet();
+  });
+  $('bSet').onclick = () => toggleSet(); $('mSet').onclick = () => toggleSet(); loadSet();
+  function toMenu() { if (G.state !== 'play') return; menuBuilt = false; saveGame(); NET.close(); G.state = 'menu'; G.auto = false; G.speed = 1; G.inTown = false; G.away = null; closeTown(); toggleInv(false); toggleSkl(false); toggleSet(false); unpin(); $('game').classList.add('hide'); $('death').classList.add('hide'); $('menu').classList.remove('hide'); $('menuMsg').textContent = 'Pick a hero, carve through the Blighted Hollow, slay its guardian, and take the portal deeper.'; renderClasses(); }
+  $('bMenu').onclick = toMenu; $('deathMenu').onclick = toMenu; $('bTown').onclick = $('tTown').onclick = () => { if (G.inTown) leaveTown(); else enterTown(); }; $('chatX').onclick = () => { $('chat').classList.add('hide'); $('chatX').classList.add('hide'); };
   $('bAuto').onclick = toggleAuto; $('bSpd').onclick = cycleSpeed; $('tChat').onclick = openChat;
 
   // ---- flow ----
   function start(hero, net) {
-    G.hero = hero; SFX.unlock(); P.hp = 1e9; U.invDirty = true;
+    G.hero = hero; SFX.unlock(); P.hp = 1e9; U.invDirty = true; menuBuilt = false;
     if (net) { $('menuMsg').textContent = 'Connecting to the server…'; NET.connect(net.name, net.room); return; }
     $('menu').classList.add('hide'); $('game').classList.remove('hide'); buildBar(); enterZone();
   }
-  U.netZone = () => { $('menu').classList.add('hide'); $('game').classList.remove('hide'); $('death').classList.add('hide'); buildBar(); };
+  U.netZone = () => { closeTown(); $('menu').classList.add('hide'); $('game').classList.remove('hide'); $('death').classList.add('hide'); buildBar(); };
   U.netFail = msg => { $('menu').classList.remove('hide'); $('menuMsg').textContent = msg; };
   NET.probe().then(ok => { if (ok) $('online').classList.remove('hide'); });
   $('btnOnline').onclick = () => { const name = $('oName').value.trim() || CLASSES[selCls].n, room = $('oRoom').value.trim(); try { localStorage.setItem('cinderdeep_name', name); } catch (e) { } start(loadGame(selCls) || newHero(selCls), { name, room }); };
   try { $('oName').value = localStorage.getItem('cinderdeep_name') || ''; } catch (e) { }
+  const menuGear = {}, menuHero = {}; let menuBuilt = false;
+  function menuScene(t) {
+    if (!menuBuilt) { GLX.statBegin(); GLX.obj('stat', 'box', 0, -.5, 0, 0, 240, 1, 240, GLX.col(0x3c4a2a), 0, 1, .4); GLX.statEnd(); menuBuilt = true; setEnv({ th: THEMES.town }); GLX.env.lightR = 80; }
+    const narrow = innerWidth < innerHeight, sp = narrow ? 1.25 : 2.3, col = GLX.col; G.time = t; GLX.env.player = [0, 0, 0]; GLX.env.t = t; GLX.begin();
+    GLX.setCamera([0, narrow ? 2 : 1.6, narrow ? 24 : 15], [0, narrow ? -2.7 : -.6, 0], .5);
+    CLASS_IDS.forEach((id, i) => {
+      const o = menuHero[id] || (menuHero[id] = { x: 0, y: 0, z: 0, rot: 0, walk: 0, mv: 0, hurt: 0, act: null, swing: 0, spin: null, dash: false, buffs: null, flaskT: 0, cls: id }), on = id === selCls;
+      o.x = (i - 2) * sp; o.z += ((on ? (narrow ? .7 : 1.6) : 0) - o.z) * .1; o.rot = on ? Math.sin(t * .9) * .6 : (2 - i) * .12; o.gear = menuGear[id] || DEFGEAR; drawHero(o, false);
+      if (on) { GLX.obj('glow', 'ring', o.x, .06, o.z, t, 2.4, 1, 2.4, col(0xffd84a), 1, .8, -1); GLX.light(o.x, 2.6, o.z + 2, 7, col(0xffd0a0), 1.3, 8); }
+    });
+    GLX.light(0, 5, 6, 26, col(0xffc890), 1.1, 9); GLX.light(-7, 3, -2, 12, col(0x6a8cff), .5, 2); GLX.light(7, 3, -2, 12, col(0xff7a2a), .5, 2); GLX.render();
+  }
   let selCls = 'warden', resetArmed = false; try { const c = localStorage.getItem('cinderdeep_class'); if (CLASSES[c]) selCls = c; } catch (e) { }
   function renderClasses() {
     $('classes').innerHTML = CLASS_IDS.map(id => { const c = CLASSES[id], sv = loadGame(id); return `<div class="ccard${id === selCls ? ' on' : ''}" data-c="${id}"><div class="ct">${c.tag}</div><div class="cn">${c.n}</div><div class="cd2">${c.d}</div><div class="cl">${sv ? 'Level ' + sv.level : 'New hero'}</div></div>`; }).join('');
+    for (const id of CLASS_IDS) { const v = loadGame(id); menuGear[id] = gearDecode(v ? gearCode(v.eq) : gearCode({ weapon: { base: CLASSES[id].w, rar: 0 } })); }
     const sv = loadGame(selCls); $('btnNew').textContent = sv ? 'Continue · Level ' + sv.level : 'Start as ' + CLASSES[selCls].n; $('btnReset').classList.toggle('hide', !sv); resetArmed = false; $('btnReset').textContent = 'Reset this hero';
   }
   $('classes').onclick = e => { const c = e.target.closest('.ccard'); if (c) { selCls = c.dataset.c; try { localStorage.setItem('cinderdeep_class', selCls); } catch (_) { } renderClasses(); } };
@@ -205,12 +364,12 @@ const UI = (() => {
   };
   function frame(t) {
     requestAnimationFrame(frame); const raw = (t - last) / 1000 || 0, dt = Math.min(.05, raw); last = t;
-    if (G.state === 'play' && raw < 3) { slow = slow * .93 + raw * .07; if (++slowN > 45 && slow > .045 && GLX.env.q > 0) { GLX.env.q--; slowN = 0; slow = .02; } }
+    if (G.state === 'play' && raw < 3) { slow = slow * .93 + raw * .07; if (++slowN > 45 && slow > .045 && GLX.env.q > 0 && G.set.gfx === 'auto') { GLX.env.q--; slowN = 0; slow = .02; } }
     if (G.state === 'play') {
       if (G.camReady && IN.sx > -9000) { const g = GLX.groundAt(IN.sx, IN.sy); if (isFinite(g[0]) && isFinite(g[1])) { IN.gx = g[0]; IN.gz = g[1]; } }
       const steps = G.online ? 1 : G.speed; for (let i = 0; i < steps && G.state === 'play'; i++) update(dt);
       GLX.begin(); drawWorld(); G.camReady = true; GLX.render(); hud(dt);
-    }
+    } else if (!$('menu').classList.contains('hide')) menuScene(t / 1000);
     drawOv();
   }
   if (!GLX.init(glc)) { $('menuMsg').textContent = 'This game needs WebGL2, which this browser or device does not provide. Try a current desktop Chrome, Edge or Firefox.'; $('btnNew').classList.add('hide'); $('classes').classList.add('hide'); }

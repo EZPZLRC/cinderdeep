@@ -1,6 +1,10 @@
 'use strict';
-const SLOTS = ['weapon', 'helm', 'chest', 'gloves', 'boots', 'amulet', 'ring1', 'ring2'];
-const SLOT_NAME = { weapon: 'Weapon', helm: 'Helm', chest: 'Chest', gloves: 'Gloves', boots: 'Boots', amulet: 'Amulet', ring: 'Ring', ring1: 'Ring', ring2: 'Ring' };
+const SLOTS = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring1', 'ring2'];
+const DROP_SLOTS = ['weapon', 'weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring', 'ring'];
+const AFF_ALIAS = { shoulders: 'chest', pants: 'chest', belt: 'helm', bracers: 'gloves', offhand: 'amulet' };
+const OFFHAND = { warden: { n: 'Shield', a: 14 }, ranger: { n: 'Quiver' }, arcanist: { n: 'Orb' }, brawler: { n: 'Charm' }, elementalist: { n: 'Tome' } };
+const BAG_W = 10, BAG_H = 6, BAG_N = 60;
+const SLOT_NAME = { weapon: 'Weapon', helm: 'Helm', chest: 'Chest', gloves: 'Gloves', boots: 'Boots', amulet: 'Amulet', ring: 'Ring', ring1: 'Ring', ring2: 'Ring', offhand: 'Off-hand', shoulders: 'Shoulders', bracers: 'Bracers', belt: 'Belt', pants: 'Pants' };
 const SLOT_ICON = { weapon: '⚔', helm: '⛑', chest: '♜', gloves: '✋', boots: '♞', amulet: '◈', ring: '◯' };
 const RAR = [{ n: 'Common', c: '#c9c9c9' }, { n: 'Magic', c: '#7396ff' }, { n: 'Rare', c: '#ffd84a' }, { n: 'Legendary', c: '#ff8a2a' }];
 const EL_COL = { phys: 0xe8e0d0, fire: 0xff7a2a, cold: 0x7ad0ff, light: 0xfff07a, arc: 0xb070ff };
@@ -34,7 +38,8 @@ const AFFIX = [
 const WEAPONS = [{ n: 'Sword', d: [5, 9], s: 1.45, t: 'sword' }, { n: 'War Axe', d: [7, 11], s: 1.25, t: 'axe' }, { n: 'Maul', d: [10, 15], s: 1.0, t: 'maul' }, { n: 'Staff', d: [8, 13], s: 1.1, t: 'staff' }, { n: 'Wand', d: [4, 8], s: 1.65, t: 'staff' }, { n: 'Longbow', d: [6, 11], s: 1.3, t: 'bow' }, { n: 'Shortbow', d: [4, 8], s: 1.6, t: 'bow' }, { n: 'Cestus', d: [4, 7], s: 1.7, t: 'fist' }, { n: 'Spiked Knuckles', d: [5, 9], s: 1.5, t: 'fist' }];
 const ARMOR = {
   helm: [{ n: 'Iron Helm', a: 9 }, { n: 'Leather Hood', a: 6 }, { n: 'Circlet', a: 4 }], chest: [{ n: 'Chainmail', a: 18 }, { n: 'Leather Jerkin', a: 12 }, { n: 'Silk Robe', a: 8 }],
-  gloves: [{ n: 'Gauntlets', a: 7 }, { n: 'Leather Gloves', a: 5 }], boots: [{ n: 'Greaves', a: 7 }, { n: 'Leather Boots', a: 5 }]
+  gloves: [{ n: 'Gauntlets', a: 7 }, { n: 'Leather Gloves', a: 5 }], boots: [{ n: 'Greaves', a: 7 }, { n: 'Leather Boots', a: 5 }],
+  shoulders: [{ n: 'Pauldrons', a: 8 }, { n: 'Leather Mantle', a: 5 }], bracers: [{ n: 'Vambraces', a: 5 }, { n: 'Leather Bracers', a: 4 }], belt: [{ n: 'War Belt', a: 5 }, { n: 'Sash', a: 3 }], pants: [{ n: 'Plate Tassets', a: 12 }, { n: 'Leather Leggings', a: 8 }]
 };
 const JEWEL = { amulet: ['Amulet', 'Pendant', 'Talisman'], ring: ['Ring', 'Band', 'Signet'] };
 const MAGPRE = ['Sturdy', 'Keen', 'Glinting', 'Warded', 'Fierce', 'Humming', 'Etched', 'Tempered', 'Gilded', 'Runed'];
@@ -133,7 +138,7 @@ const LOOK = {
   warden: { a: 0x8e97a8, am: 4, d: 0x3c4250, cl: 0x6e2420, head: 'helm', pauld: 1, shield: 1, cape: 1, w: 'sword' },
   ranger: { a: 0x4f5c38, am: 0, d: 0x3d3326, cl: 0x2c4a2a, head: 'hood', cape: 1, w: 'bow' },
   arcanist: { a: 0x4a3a80, am: 0, d: 0x2c2448, cl: 0x7a52c8, head: 'hat', robe: 1, w: 'staff', orb: 0xb070ff },
-  brawler: { a: 0xc99a78, am: 0, d: 0xc99a78, cl: 0xb03a22, head: 'band', w: 'fist' },
+  brawler: { a: 0xa87c5c, am: 0, d: 0xa87c5c, cl: 0xb03a22, head: 'band', w: 'fist' },
   elementalist: { a: 0x8a2c1e, am: 0, d: 0x4c1c14, cl: 0xd8782c, head: 'hood', robe: 1, w: 'staff', orb: 0xff7a2a }
 };
 const ARCH = {
@@ -148,7 +153,7 @@ const EMODS = {
   storm: { n: 'Stormbound', d: 'Calls lightning down on you' }, molten: { n: 'Molten', d: 'Leaves burning ground' }, regen: { n: 'Regenerating', d: 'Heals over time' }
 };
 const THEMES = {
-  town: { ground: 0x4a4034, gdet: .3, wall: 'palisade', wc: [0x4a3524, 0x5a4a3a, 0x33291e], sunC: [.75, .62, .5], sky: [.2, .2, .28], gnd: [.1, .08, .07], fog: 0x0b0a0d, torch: 0xffb060, lightR: 44, lamp: 0xffa040 },
+  town: { ground: 0x4e5632, gdet: .4, wall: 'tree', wc: [0x4a382a, 0x24402a, 0x2f4f2c], sunC: [1.2, 1.0, .74], sky: [.16, .2, .26], gnd: [.07, .08, .06], fog: 0x0a1012, torch: 0xffb070, lightR: 46, lamp: 0xffa040 },
   forest: { ground: 0x485a30, gdet: .4, wall: 'tree', wc: [0x4a382a, 0x24402a, 0x2f4f2c], sunC: [1.15, .98, .72], sky: [.13, .18, .24], gnd: [.06, .07, .05], fog: 0x080e10, torch: 0xffb070, lightR: 34, lamp: 0x7dff6a, elem: 'phys',
     mon: [{ a: 'grunt', n: 'Rotting Husk', c: 0x6b7a4a, c2: 0x3a4226, e: 0xd0ff60 }, { a: 'swarm', n: 'Blight Crawler', c: 0x4a3a2a, c2: 0x7a9a3a, e: 0xc0ff40 }, { a: 'caster', n: 'Spore Seer', c: 0x3a5a3a, c2: 0x9adf5a, e: 0xa0ff70 }, { a: 'brute', n: 'Mossback', c: 0x4a5a3a, c2: 0x2a3a22, e: 0xffe060 }] },
   crypt: { ground: 0x3a3c46, gdet: .22, wall: 'block', wc: [0x4a4d5a, 0x3a3d48, 0x5a5d6a], sunC: [.32, .36, .5], sky: [.12, .13, .2], gnd: [.05, .05, .07], fog: 0x05060a, torch: 0xffb070, lightR: 25, lamp: 0x6aa8ff, elem: 'cold',
