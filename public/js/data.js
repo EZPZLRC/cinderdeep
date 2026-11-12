@@ -1,5 +1,5 @@
 'use strict';
-const BUILD = '0013';
+const BUILD = '0014';
 const SLOTS = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring1'];
 const DROP_SLOTS = ['weapon', 'weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring', 'ring'];
 const AFF_ALIAS = { shoulders: 'chest', pants: 'chest', belt: 'helm', bracers: 'gloves', offhand: 'amulet' };
@@ -196,11 +196,11 @@ const THEMES = {
 };
 // Two guardians per region: which one you meet depends on the floor.
 const BOSSES = {
-  forest: [{ n: 'The Rootmother', c: 0x3a5a2a, c2: 0x6a4a2a, e: 0xc0ff40, pat: ['slam', 'summon', 'ring', 'barrage'] }, { n: 'Old Thornhide', c: 0x5a4a2a, c2: 0x2a3a1a, e: 0xffb03a, sc: 2.6, pat: ['charge', 'slam', 'charge', 'barrage'] }],
-  crypt: [{ n: 'Warden of Bones', c: 0xe0d8c0, c2: 0x4a4a6a, e: 0x7ad0ff, pat: ['charge', 'ring', 'summon', 'nova'] }, { n: 'The Hollow Choir', c: 0x6a6a8a, c2: 0x2a2a3a, e: 0xb0ffd0, sc: 2, pat: ['spiral', 'summon', 'nova', 'spiral', 'ring'] }],
-  lava: [{ n: 'The Ashen Tyrant', c: 0x3a2020, c2: 0xff5a1a, e: 0xffc040, pat: ['barrage', 'charge', 'spiral', 'slam'] }, { n: 'Magmaw', c: 0x5a2a10, c2: 0x1a1210, e: 0xff3a1a, sc: 2.7, pat: ['slam', 'ring', 'slam', 'summon', 'barrage'] }],
-  ice: [{ n: 'The Pale Matriarch', c: 0xc0e0f0, c2: 0x5a90c0, e: 0xffffff, pat: ['spiral', 'nova', 'summon', 'barrage', 'ring'] }, { n: 'Rimefang', c: 0x8ab0d0, c2: 0xe0f0ff, e: 0x7ad0ff, sc: 2.5, pat: ['charge', 'nova', 'charge', 'ring'] }],
-  void: [{ n: 'Null, the Unmade', c: 0x2a1a46, c2: 0xb060ff, e: 0xff80ff, pat: ['spiral', 'charge', 'barrage', 'nova', 'summon', 'ring'] }, { n: 'The Gaping Star', c: 0x101028, c2: 0xffd84a, e: 0xfff0a0, sc: 2.2, pat: ['ring', 'spiral', 'nova', 'barrage', 'spiral'] }]
+  forest: [{ n: 'The Rootmother', shape: 'tree', c: 0x3a5a2a, c2: 0x6a4a2a, e: 0xc0ff40, pat: ['slam', 'summon', 'ring', 'barrage'] }, { n: 'Old Thornhide', shape: 'beast', c: 0x5a4a2a, c2: 0x2a3a1a, e: 0xffb03a, sc: 2.6, pat: ['charge', 'slam', 'charge', 'barrage'] }],
+  crypt: [{ n: 'Warden of Bones', shape: 'knight', c: 0xe0d8c0, c2: 0x4a4a6a, e: 0x7ad0ff, pat: ['charge', 'ring', 'summon', 'nova'] }, { n: 'The Hollow Choir', shape: 'wraith', c: 0x6a6a8a, c2: 0x2a2a3a, e: 0xb0ffd0, sc: 2, pat: ['spiral', 'summon', 'nova', 'spiral', 'ring'] }],
+  lava: [{ n: 'The Ashen Tyrant', shape: 'knight', c: 0x3a2020, c2: 0xff5a1a, e: 0xffc040, pat: ['barrage', 'charge', 'spiral', 'slam'] }, { n: 'Magmaw', shape: 'golem', c: 0x5a2a10, c2: 0x1a1210, e: 0xff3a1a, sc: 2.7, pat: ['slam', 'ring', 'slam', 'summon', 'barrage'] }],
+  ice: [{ n: 'The Pale Matriarch', shape: 'wraith', c: 0xc0e0f0, c2: 0x5a90c0, e: 0xffffff, pat: ['spiral', 'nova', 'summon', 'barrage', 'ring'] }, { n: 'Rimefang', shape: 'beast', c: 0x8ab0d0, c2: 0xe0f0ff, e: 0x7ad0ff, sc: 2.5, pat: ['charge', 'nova', 'charge', 'ring'] }],
+  void: [{ n: 'Null, the Unmade', shape: 'wraith', c: 0x2a1a46, c2: 0xb060ff, e: 0xff80ff, pat: ['spiral', 'charge', 'barrage', 'nova', 'summon', 'ring'] }, { n: 'The Gaping Star', shape: 'orb', c: 0x101028, c2: 0xffd84a, e: 0xfff0a0, sc: 2.2, pat: ['ring', 'spiral', 'nova', 'barrage', 'spiral'] }]
 };
 function bossFor(theme, depth) { const l = BOSSES[theme] || BOSSES.forest; return l[Math.max(0, (depth | 0) - 1) % l.length]; }
 const ZONES = [

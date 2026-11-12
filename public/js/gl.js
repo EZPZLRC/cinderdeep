@@ -57,6 +57,20 @@ const GLX = (() => {
     for (let j = 0; j < Rg; j++) for (let i = 0; i < S; i++) { const a = pt(i, j), b = pt(i + 1, j), c = pt(i + 1, j + 1), d = pt(i, j + 1); v.push(...a, ...b, ...c, ...a, ...c, ...d); }
     return v;
   }
+  // capsule: a rounded limb with smooth ends, fitted inside the unit box so it scales like a cylinder
+  function gCap(S, R) {
+    const v = [], ring = [], k = .5;
+    for (let j = 0; j <= R; j++) { const ph = j / R * Math.PI, y = Math.cos(ph), r = Math.sin(ph), cy = y > 0 ? .25 + y * .25 : -.25 + y * .25; ring.push([r * k, cy, y, r]); }
+    for (let j = 0; j < R; j++) for (let i = 0; i < S; i++) { const a0 = i / S * 6.28319, a1 = (i + 1) / S * 6.28319, P = (rg, a) => [Math.cos(a) * rg[0], rg[1], Math.sin(a) * rg[0], Math.cos(a) * rg[3], rg[2], Math.sin(a) * rg[3]], A = P(ring[j], a0), B = P(ring[j], a1), C = P(ring[j + 1], a1), D = P(ring[j + 1], a0); v.push(...A, ...B, ...C, ...A, ...C, ...D); }
+    return v;
+  }
+  // rounded box: a soft-edged block for armour plates, torsos and heads
+  function gRBox(S, Rg, e) {
+    const v = [], sg = x => x < 0 ? -1 : 1, pw = (x, p) => sg(x) * Math.pow(Math.abs(x), p);
+    const pt = (i, j) => { const th = i / S * Math.PI * 2, ph = j / Rg * Math.PI, x = Math.sin(ph) * Math.cos(th), y = Math.cos(ph), z = Math.sin(ph) * Math.sin(th); const nx = pw(x, 2 - e), ny = pw(y, 2 - e), nz = pw(z, 2 - e), nl = Math.hypot(nx, ny, nz) || 1; return [pw(x, e) * .5, pw(y, e) * .5, pw(z, e) * .5, nx / nl, ny / nl, nz / nl]; };
+    for (let j = 0; j < Rg; j++) for (let i = 0; i < S; i++) { const a = pt(i, j), b = pt(i + 1, j), c = pt(i + 1, j + 1), d = pt(i, j + 1); v.push(...a, ...b, ...c, ...a, ...c, ...d); }
+    return v;
+  }
   function gCyl(S, tr) {
     const v = [];
     for (let i = 0; i < S; i++) {
@@ -105,12 +119,12 @@ void main(){vec4 w=wpos(iM,aP,aN,iE.y);vW=w.xyz;vL=aP;mat3 m=mat3(iM);vec3 sc=ve
   const FS = `#version 300 es
 precision highp float; precision highp sampler2DShadow;
 in vec3 vW,vN,vL; in vec4 vC; in vec2 vE; in vec4 vS;
-uniform sampler2DShadow uSh; uniform vec3 uSun,uSunC,uSky,uGnd,uFog,uEye,uPl; uniform vec2 uFogR; uniform float uLR,uQ,uT,uWet,uMist; uniform vec4 uLP[8]; uniform vec3 uLC[8]; out vec4 o;
+uniform sampler2DShadow uSh; uniform vec3 uSun,uSunC,uSky,uGnd,uFog,uEye,uPl; uniform vec2 uFogR; uniform float uLR,uQ,uT,uWet,uMist,uRim; uniform vec4 uLP[8]; uniform vec3 uLC[8]; out vec4 o;
 float h(vec2 p){uvec2 q=uvec2(ivec2(p))*uvec2(1597334673U,3812015801U);uint n=(q.x^q.y)*1597334673U;n^=n>>15;n*=2246822519U;n^=n>>13;return float(n>>8)*(1./16777216.);}
 float ns(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
 ${N3}
 void main(){float mat=vE.y;
- if(mat>1.5&&mat<3.5&&vW.y>2.3){float hd=length(vec2(vW.x,vW.z-(vW.y-1.)*.72)-uPl.xz);if(hd<4.6){float th=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))));if(th>smoothstep(2.6,4.6,hd)*.85+.12)discard;}} // whatever stands between the camera and the hero thins out so you can always see the fight
+ if(uRim==0.&&mat>1.5&&mat<3.5&&vW.y>2.3){float hd=length(vec2(vW.x,vW.z-(vW.y-1.)*.72)-uPl.xz);if(hd<4.6){float th=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))));if(th>smoothstep(2.6,4.6,hd)*.85+.12)discard;}} // whatever stands between the camera and the hero thins out so you can always see the fight
  vec3 n=normalize(vN);vec3 a=vC.rgb;float spec=.12,shin=20.,wrap=0.,ao=1.,wet=0.;
  if(mat>0.&&mat<1.5){
   float f1=ns(vW.xz*.11)*.6+ns(vW.xz*.31)*.4,f2=ns(vW.xz*1.1),f3=ns(vW.xz*7.);
@@ -134,6 +148,7 @@ void main(){float mat=vE.y;
  vec3 c=a*(mix(uGnd,uSky,n.y*.5+.5)*ao+uSunC*dif*sh)+uSunC*sl*sh;
  for(int i=0;i<8;i++){vec3 d=uLP[i].xyz-vW;float dist=length(d);float at=clamp(1.-dist/uLP[i].w,0.,1.);at*=at;vec3 L=d/max(dist,.001);c+=uLC[i]*at*(a*max(dot(n,L),.2)+.5*spec*pow(max(dot(n,normalize(L+V)),0.),shin));}
  c+=a*uSky*pow(1.-max(dot(n,V),0.),3.)*1.2*ao;
+ if(uRim>0.){float fr=pow(1.-max(dot(n,V),0.),2.2);c+=(uSunC*.55+uSky*.9)*fr*uRim*(.35+.65*sh)+a*uSunC*.18*uRim*max(dot(n,normalize(vec3(-uSun.x,.6,-uSun.z))),0.);} // characters catch a rim of light so they read against the ground
  c+=wet*uSky*(.24+2.2*pow(1.-max(dot(n,V),0.),4.))*(.45+.55*sh);
  c+=vC.rgb*vE.x;
  if(uQ>.5&&uMist>0.){float mi=ns(vW.xz*.05+vec2(uT*.03,uT*.021))*ns(vW.xz*.13-vec2(uT*.025,0.));c=mix(c,mix(uFog,uSky,.75)*1.5,clamp(mi*1.7-.28,0.,1.)*smoothstep(3.2,0.,vW.y)*uMist);}
@@ -188,9 +203,9 @@ void main(){
   function init(canvas) {
     cv = canvas; gl = cv.getContext('webgl2', { antialias: true, alpha: false, powerPreference: 'high-performance' });
     if (!gl) return false;
-    addGeo('box', gBox()); addGeo('sphere', gSphere(20, 13)); addGeo('gem', gSphere(4, 2)); addGeo('cyl', gCyl(16, 1)); addGeo('cone', gCyl(14, 0)); addGeo('blade', gCyl(3, 0)); addGeo('tuft', gTuft(7));
+    addGeo('box', gBox()); addGeo('cap', gCap(14, 10)); addGeo('rbox', gRBox(16, 12, .32)); addGeo('sphere', gSphere(20, 13)); addGeo('gem', gSphere(4, 2)); addGeo('cyl', gCyl(16, 1)); addGeo('cone', gCyl(14, 0)); addGeo('blade', gCyl(3, 0)); addGeo('tuft', gTuft(7));
     addGeo('taper', gCyl(14, .6)); addGeo('blob', gSphere(10, 7)); addGeo('fol', gCyl(9, 0)); addGeo('trunk', gCyl(7, .6)); addGeo('disc', gDisc(28, 0)); addGeo('ring', gDisc(36, .86));
-    pMain = prog(VS, FS, ['uVP', 'uLVP', 'uSh', 'uSun', 'uSunC', 'uSky', 'uGnd', 'uFog', 'uEye', 'uPl', 'uFogR', 'uLR', 'uLP[0]', 'uLC[0]', 'uT', 'uQ', 'uWet', 'uMist']);
+    pMain = prog(VS, FS, ['uVP', 'uLVP', 'uSh', 'uSun', 'uSunC', 'uSky', 'uGnd', 'uFog', 'uEye', 'uPl', 'uFogR', 'uLR', 'uLP[0]', 'uLC[0]', 'uT', 'uQ', 'uWet', 'uMist', 'uRim']);
     pGlow = prog(VS, FSG, ['uVP', 'uLVP', 'uPl', 'uLR', 'uT']);
     pDepth = prog(VSD, FSD, ['uLVP', 'uT']); pPost = prog(VSQ, FSQ, ['uA', 'uB', 'uC', 'uD', 'uMode', 'uDir', 'uT', 'uPI', 'uFx']);
     shTex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, shTex);
@@ -310,7 +325,7 @@ void main(){
     gl.uniform3fv(u.uSun, env.sun); gl.uniform3fv(u.uSunC, env.sunC); gl.uniform3fv(u.uSky, env.sky); gl.uniform3fv(u.uGnd, env.gnd); gl.uniform3fv(u.uFog, env.fog);
     gl.uniform3fv(u.uEye, cam.eye); gl.uniform3fv(u.uPl, env.player); gl.uniform2f(u.uFogR, env.fogN, env.fogF); gl.uniform1f(u.uLR, env.lightR);
     gl.uniform4fv(u['uLP[0]'], LP); gl.uniform3fv(u['uLC[0]'], LC);
-    drawSet('stat'); drawSet('dyn');
+    gl.uniform1f(pMain.u.uRim, 0); drawSet('stat'); gl.uniform1f(pMain.u.uRim, env.q > 0 ? 1 : .5); drawSet('dyn'); gl.uniform1f(pMain.u.uRim, 0);
     u = pGlow.u; gl.useProgram(pGlow.p); gl.uniformMatrix4fv(u.uVP, false, vp); gl.uniformMatrix4fv(u.uLVP, false, lvp); gl.uniform3fv(u.uPl, env.player); gl.uniform1f(u.uLR, env.lightR); gl.uniform1f(u.uT, env.t);
     gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.depthMask(false); drawSet('glow'); gl.depthMask(true); gl.disable(gl.BLEND); gl.bindVertexArray(null);
     gl.bindFramebuffer(gl.READ_FRAMEBUFFER, post.ms); gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, post.sc.f); const mid = env.q > 0; gl.blitFramebuffer(0, 0, post.w, post.h, 0, 0, post.w, post.h, gl.COLOR_BUFFER_BIT, gl.NEAREST);
