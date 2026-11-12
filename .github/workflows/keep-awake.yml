@@ -1,0 +1,11 @@
+# Pings the game server every 10 minutes so the free host does not put it to sleep.
+name: Keep server awake
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsS --max-time 90 https://cinderdeep.onrender.com/cinderdeep-server || true
