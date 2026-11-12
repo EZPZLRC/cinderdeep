@@ -7,7 +7,7 @@ function r2(v) { return Math.round(v * 100) / 100; }
 function entInfo(e) { return { id: e.id, md: e.md, arch: e.arch, x: r2(e.x), z: r2(e.z), rot: r2(e.rot), lvl: e.lvl, elite: e.elite, pack: e.pack, r: e.r, sc: e.sc, maxHp: e.maxHp, hp: Math.round(e.hp), dmg: e.dmg, spd: e.spd, name: e.name, mods: e.mods, boss: !!e.boss, awake: !!e.awake, noLoot: !!e.noLoot }; }
 let depth = 0;
 function srvNewZone(lvl, nPlayers, next) {
-  if (next === 'prev') depth = Math.max(0, depth - 1); else if (next) depth++; const zd = zoneFor(depth), def = { type: 'zone', theme: zd.theme, lvl: Math.max(1, lvl | 0), seed: (Math.random() * 1e9) | 0, name: zd.name };
+  if (next === 'prev') depth = Math.max(0, depth - 1); else if (next) depth++; const zd = zoneFor(depth), def = { type: 'zone', theme: zd.theme, lvl: Math.max(1, lvl | 0), seed: (Math.random() * 1e9) | 0, name: zd.name, depth: depth + 1 };
   G.zone = genZone(def); G.ents.length = 0; G.projs.length = 0; G.areas.length = 0; G.boss = null; spawnAll(G.zone);
   const k = 1 + .5 * Math.max(0, nPlayers - 1); known = new Set();
   for (const e of G.ents) { e.maxHp = Math.round(e.maxHp * k); e.hp = e.maxHp; known.add(e.id); }

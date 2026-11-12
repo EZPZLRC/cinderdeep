@@ -2,7 +2,7 @@
 const UI = (() => {
   const $ = id => document.getElementById(id);
   const glc = $('gl'), ov = $('ov'), ctx = ov.getContext('2d'), mini = $('mini'), mctx = mini.getContext('2d'), tip = $('tip');
-  let slow = .016, slowN = 0, banT = 0, invOpen = false, last = 0, skEls = [], frameN = 0;
+  let slow = .016, slowN = 0, banT = 0, invOpen = false, invTab = 'hero', last = 0, skEls = [], frameN = 0;
   const U = { invDirty: true };
   U.zoneBanner = (a, b) => { $('ban1').textContent = a; $('ban2').textContent = b || ''; $('banner').classList.add('on'); banT = 3.4; };
   const DTIPS = ['Health globes drop from slain monsters. Walk over them to heal.', 'You carry up to five potions and one refills every 15 seconds. Drink early, not at the last moment.', 'Red rings on the ground are about to explode. Step out of them.', 'Big monsters hit hard but slowly. Strike, then step back.', 'A shrine blesses you for 45 seconds. Fight the hard pack right after.', 'Town has a trader and an altar. Better gear makes every floor easier.'];
@@ -120,10 +120,10 @@ const UI = (() => {
     const h = G.hero, s = P.stats; U.invDirty = false; let d = '';
     for (const sl in DOLL) { const p = DOLL[sl], it = h.eq[sl], st = `grid-column:${p[0]};grid-row:${p[1]} / span ${p[2]}`; d += it ? itemEl(it, `data-slot="${sl}"`, 'ds', st) : `<div class="ds empty" data-slot="${sl}" style="${st}" title="${SLOT_NAME[sl]}">${slotSvg(sl)}</div>`; }
     const L = (a, b) => `<div>${a} <b>${b}</b></div>`;
-    $('inv').innerHTML = `<div class="ph"><h3>Inventory</h3><button class="xb" data-x="inv" aria-label="Close">×</button></div>
+    $('inv').classList.toggle('ally', invTab === 'ally'); $('inv').innerHTML = `<div class="ph"><h3>Inventory</h3><button class="xb" data-x="inv" aria-label="Close">×</button></div><div class="tabs"><button data-tab="hero" class="${invTab === 'hero' ? 'on' : ''}">Hero</button><button data-tab="ally" class="${invTab === 'ally' ? 'on' : ''}">Sellsword</button></div>
       <div class="itop"><div id="stats"><div class="hl"><span>Damage</span><b>${fmt(s.dps)}</b></div><div class="hl"><span>Toughness</span><b>${fmt(s.tough)}</b></div><div class="hl"><span>Recovery</span><b>${s.recov}</b></div>
         ${L('Life', s.maxLife) + L('Armor', s.armorT) + L('Crit chance', Math.round(s.critT) + '%') + L('Crit damage', Math.round(s.critM * 100) + '%') + L('Attack speed', '+' + Math.round(s.aspd) + '%') + L('Move speed', '+' + Math.round(s.ms) + '%') + L('Resist F/C/L', Math.round(s.rfire) + '/' + Math.round(s.rcold) + '/' + Math.round(s.rlight)) + L('Dodge', Math.round(s.dodgeT) + '%') + L('Magic find', '+' + Math.round(s.mf) + '%') + L('Kills', h.kills) + L('Best streak', h.best || 0) + L('Guardians', h.runs)}</div>
-        <div id="doll">${d}</div></div><div class="pgbox"><div class="hl"><span>Sellsword</span><b>hits for ${Math.round(allyPower() * 100)}% of yours</b></div><div class="allyrow">${Object.keys(h.allyEq || {}).length ? Object.keys(h.allyEq).map(k => `<button data-at="${k}" style="color:${RAR[h.allyEq[k].rar].c}">${SLOT_NAME[k] || k}: ${h.allyEq[k].name} ✕</button>`).join('') : '<span class="sm">Wearing nothing of yours. Click an item, then "Give to Sellsword".</span>'}</div></div>${h.level >= MAX_LEVEL ? `<div class="pgbox"><div class="hl"><span>Paragon ${h.plvl || 0}</span><b>${paragonFree()} to spend</b></div>${Object.keys(PARAGON).map(k => `<button data-pg="${k}" ${paragonFree() < 1 || (PARAGON[k][2] && ((h.pg || {})[k] || 0) >= PARAGON[k][2]) ? 'disabled' : ''}>${PARAGON[k][0]} <b>${(h.pg || {})[k] || 0}</b><span>${PARAGON[k][1]}</span></button>`).join('')}</div>` : ''}
+        <div id="doll">${d}</div></div>${invTab === 'ally' ? `<div class="pgbox"><div class="hl"><span>Sellsword</span><b>hits for ${Math.round(allyPower() * 100)}% of yours</b></div><div class="allyrow">${Object.keys(h.allyEq || {}).length ? Object.keys(h.allyEq).map(k => `<button data-at="${k}" style="color:${RAR[h.allyEq[k].rar].c}">${SLOT_NAME[k] || k}: ${h.allyEq[k].name} ✕</button>`).join('') : '<span class="sm">Wearing nothing of yours. Click an item, then "Give to Sellsword".</span>'}</div></div>` : ''}${h.level >= MAX_LEVEL ? `<div class="pgbox"><div class="hl"><span>Paragon ${h.plvl || 0}</span><b>${paragonFree()} to spend</b></div>${Object.keys(PARAGON).map(k => `<button data-pg="${k}" ${paragonFree() < 1 || (PARAGON[k][2] && ((h.pg || {})[k] || 0) >= PARAGON[k][2]) ? 'disabled' : ''}>${PARAGON[k][0]} <b>${(h.pg || {})[k] || 0}</b><span>${PARAGON[k][1]}</span></button>`).join('')}</div>` : ''}
       <div id="grid">${gridHtml(h.inv, 'i', it => { if (!canUse(it)) return false; const e = eqFor(it); return !e || score(it) > score(e); })}</div>
       <div class="ifoot"><span class="gold">${h.gold.toLocaleString()} gold</span><span class="shards">${(h.shards || 0).toLocaleString()} shards</span><span id="scrapBox">Drag here to scrap</span></div>
       <div class="ifoot"><button data-b="sort">Sort</button><button data-b="s0">Scrap all Common</button><button data-b="s1">Scrap Common + Magic</button></div>`;
@@ -138,6 +138,7 @@ const UI = (() => {
   let noClick = false, drag = null;
   $('inv').addEventListener('click', e => {
     if (noClick) return; const x = e.target.closest('[data-x]'); if (x) { toggleInv(false); return; } const b = e.target.closest('[data-b]'); if (b) { if (b.dataset.b === 'sort') sortBag(G.hero.inv); else scrapAll(b.dataset.b === 's1' ? 1 : 0); refresh(); return; }
+    const tb = e.target.closest('[data-tab]'); if (tb) { invTab = tb.dataset.tab; refresh(); return; }
     const atb = e.target.closest('[data-at]'); if (atb) { allyTake(atb.dataset.at); refresh(); return; }
     const pgb = e.target.closest('[data-pg]'); if (pgb) { spendParagon(pgb.dataset.pg); refresh(); return; }
     const c = e.target.closest('[data-i]'); if (c) { bagClick(+c.dataset.i, e); return; }

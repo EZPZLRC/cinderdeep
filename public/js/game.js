@@ -292,10 +292,36 @@ function buildStatic(Z) {
         if (sr() < .55) { const r = 1 + sr() * .8; GLX.obj('stat', 'blob', wx + (sr() - .5) * 2.4, r * .35, wz + (sr() - .5) * 2.4, sr() * 6, r * 1.3, r, r * 1.2, shade(leaf[sr() * 3 | 0], .7 + sr() * .4), 0, 1, 2); }
         if (sr() < .3) rock(wx + (sr() - .5) * 2.4, wz + (sr() - .5) * 2.4, 1 + sr() * 1.4);
         if (near === 1) { grass(wx, wz, gN >> 1, CS); if (!LOWQ && sr() < .45) fern(wx + (sr() - .5) * 2, wz + (sr() - .5) * 2); if (!LOWQ && sr() < .3) litter(wx, wz); if (sr() < .15) shroom(wx + (sr() - .5) * 2, wz + (sr() - .5) * 2); }
-      } else { const h = 2.6 + sr() * 2; GLX.obj('stat', 'box', wx, h / 2, wz, 0, CS, h, CS, col(th.wc[x * 7 + y * 3 & 1]), 0, 1, 3); }
+      } else { const h = 2.6 + sr() * 2, wc = col(th.wc[x * 7 + y * 3 & 1]), T = Z.def.theme; GLX.obj('stat', 'box', wx, h / 2, wz, 0, CS, h, CS, wc, 0, 1, 3);
+        if (near === 1) { // each region dresses its walls differently
+          if (T === 'crypt') { GLX.obj('stat', 'box', wx, h + .12, wz, 0, CS + .2, .24, CS + .2, shade(wc, 1.25), 0, 1, 3); if (sr() < .4) for (const sx of [-1, 1]) GLX.obj('stat', 'box', wx + sx * .9, h + .5, wz, 0, .7, .6, CS, shade(wc, .9), 0, 1, 3); if (sr() < .22) { GLX.obj('stat', 'cyl', wx, h + 1.4, wz, 0, .7, 2.6, .7, shade(wc, 1.3), 0, 1, 3); GLX.obj('stat', 'cyl', wx, h + 2.8, wz, 0, 1, .24, 1, shade(wc, 1.1), 0, 1, 3); } if (sr() < .12) { GLX.obj('stat', 'box', wx, 1.9, wz + CS * .5 + .1, 0, .12, .5, .16, col(0x3a2a1a), 0, 1, 3); GLX.obj('stat', 'sphere', wx, 2.3, wz + CS * .5 + .16, 0, .2, .28, .2, col(0x7ad0ff), 2.2); } }
+          else if (T === 'lava') { for (let k = 0; k < 3; k++) GLX.obj('stat', 'taper', wx + (sr() - .5) * 2.2, h + .7 + sr(), wz + (sr() - .5) * 2.2, sr() * 6, .9 + sr(), 1.8 + sr() * 2, .9 + sr(), shade(wc, .7 + sr() * .4), 0, 1, 3); if (sr() < .5) GLX.obj('stat', 'box', wx + (sr() - .5) * 2, h * .5, wz + CS * .5 + .03, sr() - .5, .1, h * .7, .04, col(0xff5a1a), 1.6); }
+          else if (T === 'ice') { for (let k = 0; k < 3; k++) GLX.obj('stat', 'taper', wx + (sr() - .5) * 2.4, h + .9 + sr() * 1.2, wz + (sr() - .5) * 2.4, sr() * 6, .6 + sr() * .5, 2.4 + sr() * 2.6, .6 + sr() * .5, col([0xbfe4f4, 0x9ccae4, 0xdff2fa][k]), .12, 1, 4); GLX.obj('stat', 'blob', wx, h + .1, wz, sr() * 6, CS * 1.1, .5, CS * 1.1, col(0xeef6fa), 0, 1, 0); }
+          else { GLX.obj('stat', 'taper', wx, h + 1.6, wz, sr() * 6, 1.2, 3.4, 1.2, shade(wc, .8), 0, 1, 3); if (sr() < .5) GLX.obj('stat', 'gem', wx, h + 4 + sr(), wz, sr() * 6, .4, .7, .4, col(0xb060ff), 1.8); if (sr() < .4) GLX.obj('stat', 'box', wx, h * .55, wz + CS * .5 + .03, 0, .5, .5, .04, col(0xff80ff), 1.4); }
+        } }
     } else {
       grass(wx, wz, gN, CS); const r = sr(); if (!LOWQ && sr() < .16) litter(wx, wz); if (!LOWQ && sr() < .05) fern(wx + (sr() - .5) * 2, wz + (sr() - .5) * 2);
-      if (r < .07) { grass(wx + (sr() - .5), wz + (sr() - .5), gN, 1.1); }
+      if (r > .07 && r < .23 && Z.def.theme !== 'forest' && Z.def.theme !== 'town') { // region props instead of forest ones
+        const T = Z.def.theme, px = wx + (sr() - .5) * 1.6, pz = wz + (sr() - .5) * 1.6, ry = sr() * 6.28, stn = col(th.wc[0]);
+        if (T === 'crypt') { if (r < .12) { const hh = .9 + sr() * .7; GLX.obj('stat', 'box', px, hh / 2, pz, ry, .9, hh, .22, shade(stn, 1.2), 0, 1, 3); GLX.obj('stat', 'cyl', px, hh, pz, ry, .9, .22, .9, shade(stn, 1.2), 0, 1, 3); GLX.obj('stat', 'box', px, .08, pz, ry, 1.3, .16, .7, shade(stn, .8), 0, 1, 3); GLX.obj('stat', 'box', px + Math.sin(ry) * .12, hh * .6, pz + Math.cos(ry) * .12, ry, .5, .08, .03, shade(stn, .6), 0, 1, 3); }
+          else if (r < .15) { const n = 2 + (sr() * 3 | 0); for (let k = 0; k < n; k++) GLX.obj('stat', 'cyl', px, .3 + k * .6, pz, ry + k, 1 - k * .04, .6, 1 - k * .04, shade(stn, 1.1 + (k % 2) * .15), 0, 1, 3); GLX.obj('stat', 'cyl', px + 1.2, .3, pz + .5, 1.2, .9, 1.4, .9, shade(stn, 1), 0, 1, 3); }
+          else if (r < .19) { for (let k = 0; k < 6; k++) GLX.obj('stat', 'cyl', px + (sr() - .5), .06, pz + (sr() - .5), sr() * 6, .08, .08, .7 + sr() * .4, col(0xd8d0b8), 0); GLX.obj('stat', 'sphere', px, .2, pz, ry, .34, .3, .36, col(0xd8d0b8), 0); GLX.obj('stat', 'sphere', px + .06, .2, pz + .14, ry, .08, .1, .06, col(0x1a1a1a), 0); }
+          else if (r < .21) { GLX.obj('stat', 'box', px, .45, pz, ry, 2.4, .9, 1.1, shade(stn, 1.05), 0, 1, 3); GLX.obj('stat', 'box', px, .98, pz, ry + .12, 2.6, .18, 1.3, shade(stn, 1.3), 0, 1, 3); }
+          else for (let k = 0; k < 3; k++) { const cx2 = px + (sr() - .5) * .7, cz2 = pz + (sr() - .5) * .7, ch = .2 + sr() * .3; GLX.obj('stat', 'cyl', cx2, ch / 2, cz2, 0, .12, ch, .12, col(0xe8e0c8), 0); GLX.obj('stat', 'sphere', cx2, ch + .08, cz2, 0, .08, .14, .08, col(0xffb03a), 2.4); } }
+        else if (T === 'lava') { if (r < .12) { const n = 3 + (sr() * 4 | 0); for (let k = 0; k < n; k++) { const hh = .6 + sr() * 2.2; GLX.obj('stat', 'cyl', px + (sr() - .5) * 1.3, hh / 2, pz + (sr() - .5) * 1.3, 0, .6, hh, .6, shade(stn, .6 + sr() * .5), 0, 1, 3); } }
+          else if (r < .16) { const rr = 1.4 + sr() * 1.6; GLX.obj('stat', 'cyl', px, .05, pz, ry, rr * 2.3, .1, rr * 1.9, col(0x2a1a14), 0, 1, 3); GLX.obj('stat', 'cyl', px, .08, pz, ry, rr * 2, .08, rr * 1.6, col(0xff5a1a), 1.6); GLX.obj('stat', 'cyl', px + .2, .1, pz, ry, rr, .08, rr * .8, col(0xffc040), 2.2); }
+          else if (r < .2) { GLX.obj('stat', 'trunk', px, 1, pz, ry, .7, 2, .7, col(0x1a1614), 0, 1, 3); GLX.obj('stat', 'taper', px + .3, 1.6, pz, ry, .14, 1.2, .14, col(0x1a1614), 0, 1, 3); }
+          else { GLX.obj('stat', 'cone', px, .35, pz, ry, 1.5, .7, 1.5, shade(stn, .7), 0, 1, 3); GLX.obj('stat', 'cyl', px, .7, pz, 0, .5, .06, .5, col(0xff7a2a), 2.2); } }
+        else if (T === 'ice') { if (r < .13) { const n = 2 + (sr() * 4 | 0); for (let k = 0; k < n; k++) { const hh = 1 + sr() * 2.6; GLX.obj('stat', 'taper', px + (sr() - .5) * 1.4, hh / 2, pz + (sr() - .5) * 1.4, sr() * 6, .5 + sr() * .4, hh, .5 + sr() * .4, col([0xbfe4f4, 0x9ccae4, 0xdff2fa][k % 3]), .14, 1, 4); } }
+          else if (r < .18) GLX.obj('stat', 'blob', px, .25, pz, ry, 2 + sr() * 1.6, .6 + sr() * .4, 1.8 + sr(), col(0xeef6fa), 0, 1, 0);
+          else if (r < .21) { GLX.obj('stat', 'trunk', px, 1.6, pz, ry, .5, 3.2, .5, col(0x5a5048), 0, 1, 3); for (let k = 0; k < 3; k++) GLX.obj('stat', 'cone', px, 1.6 + k * .9, pz, ry + k, 2.4 - k * .6, 1.2, 2.4 - k * .6, col(0xdfeef4), 0, 1, 2); }
+          else GLX.obj('stat', 'cyl', px, .04, pz, ry, 3 + sr() * 2, .06, 2.4 + sr(), col(0xa8d4ea), .08, 1, 4); }
+        else { if (r < .12) { GLX.obj('stat', 'taper', px, 1.6, pz, ry, .9, 3.2, .5, col(0x241a3a), 0, 1, 3); GLX.obj('stat', 'box', px + Math.sin(ry) * .2, 1.7, pz + Math.cos(ry) * .2, ry, .3, 1.2, .04, col(0xb060ff), 1.8); }
+          else if (r < .17) { const n = 2 + (sr() * 3 | 0); for (let k = 0; k < n; k++) GLX.obj('stat', 'gem', px + (sr() - .5) * 1.6, 1.2 + sr() * 2.2, pz + (sr() - .5) * 1.6, sr() * 6, .3 + sr() * .3, .5 + sr() * .5, .3 + sr() * .3, col(sr() < .5 ? 0xb060ff : 0xff80ff), 1.4); }
+          else if (r < .2) { GLX.obj('stat', 'cyl', px, .05, pz, ry, 3.2, .06, 3.2, col(0x1a1230), 0, 1, 3); for (let k = 0; k < 8; k++) GLX.obj('stat', 'box', px + Math.cos(k * .785) * 1.3, .1, pz + Math.sin(k * .785) * 1.3, -k * .785, .5, .04, .1, col(0xff80ff), 1.6); }
+          else GLX.obj('stat', 'sphere', px, .5, pz, ry, 1.2, 1, 1.2, col(0x0c0816), 0, 1, 4); }
+      }
+      else if (r < .07) { grass(wx + (sr() - .5), wz + (sr() - .5), gN, 1.1); }
       else if (r < .13) rock(wx + (sr() - .5) * 2, wz + (sr() - .5) * 2, .3 + sr() * .45);
       else if (r < .155) { GLX.obj('stat', 'cyl', wx, .07, wz, sr() * 6, .1, .1, .9, col(0xc9c2aa), 0, 1, 0); GLX.obj('stat', 'sphere', wx + .4, .13, wz + .3, 0, .3, .24, .26, col(0xc9c2aa), 0, 1, 0); }
       else if (r < .175) { GLX.obj('stat', 'taper', wx, .3, wz, sr() * 6, .95, .6, .95, shade(bark, .9), 0, 1, 3); GLX.obj('stat', 'cyl', wx, .61, wz, 0, .56, .02, .56, col(0xa88a5a), 0, 1, 0); }
@@ -349,13 +375,13 @@ function spawnAll(Z) {
     if (elite) { place(main.a === 'swarm' || main.a === 'bomber' ? th.mon[0] : main, elite); n = Math.max(3, n - 2); }
     for (let i = 0; i < n; i++) place(Math.random() < .75 ? main : pm(), 0);
   });
-  const bd = BOSSES[Z.def.theme], hit = refHit(lv + 1);
-  const b = { id: ++G.eid, md: { a: 'boss', n: bd.n, c: bd.c, c2: bd.c2, e: bd.e }, a: { r: 1.7, sc: 2.3, rec: .9, wind: .8, reach: 3.6, xp: 40, spd: 4 }, arch: 'boss', boss: true, bd, x: Z.bossAt[0], z: Z.bossAt[1], rot: 0, lvl: lv + 1, elite: 3, pack: -1, r: 1.7, sc: 2.3, maxHp: Math.round(2.8 * hit * 40), dmg: 5 * Math.pow(1.095, lv + 1) * 1.6, spd: 4, st: 'chase', t: 0, cd: 1, walk: 0, awake: false, flash: 0, chill: 0, shock: 0, frozen: 0, burn: 0, burnT: 0, atk: 0, alive: true, deadT: 0, pt: 2.5, pi: 0, name: bd.n, mods: [] };
+  const bd = bossFor(Z.def.theme, Z.def.depth), hit = refHit(lv + 1);
+  const b = { id: ++G.eid, md: { a: 'boss', n: bd.n, c: bd.c, c2: bd.c2, e: bd.e }, a: { r: 1.7, sc: bd.sc || 2.3, rec: .9, wind: .8, reach: 3.6, xp: 40, spd: 4 }, arch: 'boss', boss: true, bd, x: Z.bossAt[0], z: Z.bossAt[1], rot: 0, lvl: lv + 1, elite: 3, pack: -1, r: 1.7, sc: bd.sc || 2.3, maxHp: Math.round(2.8 * hit * 40), dmg: 5 * Math.pow(1.095, lv + 1) * 1.6, spd: 4, st: 'chase', t: 0, cd: 1, walk: 0, awake: false, flash: 0, chill: 0, shock: 0, frozen: 0, burn: 0, burnT: 0, atk: 0, alive: true, deadT: 0, pt: 2.5, pi: 0, name: bd.n, mods: [] };
   b.hp = b.maxHp; G.ents.push(b); G.boss = b;
 }
 function addReplica(i) {
   if (G.ents.some(e => e.id === i.id)) return; const e = Object.assign({}, i, { a: i.boss ? { r: 1.7, sc: 2.3, rec: .9, wind: .8, reach: 3.6, xp: 40, spd: 4 } : ARCH[i.arch], tx: i.x, tz: i.z, trot: i.rot || 0, rot: i.rot || 0, st: 'chase', t: 0, cd: 1, modT: 2, walk: Math.random() * 6, flash: 0, chill: 0, shock: 0, frozen: 0, burn: 0, burnT: 0, atk: 0, alive: true, deadT: 0 });
-  if (!e.a || !e.md) return; for (const k of e.mods || []) e[k] = true; if (e.boss) { e.bd = BOSSES[G.zone.def.theme]; G.boss = e; } G.ents.push(e);
+  if (!e.a || !e.md) return; for (const k of e.mods || []) e[k] = true; if (e.boss) { e.bd = bossFor(G.zone.def.theme, G.zone.def.depth); G.boss = e; } G.ents.push(e);
 }
 function repEnemy(e, dt) {
   if (e.flash > 0) e.flash -= dt; if (e.atk > 0) e.atk -= dt * 3; if (e.burnT > 0) e.burnT -= dt; if (e.shock > 0) e.shock -= dt; const ox = e.x, oz = e.z, k = Math.min(1, dt * 12); e.x += (e.tx - e.x) * k; e.z += (e.tz - e.z) * k;
@@ -380,7 +406,7 @@ function genTown() {
   Z.objs.push({ kind: 'stash', x: cx, z: cz - 13, name: 'Stash', used: false }, { kind: 'vendor', x: cx - 13, z: cz - 2, name: 'Mirel the Trader', used: false }, { kind: 'altar', x: cx + 13, z: cz - 2, name: 'Altar of Embers', used: false }, { kind: 'tportal', x: cx, z: cz + 14, name: 'Return to the Hollow', used: false });
   return Z;
 }
-function setEnv(Z) { const e = GLX.env, th = Z.th, n = Math.hypot(.55, .66, .42); e.sun = [.55 / n, .66 / n, .42 / n]; e.sunC = th.sunC; e.sky = th.sky; e.gnd = th.gnd; e.fog = GLX.col(th.fog); e.lightR = th.lightR; e.wet = th.wet === undefined ? .4 : th.wet; e.mist = th.mist === undefined ? .35 : th.mist; SFX.ambient(Object.keys(THEMES).find(k => THEMES[k] === th)); }
+function setEnv(Z) { const e = GLX.env, th = Z.th, n = Math.hypot(.55, .66, .42); e.sun = [.55 / n, .66 / n, .42 / n]; e.sunC = th.sunC; e.sky = th.sky; e.gnd = th.gnd; e.fog = GLX.col(th.fog); e.lightR = th.lightR; if (th !== THEMES.forest && th !== THEMES.town) { e.lightR *= 1.3; e.sky = e.sky.map(v => v * 1.45); e.gnd = e.gnd.map(v => v * 1.3);  } /* deeper regions were too dark to read */ e.wet = th.wet === undefined ? .4 : th.wet; e.mist = th.mist === undefined ? .35 : th.mist; SFX.ambient(Object.keys(THEMES).find(k => THEMES[k] === th)); }
 function enterTown() { goalDone('town'); P.fl = FLASK_MAX; P.flaskCd = 0;
   if (G.inTown || P.dead || G.state !== 'play') return; for (const e of G.ents) if (e.alive && e.awake && Math.hypot(e.x - P.x, e.z - P.z) < 16) { hint('You cannot leave while enemies are near.'); return; }
   G.away = { zone: G.zone, ents: G.ents, drops: G.drops, boss: G.boss, x: P.x, z: P.z, seed: G.zone.def.seed }; G.ents = []; G.drops = []; G.projs = []; G.pp = []; G.areas = []; G.fx = []; G.texts = []; G.timers = []; G.boss = null; G.streak = 0;
@@ -463,7 +489,7 @@ function killEnemy(e) {
   if (e.molten && !G.online) addArea({ x: e.x, z: e.z, r: 2.6, delay: .7, owner: 'e', dmg: e.dmg * 1.3, el: 'fire', c: 0xff7a2a });
   if (e.boss) {
     G.zone.cleared = true; G.shake = .9; ring(e.x, e.z, 0, 16, 1.1, e.md.e); burst(e.x, 2, e.z, e.md.e, 60, 11); SFX.play('level'); h.runs++;
-    G.zone.objs.push({ kind: 'portal', x: e.x, z: e.z, name: 'Next floor', used: false }); if ((G.zone.def.depth || 1) > 1) G.zone.objs.push({ kind: 'pback', x: e.x + 6, z: e.z + 1.5, name: 'Previous floor', used: false }); h.depthMax = Math.max(h.depthMax || 0, G.zone.def.depth || 1); UI.zoneBanner('Guardian slain', 'A great gate opens to the next floor'); ring(e.x, e.z, 0, 16, 1.2, 0x7ad0ff); ring(e.x, e.z, 0, 9, .8, 0xb48cff); burst(e.x, 2, e.z, 0x7ad0ff, 60, 12); G.shake = .9; SFX.play('shrine'); saveGame();
+    G.zone.objs.push({ kind: 'portal', x: e.x, z: e.z, name: 'Next floor', used: false }); h.depthMax = Math.max(h.depthMax || 0, G.zone.def.depth || 1); UI.zoneBanner('Guardian slain', 'A great gate opens to the next floor'); ring(e.x, e.z, 0, 16, 1.2, 0x7ad0ff); ring(e.x, e.z, 0, 9, .8, 0xb48cff); burst(e.x, 2, e.z, 0x7ad0ff, 60, 12); G.shake = .9; SFX.play('shrine'); saveGame();
   }
 }
 // ---- first steps ----
@@ -540,7 +566,7 @@ const GPS = { t: 0, pts: [], goal: null, text: '' };
 function questTarget() {
   const Z = G.zone; if (!Z) return null; if (G.inTown) { const o = Z.objs.find(o => o.kind === 'tportal'); return { x: o.x, z: o.z, text: 'Take the portal back to the Hollow' }; }
   const po = Z.objs.find(o => o.kind === 'portal' && !o.used); if (po) return { x: po.x, z: po.z, text: 'Take the portal deeper' };
-  const b = G.boss; return { x: b ? b.x : Z.bossAt[0], z: b ? b.z : Z.bossAt[1], text: 'Find and slay ' + (b ? b.name : BOSSES[Z.def.theme].n) };
+  const b = G.boss; return { x: b ? b.x : Z.bossAt[0], z: b ? b.z : Z.bossAt[1], text: 'Find and slay ' + (b ? b.name : bossFor(Z.def.theme, Z.def.depth).n) };
 }
 function updGps(dt) {
   GPS.t -= dt; if (GPS.t > 0) return; GPS.t = .4; const q = questTarget(); GPS.goal = q; GPS.text = q ? q.text : ''; GPS.pts = []; if (!q || !G.set.gps) return;
