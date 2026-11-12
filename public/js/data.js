@@ -1,5 +1,5 @@
 'use strict';
-const BUILD = '0007';
+const BUILD = '0008';
 const SLOTS = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring1', 'ring2'];
 const DROP_SLOTS = ['weapon', 'weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring', 'ring'];
 const AFF_ALIAS = { shoulders: 'chest', pants: 'chest', belt: 'helm', bracers: 'gloves', offhand: 'amulet' };
@@ -172,7 +172,7 @@ const ARCH = {
   swarm: { hp: .75, dmg: .55, spd: 6.4, r: .45, sc: .7, rec: .5, wind: .3, xp: .5, reach: 1.4, w: 3 },
   caster: { hp: .7, dmg: .9, spd: 3.7, r: .6, sc: 1, rec: 1.3, wind: .55, xp: 1.2, reach: 11, w: 2 },
   brute: { hp: 1.4, dmg: 1.9, spd: 3.2, r: 1, sc: 1.55, rec: 1.1, wind: .95, xp: 2.5, reach: 2.8, w: 1 },
-  bomber: { hp: .5, dmg: 2.1, spd: 6.2, r: .5, sc: .8, rec: 0, wind: .7, xp: .8, reach: 1.9, w: 1 }
+  bomber: { hp: .78, dmg: 2.1, spd: 6.2, r: .5, sc: .8, rec: 0, wind: .7, xp: .8, reach: 1.9, w: 1 }
 };
 const EMODS = {
   hasted: { n: 'Hasted', d: 'Moves and attacks faster' }, armored: { n: 'Armored', d: 'Takes 40% less damage' }, volatile: { n: 'Volatile', d: 'Explodes on death' },
@@ -244,3 +244,7 @@ function xpNeed(l) { return Math.round(22 * Math.pow(1.13, l) * (30 + l * 14 + l
 function paragonNeed(p) { return Math.round(xpNeed(MAX_LEVEL - 1) * (1 + p * .05)); }
 const PARAGON = { dmg: ['Damage', '+1% damage', 0], life: ['Life', '+1% maximum life', 0], armor: ['Armor', '+2% armor', 0], crit: ['Critical damage', '+2% critical damage', 0], mf: ['Magic find', '+1% magic find', 0], ms: ['Move speed', '+1% movement speed', 25] };
 const MAX_LEVEL = 60;
+// More kinds of foe in every region: a charger that telegraphs a rush, a hurler that lobs pools you must step out of, and a bomber.
+{ const EX = { forest: ['Thornback Boar', 'Bile Spitter', 'Sporeling'], crypt: ['Bone Lancer', 'Grave Hurler', 'Corpse Candle'], lava: ['Cinder Ram', 'Magma Spitter', 'Ember Mite'], ice: ['Rime Stag', 'Frost Hurler', 'Shardling'], void: ['Rift Hound', 'Null Caller', 'Unstable Mote'] };
+  for (const k in EX) { const th = THEMES[k]; if (!th || !th.mon) continue; const g = th.mon.find(m => m.a === 'grunt') || th.mon[0], c = th.mon.find(m => m.a === 'caster') || th.mon[0];
+    th.mon.push({ a: 'grunt', v: 'charge', n: EX[k][0], c: g.c2, c2: g.c, e: g.e }, { a: 'caster', v: 'lob', n: EX[k][1], c: c.c2, c2: c.c, e: c.e }); if (!th.mon.some(m => m.a === 'bomber')) th.mon.push({ a: 'bomber', n: EX[k][2], c: g.c, c2: c.c2, e: 0xff9a3a }); } }
