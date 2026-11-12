@@ -131,7 +131,7 @@ const UI = (() => {
   function refresh() { if (invOpen) renderInv(); if (townMode) renderTown(); }
   function bagClick(i, e) {
     const it = G.hero.inv[i]; if (!it) return; if (lastTouch) { sheet(it, i, 'bag'); return; }
-    if (e.shiftKey && G.online) giveItem(i); else if (townMode === 'stash') toStash(i); else if (townMode === 'vendor') sellItem(i); else if (townMode === 'altar') { altarSel = i; altarLine = null; } else equipFromInv(i);
+    if (e.shiftKey && G.online) giveItem(i); else if (townMode === 'stash') toStash(i); else if (townMode === 'vendor') sellItem(i); else if (townMode === 'altar') { altarSel = i; altarLine = null; } else { sheet(it, i, 'bag'); return; } // a plain click shows the item and its comparison first; right-click or double-click equips
     hideTip(); refresh();
   }
   let noClick = false, drag = null;
@@ -141,6 +141,7 @@ const UI = (() => {
     const c = e.target.closest('[data-i]'); if (c) { bagClick(+c.dataset.i, e); return; }
     const sl = e.target.closest('.it[data-slot]'); if (sl) { if (lastTouch) sheet(G.hero.eq[sl.dataset.slot], sl.dataset.slot, 'eq'); else { if (townMode === 'altar') { altarSel = sl.dataset.slot; altarLine = null; } else unequip(sl.dataset.slot); hideTip(); refresh(); } }
   });
+  $('inv').addEventListener('dblclick', e => { const c = e.target.closest('[data-i]'); if (c && !townMode && G.hero.inv[+c.dataset.i]) { equipFromInv(+c.dataset.i); hideTip(); refresh(); } });
   $('inv').addEventListener('contextmenu', e => { e.preventDefault(); const c = e.target.closest('[data-i]'); if (c) { equipFromInv(+c.dataset.i); hideTip(); refresh(); } });
   $('inv').addEventListener('mousemove', e => { if (lastTouch || (drag && drag.on)) return; const c = e.target.closest('.it'); if (!c) return hideTip(); const h = G.hero; if (c.dataset.i !== undefined) { const it = h.inv[+c.dataset.i]; if (it) showTip(tipHtml(it, 'bag'), e.clientX, e.clientY); } else if (c.dataset.slot && h.eq[c.dataset.slot]) showTip(tipHtml(h.eq[c.dataset.slot], 'eq'), e.clientX, e.clientY); });
   $('inv').addEventListener('mouseleave', hideTip);
@@ -241,8 +242,9 @@ const UI = (() => {
     for (let i = 0; i < 5; i++) {
       const el = skEls[i]; if (!el) continue; let cd = 0, max = 1, lock = false, dim = false;
       if (i < 4) { const id = h.bar[i], sk = id && SKILLS[id]; if (sk) { cd = P.cds[id] || 0; max = sk.cd || 1; dim = P.mana < (sk.cost || 0); } else lock = true; } else { cd = P.flaskCd || 0; max = 30; }
-      el.classList.toggle('lock', lock); el.classList.toggle('dim', dim); el.children[2].style.height = cd > 0 ? clamp(cd / max * 100, 0, 100) + '%' : '0'; el.children[3].textContent = cd > 0 ? Math.ceil(cd) : '';
+      el.classList.toggle('lock', lock); el.classList.toggle('dim', dim); el.children[2].style.height = cd > 0 ? clamp(cd / max * 100, 0, 100) + '%' : '0'; el.children[3].textContent = cd > 0 ? Math.ceil(cd) + (i === 4 ? 's' : '') : '';
     }
+    { const par = h.level >= MAX_LEVEL, need = par ? paragonNeed(h.plvl || 0) : xpNeed(h.level), have = Math.floor(par ? h.pxp || 0 : h.xp); if (G.xpPopT > 0) G.xpPopT -= dt; else G.xpPop = 0; const t = (par ? 'Paragon ' : 'XP ') + have.toLocaleString() + ' / ' + need.toLocaleString() + (G.xpPop > 0 ? '  +' + Math.round(G.xpPop) : ''); if ($('xpT').textContent !== t) $('xpT').textContent = t; }
     { const par = h.level >= MAX_LEVEL, bar = $('xp').firstElementChild; bar.style.width = clamp(par ? (h.pxp || 0) / paragonNeed(h.plvl || 0) * 100 : h.xp / xpNeed(h.level) * 100, 0, 100) + '%'; bar.style.background = par ? 'linear-gradient(90deg,#2a8ad0,#9ae0ff)' : ''; }
     if (G.tj) { const ue = $('bUse'); if (ue) { const o = nearObj(), t = o ? USE_LABEL[o.kind] || 'Use' : 'Loot', hot = !!o || G.drops.some(d => d.item && d.item.rar >= h.filter && Math.hypot(d.x - P.x, d.z - P.z) < 5); if (ue.dataset.t !== t) { ue.dataset.t = t; ue.firstElementChild.textContent = t; } ue.classList.toggle('hot', hot); } }
     { const gl = h.goals, gb = $('goals'), show = !!gl && !gl.all && !G.inTown; gb.classList.toggle('hide', !show); if (show) { const key = GOALS.map(g => gl[g[0]] ? 1 : 0).join('') + (gl.k || 0) + (blessed() ? 'b' : ''); if (gb.dataset.k !== key) { gb.dataset.k = key; const nx = GOALS.find(g => !gl[g[0]]), T = G.tj || IN.touch;
@@ -296,6 +298,7 @@ const UI = (() => {
       txt(q.name + ' · ' + Math.round(Math.hypot(dx, dz)) + ' m', ex - Math.cos(a) * 34, ey - Math.sin(a) * 26, '#ffe9a8', '600 12px system-ui,sans-serif');
     }
     if (G.hoverObj) { const o = G.hoverObj, sp = GLX.toScreen(o.x, 3.4, o.z); if (sp) txt(o.name, sp[0], sp[1], '#ffe9a8', '600 13px system-ui,sans-serif'); }
+    if (G.inTown && G.zone) for (const o of G.zone.objs) { if (o === G.hoverObj) continue; const sp = GLX.toScreen(o.x, 3.6, o.z); if (!sp) continue; const L = { stash: 'Stash', vendor: 'Trader', altar: 'Altar', tportal: 'Back to the fight' }[o.kind]; if (!L) continue; const near = Math.hypot(o.x - P.x, o.z - P.z) < 3.6; txt(L, sp[0], sp[1], near ? '#fff' : '#ffe9a8', '700 14px system-ui,sans-serif'); if (near) txt(G.tj ? 'Tap the ' + ({ stash: 'Stash', vendor: 'Trade', altar: 'Altar', tportal: 'Leave' }[o.kind]) + ' button' : 'Click to use', sp[0], sp[1] + 17, '#9effa8', '600 12px system-ui,sans-serif'); }
     if (++frameN % 3 === 0) drawMini();
   }
   function drawMini() {
@@ -425,7 +428,8 @@ const UI = (() => {
   }
   U.netZone = () => { closeTown(); $('menu').classList.add('hide'); $('game').classList.remove('hide'); $('death').classList.add('hide'); buildBar(); };
   U.netFail = msg => { $('menu').classList.remove('hide'); $('menuMsg').textContent = msg; };
-  U.lost = msg => { toMenu(); $('menuMsg').textContent = msg; };
+  U.lost = msg => { $('recon').classList.add('hide'); toMenu(); $('menuMsg').textContent = msg; };
+  U.reconnecting = n => { $('recon').classList.toggle('hide', !n); if (n) $('recon').textContent = 'Connection lost. Reconnecting… (try ' + n + ' of 12). You are protected while this shows.'; else hint('Reconnected.'); };
   const pollOnline = () => { if ($('menu').classList.contains('hide')) return; NET.status().then(j => { const first = !serverChecked; serverChecked = true; if (!j) { $('menuOn').textContent = /^https?:$/.test(location.protocol) ? 'Server offline' : 'Offline preview'; $('menuOn').className = 'off'; if (first) renderClasses(); return; } if (!hasServer || first) { hasServer = true; renderClasses(); } $('online').classList.remove('hide'); $('menuOn').innerHTML = '<i></i>' + j.players + (j.players === 1 ? ' player online' : ' players online'); $('menuOn').className = 'live'; $('onlineN').textContent = j.players + (j.players === 1 ? ' player' : ' players') + ' online now'; }); };
   pollOnline(); setInterval(pollOnline, 15000);
   try { $('oName').value = localStorage.getItem('cinderdeep_name') || ''; } catch (e) { }

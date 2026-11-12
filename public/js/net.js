@@ -20,7 +20,7 @@ const NET = (() => {
     switch (m.t) {
       case 'hello': N.id = m.id; N.room = m.room; N.on = true; G.online = true; G.speed = 1; break;
       case 'error': UI.netFail(m.m); break;
-      case 'zone': if (m.sync && G.away && G.away.seed === m.seed) m.pos = [G.away.x, G.away.z]; enterZone(m); if (m.cleared && m.bossAt) { G.zone.cleared = true; G.zone.objs.push({ kind: 'portal', x: m.bossAt[0], z: m.bossAt[1], name: 'Descend deeper', used: false }); } UI.netZone(); break;
+      case 'zone': if (N.retry > 0) { if (N.back && N.back.seed === m.seed) { m.sync = 1; m.pos = [N.back.x, N.back.z]; } N.retry = 0; N.back = null; UI.reconnecting(0); if (G.inTown) { G.away = null; } } if (m.sync && G.away && G.away.seed === m.seed) m.pos = [G.away.x, G.away.z]; enterZone(m); if (m.cleared && m.bossAt) { G.zone.cleared = true; G.zone.objs.push({ kind: 'portal', x: m.bossAt[0], z: m.bossAt[1], name: 'Descend deeper', used: false }); } UI.netZone(); break;
       case 's': {
         for (const a of m.e) { const e = find(a[0]); if (!e || !e.alive) continue; e.tx = a[1]; e.tz = a[2]; e.trot = a[3]; e.hp = a[4] > e.hp + e.maxHp * .04 ? a[4] : Math.min(e.hp, a[4]); e.st = STN[a[5]] || 'chase'; if (!e.awake) { e.awake = true; if (e.boss) { SFX.play('boss'); UI.zoneBanner(e.name, 'Guardian of the Hollow'); } } }
         const seen = {};
@@ -41,8 +41,8 @@ const NET = (() => {
       case 'fx': if (m.k === 'p') G.projs.push({ x: +m.x, z: +m.z, vx: Math.sin(+m.rot) * +m.r, vz: Math.cos(+m.rot) * +m.r, life: clamp(+m.arc || .5, .1, 2), r: .4, dmg: 0, el: 'phys', vis: 1, peer: 1, c: GLX.col(m.c | 0) }); else if (m.k === 's') G.fx.push({ slash: 1, x: +m.x, z: +m.z, rot: +m.rot, r: +m.r, arc: +m.arc, life: .16, max: .16, c: GLX.col(0xfff0d0) }); else ring(+m.x, +m.z, .5, +m.r, .35, m.c || 0xffc890); break;
       case 'chat': UI.chat(txt(m.n, 16), txt(m.m, 140), m.g ? 'g' : 'p'); break;
       case 'found': UI.chat('', txt(m.n, 16) + ' found a ' + (m.r === 4 ? 'Mythic' : 'Legendary') + ' item: ' + txt(m.item, 60), m.r === 4 ? 'm' : 'l'); if (m.r === 4) SFX.play('drop1'); break;
-      case 'join': UI.chat('', txt(m.name, 16) + ' joined the party.', 's'); break;
-      case 'leave': delete N.peers[m.id]; UI.chat('', txt(m.name, 16) + ' left the party.', 's'); break;
+      case 'join': if (m.name !== N.me) UI.chat('', txt(m.name, 16) + ' joined the party.', 's'); break;
+      case 'leave': delete N.peers[m.id]; if (m.name !== N.me) UI.chat('', txt(m.name, 16) + ' left the party.', 's'); break;
       case 'players': N.names = {}; N.cls = {}; for (const p of m.list) { N.names[p.id] = txt(p.name, 16); N.cls[p.id] = CLASSES[p.cls] ? p.cls : 'warden'; if (N.peers[p.id]) { N.peers[p.id].name = N.names[p.id]; N.peers[p.id].cls = N.cls[p.id]; } } N.count = m.list.length; break;
       case 'give': { const it = cleanItem(m.item); if (!it) break; if (addItem(it)) { hint(txt(m.n, 16) + (m.back ? ' could not carry it, so it came back: ' : ' gave you ') + it.name + '.'); UI.invDirty = true; saveGame(); } else if (!m.back) N.send({ t: 'give', to: m.from, item: m.item, back: true }); break; }
     }
@@ -51,11 +51,11 @@ const NET = (() => {
   N.probe = async () => { try { if (!/^https?:$/.test(location.protocol)) return false; const r = await fetch('cinderdeep-server', { cache: 'no-store' }); if (!r.ok) return false; const j = await r.json(); return !!(j && j.cinderdeep); } catch (e) { return false; } };
   N.close = () => { if (ws) { N.quit = true; N.on = false; G.online = false; N.peers = {}; try { ws.close(); } catch (e) { } ws = null; } };
   N.send = o => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); };
-  N.connect = (name, room) => {
+  N.connect = (name, room) => { N.me = name;
     try { ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws'); } catch (e) { UI.netFail('Could not reach the server.'); return; }
     ws.onopen = () => N.send({ t: 'join', name, room, lvl: G.hero.level, cls: G.hero.cls });
     ws.onmessage = ev => { let m; try { m = JSON.parse(ev.data); } catch (e) { return; } handle(m); };
-    ws.onclose = () => { if (N.quit) { N.quit = false; return; } const was = N.on; N.on = false; G.online = false; N.peers = {}; ws = null; if (was && G.state === 'play') UI.lost('The connection to the server was lost. Press Play online to rejoin.'); else if (!was) UI.netFail('Could not reach the server. Try again in a minute; a sleeping server takes about a minute to wake.'); };
+    ws.onclose = () => { if (N.quit) { N.quit = false; return; } const was = N.on || N.retry > 0; N.on = false; N.peers = {}; ws = null; if (was && G.state === 'play') { if (!(N.retry > 0)) { N.retry = 0; N.back = G.inTown ? null : { seed: G.zone.def.seed, x: P.x, z: P.z }; } N.retry++; if (N.retry > 12) { N.retry = 0; G.online = false; UI.lost('The connection to the server was lost. Press Play online to rejoin.'); return; } P.iframes = Math.max(P.iframes || 0, 6); UI.reconnecting(N.retry); setTimeout(() => { if (G.state === 'play' && N.retry > 0) N.connect(N.me, N.room); }, N.retry === 1 ? 800 : 3000); } else if (was) { N.retry = 0; G.online = false; } else if (!was) UI.netFail('Could not reach the server. Try again in a minute; a sleeping server takes about a minute to wake.'); };
   };
   N.tick = dt => {
     for (const id in N.peers) {
