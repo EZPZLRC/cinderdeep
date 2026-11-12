@@ -205,6 +205,10 @@ body.tj #build{left:6px;right:auto;bottom:3px}
 body.tj #xpT{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--g) + 14px + env(safe-area-inset-bottom));white-space:nowrap}
 #recon{position:fixed;left:50%;top:38%;transform:translateX(-50%);z-index:29;background:rgba(40,12,8,.92);border:1px solid #d0703a;border-radius:4px;padding:12px 18px;font-size:14px;color:#ffe0c8;text-align:center;max-width:86vw}
 .it .ar{position:absolute;right:1px;top:0;font-size:11px;line-height:1;text-shadow:0 0 3px #000,0 0 3px #000;pointer-events:none}#tip .tv{font-weight:700;font-size:14px;margin-top:6px}#tip .dn,.dn{color:#ff6a5a}
+#ctl #bInvite{color:#9effa8}@media (max-width:760px),(max-height:480px){#ctl #bInvite::before{content:"⤴";font-size:18px;color:#9effa8}}
+.sk.auto{border-color:#5aff7a!important;box-shadow:0 0 10px #5aff7a,inset 0 0 10px #000}.sk.auto::after{content:"AUTO";position:absolute;left:0;right:0;top:-13px;text-align:center;font-size:8.5px;letter-spacing:.1em;color:#5aff7a;text-shadow:0 1px 2px #000}
+.pips{color:#ffb03a;letter-spacing:.2em;font-size:15px;margin-top:2px}.odds .up{color:#5aff7a}
+@media (max-width:760px),(max-height:480px){#ctl #bLeave{font-size:0}#ctl #bLeave::before{content:"⏏";font-size:17px;color:#ff9a8a}}
 </style>
 </head>
 <body>
@@ -225,7 +229,7 @@ body.tj #xpT{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(v
     <div id="mid"><div id="bar"></div><div id="xpT"></div><div id="xp"><div></div></div></div>
     <div class="globe" id="gFury"><div class="fill"></div><div class="txt"></div></div>
   </div>
-  <div id="ctl"><button id="bMenu">Menu</button><button id="bSet">Settings</button><button id="bInv">Inventory</button><button id="bSkl">Skills</button><button id="bTown">Town</button><button id="bAuto">Auto-play: off</button><button id="bSpd">Speed 1×</button></div>
+  <div id="ctl"><button id="bMenu">Menu</button><button id="bSet">Settings</button><button id="bInvite">Invite</button><button id="bLeave" class="hide">Leave party</button><button id="bInv">Inventory</button><button id="bSkl">Skills</button><button id="bTown">Town</button><button id="bAuto">Auto-play: off</button><button id="bSpd">Speed 1×</button></div>
   <div id="party" class="hide"></div><div id="onl" class="hide"></div><div id="chatlog" class="hide"></div>
   <div id="chatRow" class="hide"><button id="chatCh">Global</button><input id="chat" maxlength="140"><button id="chatX" class="xb" aria-label="Close chat">×</button></div>
   <div id="tbtns"><button id="tChat" class="hide">Chat</button><button id="tTown">Town</button><button id="tLoot">Loot</button><button id="tSkl">Skills</button><button id="tBag">Bag</button></div>
@@ -245,7 +249,7 @@ body.tj #xpT{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(v
   <div id="stage"></div>
   <p id="menuMsg">Pick a hero, carve through the Blighted Hollow, slay its guardian, and take the portal deeper.</p>
   <div id="classes"></div>
-  <div id="online" class="hide"><input id="oName" maxlength="16" placeholder="Your name"><input id="oRoom" maxlength="12" placeholder="Party code (blank = solo)"><div id="onlineN"></div></div>
+  <div id="online" class="hide"><input id="oName" maxlength="16" placeholder="Your name"><input id="oRoom" maxlength="12" placeholder="Party code (blank = solo)"><div id="onlineN"></div><button id="mInvite" class="hide">Share the game</button><button id="mTip" class="hide">♥ Support the game</button><button id="mFeed" class="hide">Send feedback</button></div>
   <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center"><button class="big" id="btnNew">Play</button><button id="btnReset" class="hide">Reset this hero</button><button id="mSet">Settings</button></div>
   <div class="keys touchOnly">
     <b>Left thumb stick</b><span>Move (or tap the ground)</span>
@@ -270,10 +274,10 @@ body.tj #xpT{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(v
     <b>G</b><span>Quest path on the ground on/off</span>
   </div>
 </div>
-<script src="js/gl.js?v=0010"></script>
-<script src="js/data.js?v=0010"></script>
-<script src="js/game.js?v=0010"></script>
-<script src="js/net.js?v=0010"></script>
-<script src="js/ui.js?v=0010"></script>
+<script src="js/gl.js?v=0011"></script>
+<script src="js/data.js?v=0011"></script>
+<script src="js/game.js?v=0011"></script>
+<script src="js/net.js?v=0011"></script>
+<script src="js/ui.js?v=0011"></script>
 </body>
 </html>

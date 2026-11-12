@@ -10,7 +10,7 @@ const NET = (() => {
     for (const a of i.aff.slice(0, 6)) if (a && STATS[a.k] && isFinite(+a.v)) o.aff.push({ k: a.k, v: +a.v });
     if (i.slot === 'weapon') { if (!Array.isArray(i.dmg) || !isFinite(+i.dmg[0]) || !isFinite(+i.dmg[1])) return null; o.dmg = [Math.max(1, +i.dmg[0]), Math.max(1, +i.dmg[1])]; o.spd = clamp(+i.spd || 1, .5, 2.5); o.wt = WT.includes(i.wt) ? i.wt : 'sword'; }
     else if (isFinite(+i.armor) && i.armor > 0) o.armor = +i.armor;
-    if (i.fd) o.fd = 1; if (i.sd > 0 && i.sd < 2147483647) o.sd = i.sd | 0; if (i.slot === 'offhand' && CLASSES[i.oc]) o.oc = i.oc; if (i.power && POWERS[i.power]) o.power = i.power; return o;
+    if (i.fd) o.fd = 1; if (i.up > 0 && i.up <= 5) o.up = i.up | 0; if (i.sd > 0 && i.sd < 2147483647) o.sd = i.sd | 0; if (i.slot === 'offhand' && CLASSES[i.oc]) o.oc = i.oc; if (i.power && POWERS[i.power]) o.power = i.power; return o;
   }
   const find = id => G.ents.find(e => e.id === id);
   function handle(m) {

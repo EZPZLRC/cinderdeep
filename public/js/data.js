@@ -1,5 +1,5 @@
 'use strict';
-const BUILD = '0010';
+const BUILD = '0011';
 const SLOTS = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring1'];
 const DROP_SLOTS = ['weapon', 'weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring', 'ring'];
 const AFF_ALIAS = { shoulders: 'chest', pants: 'chest', belt: 'helm', bracers: 'gloves', offhand: 'amulet' };
@@ -114,7 +114,7 @@ Object.assign(SKILLS, {
   pierce: { n: 'Storm Bolt', lv: 10, i: '⚡', type: 'proj', el: 'light', m: 2.7, cost: 22, cd: 3, spd: 44, pierce: 99, pr: .9, range: 18, ct: .4, d: 'A charged bolt that pierces every enemy in its path.' },
   volley: { n: 'Shadow Volley', lv: 12, i: '✺', type: 'barrage', el: 'cold', m: 1.1, cost: 40, cd: 20, cnt: 18, waves: 3, spd: 26, pr: .45, range: 13, d: 'Three rings of freezing arrows burst outward from you.' },
   // Arcanist
-  abolt: { n: 'Arcane Bolt', lv: 1, i: '✦', type: 'proj', el: 'arc', m: 1.0, basic: 1, spd: 28, pr: .5, range: 15, d: 'Hurl a bolt of raw arcane energy.' },
+  abolt: { n: 'Arcane Bolt', lv: 1, i: '✦', type: 'proj', el: 'arc', m: 1.0, basic: 1, gen: 4, spd: 28, pr: .5, range: 15, d: 'Hurl a bolt of raw arcane energy.' },
   shards: { n: 'Prism Shards', lv: 2, i: '⁂', type: 'proj', el: 'arc', m: .5, basic: 1, cnt: 3, spread: .4, spd: 30, pr: .4, range: 13, d: 'Three shards in a tight fan. Strong against packs.' },
   orb: { n: 'Arcane Orb', lv: 1, i: '◉', type: 'proj', el: 'arc', m: 2.4, cost: 30, spd: 13, pr: .9, range: 15, explode: 3.8, ct: .4, d: 'A slow orb that detonates on the first enemy it touches.' },
   tele: { n: 'Teleport', lv: 3, i: '✧', type: 'dash', blink: 1, el: 'arc', m: 0, cd: 4, range: 13, cost: 10, d: 'Teleport instantly to the target location.' },
@@ -135,7 +135,7 @@ Object.assign(SKILLS, {
   wave: { n: 'Wave of Force', lv: 10, i: '≋', type: 'proj', el: 'phys', m: 2.2, cost: 30, cd: 6, spd: 22, pierce: 99, pr: 1.4, range: 10, ct: .35, d: 'A wide shockwave that rolls through everything in front of you.' },
   seven: { n: 'Seven-Sided Strike', lv: 12, i: '✵', type: 'rain', el: 'phys', m: 2.0, cost: 45, cd: 16, cnt: 7, spread: 3.5, r: 2.4, delay: .15, stagger: .12, d: 'Seven blinding strikes land around the target.' },
   // Elementalist
-  firebolt: { n: 'Firebolt', lv: 1, i: '✦', type: 'proj', el: 'fire', m: 1.05, basic: 1, spd: 27, pr: .5, range: 15, d: 'Hurl a bolt of fire that sets enemies alight.' },
+  firebolt: { n: 'Firebolt', lv: 1, i: '✦', type: 'proj', el: 'fire', m: 1.05, basic: 1, gen: 4, spd: 27, pr: .5, range: 15, d: 'Hurl a bolt of fire that sets enemies alight.' },
   spark: { n: 'Shock Pulse', lv: 2, i: '⚡', type: 'proj', el: 'light', m: .5, basic: 1, cnt: 3, spread: .5, spd: 24, pr: .4, range: 10, d: 'Three crackling sparks at short range.' },
   frost: { n: 'Frost Nova', lv: 1, i: '❄', type: 'nova', el: 'cold', m: 1.4, cost: 22, cd: 5, r: 6.5, freeze: 1.8, ct: .3, d: 'A ring of frost that damages and freezes nearby enemies.' },
   fdash: { n: 'Flame Dash', lv: 3, i: '➤', type: 'dash', el: 'fire', m: 1.2, cd: 4, range: 11, land: 3, cost: 8, flat: 1, d: 'Streak forward in a burst of flame, burning enemies where you stop.' },
@@ -152,6 +152,9 @@ const CLASSES = {
   brawler: { n: 'Brawler', tag: 'Physical', d: 'Bare-knuckle martial artist. Very fast strikes, dashes and kicks; builds Spirit.', life: 115, lifeLv: 15, armor: 3, ms: 9.6, regen: 1.8, res: { n: 'Spirit', max: 100, decay: 2, c: 'radial-gradient(circle at 35% 30%,#fff4b0,#d0b020 55%,#6a5606)' }, wts: ['fist'], w: 'Cestus', skills: ['jab', 'hook', 'sweep', 'dstrike', 'cyclone', 'iron', 'palm', 'wave', 'seven'] },
   elementalist: { n: 'Elementalist', tag: 'Spell caster', d: 'Commands fire, frost and lightning. Fragile, but erases whole packs.', life: 85, lifeLv: 11, armor: 1.5, ms: 8.6, regen: .8, res: { n: 'Mana', max: 120, regen: 6, c: 'radial-gradient(circle at 35% 30%,#9ac8ff,#2a5ae0 55%,#0c1e6a)' }, wts: ['staff'], w: 'Staff', skills: ['firebolt', 'spark', 'frost', 'fdash', 'chain', 'mshield', 'meteor', 'blizz', 'inferno'] }
 };
+// Owner settings: paste your Ko-fi page link and a feedback address here and the buttons appear in the menu.
+const TIP_URL = 'https://ko-fi.com/ezpzlrc', FEEDBACK_URL = '';
+const MAX_UP = 5;
 // The world changes as you go down: a new region every two floors.
 function zoneFor(depth) { return ZONES[Math.floor(Math.max(0, depth | 0) / 2) % ZONES.length]; }
 // First steps: a short checklist that teaches the game by doing.

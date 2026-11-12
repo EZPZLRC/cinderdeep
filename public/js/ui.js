@@ -166,17 +166,13 @@ const UI = (() => {
     if (townMode === 'stash') T.innerHTML = head('Stash') + `<div class="sm">Shared by all your heroes on this device. Click an item to move it. <button data-ss="1" style="padding:4px 10px;font-size:12px;margin-left:6px">Sort</button></div><div id="sgrid">${gridHtml(G.stash, 's')}</div>`;
     else if (townMode === 'vendor') T.innerHTML = head('Mirel the Trader') + `<div class="sm">Click an item to buy it. Click items in your bag to sell them. You have <b style="color:#ffd84a">${h.gold.toLocaleString()} gold</b>.</div><div id="shop">${(h.stock || []).map((it, k) => it ? `<div class="srow2" data-v="${k}">${itemEl(it, '', itemH(it) === 2 ? 'tall' : '')}<div><b style="color:${RAR[it.rar].c}">${it.name}</b><div class="sm">${SLOT_NAME[it.slot]} · level ${it.ilvl}</div><div class="${h.gold >= buyPrice(it) ? 'gold' : 'dn'}">${buyPrice(it).toLocaleString()} gold</div></div></div>` : '').join('') || '<div class="sm">Sold out. New stock arrives after you have been out fighting.</div>'}</div>`;
     else if (townMode === 'altar') {
-      const it = altarSel !== null ? (typeof altarSel === 'string' ? h.eq[altarSel] : h.inv[altarSel]) : null; let b = head('Altar of Embers') + `<div class="sm">Reroll ONE line of an item. The first line you change is the only one that item can ever change again. You have <b style="color:#9ad0ff">${h.shards || 0} shards</b> and <b style="color:#ffd84a">${h.gold.toLocaleString()} gold</b>.</div>`;
+      const it = altarSel !== null ? (typeof altarSel === 'string' ? h.eq[altarSel] : h.inv[altarSel]) : null; let b = head('Altar of Embers') + `<div class="sm">Lay an item on the altar and the embers forge it stronger, up to <b>+${MAX_UP}</b>. It never fails. You have <b style="color:#9ad0ff">${h.shards || 0} shards</b> and <b style="color:#ffd84a">${h.gold.toLocaleString()} gold</b>.</div>`;
       if (!it) b += '<div class="abox sm">Click an item in your bag, or one your hero is wearing, to place it on the altar.</div>';
       else {
-        const c = altarCost(it); b += `<div class="abox"><div class="srow2">${itemEl(it, '', itemH(it) === 2 ? 'tall' : '')}<div><b style="color:${RAR[it.rar].c}">${it.name}</b><div class="sm">${SLOT_NAME[it.slot]} · level ${it.ilvl}${typeof altarSel === 'string' ? ' · equipped' : ''}</div></div></div>`;
-        if (!it.aff.length) b += '<div class="sm">This item has no lines to change.</div>';
-        it.aff.forEach((a, i) => { const lock = it.ench !== undefined && it.ench !== i; b += `<button class="aline${altarLine === i ? ' on' : ''}" data-l="${i}" ${lock ? 'disabled' : ''}>${statText(a.k, a.v)}${lock ? ' · locked' : ''}</button>`; });
-        if (altarLine !== null && it.aff[altarLine]) {
-          const pool = altarPool(it, altarLine), pc = pool.length ? Math.round(100 / pool.length) : 0;
-          b += `<div class="odds"><b>The odds</b><div class="sm">You get one of these ${pool.length} lines. Each is equally likely: about ${pc}% (1 in ${pool.length}). The value is rolled evenly inside the range shown.</div><div class="olist">${pool.map(a => { const r = affixRange(a, it.ilvl); return `<div>${statText(a[0], r[0]).replace(/([\d.]+)/, r[0] + '–' + r[1])}</div>`; }).join('')}</div></div>
-            <button class="big" data-rr="1" ${(h.shards || 0) >= c.shards && h.gold >= c.gold ? '' : 'disabled'}>Reroll · ${c.shards} shards + ${c.gold.toLocaleString()} gold</button>`;
-        } else if (it.aff.length) b += '<div class="sm" style="margin-top:8px">Pick the line you want to replace to see the odds and the cost.</div>';
+        const c = upCost(it), n = it.up || 0, p = upPreview(it), pips = '◆'.repeat(n) + '◇'.repeat(MAX_UP - n);
+        b += `<div class="abox"><div class="srow2">${itemEl(it, '', itemH(it) === 2 ? 'tall' : '')}<div><b style="color:${RAR[it.rar].c}">${it.name}</b><div class="sm">${SLOT_NAME[it.slot]} · level ${it.ilvl}${typeof altarSel === 'string' ? ' · equipped' : ''}</div><div class="pips">${pips}</div></div></div>`;
+        if (n >= MAX_UP) b += '<div class="sm" style="margin-top:8px;color:#ffd84a">This item is fully forged.</div>';
+        else { b += '<div class="odds"><b>The next forging gives</b>' + (it.dmg ? `<div>Damage ${it.dmg[0]}–${it.dmg[1]} <span class="up">→ ${p.dmg[0]}–${p.dmg[1]}</span></div>` : '') + (it.armor ? `<div>Armor ${it.armor} <span class="up">→ ${p.armor}</span></div>` : '') + it.aff.map((a, k) => `<div>${statText(a.k, a.v)} <span class="up">→ ${statText(a.k, p.aff[k].v)}</span></div>`).join('') + `</div><button class="big" data-rr="1" ${(h.shards || 0) >= c.shards && h.gold >= c.gold ? '' : 'disabled'}>Forge to +${n + 1} · ${c.shards} shards + ${c.gold.toLocaleString()} gold</button>`; }
         b += '</div>';
       }
       T.innerHTML = b;
@@ -191,7 +187,7 @@ const UI = (() => {
     else if ((m = e.target.closest('[data-s]'))) { if (lastTouch) sheet(G.stash[+m.dataset.s], m.dataset.s, 'stash'); else fromStash(+m.dataset.s); }
     else if ((m = e.target.closest('[data-v]'))) { if (lastTouch) sheet(G.hero.stock[+m.dataset.v], m.dataset.v, 'shop'); else buyItem(+m.dataset.v); }
     else if ((m = e.target.closest('[data-l]'))) altarLine = +m.dataset.l;
-    else if (e.target.closest('[data-rr]')) { if (altarSel !== null && altarLine !== null) altarReroll(altarSel, altarLine); }
+    else if (e.target.closest('[data-rr]')) { if (altarSel !== null) altarUpgrade(altarSel); }
     else return; hideTip(); refresh();
   });
   $('town').addEventListener('mousemove', e => { if (lastTouch) return; let m; if ((m = e.target.closest('[data-s]')) && G.stash[+m.dataset.s]) showTip(tipHtml(G.stash[+m.dataset.s], 'stash'), e.clientX, e.clientY); else if ((m = e.target.closest('[data-v]')) && G.hero.stock[+m.dataset.v]) showTip(tipHtml(G.hero.stock[+m.dataset.v], 'shop'), e.clientX, e.clientY); else hideTip(); });
@@ -204,8 +200,9 @@ const UI = (() => {
     for (let i = 0; i < 5; i++) {
       const sk = i < 4 ? (SKILLS[i === 0 && !G.hero.eq.weapon ? 'punch' : G.hero.bar[i]] || { i: '＋', n: 'Empty slot', d: 'Open Skills to choose a skill for this slot.' }) : { i: '✚', n: 'Health Potion', d: 'Restores 60% of your life. 30 second cooldown.' }; const d = document.createElement('div'); d.className = 'sk'; d.style.pointerEvents = 'auto';
       d.innerHTML = `<span class="key">${i < 4 ? SLOT_KEY[i] : '1'}</span><span class="ic"${i === 4 ? ' style="color:#ff5a5a"' : ''}>${sk.i}</span><div class="cd"></div><div class="cdt"></div>${sk.cost ? `<span class="cost">${sk.cost}</span>` : ''}`;
-      const dn = e => { e.preventDefault(); SFX.unlock(); if (i < 4) IN.tb[i] = true; else useFlask(); }, upb = () => { if (i < 4) IN.tb[i] = false; };
-      d.addEventListener('pointerdown', dn); d.addEventListener('pointerup', upb); d.addEventListener('pointerleave', upb); d.addEventListener('pointercancel', upb); d.addEventListener('contextmenu', e => { e.preventDefault(); if (i < 4) toggleSkl(true, i); });
+      const dn = e => { e.preventDefault(); if (e.button === 2) return; SFX.unlock(); if (i < 4) IN.tb[i] = true; else useFlask(); }, upb = () => { if (i < 4) IN.tb[i] = false; };
+      if (i > 0 && i < 4) { const tog = () => { const h = G.hero; if (!h.bar[i]) return; h.autoc = h.autoc || [0, 0, 0, 0]; h.autoc[i] = h.autoc[i] ? 0 : 1; d.classList.toggle('auto', !!h.autoc[i]); hint(SKILLS[h.bar[i]].n + (h.autoc[i] ? ': auto-cast ON. It fires by itself when enemies are near.' : ': auto-cast off.')); saveGame(); }; d.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); tog(); }); let lp = 0; d.addEventListener('pointerdown', e => { if (e.pointerType === 'touch') lp = setTimeout(() => { IN.tb[i] = false; tog(); }, 650); }); const cl = () => clearTimeout(lp); d.addEventListener('pointerup', cl); d.addEventListener('pointerleave', cl); if (G.hero.autoc && G.hero.autoc[i]) d.classList.add('auto'); }
+      d.addEventListener('pointerdown', dn); d.addEventListener('pointerup', upb); d.addEventListener('pointerleave', upb); d.addEventListener('pointercancel', upb); d.addEventListener('contextmenu', e => { e.preventDefault(); if (i === 0) toggleSkl(true, i); });
       d.addEventListener('mousemove', e => !lastTouch && showTip(`<div class="tn">${sk.n}</div><div class="ts">${sk.d}</div>${sk.cost ? `<div class="tp">Costs ${sk.cost} ${cls.res.n}</div>` : ''}${sk.gen ? `<div class="tp">Generates ${sk.gen} ${cls.res.n} per enemy hit</div>` : ''}${sk.cd ? `<div class="ts">Cooldown ${sk.cd}s</div>` : ''}`, e.clientX, e.clientY - 140));
       d.addEventListener('mouseleave', hideTip); bar.appendChild(d); skEls.push(d);
     }
@@ -234,6 +231,16 @@ const UI = (() => {
   U.openPick = openPick; U.panelOpen = () => invOpen || sklOpen || !$('pick').classList.contains('hide') || !$('set').classList.contains('hide');
   $('pick').addEventListener('click', e => { if (e.target.closest('[data-x]')) { $('pick').classList.add('hide'); return; } const c = e.target.closest('[data-p]'); if (!c) return; if (pickSkill(+c.dataset.i, c.dataset.p)) { if (sklOpen) renderSkl(); openPick(); } });
   $('pickBtn').onclick = () => openPick();
+  // ---- invite / share: one tap sends a link that drops a friend straight into your party ----
+  async function invite(inGame) {
+    const web = /^https?:$/.test(location.protocol), base = web ? location.origin + location.pathname : 'https://cinderdeep.onrender.com/', room = inGame && G.online && NET.room ? NET.room : '', url = base + (room ? '?room=' + encodeURIComponent(room) : ''), text = room ? 'Join my party in Cinderdeep, a free action RPG you play in the browser:' : 'Play Cinderdeep with me, a free action RPG in your browser:';
+    if (navigator.share) { try { await navigator.share({ title: 'Cinderdeep', text, url }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+    let ok = false; try { await navigator.clipboard.writeText(text + ' ' + url); ok = true; } catch (e) { }
+    const msg = ok ? (room ? 'Invite link copied. Paste it to a friend and they land in your party.' : 'Link copied. Paste it anywhere to share the game.') : 'Share this link: ' + url; if (G.state === 'play') hint(msg); else $('menuMsg').textContent = msg;
+  }
+  $('bLeave').onclick = () => { if (!G.online) return; const nm = NET.me || 'Hero'; NET.close(); G.state = 'play'; hint('You left the party and are now on your own.'); NET.connect(nm, 'solo' + Math.random().toString(36).slice(2, 8)); };
+  if (TIP_URL) { $('mTip').classList.remove('hide'); $('mTip').onclick = () => window.open(TIP_URL, '_blank', 'noopener'); } if (FEEDBACK_URL) { $('mFeed').classList.remove('hide'); $('mFeed').onclick = () => window.open(FEEDBACK_URL, '_blank', 'noopener'); }
+  $('bInvite').onclick = () => invite(true); $('mInvite').onclick = () => invite(false);
   U.iconSvg = it => iconSvg(it);
   U.buildBar = () => { buildBar(); if (sklOpen) renderSkl(); };
   function hud(dt) {
@@ -251,6 +258,7 @@ const UI = (() => {
     { const gl = h.goals, gb = $('goals'), show = !!gl && !gl.all && !G.inTown; gb.classList.toggle('hide', !show); if (show) { const key = GOALS.map(g => gl[g[0]] ? 1 : 0).join('') + (gl.k || 0) + (blessed() ? 'b' : ''); if (gb.dataset.k !== key) { gb.dataset.k = key; const nx = GOALS.find(g => !gl[g[0]]), T = G.tj || IN.touch;
       const HOW = { kill: T ? 'Steer with the left stick. Hold the big button to attack.' : 'Click the ground to move. Click a monster to attack it.', skill: T ? 'Tap one of the round skill buttons next to attack.' : 'Right-click, or press Q or W, to use a skill.', equip: T ? 'Tap Loot near a drop, open Bag, tap the item, then Equip.' : 'Click a drop to pick it up, press I, then right-click the item.', town: T ? 'Tap Town to step out, sell loot and use the altar.' : 'Press T to visit town: stash, trader and altar.', boss: 'Follow the yellow path to the guardian and bring it down.' };
       gb.innerHTML = '<span>First steps</span>' + GOALS.map(g => `<div class="${gl[g[0]] ? 'ok' : g === nx ? 'now' : ''}">${gl[g[0]] ? '✓' : '○'} ${g[1]}${g[0] === 'kill' && !gl.kill ? ' (' + (gl.k || 0) + '/5)' : ''}</div>`).join('') + (nx ? `<div class="how">${HOW[nx[0]]}</div>` : '') + (blessed() ? '<div class="bl">Newcomer\'s blessing: you take less damage until the guardian falls.</div>' : ''); } } }
+    $('bInvite').classList.toggle('hide', !G.online); $('bLeave').classList.toggle('hide', !G.online || (NET.count || 1) < 2);
     $('pickBtn').classList.toggle('hide', pendingPick(h) < 0 || !$('pick').classList.contains('hide'));
     { const pb = partyBonus(), el = $('onl'); if (el.dataset.pb !== '' + pb) { el.dataset.pb = pb; el.title = pb ? 'Party bonus +' + pb + '% damage' : ''; } $('pbonus').textContent = pb ? 'Party bonus +' + pb + '% damage' : ALLY.on ? 'Sellsword at your side' : ''; }
     $('tName').textContent = innerWidth < 760 ? cls.n + ' · Lv ' + h.level : cls.n + ' · Level ' + h.level + (h.level >= MAX_LEVEL ? ' · Paragon ' + (h.plvl || 0) : '') + (G.online ? (/^solo/.test(NET.room || '') && (NET.count || 1) < 2 ? ' · Solo' : ' · Party ' + NET.room + ' (' + (NET.count || 1) + ')') : '');
@@ -431,7 +439,7 @@ const UI = (() => {
   U.netFail = msg => { $('menu').classList.remove('hide'); $('menuMsg').textContent = msg; };
   U.lost = msg => { $('recon').classList.add('hide'); toMenu(); $('menuMsg').textContent = msg; };
   U.reconnecting = n => { $('recon').classList.toggle('hide', !n); if (n) $('recon').textContent = 'Connection lost. Reconnecting… (try ' + n + ' of 12). You are protected while this shows.'; else hint('Reconnected.'); };
-  const pollOnline = () => { if ($('menu').classList.contains('hide')) return; NET.status().then(j => { const first = !serverChecked; serverChecked = true; if (!j) { $('menuOn').textContent = /^https?:$/.test(location.protocol) ? 'Server offline' : 'Offline preview'; $('menuOn').className = 'off'; if (first) renderClasses(); return; } if (!hasServer || first) { hasServer = true; renderClasses(); } $('online').classList.remove('hide'); $('menuOn').innerHTML = '<i></i>' + j.players + (j.players === 1 ? ' player online' : ' players online'); $('menuOn').className = 'live'; $('onlineN').textContent = j.players + (j.players === 1 ? ' player' : ' players') + ' online now'; }); };
+  const pollOnline = () => { if ($('menu').classList.contains('hide')) return; NET.status().then(j => { const first = !serverChecked; serverChecked = true; if (!j) { $('menuOn').textContent = /^https?:$/.test(location.protocol) ? 'Server offline' : 'Offline preview'; $('menuOn').className = 'off'; if (first) renderClasses(); return; } if (!hasServer || first) { hasServer = true; renderClasses(); } $('online').classList.remove('hide'); $('mInvite').classList.remove('hide'); $('menuOn').innerHTML = '<i></i>' + j.players + (j.players === 1 ? ' player online' : ' players online'); $('menuOn').className = 'live'; $('onlineN').textContent = j.players + (j.players === 1 ? ' player' : ' players') + ' online now'; }); };
   pollOnline(); setInterval(pollOnline, 15000);
   try { $('oName').value = localStorage.getItem('cinderdeep_name') || ''; } catch (e) { }
   try { const rm = new URLSearchParams(location.search).get('room'); if (rm) $('oRoom').value = rm.replace(/[^\w-]/g, '').slice(0, 16); } catch (e) { }
