@@ -136,7 +136,7 @@ function equipFromInv(i, want) {
   if (!canUse(it)) { hint('A ' + CLASSES[h.cls].n + ' cannot use that.'); return false; }
   if (sl === 'ring') sl = want === 'ring1' || want === 'ring2' ? want : !h.eq.ring1 ? 'ring1' : !h.eq.ring2 ? 'ring2' : itemScore(h.eq.ring1) <= itemScore(h.eq.ring2) ? 'ring1' : 'ring2'; else if (want && want !== sl) return false;
   const old = h.eq[sl] || null; h.inv[i] = null; if (old && !bagPut(h.inv, old, i)) { h.inv[i] = it; hint('No room in the bag to swap that.'); return false; }
-  h.eq[sl] = it; computeStats(); if (sl === 'weapon' && typeof UI !== 'undefined' && UI.buildBar) UI.buildBar(); SFX.play('pickup'); saveGame(); return true;
+  h.eq[sl] = it; goalDone('equip'); computeStats(); if (sl === 'weapon' && typeof UI !== 'undefined' && UI.buildBar) UI.buildBar(); SFX.play('pickup'); saveGame(); return true;
 }
 function unequip(sl, at) { const h = G.hero, it = h.eq[sl]; if (!it) return; if (!addItem(it, at)) { hint('Inventory is full.'); return; } delete h.eq[sl]; computeStats(); if (sl === 'weapon' && typeof UI !== 'undefined' && UI.buildBar) { UI.buildBar(); hint('Unarmed: you will punch until you equip a weapon.'); } saveGame(); }
 function itemShards(it) { return [1, 2, 6, 25, 80][it.rar]; }
@@ -147,7 +147,7 @@ function dropFromInv(i) { const h = G.hero, it = h.inv[i]; if (!it) return; h.in
 // ---------- hero ----------
 function newHero(cls) {
   cls = CLASSES[cls] ? cls : 'warden'; const c = CLASSES[cls], sk = c.skills;
-  const h = { v: 1, name: c.n, cls, level: 1, xp: 0, gold: 0, inv: new Array(BAG_N).fill(null), bagV: 2, eq: {}, bar: [sk[0], null, null, null], picks: [null, null, null, null], filter: 0, kills: 0, runs: 0, best: 0 };
+  const h = { v: 1, name: c.n, cls, level: 1, xp: 0, gold: 0, inv: new Array(BAG_N).fill(null), bagV: 2, eq: {}, bar: [sk[0], null, null, null], picks: [null, null, null, null], goals: {}, filter: 0, kills: 0, runs: 0, best: 0 };
   h.eq.weapon = makeItem(1, 'weapon', 0, c.w); return h;
 }
 function calcStats(eq) {
@@ -253,7 +253,7 @@ function buildStatic(Z) {
   GLX.statBegin(); const th = Z.th, S = GW * CS, c = Z.cell, col = GLX.col;
   GLX.obj('stat', 'box', S / 2, -.5, S / 2, 0, S + 120, 1, S + 120, col(th.ground), 0, 1, th.gdet);
   srand(Z.def.seed ^ 0x5bd1e995);
-  const bark = col(th.wc[0]), leaf = [col(th.wc[1]), col(th.wc[2]), col(0x3a4a22)], stone = col(0x6c6a64), grassC = [col(0x5c7a32), col(0x688236), col(0x748034), col(0x4e6c2e)];
+  const bark = col(th.wc[0]), leaf = [col(th.wc[1]), col(th.wc[2]), col(0x3a4a22)], stone = col(0x6c6a64), grassC = ({ crypt: [0x56604a, 0x4a5644, 0x66684e, 0x3e4a3c], lava: [0x4a3428, 0x5a3a26, 0x3a2a22, 0x6a4428], ice: [0xa8c0c8, 0x90aab8, 0xc0d4d8, 0x7c98a8], void: [0x4a3a6a, 0x3a2e58, 0x5a4680, 0x2e2446] }[Z.def.theme] || [0x5c7a32, 0x688236, 0x748034, 0x4e6c2e]).map(c => col(c));
   const TB = new Float32Array(16), HP = 1.5708, lay = (g, x, y, z, ry, rx, rz, sx, sy, sz, c, m) => { GLX.base(TB, x, y, z, ry, 1); GLX.part('stat', g, TB, 0, 0, 0, rx, 0, rz, 0, 0, 0, sx, sy, sz, c, 0, 1, m); };
   const roots = (x, z, r, bc) => { for (let k = 0; k < 4; k++) { const a = sr() * 6.28; lay('fol', x + Math.cos(a) * r * .7, .22, z + Math.sin(a) * r * .7, -a + HP, 1.15, 0, r * .6, r * 2.2, r * .6, bc, 3); } };
   const pine = (x, z) => {
@@ -345,12 +345,12 @@ function repEnemy(e, dt) {
 }
 function enterZone(net) {
   G.inTown = false; G.away = null;
-  const h = G.hero, lvl = net ? net.lvl : h.level; const def = { type: 'zone', theme: 'forest', lvl, seed: net ? net.seed : (Math.random() * 1e9) | 0, name: ZONES[0].name };
+  const h = G.hero, lvl = net ? net.lvl : h.level, zd = zoneFor(net ? net.d : h.runs); const def = { type: 'zone', theme: zd.theme, lvl, seed: net ? net.seed : (Math.random() * 1e9) | 0, name: zd.name, depth: (net ? net.d | 0 : h.runs) + 1 };
   G.zone = genZone(def); const Z = G.zone; G.ents.length = 0; G.projs.length = 0; G.pp.length = 0; G.areas.length = 0; G.drops.length = 0; G.fx.length = 0; G.texts.length = 0; G.timers.length = 0; G.boss = null; G.streak = 0;
   P.buffs = []; computeStats(); buildStatic(Z); if (net) { for (const i of net.ents) addReplica(i); } else spawnAll(Z); BOT.path = null;
   P.x = Z.start[0]; P.z = Z.start[1]; P.y = 0; P.act = P.spin = P.dash = P.move = P.atk = P.inter = P.pick = null; P.dead = false; P.lastHit = -9; P.flaskCd = 0; P.buffs = []; P.cds = {}; computeStats(); P.hp = P.stats.maxLife; P.mana = CLASSES[h.cls].res.regen ? P.stats.maxMana : 0; P.flaskCd = 0; P.lastHit = -9;
   setEnv(Z); if (net && net.sync && net.pos) { P.x = net.pos[0]; P.z = net.pos[1]; }
-  G.state = 'play'; if (typeof UI !== 'undefined') UI.zoneBanner(def.name, 'Monster level ' + lvl); saveGame();
+  G.state = 'play'; if (typeof UI !== 'undefined') UI.zoneBanner(def.name, 'Floor ' + def.depth + ' · monster level ' + lvl); saveGame();
 }
 
 // ---------- town ----------
@@ -363,7 +363,7 @@ function genTown() {
   return Z;
 }
 function setEnv(Z) { const e = GLX.env, th = Z.th, n = Math.hypot(.55, .66, .42); e.sun = [.55 / n, .66 / n, .42 / n]; e.sunC = th.sunC; e.sky = th.sky; e.gnd = th.gnd; e.fog = GLX.col(th.fog); e.lightR = th.lightR; e.wet = th.wet === undefined ? .4 : th.wet; e.mist = th.mist === undefined ? .35 : th.mist; SFX.ambient(Object.keys(THEMES).find(k => THEMES[k] === th)); }
-function enterTown() {
+function enterTown() { goalDone('town');
   if (G.inTown || P.dead || G.state !== 'play') return; for (const e of G.ents) if (e.alive && e.awake && Math.hypot(e.x - P.x, e.z - P.z) < 16) { hint('You cannot leave while enemies are near.'); return; }
   G.away = { zone: G.zone, ents: G.ents, drops: G.drops, boss: G.boss, x: P.x, z: P.z, seed: G.zone.def.seed }; G.ents = []; G.drops = []; G.projs = []; G.pp = []; G.areas = []; G.fx = []; G.texts = []; G.timers = []; G.boss = null; G.streak = 0;
   G.zone = genTown(); G.inTown = true; buildStatic(G.zone); setEnv(G.zone); P.x = G.zone.start[0]; P.z = G.zone.start[1]; P.y = 0; P.rot = Math.PI; P.act = P.spin = P.dash = P.move = P.atk = P.inter = P.pick = null; BOT.path = null; P.hp = P.stats.maxLife;
@@ -424,7 +424,7 @@ function hitEnemy(e, sk, mult, noProc) {
   if (e.hp <= 0 || (!e.boss && s.cull && e.hp < e.maxHp * s.cull / 100)) killEnemy(e);
 }
 function killEnemy(e) {
-  if (!e.alive) return; e.alive = false; e.deadT = .45; const h = G.hero, s = P.stats; h.kills++;
+  if (!e.alive) return; e.alive = false; e.deadT = .45; const h = G.hero, s = P.stats; h.kills++; if (h.goals && !h.goals.kill) { h.goals.k = (h.goals.k || 0) + 1; if (h.goals.k >= 5) goalDone('kill'); } if (e.boss) goalDone('boss');
   let xp = 22 * Math.pow(1.13, e.lvl) * (e.a.xp || 1) * (e.elite === 1 ? 3 : e.elite === 2 ? 6 : 1); const diff = h.level - e.lvl; if (diff > 4) xp *= Math.max(.1, 1 - (diff - 4) * .15); gainXp(xp);
   G.streak++; G.streakT = 4; if (G.streak > G.bestStreak) G.bestStreak = G.streak; if (G.streak > (h.best || 0)) h.best = G.streak;
   dropLoot(e); burst(e.x, 1, e.z, e.md.c2, 14, 6); SFX.play('kill');
@@ -438,8 +438,12 @@ function killEnemy(e) {
     G.zone.objs.push({ kind: 'portal', x: e.x, z: e.z, name: 'Descend deeper', used: false }); UI.zoneBanner('Guardian slain', 'A great gate opens to the next floor'); ring(e.x, e.z, 0, 16, 1.2, 0x7ad0ff); ring(e.x, e.z, 0, 9, .8, 0xb48cff); burst(e.x, 2, e.z, 0x7ad0ff, 60, 12); G.shake = .9; SFX.play('shrine'); saveGame();
   }
 }
+// ---- first steps ----
+function goalDone(k) { const h = G.hero; if (!h || !h.goals || h.goals.all || h.goals[k]) return; h.goals[k] = 1; const g = GOALS.find(x => x[0] === k); SFX.play('shrine'); floatText(P.x, 3.2, P.z, '✓ ' + g[1], '#9effa8', 2, 16);
+  if (GOALS.every(x => h.goals[x[0]])) { h.goals.all = 1; if (typeof UI !== 'undefined') UI.zoneBanner('First steps complete', 'The deep is yours to explore'); SFX.play('level'); } saveGame(); }
+const blessed = () => { const h = G.hero; return !!h && !h.runs && h.level < 4; }; // newcomer's blessing: softer hits until the first guardian falls
 function dmgPlayer(v, el, src) {
-  if (P.dead || P.iframes > 0) return; const s = P.stats;
+  if (P.dead || P.iframes > 0) return; const s = P.stats; if (blessed()) v *= .6; if (src && src.name) P.killer = src.name; else if (!src) P.killer = '';
   if (Math.random() * 100 < s.dodgeT) { floatText(P.x, 2.6, P.z, 'Dodge', '#9fe', .7); return; }
   if (el === 'phys') v *= 1 - Math.min(.8, s.armorT / (s.armorT + 60 + v * 6)); else v *= 1 - (s['r' + el] || 0) / 100; v *= 1 - Math.min(50, s.dr) / 100; v = Math.max(1, Math.round(v));
   P.hp -= v; P.hurt = .25; P.lastHit = G.time; P.mana = Math.min(s.maxMana, P.mana + 2); G.shake = Math.min(.7, G.shake + .12 + v / s.maxLife); floatText(P.x, 2.6, P.z, '-' + v, '#ff5a4a', .9, 17); SFX.play('hurt');
@@ -456,6 +460,7 @@ function tryCast(slot, tx, tz) {
   P.mana -= sk.cost || 0; if (sk.cd) P.cds[id] = sk.cd * (1 - s.cdrT / 100);
   const sp = 1 + s.aspd / 100;
   if (sk.type === 'spin') { P.spin = { t: sk.dur, tk: 0, sk }; return true; }
+  if (slot > 0) goalDone('skill');
   if (sk.type === 'buff') { P.buffs = P.buffs.filter(b => b.n !== sk.n); P.buffs.push({ s: sk.s, t: sk.dur, n: sk.n }); computeStats(); ring(P.x, P.z, 0, 7, .5, 0xffb03a); SFX.play('shrine'); P.mana = Math.min(s.maxMana, P.mana + 20); return true; }
   P.rot = Math.atan2(tx - P.x, tz - P.z); const dur = sk.basic ? 1 / (s.wspd * sp * (sk.as || 1)) : (sk.ct || .35) / sp;
   P.act = { sk, id, t: 0, dur, fireAt: dur * .42, fired: false, tx, tz }; P.swing = 0; SFX.play('swing'); return true;

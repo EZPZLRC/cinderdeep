@@ -5,14 +5,15 @@ var SP = {}, known = new Set(), curTarget = null;
 var ST = { chase: 0, wind: 1, rec: 2, charge: 3 };
 function r2(v) { return Math.round(v * 100) / 100; }
 function entInfo(e) { return { id: e.id, md: e.md, arch: e.arch, x: r2(e.x), z: r2(e.z), rot: r2(e.rot), lvl: e.lvl, elite: e.elite, pack: e.pack, r: e.r, sc: e.sc, maxHp: e.maxHp, hp: Math.round(e.hp), dmg: e.dmg, spd: e.spd, name: e.name, mods: e.mods, boss: !!e.boss, awake: !!e.awake, noLoot: !!e.noLoot }; }
-function srvNewZone(lvl, nPlayers) {
-  const def = { type: 'zone', theme: 'forest', lvl: Math.max(1, lvl | 0), seed: (Math.random() * 1e9) | 0, name: ZONES[0].name };
+let depth = 0;
+function srvNewZone(lvl, nPlayers, next) {
+  if (next) depth++; const zd = zoneFor(depth), def = { type: 'zone', theme: zd.theme, lvl: Math.max(1, lvl | 0), seed: (Math.random() * 1e9) | 0, name: zd.name };
   G.zone = genZone(def); G.ents.length = 0; G.projs.length = 0; G.areas.length = 0; G.boss = null; spawnAll(G.zone);
   const k = 1 + .5 * Math.max(0, nPlayers - 1); known = new Set();
   for (const e of G.ents) { e.maxHp = Math.round(e.maxHp * k); e.hp = e.maxHp; known.add(e.id); }
-  return { t: 'zone', seed: def.seed, lvl: def.lvl, ents: G.ents.map(entInfo) };
+  return { t: 'zone', seed: def.seed, lvl: def.lvl, d: depth, ents: G.ents.map(entInfo) };
 }
-function srvState() { return { t: 'zone', seed: G.zone.def.seed, lvl: G.zone.def.lvl, cleared: !!G.zone.cleared, bossAt: G.zone.bossAt, ents: G.ents.filter(e => e.alive).map(entInfo) }; }
+function srvState() { return { t: 'zone', seed: G.zone.def.seed, lvl: G.zone.def.lvl, d: depth, cleared: !!G.zone.cleared, bossAt: G.zone.bossAt, ents: G.ents.filter(e => e.alive).map(entInfo) }; }
 dmgPlayer = function (v, el, src) { if (curTarget) __emit(curTarget.id, { t: 'dmg', v: Math.round(v), el: el, src: src ? src.id : 0 }); };
 addArea = function (o) { o.t = 0; G.areas.push(o); if (o.owner === 'e') __emit(null, { t: 'area', x: r2(o.x), z: r2(o.z), r: o.r, delay: o.delay, c: o.c }); return o; };
 eShoot = function (e, ang, spd, dmgM, el) {

@@ -1,5 +1,5 @@
 'use strict';
-const BUILD = '0006';
+const BUILD = '0007';
 const SLOTS = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring1', 'ring2'];
 const DROP_SLOTS = ['weapon', 'weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring', 'ring'];
 const AFF_ALIAS = { shoulders: 'chest', pants: 'chest', belt: 'helm', bracers: 'gloves', offhand: 'amulet' };
@@ -152,6 +152,10 @@ const CLASSES = {
   brawler: { n: 'Brawler', tag: 'Physical', d: 'Bare-knuckle martial artist. Very fast strikes, dashes and kicks; builds Spirit.', life: 115, lifeLv: 15, armor: 3, ms: 9.6, regen: 1.8, res: { n: 'Spirit', max: 100, decay: 2, c: 'radial-gradient(circle at 35% 30%,#fff4b0,#d0b020 55%,#6a5606)' }, wts: ['fist'], w: 'Cestus', skills: ['jab', 'hook', 'sweep', 'dstrike', 'cyclone', 'iron', 'palm', 'wave', 'seven'] },
   elementalist: { n: 'Elementalist', tag: 'Spell caster', d: 'Commands fire, frost and lightning. Fragile, but erases whole packs.', life: 85, lifeLv: 11, armor: 1.5, ms: 8.6, regen: .8, res: { n: 'Mana', max: 120, regen: 6, c: 'radial-gradient(circle at 35% 30%,#9ac8ff,#2a5ae0 55%,#0c1e6a)' }, wts: ['staff'], w: 'Staff', skills: ['firebolt', 'spark', 'frost', 'fdash', 'chain', 'mshield', 'meteor', 'blizz', 'inferno'] }
 };
+// The world changes as you go down: a new region every two floors.
+function zoneFor(depth) { return ZONES[Math.floor(Math.max(0, depth | 0) / 2) % ZONES.length]; }
+// First steps: a short checklist that teaches the game by doing.
+const GOALS = [['kill', 'Defeat 5 monsters'], ['skill', 'Use a skill'], ['equip', 'Equip an item you found'], ['town', 'Visit town'], ['boss', 'Slay the guardian of this floor']];
 // Skill choices: at each of these levels the hero must pick one skill out of two. Picks can be swapped for free in town.
 const TIER_LV = [1, 3, 6, 10];
 function skillTiers(cls) { const s = CLASSES[cls].skills.filter(id => !SKILLS[id].basic).sort((a, b) => SKILLS[a].lv - SKILLS[b].lv), out = []; for (let i = 0; i + 1 < s.length && out.length < TIER_LV.length; i += 2) out.push([s[i], s[i + 1]]); return out; }

@@ -175,6 +175,11 @@ body.tj #build{left:6px;right:auto;bottom:3px}
 #pickBtn{position:fixed;left:50%;top:22%;transform:translateX(-50%);z-index:24;padding:10px 18px;font-size:15px;border-color:#ffd84a;color:#fff;box-shadow:0 0 18px rgba(255,216,74,.55),0 2px 6px #000;animation:pulse 1.4s infinite}
 .srow.tier{cursor:pointer}
 @media (max-width:520px){#pick .pk2{gap:8px}.pcard{padding:10px 6px}.pcard .pi{font-size:32px}}
+#goals{position:fixed;left:14px;top:118px;width:250px;background:rgba(10,9,7,.78);border:1px solid var(--edge);border-radius:4px;padding:8px 10px;font-size:13px;line-height:1.5;pointer-events:none;z-index:7}
+#goals span{display:block;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold2);margin-bottom:2px}#goals div{color:#a99c80}#goals .ok{color:#7fd08a;text-decoration:line-through;text-decoration-color:#3f7a46}#goals .now{color:#fff;font-weight:600}#goals .how{margin-top:6px;padding-top:6px;border-top:1px solid var(--edge);color:#ffe9b0;font-size:12.5px}#goals .bl{margin-top:4px;color:#9fd8ff;font-size:11.5px}
+#deathBy{font-size:15px;color:#e8dcc0;margin-top:-6px;text-align:center;padding:0 16px}#deathTip{font-size:13px;color:#a99c80;max-width:420px;text-align:center;padding:0 16px;font-style:italic}
+@media (max-width:760px) and (orientation:portrait){#goals{top:auto;bottom:calc(264px + env(safe-area-inset-bottom));left:8px;width:min(230px,58vw);font-size:12px}body.tj #hints{bottom:auto;top:150px;right:150px}body.tj #chatlog{top:210px}}
+@media (max-height:480px){#goals{top:150px;left:8px;width:230px;font-size:11.5px;line-height:1.35;padding:5px 8px}#goals .bl,#goals span,#goals div:not(.now):not(.how){display:none}#goals .how{border:0;margin:0;padding:0}body.tj #chatlog{display:none}}
 </style>
 </head>
 <body>
@@ -183,6 +188,7 @@ body.tj #build{left:6px;right:auto;bottom:3px}
   <div id="top"><div class="n" id="tName"></div><div class="g" id="tGold"></div><div class="z" id="tZone"></div></div>
   <canvas id="mini" width="170" height="170"></canvas>
   <div id="questBox" class="hide"><span>Quest</span><div id="quest"></div></div>
+  <div id="goals" class="hide"></div>
   <div id="bossbar" class="hide"><div class="bn" id="bossName"></div><div class="bb"><div class="bf" id="bossFill"></div></div></div>
   <div id="banner"><div class="b1" id="ban1"></div><div class="b2" id="ban2"></div></div>
   <div id="streak" class="hide"><div class="s1" id="st1"></div><div class="s2">KILL STREAK</div><div class="s3" id="st3"></div></div>
@@ -207,7 +213,7 @@ body.tj #build{left:6px;right:auto;bottom:3px}
 <div id="set" class="hide"></div>
 <div id="tip" class="hide"></div>
 <div id="err" class="hide"></div>
-<div id="death" class="ov hide"><h1>You have fallen</h1><button class="big" id="revive">Rise again</button><button id="deathMenu">Exit to menu</button></div>
+<div id="death" class="ov hide"><h1>You have fallen</h1><div id="deathBy"></div><div id="deathTip"></div><button class="big" id="revive">Rise again · with a second wind</button><button id="deathMenu">Exit to menu</button></div>
 <div id="menu" class="ov">
   <h1>Cinderdeep</h1><div id="menuOn">Checking the server…</div>
   <div id="stage"></div>

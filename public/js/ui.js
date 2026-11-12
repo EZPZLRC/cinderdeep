@@ -5,7 +5,8 @@ const UI = (() => {
   let slow = .016, slowN = 0, banT = 0, invOpen = false, last = 0, skEls = [], frameN = 0;
   const U = { invDirty: true };
   U.zoneBanner = (a, b) => { $('ban1').textContent = a; $('ban2').textContent = b || ''; $('banner').classList.add('on'); banT = 3.4; };
-  U.showDeath = () => { $('death').classList.remove('hide'); };
+  const DTIPS = ['Health globes drop from slain monsters. Walk over them to heal.', 'Your potion refills on a short timer. Use it early, not at the last moment.', 'Red rings on the ground are about to explode. Step out of them.', 'Big monsters hit hard but slowly. Strike, then step back.', 'A shrine blesses you for 45 seconds. Fight the hard pack right after.', 'Town has a trader and an altar. Better gear makes every floor easier.'];
+  U.showDeath = () => { $('deathBy').textContent = (P.killer ? 'Slain by ' + P.killer : 'You were overwhelmed') + ' on floor ' + (G.zone.def.depth || 1) + ' · level ' + G.hero.level + ' · ' + G.hero.kills + ' monsters felled so far'; $('deathTip').textContent = DTIPS[Math.random() * DTIPS.length | 0]; $('death').classList.remove('hide'); };
 
   // ---- item icons ----
   const IC = {
@@ -244,6 +245,9 @@ const UI = (() => {
     }
     { const par = h.level >= MAX_LEVEL, bar = $('xp').firstElementChild; bar.style.width = clamp(par ? (h.pxp || 0) / paragonNeed(h.plvl || 0) * 100 : h.xp / xpNeed(h.level) * 100, 0, 100) + '%'; bar.style.background = par ? 'linear-gradient(90deg,#2a8ad0,#9ae0ff)' : ''; }
     if (G.tj) { const ue = $('bUse'); if (ue) { const o = nearObj(), t = o ? USE_LABEL[o.kind] || 'Use' : 'Loot', hot = !!o || G.drops.some(d => d.item && d.item.rar >= h.filter && Math.hypot(d.x - P.x, d.z - P.z) < 5); if (ue.dataset.t !== t) { ue.dataset.t = t; ue.firstElementChild.textContent = t; } ue.classList.toggle('hot', hot); } }
+    { const gl = h.goals, gb = $('goals'), show = !!gl && !gl.all && !G.inTown; gb.classList.toggle('hide', !show); if (show) { const key = GOALS.map(g => gl[g[0]] ? 1 : 0).join('') + (gl.k || 0) + (blessed() ? 'b' : ''); if (gb.dataset.k !== key) { gb.dataset.k = key; const nx = GOALS.find(g => !gl[g[0]]), T = G.tj || IN.touch;
+      const HOW = { kill: T ? 'Steer with the left stick. Hold the big button to attack.' : 'Click the ground to move. Click a monster to attack it.', skill: T ? 'Tap one of the round skill buttons next to attack.' : 'Right-click, or press Q or W, to use a skill.', equip: T ? 'Tap Loot near a drop, open Bag, tap the item, then Equip.' : 'Click a drop to pick it up, press I, then right-click the item.', town: T ? 'Tap Town to step out, sell loot and use the altar.' : 'Press T to visit town: stash, trader and altar.', boss: 'Follow the yellow path to the guardian and bring it down.' };
+      gb.innerHTML = '<span>First steps</span>' + GOALS.map(g => `<div class="${gl[g[0]] ? 'ok' : g === nx ? 'now' : ''}">${gl[g[0]] ? '✓' : '○'} ${g[1]}${g[0] === 'kill' && !gl.kill ? ' (' + (gl.k || 0) + '/5)' : ''}</div>`).join('') + (nx ? `<div class="how">${HOW[nx[0]]}</div>` : '') + (blessed() ? '<div class="bl">Newcomer\'s blessing: you take less damage until the guardian falls.</div>' : ''); } } }
     $('pickBtn').classList.toggle('hide', pendingPick(h) < 0 || !$('pick').classList.contains('hide'));
     $('tName').textContent = cls.n + ' · Level ' + h.level + (h.level >= MAX_LEVEL ? ' · Paragon ' + (h.plvl || 0) : '') + (G.online ? ' · Party ' + NET.room + ' (' + (NET.count || 1) + ')' : '');
     { const ids = G.online ? Object.keys(NET.names).filter(i => +i !== NET.id) : [], key = ids.map(i => i + NET.names[i] + (NET.peers[i] ? 1 : 0)).join('|'), pb = $('party'); pb.classList.toggle('hide', !ids.length);
@@ -448,6 +452,7 @@ const UI = (() => {
   $('revive').onclick = () => {
     const Z = G.zone; P.dead = false; P.x = Z.start[0]; P.z = Z.start[1]; P.hp = P.stats.maxLife; P.mana = 0; P.iframes = 2; P.move = P.atk = P.inter = P.pick = null; G.areas.length = 0; G.projs.length = 0;
     if (G.boss && !G.online) { G.boss.hp = G.boss.maxHp; G.boss.awake = false; G.boss.st = 'chase'; G.boss.x = Z.bossAt[0]; G.boss.z = Z.bossAt[1]; }
+    P.buffs = P.buffs.filter(b => b.n !== 'Second wind'); P.buffs.push({ s: { dmg: 20, ms: 10 }, t: 30, n: 'Second wind' }); computeStats(); ring(P.x, P.z, 0, 8, .7, 0xffd84a); hint('Second wind: you hit harder and move faster for 30 seconds.');
     $('death').classList.add('hide');
   };
   function frame(t) {
