@@ -213,13 +213,24 @@ const UI = (() => {
   function renderSkl() {
     const h = G.hero; let html = '<div class="ph"><h3>Skills</h3><button class="xb" data-x="skl" aria-label="Close">×</button></div><div class="tabs">' + [0, 1, 2, 3].map(i => `<button data-s="${i}" class="${i === sklSlot ? 'on' : ''}">${SLOT_KEY[i]}<br><span>${h.bar[i] ? SKILLS[h.bar[i]].i : '＋'}</span></button>`).join('') + '</div><div class="list">';
     const RN = CLASSES[h.cls].res.n; for (const id of CLASSES[h.cls].skills) {
-      const sk = SKILLS[id]; if (!!sk.basic !== (sklSlot === 0)) continue; const locked = h.level < sk.lv, on = h.bar[sklSlot] === id, else_ = !on && h.bar.includes(id);
+      const sk = SKILLS[id]; if (!!sk.basic !== (sklSlot === 0) || !knows(h, id)) continue; const locked = false, on = h.bar[sklSlot] === id, else_ = !on && h.bar.includes(id);
       html += `<div class="srow${on ? ' on' : ''}${locked ? ' lock' : ''}" data-k="${id}"><div class="si">${sk.i}</div><div><b>${sk.n}</b> <span class="sm">${locked ? 'Unlocks at level ' + sk.lv : (sk.cost ? sk.cost + ' ' + RN : sk.gen ? 'Builds ' + RN : 'Free') + (sk.cd ? ' · ' + sk.cd + 's cooldown' : '') + (on ? ' · equipped here' : else_ ? ' · on ' + SLOT_KEY[h.bar.indexOf(id)] : '')}</span><div class="sd">${sk.d}</div></div></div>`;
     }
-    $('skl').innerHTML = html + '</div><div class="sm" style="margin-top:8px">Pick a slot, then pick a skill. You can swap at any time, even mid-fight.</div>';
+    html += '</div><div class="ph" style="margin-top:10px"><h3>Skill choices</h3></div><div class="list">';
+    skillTiers(h.cls).forEach((t, i) => { const pk = h.picks[i], open = h.level >= TIER_LV[i]; html += `<div class="srow tier${open ? '' : ' lock'}" data-t="${i}"><div class="si">${pk ? SKILLS[pk].i : open ? '?' : '🔒'}</div><div><b>Level ${TIER_LV[i]} choice</b> <span class="sm">${!open ? 'Unlocks at level ' + TIER_LV[i] : pk ? SKILLS[pk].n + ' chosen over ' + SKILLS[t.find(x => x !== pk)].n : 'Waiting for your pick'}</span>${open ? `<div class="sd">${pk ? (G.inTown ? 'Tap to change this choice.' : 'Can be changed for free in town.') : 'Tap to choose.'}</div>` : ''}</div></div>`; });
+    $('skl').innerHTML = html + '</div><div class="sm" style="margin-top:8px">Pick a slot, then pick a skill you have learned. You can re-slot at any time, even mid-fight.</div>';
   }
   function toggleSkl(v, slot) { sklOpen = v === undefined ? !sklOpen : v; if (sklOpen && townMode) closeTown(); if (slot !== undefined) sklSlot = slot; $('skl').classList.toggle('hide', !sklOpen); if (sklOpen) renderSkl(); }
-  $('skl').addEventListener('click', e => { if (e.target.closest('[data-x]')) { toggleSkl(false); return; } const t = e.target.closest('[data-s]'); if (t) { sklSlot = +t.dataset.s; renderSkl(); return; } const r = e.target.closest('.srow'); if (r && setSkill(sklSlot, r.dataset.k)) { buildBar(); renderSkl(); } });
+  $('skl').addEventListener('click', e => { if (e.target.closest('[data-x]')) { toggleSkl(false); return; } const t = e.target.closest('[data-s]'); if (t) { sklSlot = +t.dataset.s; renderSkl(); return; } const tr = e.target.closest('.srow.tier'); if (tr) { const i = +tr.dataset.t; if (G.hero.level >= TIER_LV[i] && (!G.hero.picks[i] || G.inTown)) openPick(i); else if (G.hero.picks[i]) hint('Skill choices can be changed in town.'); return; } const r = e.target.closest('.srow'); if (r && setSkill(sklSlot, r.dataset.k)) { buildBar(); renderSkl(); } });
+  // ---- the skill choice: two cards, pick one ----
+  function openPick(i) {
+    const h = G.hero; if (i === undefined) i = pendingPick(h); if (i < 0) { $('pick').classList.add('hide'); return; } const t = skillTiers(h.cls)[i], RN = CLASSES[h.cls].res.n, cur = h.picks[i];
+    $('pick').innerHTML = `<div class="box"><div class="ph"><h3>${cur ? 'Change your level ' + TIER_LV[i] + ' skill' : 'Level ' + TIER_LV[i] + ' · choose a skill'}</h3><button class="xb" data-x="1" aria-label="Decide later">×</button></div><div class="pk2">` + t.map(id => { const sk = SKILLS[id]; return `<button class="pcard${cur === id ? ' on' : ''}" data-p="${id}" data-i="${i}"><div class="pi">${sk.i}</div><b>${sk.n}</b><span class="sm">${(sk.cost ? sk.cost + ' ' + RN : sk.gen ? 'Builds ' + RN : 'Free') + (sk.cd ? ' · ' + sk.cd + 's cooldown' : '')}</span><div class="sd">${sk.d}</div><div class="pgo">${cur === id ? 'Current choice' : 'Choose'}</div></button>`; }).join('') + `</div><div class="sm" style="margin-top:10px;text-align:center">You take one and leave the other. You can swap this choice for free in town.</div></div>`;
+    $('pick').classList.remove('hide');
+  }
+  U.openPick = openPick;
+  $('pick').addEventListener('click', e => { if (e.target.closest('[data-x]')) { $('pick').classList.add('hide'); return; } const c = e.target.closest('[data-p]'); if (!c) return; if (pickSkill(+c.dataset.i, c.dataset.p)) { if (sklOpen) renderSkl(); openPick(); } });
+  $('pickBtn').onclick = () => openPick();
   U.iconSvg = it => iconSvg(it);
   U.buildBar = () => { buildBar(); if (sklOpen) renderSkl(); };
   function hud(dt) {
@@ -233,6 +244,7 @@ const UI = (() => {
     }
     { const par = h.level >= MAX_LEVEL, bar = $('xp').firstElementChild; bar.style.width = clamp(par ? (h.pxp || 0) / paragonNeed(h.plvl || 0) * 100 : h.xp / xpNeed(h.level) * 100, 0, 100) + '%'; bar.style.background = par ? 'linear-gradient(90deg,#2a8ad0,#9ae0ff)' : ''; }
     if (G.tj) { const ue = $('bUse'); if (ue) { const o = nearObj(), t = o ? USE_LABEL[o.kind] || 'Use' : 'Loot', hot = !!o || G.drops.some(d => d.item && d.item.rar >= h.filter && Math.hypot(d.x - P.x, d.z - P.z) < 5); if (ue.dataset.t !== t) { ue.dataset.t = t; ue.firstElementChild.textContent = t; } ue.classList.toggle('hot', hot); } }
+    $('pickBtn').classList.toggle('hide', pendingPick(h) < 0 || !$('pick').classList.contains('hide'));
     $('tName').textContent = cls.n + ' · Level ' + h.level + (h.level >= MAX_LEVEL ? ' · Paragon ' + (h.plvl || 0) : '') + (G.online ? ' · Party ' + NET.room + ' (' + (NET.count || 1) + ')' : '');
     { const ids = G.online ? Object.keys(NET.names).filter(i => +i !== NET.id) : [], key = ids.map(i => i + NET.names[i] + (NET.peers[i] ? 1 : 0)).join('|'), pb = $('party'); pb.classList.toggle('hide', !ids.length);
       if (pb.dataset.k !== key) { pb.dataset.k = key; pb.innerHTML = '<div class="pth">Tap to teleport</div>'; for (const i of ids) { const b = document.createElement('button'); b.textContent = '➜ ' + NET.names[i]; if (!NET.peers[i]) b.className = 'far'; b.onclick = () => teleportTo(+i); pb.appendChild(b); } }
@@ -389,7 +401,7 @@ const UI = (() => {
   });
   $('build').textContent = 'Build ' + BUILD; document.title = 'Cinderdeep · build ' + BUILD;
   $('bSet').onclick = () => toggleSet(); $('mSet').onclick = () => toggleSet(); loadSet();
-  function toMenu() { if (G.state !== 'play') return; menuBuilt = false; saveGame(); NET.close(); G.state = 'menu'; G.auto = false; G.speed = 1; G.inTown = false; G.away = null; closeTown(); toggleInv(false); toggleSkl(false); toggleSet(false); closeChat(); $('chatlog').classList.add('hide'); $('onl').classList.add('hide'); unpin(); $('game').classList.add('hide'); $('death').classList.add('hide'); $('menu').classList.remove('hide'); $('menuMsg').textContent = 'Pick a hero, carve through the Blighted Hollow, slay its guardian, and take the portal deeper.'; renderClasses(); }
+  function toMenu() { $('pick').classList.add('hide'); if (G.state !== 'play') return; menuBuilt = false; saveGame(); NET.close(); G.state = 'menu'; G.auto = false; G.speed = 1; G.inTown = false; G.away = null; closeTown(); toggleInv(false); toggleSkl(false); toggleSet(false); closeChat(); $('chatlog').classList.add('hide'); $('onl').classList.add('hide'); unpin(); $('game').classList.add('hide'); $('death').classList.add('hide'); $('menu').classList.remove('hide'); $('menuMsg').textContent = 'Pick a hero, carve through the Blighted Hollow, slay its guardian, and take the portal deeper.'; renderClasses(); }
   $('bMenu').onclick = toMenu; $('deathMenu').onclick = toMenu; $('bTown').onclick = $('tTown').onclick = () => { if (G.inTown) leaveTown(); else enterTown(); }; $('chatX').onclick = closeChat;
   document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });   // so Space, Enter and letter keys never re-press the last button
   $('bInv').onclick = () => { toggleSkl(false); toggleInv(); }; $('bSkl').onclick = () => { toggleInv(false); toggleSkl(); };
@@ -400,6 +412,7 @@ const UI = (() => {
     G.hero = hero; SFX.unlock(); P.hp = 1e9; U.invDirty = true; menuBuilt = false;
     if (net) { $('menuMsg').textContent = 'Connecting to the server…'; NET.connect(net.name, net.room); return; }
     $('menu').classList.add('hide'); $('game').classList.remove('hide'); buildBar(); enterZone();
+    setTimeout(() => { if (G.state !== 'menu' && G.hero && pendingPick(G.hero) >= 0) openPick(); }, 700);
   }
   U.netZone = () => { closeTown(); $('menu').classList.add('hide'); $('game').classList.remove('hide'); $('death').classList.add('hide'); buildBar(); };
   U.netFail = msg => { $('menu').classList.remove('hide'); $('menuMsg').textContent = msg; };

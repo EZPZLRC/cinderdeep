@@ -147,7 +147,7 @@ function dropFromInv(i) { const h = G.hero, it = h.inv[i]; if (!it) return; h.in
 // ---------- hero ----------
 function newHero(cls) {
   cls = CLASSES[cls] ? cls : 'warden'; const c = CLASSES[cls], sk = c.skills;
-  const h = { v: 1, name: c.n, cls, level: 1, xp: 0, gold: 0, inv: new Array(BAG_N).fill(null), bagV: 2, eq: {}, bar: [sk[0], sk.find(id => !SKILLS[id].basic && SKILLS[id].lv === 1) || null, null, null], filter: 0, kills: 0, runs: 0, best: 0 };
+  const h = { v: 1, name: c.n, cls, level: 1, xp: 0, gold: 0, inv: new Array(BAG_N).fill(null), bagV: 2, eq: {}, bar: [sk[0], null, null, null], picks: [null, null, null, null], filter: 0, kills: 0, runs: 0, best: 0 };
   h.eq.weapon = makeItem(1, 'weapon', 0, c.w); return h;
 }
 function calcStats(eq) {
@@ -184,7 +184,7 @@ function gainXp(v) {
   h.xp += v;
   while (h.level < MAX_LEVEL && h.xp >= xpNeed(h.level)) {
     h.xp -= xpNeed(h.level); h.level++; computeStats(); P.hp = P.stats.maxLife; P.mana = P.stats.maxMana; SFX.play('level'); ring(P.x, P.z, 0, 9, .7, 0xffd84a); burst(P.x, 1.5, P.z, 0xffd84a, 30, 7); if (h.level >= MAX_LEVEL) { h.pxp = h.xp; h.xp = 0; hint('Level 60! From here you earn Paragon levels with no limit.'); }
-    floatText(P.x, 3, P.z, 'LEVEL ' + h.level, '#ffd84a', 1.8, 22); for (const id of CLASSES[h.cls].skills) if (SKILLS[id].lv === h.level) { const sk = SKILLS[id]; let i = sk.basic ? -1 : h.bar.indexOf(null); if (i > 0) { h.bar[i] = id; hint('New skill: ' + sk.n + ' — placed on ' + SLOT_KEY[i] + '.'); } else hint('New skill: ' + sk.n + ' — open Skills to slot it.'); if (typeof UI !== 'undefined') UI.buildBar(); }
+    floatText(P.x, 3, P.z, 'LEVEL ' + h.level, '#ffd84a', 1.8, 22); if (pendingPick(h) >= 0) { if (G.auto) { const i = pendingPick(h); pickSkill(i, skillTiers(h.cls)[i][Math.random() * 2 | 0]); } else if (typeof UI !== 'undefined') UI.openPick(); }
   }
 }
 function saveGame() { try { localStorage.setItem(SAVE_KEY + '_' + G.hero.cls, JSON.stringify(G.hero)); if (G.stash) localStorage.setItem(SAVE_KEY + '_stash', JSON.stringify(G.stash)); } catch (e) { } }
@@ -196,6 +196,7 @@ function loadGame(cls) {
       let m = 0; for (const it of h.inv) if (it) m = Math.max(m, it.id); for (const k in h.eq) m = Math.max(m, h.eq[k].id); itemId = Math.max(itemId, m + 1);
       if (h.bagV !== 2 || h.inv.length !== BAG_N) { const old = h.inv.filter(x => x).sort((a, b) => b.rar - a.rar); h.inv = new Array(BAG_N).fill(null); for (const it of old) if (!bagPut(h.inv, it)) h.gold += itemValue(it); h.bagV = 2; }
       const rd = it => { if (it && it.aff) for (const a of it.aff) a.v = Math.max(1, Math.round(a.v)); }; h.inv.forEach(rd); for (const k in h.eq) rd(h.eq[k]);
+      if (!h.picks) { h.picks = skillTiers(cls).map(t => t.find(id => (h.bar || []).includes(id)) || null); if (h.bar) h.bar = h.bar.map((id, i) => i === 0 || (id && h.picks.includes(id)) ? id : null); }
       const sk = CLASSES[cls].skills; if (!h.bar || h.bar.some(id => id && !sk.includes(id))) { h.bar = [sk[0], null, null, null]; for (const id of sk) if (!SKILLS[id].basic && SKILLS[id].lv <= h.level) { const i = h.bar.indexOf(null); if (i > 0) h.bar[i] = id; } }
       return h;
     }
@@ -617,8 +618,17 @@ function updPlayer(dt) {
     if (moved < st * .15) { if (P.move && !IN.lmb) P.move = null; } else { P.moving = true; P.walk += moved * 1.5; }
   }
 }
+// ---- skill choices ----
+function knows(h, id) { const sk = SKILLS[id]; return !!sk && (sk.basic ? CLASSES[h.cls].skills.includes(id) : (h.picks || []).includes(id)); }
+function pendingPick(h) { const t = skillTiers(h.cls); for (let i = 0; i < t.length; i++) if (h.level >= TIER_LV[i] && !h.picks[i]) return i; return -1; }
+function pickSkill(i, id) {
+  const h = G.hero, t = skillTiers(h.cls)[i]; if (!t || !t.includes(id) || h.level < TIER_LV[i]) return false; const old = h.picks[i]; if (old === id) return true;
+  if (old && !G.inTown) { hint('Skill choices can be changed in town.'); return false; }
+  h.picks[i] = id; let j = old ? h.bar.indexOf(old) : -1; if (j < 1) j = h.bar.indexOf(null, 1); if (j > 0) h.bar[j] = id; else if (old) { const k = h.bar.indexOf(old); if (k > 0) h.bar[k] = null; }
+  SFX.play('shrine'); hint((old ? 'Swapped to ' : 'Learned ') + SKILLS[id].n + (j > 0 ? ' — on ' + SLOT_KEY[j] + '.' : ' — open Skills to slot it.')); if (typeof UI !== 'undefined') UI.buildBar(); saveGame(); return true;
+}
 function setSkill(slot, id) {
-  const h = G.hero, sk = SKILLS[id]; if (!sk || h.level < sk.lv) return false; if (!!sk.basic !== (slot === 0)) return false;
+  const h = G.hero, sk = SKILLS[id]; if (!sk || !knows(h, id)) return false; if (!!sk.basic !== (slot === 0)) return false;
   const j = h.bar.indexOf(id); if (j === slot) return true; if (j >= 0) h.bar[j] = h.bar[slot]; h.bar[slot] = id; SFX.play('pickup'); saveGame(); return true;
 }
 function giveItem(i) {
@@ -687,6 +697,7 @@ function updEnemy(e, dt) {
 }
 function update(dt) {
   if (G.hitStop > 0) { G.hitStop -= dt; dt *= .12; } // a heavy blow lands: the world holds its breath for a few frames
+  if (G.auto && G.hero && G.hero.picks) { const i = pendingPick(G.hero); if (i >= 0) pickSkill(i, skillTiers(G.hero.cls)[i][Math.random() * 2 | 0]); }
   SFX.ambTick(dt); G.time += dt; if (G.shake > 0) G.shake = Math.max(0, G.shake - dt * 1.8);
   P.mv += ((P.moving ? 1 : 0) - P.mv) * Math.min(1, dt * 12);
   updPlayer(dt); if (G.online) NET.tick(dt); updGps(dt);
