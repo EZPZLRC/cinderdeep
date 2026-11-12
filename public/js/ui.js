@@ -269,7 +269,7 @@ const UI = (() => {
       ctx.fillStyle = hov ? 'rgba(60,50,30,.95)' : 'rgba(0,0,0,.78)'; ctx.fillRect(r.x, r.y, r.w, r.h); ctx.strokeStyle = RAR[it.rar].c; ctx.lineWidth = it.rar >= 2 ? 1.5 : .75; ctx.strokeRect(r.x + .5, r.y + .5, r.w - 1, r.h - 1);
       ctx.fillStyle = RAR[it.rar].c; ctx.fillText(it.name, r.x + r.w / 2, r.y + 10.5); G.labels.push(r);
     }
-    for (const t of G.texts) { const sp = GLX.toScreen(t.x, t.y, t.z); if (!sp) continue; ctx.globalAlpha = clamp(t.life / t.max * 2, 0, 1); txt(t.txt, sp[0], sp[1], t.col, '700 ' + t.size + 'px system-ui,sans-serif'); }
+    for (const t of G.texts) { const sp = GLX.toScreen(t.x, t.y, t.z); if (!sp) continue; ctx.globalAlpha = clamp(t.life / t.max * 2, 0, 1); txt(t.txt, sp[0], sp[1], t.col, '700 ' + Math.round(t.size * (1 + .5 * clamp((t.life / t.max - .78) / .22, 0, 1))) + 'px system-ui,sans-serif'); }
     ctx.globalAlpha = 1;
     if (G.online && !G.inTown) for (const id in NET.peers) { const q = NET.peers[id]; if (q.dead) continue; const sp = GLX.toScreen(q.x, 2.9, q.z); if (!sp) continue; txt(q.name + ' · ' + (q.lvl || 1), sp[0], sp[1] - 8, '#9fd0ff', '600 12px system-ui,sans-serif'); ctx.fillStyle = 'rgba(0,0,0,.7)'; ctx.fillRect(sp[0] - 23, sp[1] + 1, 46, 5); ctx.fillStyle = '#4ad06a'; ctx.fillRect(sp[0] - 22, sp[1] + 2, 44 * clamp((q.hp || 0) / 100, 0, 1), 3); }
     if (G.online && !G.inTown) for (const id in NET.peers) {

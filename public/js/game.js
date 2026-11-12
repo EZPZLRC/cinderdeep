@@ -50,7 +50,25 @@ const SFX = (() => {
       }
     } catch (e) { }
   }
-  return { unlock: ctx, play, toggle() { mute = !mute; return mute; }, vol(v) { master = v; mute = v <= 0; } };
+  // ambient bed: filtered noise that breathes like wind, plus sparse one-shots that suit the zone
+  let amb = null, ambT = 2, ambKind = '', ambLvl = 0;
+  const setAmb = () => { if (amb && ac) amb.g.gain.setTargetAtTime(mute ? 0 : ambLvl * master, ac.currentTime, .8); };
+  function ambient(kind) {
+    ambKind = kind || ''; const a = ctx(); if (!a) return;
+    if (!nb) { nb = a.createBuffer(1, a.sampleRate, a.sampleRate); const ch = nb.getChannelData(0); for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1; }
+    if (!amb) { try { const src = a.createBufferSource(); src.buffer = nb; src.loop = true; const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 300; const g = a.createGain(); g.gain.value = 0; src.connect(lp); lp.connect(g); g.connect(a.destination); src.start(); const lfo = a.createOscillator(), lg = a.createGain(); lfo.frequency.value = .09; lg.gain.value = 110; lfo.connect(lg); lg.connect(lp.frequency); lfo.start(); amb = { lp, g }; } catch (e) { amb = null; return; } }
+    const p = { forest: [520, .05], town: [420, .032], crypt: [190, .06], lava: [150, .085], ice: [900, .055], void: [260, .05] }[ambKind] || [300, .04];
+    amb.lp.frequency.setTargetAtTime(p[0], a.currentTime, 1.2); ambLvl = p[1]; setAmb();
+  }
+  function ambTick(dt) {
+    if (!ac || mute || !ambKind) return; ambT -= dt; if (ambT > 0) return; ambT = 1.6 + Math.random() * 4.5; const k = ambKind;
+    if (k === 'forest' || k === 'town') { if (Math.random() < .6) { const f = 3300 + Math.random() * 900; for (let i = 0; i < 3; i++) tone(f, .05, 'sine', .011, 1.02, i * .09); } else { const f = 1500 + Math.random() * 700; tone(f, .16, 'sine', .014, 1.25); tone(f * 1.2, .12, 'sine', .012, .85, .2); } }
+    else if (k === 'crypt') { tone(900 + Math.random() * 600, .09, 'sine', .028, .5); if (Math.random() < .3) tone(55, 2.4, 'sine', .03, .97); }
+    else if (k === 'lava') { noise(.05 + Math.random() * .08, .045, 900 + Math.random() * 1500); if (Math.random() < .4) tone(48, 1.8, 'sawtooth', .018, .8); }
+    else if (k === 'ice') tone(2200 + Math.random() * 1400, .5, 'sine', .009, .97);
+    else tone(70 + Math.random() * 30, 2.5, 'sine', .028, 1.1);
+  }
+  return { unlock: ctx, play, ambient, ambTick, toggle() { mute = !mute; setAmb(); return mute; }, vol(v) { master = v; mute = v <= 0; setAmb(); } };
 })();
 
 // ---------- items ----------
@@ -343,7 +361,7 @@ function genTown() {
   Z.objs.push({ kind: 'stash', x: cx, z: cz - 13, name: 'Stash', used: false }, { kind: 'vendor', x: cx - 13, z: cz - 2, name: 'Mirel the Trader', used: false }, { kind: 'altar', x: cx + 13, z: cz - 2, name: 'Altar of Embers', used: false }, { kind: 'tportal', x: cx, z: cz + 14, name: 'Return to the Hollow', used: false });
   return Z;
 }
-function setEnv(Z) { const e = GLX.env, th = Z.th, n = Math.hypot(.55, .66, .42); e.sun = [.55 / n, .66 / n, .42 / n]; e.sunC = th.sunC; e.sky = th.sky; e.gnd = th.gnd; e.fog = GLX.col(th.fog); e.lightR = th.lightR; }
+function setEnv(Z) { const e = GLX.env, th = Z.th, n = Math.hypot(.55, .66, .42); e.sun = [.55 / n, .66 / n, .42 / n]; e.sunC = th.sunC; e.sky = th.sky; e.gnd = th.gnd; e.fog = GLX.col(th.fog); e.lightR = th.lightR; e.wet = th.wet === undefined ? .4 : th.wet; e.mist = th.mist === undefined ? .35 : th.mist; SFX.ambient(Object.keys(THEMES).find(k => THEMES[k] === th)); }
 function enterTown() {
   if (G.inTown || P.dead || G.state !== 'play') return; for (const e of G.ents) if (e.alive && e.awake && Math.hypot(e.x - P.x, e.z - P.z) < 16) { hint('You cannot leave while enemies are near.'); return; }
   G.away = { zone: G.zone, ents: G.ents, drops: G.drops, boss: G.boss, x: P.x, z: P.z, seed: G.zone.def.seed }; G.ents = []; G.drops = []; G.projs = []; G.pp = []; G.areas = []; G.fx = []; G.texts = []; G.timers = []; G.boss = null; G.streak = 0;
@@ -397,7 +415,8 @@ function hitEnemy(e, sk, mult, noProc) {
   if (sk.el === 'fire') { e.burn = Math.max(e.burn, v * .15); e.burnT = 3; } else if (sk.el === 'cold') e.chill = 2.5; else if (sk.el === 'light') e.shock = 3;
   if (s.lifeOnHit) P.hp = Math.min(s.maxLife, P.hp + s.lifeOnHit); if (s.leech) P.hp = Math.min(s.maxLife, P.hp + v * s.leech / 100);
   if (!G.online && !e.boss && e.arch !== 'brute') { const dx = e.x - P.x, dz = e.z - P.z, l = Math.hypot(dx, dz) || 1; moveEnt(e, dx / l * .4, dz / l * .4, e.r); }
-  burst(e.x, 1.1 * e.sc, e.z, d.crit ? 0xffe14a : EL_COL[sk.el], d.crit ? 9 : 5, 5);
+  burst(e.x, 1.1 * e.sc, e.z, d.crit ? 0xffe14a : EL_COL[sk.el], d.crit ? 12 : 6, d.crit ? 7 : 5);
+  { const heavy = sk.type === 'melee' || !!sk.land || sk.type === 'nova'; G.fx.push({ flash: 1, x: e.x, y: 1.1 * e.sc, z: e.z, r: d.crit ? 3.2 : heavy ? 2.2 : 1.4, life: .12, max: .12, c: GLX.col(d.crit ? 0xfff2b0 : EL_COL[sk.el]) }); if (heavy && !G.auto) G.hitStop = Math.max(G.hitStop || 0, d.crit ? .085 : .04); if (d.crit) G.shake = Math.min(.5, G.shake + .12); }
   if (G.time - G.hitSfx > .05) { G.hitSfx = G.time; SFX.play(d.crit ? 'crit' : 'hit'); }
   if (!noProc && s.procLight && Math.random() * 100 < s.procLight) addArea({ x: e.x, z: e.z, r: 2.6, delay: .15, owner: 'p', sk: { el: 'light', m: 1.5 }, c: 0xfff07a, proc: 1 });
   if (G.online) { const cl = !e.boss && s.cull && e.hp < e.maxHp * s.cull / 100; NET.send({ t: 'hit', id: e.id, v: cl ? e.maxHp * 2 : v, el: sk.el, fz: sk.freeze || 0 }); if (e.hp < 0) e.hp = 0; return; }
@@ -667,7 +686,8 @@ function updEnemy(e, dt) {
   }
 }
 function update(dt) {
-  G.time += dt; if (G.shake > 0) G.shake = Math.max(0, G.shake - dt * 1.8);
+  if (G.hitStop > 0) { G.hitStop -= dt; dt *= .12; } // a heavy blow lands: the world holds its breath for a few frames
+  SFX.ambTick(dt); G.time += dt; if (G.shake > 0) G.shake = Math.max(0, G.shake - dt * 1.8);
   P.mv += ((P.moving ? 1 : 0) - P.mv) * Math.min(1, dt * 12);
   updPlayer(dt); if (G.online) NET.tick(dt); updGps(dt);
   if (G.auto && P.dead) { BOT.rv += dt; if (BOT.rv > 2.5) { BOT.rv = 0; UI.revive(); } }
@@ -698,7 +718,7 @@ function update(dt) {
   }
   // drops
   for (const d of G.drops.slice()) { d.t += dt; if (d.globe) { if (Math.hypot(d.x - P.x, d.z - P.z) < 1.8 && P.hp < P.stats.maxLife) pickup(d); } else if (d.gold && d.t > .3) { const dd = Math.hypot(d.x - P.x, d.z - P.z); if (dd < 4.5) { d.x += (P.x - d.x) / dd * 14 * dt; d.z += (P.z - d.z) / dd * 14 * dt; if (dd < .9) pickup(d); } } }
-  for (let i = G.fx.length - 1; i >= 0; i--) { const f = G.fx[i]; f.life -= dt; if (f.life <= 0) { G.fx.splice(i, 1); continue; } if (!f.ring && !f.slash && !f.bolt) { f.x += f.vx * dt; f.y += f.vy * dt; f.z += f.vz * dt; f.vy -= 14 * dt; if (f.y < .05) { f.y = .05; f.vy *= -.3; } } }
+  for (let i = G.fx.length - 1; i >= 0; i--) { const f = G.fx[i]; f.life -= dt; if (f.life <= 0) { G.fx.splice(i, 1); continue; } if (!f.ring && !f.slash && !f.bolt && !f.flash) { f.x += f.vx * dt; f.y += f.vy * dt; f.z += f.vz * dt; f.vy -= 14 * dt; if (f.y < .05) { f.y = .05; f.vy *= -.3; } } }
   for (let i = G.texts.length - 1; i >= 0; i--) { const t = G.texts[i]; t.life -= dt; t.y += dt * 1.6; if (t.life <= 0) G.texts.splice(i, 1); }
   for (let i = G.hints.length - 1; i >= 0; i--) { G.hints[i].life -= dt; if (G.hints[i].life <= 0) G.hints.splice(i, 1); }
   // fog of war
@@ -732,7 +752,7 @@ function drawHero(o, self) {
   // legs or robe
   if (L.robe) { p('taper', 0, .62, 0, 0, 0, 0, 0, 0, 0, .86, 1.2, .8, ac, am); p('cyl', 0, .08, 0, 0, 0, 0, 0, 0, 0, .9, .1, .84, trim, 4, te); p('box', 0, .62, .37, .12, 0, 0, 0, 0, 0, .2, 1.0, .04, trim, 0, te); for (const sd of [1, -1]) p('sphere', .16 * sd, .08, .12 + sd * lg * .25, 0, 0, 0, 0, 0, 0, .2, .14, .38, bm ? bm[0] : skin, bm ? bm[1] : 0); }
   else for (const sd of [1, -1]) {
-    const r = sd * lg + air * (sd > 0 ? 1 : .5), shc = bm ? bm[0] : g.pants ? pm[0] : skin, shm = bm ? bm[1] : 0; p('taper', .16 * sd, .98, 0, r, 0, 0, 0, -.25, 0, .3, -.54, .32, pm[0], pm[1]); p('sphere', .16 * sd, .98, 0, r, 0, 0, 0, -.5, .03, .22, .22, .24, g.pants ? pm[0] : skin, g.pants ? pm[1] : 0); p('taper', .16 * sd, .98, 0, r * 1.25, 0, 0, 0, -.7, .0, .24, -.46, .27, shc, shm); p('sphere', .16 * sd, .98, 0, r * 1.25, 0, 0, 0, -.6, -.06, .2, .26, .2, shc, shm); p('sphere', .16 * sd, .98, 0, r * 1.25, 0, 0, 0, -.93, .1, .2, .13, .4, bm ? bm[0] : skin, bm ? bm[1] : 0);
+    const r = sd * lg + air * (sd > 0 ? 1 : .5), shc = bm ? bm[0] : pm[0], shm = bm ? bm[1] : pm[1]; p('taper', .16 * sd, .98, 0, r, 0, 0, 0, -.25, 0, .3, -.54, .32, pm[0], pm[1]); p('sphere', .16 * sd, .98, 0, r, 0, 0, 0, -.5, .03, .22, .22, .24, pm[0], pm[1]); p('taper', .16 * sd, .98, 0, r * 1.25, 0, 0, 0, -.7, .0, .24, -.46, .27, shc, shm); p('sphere', .16 * sd, .98, 0, r * 1.25, 0, 0, 0, -.6, -.06, .2, .26, .2, shc, shm); p('sphere', .16 * sd, .98, 0, r * 1.25, 0, 0, 0, -.93, .1, .2, .13, .4, bm ? bm[0] : dkLeather, bm ? bm[1] : 0);
     if (bm) p('cyl', .17 * sd, .95, 0, r * 1.25, 0, 0, 0, -.5, .02, .25, .07, .27, tr(g.boots)[0], 4, tr(g.boots)[1]);
     if (g.pants) { p('sphere', .17 * sd, .95, 0, r * 1.1, 0, 0, 0, -.46, .1, .2, .18, .2, pm[0], pm[1]); if (g.pants[0] === 0) p('box', .2 * sd, 1.0, .02, .06 + sd * lg * .4, 0, -sd * .12, 0, -.2, .14, .24, .36, .06, steelC, 4); else p('box', .16 * sd, .98, -.02, .16 + mv * .25, 0, 0, 0, -.3, -.2, .16, .5, .04, cloth); }
   }
@@ -769,11 +789,11 @@ function drawHero(o, self) {
   }
   // shoulders
   if (sm) { const st = tr(g.shoulders), big = g.shoulders[0] === 0; for (const sd of [1, -1]) { p('sphere', .47 * sd, 1.7, 0, 0, 0, 0, 0, 0, 0, big ? .44 : .34, big ? .36 : .26, big ? .44 : .36, sm[0], sm[1]); p('cyl', .47 * sd, 1.64, 0, 0, 0, 0, 0, 0, 0, big ? .48 : .38, .05, big ? .48 : .38, st[0], 4, st[1]); if (big && g.shoulders[1] >= 1) p('cone', .56 * sd, 1.84, 0, 0, 0, -sd * .9, 0, .12, 0, .16, .2 + g.shoulders[1] * .08, .16, sm[0], 4); } }
-  else for (const sd of [1, -1]) p('sphere', .46 * sd, 1.66, 0, 0, 0, 0, 0, 0, 0, .26, .24, .26, g.chest ? ac : skin, am);
+  else for (const sd of [1, -1]) p('sphere', .46 * sd, 1.66, 0, 0, 0, 0, 0, 0, 0, .26, .24, .26, ac, am);
   // arms: sleeve, bracer, hand
   for (const sd of [1, -1]) {
     const arx = sd > 0 ? rx : lrx, ary = sd > 0 ? ry : lry, px = .47 * sd;
-    const slv = g.chest ? shade(ac, .8) : skin; p('taper', px, 1.62, 0, arx, ary, 0, 0, -.18, 0, .21, -.38, .21, slv, am); p('sphere', px, 1.62, 0, arx, ary, 0, 0, -.36, 0, .17, .17, .17, slv, am);
+    const slv = shade(ac, g.chest ? .8 : .92); p('taper', px, 1.62, 0, arx, ary, 0, 0, -.18, 0, .21, -.38, .21, slv, am); p('sphere', px, 1.62, 0, arx, ary, 0, 0, -.36, 0, .17, .17, .17, slv, am);
     p('taper', px, 1.62, 0, arx, ary, 0, 0, -.5, 0, brm ? .21 : .165, -.3, brm ? .21 : .165, brm ? brm[0] : skin, brm ? brm[1] : 0); if (brm) p('cyl', px, 1.62, 0, arx, ary, 0, 0, -.36, 0, .22, .05, .22, tr(g.bracers)[0], 4, tr(g.bracers)[1]);
     const fist = wt === 'fist'; p('sphere', px, 1.62, 0, arx, ary, 0, 0, -.68, 0, fist ? .25 : .15, fist ? .25 : .2, fist ? .25 : .13, fist ? dkLeather : gm ? gm[0] : skin, gm ? gm[1] : 0); if (!fist) p('sphere', px, 1.62, 0, arx, ary, 0, -sd * .07, -.66, .04, .06, .12, .06, gm ? gm[0] : skin, gm ? gm[1] : 0);
     if (fist) for (let k = 0; k < 3; k++) p('cone', px, 1.62, 0, arx + 1.5708, ary, 0, (k - 1) * .08, .1, .68, .06, .14, .06, wglow || steelC, 4, wglow ? .8 : 0);
@@ -934,9 +954,22 @@ function drawWorld() {
     const c = col(a.c), k = clamp(a.t / a.delay, 0, 1), d = a.r * 2;
     GLX.obj('glow', 'ring', a.x, .09, a.z, 0, d, 1, d, c, 1, a.owner === 'e' ? .9 : .5, -1); GLX.obj('glow', 'disc', a.x, .08, a.z, 0, d * k, 1, d * k, c, 1, a.owner === 'e' ? .35 : .2, 0);
   }
+  // the air itself: fireflies, embers, snow or dust, anchored to the world so they do not swim with the camera
+  if (GLX.env.q > 0 && G.zone) {
+    const kind = G.zone.th.amb || 'dust', n = GLX.env.q > 1 ? 4 : 3, cx = Math.floor(P.x / 6), cz = Math.floor(P.z / 6), t = G.time, pc = col(kind === 'fly' ? 0xd8ff70 : kind === 'ember' ? 0xff7a2a : kind === 'snow' ? 0xdfeeff : 0xc8c0a8);
+    for (let ix = -n; ix <= n; ix++) for (let iz = -n; iz <= n; iz++) {
+      const gx = cx + ix, gz = cz + iz; let s = ((gx * 73856093) ^ (gz * 19349663)) >>> 0; const r = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296; r();
+      const x = gx * 6 + r() * 6, z = gz * 6 + r() * 6, ph = r() * 6.28, sp = .4 + r() * .8, y0 = r();
+      if (kind === 'fly') { const bl = Math.sin(t * sp * 1.7 + ph); if (bl > .2) GLX.obj('glow', 'sphere', x + Math.sin(t * sp + ph) * 1.3, 1 + y0 * 2 + Math.sin(t * sp * .7 + ph) * .5, z + Math.cos(t * sp * .8 + ph) * 1.3, 0, .1, .1, .1, pc, 2.4 * bl, .9); }
+      else if (kind === 'ember') { const y = (t * sp * .9 + ph) % 5; GLX.obj('glow', 'sphere', x + Math.sin(t * sp + ph + y) * .6, y, z + Math.cos(t * .7 + ph) * .4, 0, .08, .08, .08, pc, 2.6 * (1 - y / 5), .9); }
+      else if (kind === 'snow') { const y = 6 - ((t * sp * 1.2 + ph) % 6); GLX.obj('glow', 'sphere', x + Math.sin(t * sp + ph) * .8, y, z + y * .15, 0, .07, .07, .07, pc, .9, .8); }
+      else GLX.obj('glow', 'sphere', x + Math.sin(t * sp * .5 + ph) * 1.5, .8 + y0 * 2.5 + Math.sin(t * sp * .4 + ph) * .6, z + Math.cos(t * sp * .45 + ph) * 1.5, 0, .055, .055, .055, pc, .7, .5);
+    }
+  }
   for (const f of G.fx) {
     const k = f.life / f.max;
-    if (f.ring) { const r = (f.r0 + (f.r1 - f.r0) * (1 - k)) * 2; GLX.obj('glow', 'ring', f.x, .12, f.z, 0, r, 1, r, f.c, 1, k, -1); GLX.obj('glow', 'disc', f.x, .1, f.z, 0, r, 1, r, f.c, 1, k * .25, 1); }
+    if (f.flash) { GLX.halo(f.x, f.y, f.z, f.r * (1.25 - k * .5), f.c, k * .85); GLX.obj('glow', 'sphere', f.x, f.y, f.z, 0, f.r * .22 * k, f.r * .22 * k, f.r * .22 * k, f.c, 2, k); }
+    else if (f.ring) { const r = (f.r0 + (f.r1 - f.r0) * (1 - k)) * 2; GLX.obj('glow', 'ring', f.x, .12, f.z, 0, r, 1, r, f.c, 1, k, -1); GLX.obj('glow', 'disc', f.x, .1, f.z, 0, r, 1, r, f.c, 1, k * .25, 1); }
     else if (f.bolt) { const dx = f.x2 - f.x1, dz = f.z2 - f.z1, L = Math.hypot(dx, dz), a = Math.atan2(dx, dz); for (let j = 0; j < 2; j++) GLX.obj('glow', 'box', (f.x1 + f.x2) / 2 + (Math.random() - .5) * .4, 1.3 + (Math.random() - .5) * .4, (f.z1 + f.z2) / 2 + (Math.random() - .5) * .4, a + (Math.random() - .5) * .08, .12, .12, L, f.c, 1.6, k); GLX.halo(f.x2, 1.3, f.z2, 2.4, f.c, k * .8); }
     else if (f.slash) { for (let i = 0; i < 7; i++) { const a = f.rot + (i / 6 - .5) * f.arc * (1.2 - k * .4), rr = f.r * .82; GLX.obj('glow', 'box', f.x + Math.sin(a) * rr, 1.25, f.z + Math.cos(a) * rr, a + 1.5708, .12, .08, f.r * .62, f.c, 1, k * .9); } }
     else GLX.obj('glow', 'gem', f.x, f.y, f.z, f.life * 9, f.size, f.size, f.size, f.c, 1, k);

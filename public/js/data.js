@@ -1,5 +1,5 @@
 'use strict';
-const BUILD = '0003';
+const BUILD = '0004';
 const SLOTS = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring1', 'ring2'];
 const DROP_SLOTS = ['weapon', 'weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring', 'ring'];
 const AFF_ALIAS = { shoulders: 'chest', pants: 'chest', belt: 'helm', bracers: 'gloves', offhand: 'amulet' };
@@ -172,16 +172,16 @@ const EMODS = {
   storm: { n: 'Stormbound', d: 'Calls lightning down on you' }, molten: { n: 'Molten', d: 'Leaves burning ground' }, regen: { n: 'Regenerating', d: 'Heals over time' }
 };
 const THEMES = {
-  town: { ground: 0x4e5632, gdet: .4, wall: 'tree', wc: [0x4a382a, 0x24402a, 0x2f4f2c], sunC: [1.2, 1.0, .74], sky: [.16, .2, .26], gnd: [.07, .08, .06], fog: 0x0a1012, torch: 0xffb070, lightR: 46, lamp: 0xffa040 },
-  forest: { ground: 0x485a30, gdet: .4, wall: 'tree', wc: [0x4a382a, 0x24402a, 0x2f4f2c], sunC: [1.15, .98, .72], sky: [.13, .18, .24], gnd: [.06, .07, .05], fog: 0x080e10, torch: 0xffb070, lightR: 34, lamp: 0x7dff6a, elem: 'phys',
+  town: { amb: 'fly', wet: 0.45, mist: 0.2, ground: 0x4e5632, gdet: .4, wall: 'tree', wc: [0x4a382a, 0x24402a, 0x2f4f2c], sunC: [1.2, 1.0, .74], sky: [.16, .2, .26], gnd: [.07, .08, .06], fog: 0x0a1012, torch: 0xffb070, lightR: 46, lamp: 0xffa040 },
+  forest: { amb: 'fly', wet: 0.8, mist: 0.5, ground: 0x485a30, gdet: .4, wall: 'tree', wc: [0x4a382a, 0x24402a, 0x2f4f2c], sunC: [1.15, .98, .72], sky: [.13, .18, .24], gnd: [.06, .07, .05], fog: 0x080e10, torch: 0xffb070, lightR: 34, lamp: 0x7dff6a, elem: 'phys',
     mon: [{ a: 'grunt', n: 'Rotting Husk', c: 0x6b7a4a, c2: 0x3a4226, e: 0xd0ff60 }, { a: 'swarm', n: 'Blight Crawler', c: 0x4a3a2a, c2: 0x7a9a3a, e: 0xc0ff40 }, { a: 'caster', n: 'Spore Seer', c: 0x3a5a3a, c2: 0x9adf5a, e: 0xa0ff70 }, { a: 'brute', n: 'Mossback', c: 0x4a5a3a, c2: 0x2a3a22, e: 0xffe060 }] },
-  crypt: { ground: 0x3a3c46, gdet: .22, wall: 'block', wc: [0x4a4d5a, 0x3a3d48, 0x5a5d6a], sunC: [.32, .36, .5], sky: [.12, .13, .2], gnd: [.05, .05, .07], fog: 0x05060a, torch: 0xffb070, lightR: 25, lamp: 0x6aa8ff, elem: 'cold',
+  crypt: { amb: 'dust', wet: 0.6, mist: 0.6, ground: 0x3a3c46, gdet: .22, wall: 'block', wc: [0x4a4d5a, 0x3a3d48, 0x5a5d6a], sunC: [.32, .36, .5], sky: [.12, .13, .2], gnd: [.05, .05, .07], fog: 0x05060a, torch: 0xffb070, lightR: 25, lamp: 0x6aa8ff, elem: 'cold',
     mon: [{ a: 'grunt', n: 'Bonewalker', c: 0xd8d2bc, c2: 0x6a6658, e: 0x7ad0ff }, { a: 'swarm', n: 'Crypt Rat', c: 0x5a5048, c2: 0x3a3430, e: 0xff5050 }, { a: 'caster', n: 'Grave Chanter', c: 0x3a3a5a, c2: 0x8a9aff, e: 0x9ab0ff }, { a: 'brute', n: 'Tomb Guardian', c: 0x7a7a86, c2: 0x4a4a56, e: 0x70c0ff }, { a: 'bomber', n: 'Corpse Bloat', c: 0x8a9a6a, c2: 0x5a6a3a, e: 0xc0ff60 }] },
-  lava: { ground: 0x3a2620, gdet: .45, wall: 'rock', wc: [0x2a2020, 0x3a2a26, 0xff5a1a], sunC: [.6, .34, .2], sky: [.22, .1, .07], gnd: [.1, .04, .03], fog: 0x0c0403, torch: 0xff9050, lightR: 27, lamp: 0xff5a1a, elem: 'fire',
+  lava: { amb: 'ember', wet: 0, mist: 0.3, ground: 0x3a2620, gdet: .45, wall: 'rock', wc: [0x2a2020, 0x3a2a26, 0xff5a1a], sunC: [.6, .34, .2], sky: [.22, .1, .07], gnd: [.1, .04, .03], fog: 0x0c0403, torch: 0xff9050, lightR: 27, lamp: 0xff5a1a, elem: 'fire',
     mon: [{ a: 'grunt', n: 'Cinder Thrall', c: 0x5a3028, c2: 0x2a1a18, e: 0xff7a2a }, { a: 'swarm', n: 'Ember Imp', c: 0xa03a20, c2: 0x5a2010, e: 0xffc040 }, { a: 'caster', n: 'Flame Herald', c: 0x4a2020, c2: 0xff7a2a, e: 0xffa040 }, { a: 'brute', n: 'Magma Hulk', c: 0x3a2a2a, c2: 0xff5a1a, e: 0xff8a2a }, { a: 'bomber', n: 'Living Bomb', c: 0xc04a1a, c2: 0x6a2a10, e: 0xffe060 }] },
-  ice: { ground: 0x7a8a9a, gdet: .2, wall: 'crystal', wc: [0x8ac0e0, 0xc0e0f0, 0x5a90c0], sunC: [.55, .65, .8], sky: [.2, .26, .36], gnd: [.08, .1, .14], fog: 0x0a1018, torch: 0xffd0a0, lightR: 29, lamp: 0x8ae0ff, elem: 'cold',
+  ice: { amb: 'snow', wet: 1, mist: 0.45, ground: 0x7a8a9a, gdet: .2, wall: 'crystal', wc: [0x8ac0e0, 0xc0e0f0, 0x5a90c0], sunC: [.55, .65, .8], sky: [.2, .26, .36], gnd: [.08, .1, .14], fog: 0x0a1018, torch: 0xffd0a0, lightR: 29, lamp: 0x8ae0ff, elem: 'cold',
     mon: [{ a: 'grunt', n: 'Frostbitten', c: 0x7a9ab0, c2: 0x3a5a70, e: 0xc0f0ff }, { a: 'swarm', n: 'Ice Skitter', c: 0xa0d0e0, c2: 0x5a8aa0, e: 0xffffff }, { a: 'caster', n: 'Rime Witch', c: 0x4a6a9a, c2: 0xc0f0ff, e: 0xa0e0ff }, { a: 'brute', n: 'Glacial Yeti', c: 0xd0e0e8, c2: 0x8aa0b0, e: 0x60c0ff }] },
-  void: { ground: 0x241c30, gdet: .4, wall: 'pillar', wc: [0x1c1426, 0x3a2a56, 0xb060ff], sunC: [.4, .28, .6], sky: [.14, .09, .22], gnd: [.05, .03, .08], fog: 0x07040c, torch: 0xd0a0ff, lightR: 26, lamp: 0xb060ff, elem: 'light',
+  void: { amb: 'dust', wet: 0.4, mist: 0.35, ground: 0x241c30, gdet: .4, wall: 'pillar', wc: [0x1c1426, 0x3a2a56, 0xb060ff], sunC: [.4, .28, .6], sky: [.14, .09, .22], gnd: [.05, .03, .08], fog: 0x07040c, torch: 0xd0a0ff, lightR: 26, lamp: 0xb060ff, elem: 'light',
     mon: [{ a: 'grunt', n: 'Voidspawn', c: 0x3a2a56, c2: 0x1c1426, e: 0xd080ff }, { a: 'swarm', n: 'Null Mite', c: 0x5a3a8a, c2: 0x2a1a46, e: 0xff80ff }, { a: 'caster', n: 'Rift Oracle', c: 0x2a1a46, c2: 0xb060ff, e: 0xfff07a }, { a: 'brute', n: 'Abyssal Maw', c: 0x2a2036, c2: 0x7a3ac0, e: 0xff60d0 }, { a: 'bomber', n: 'Unstable Wisp', c: 0x9a5aff, c2: 0x5a2ac0, e: 0xffffff }] }
 };
 const BOSSES = {
