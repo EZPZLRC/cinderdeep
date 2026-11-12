@@ -1,4 +1,5 @@
 'use strict';
+const BUILD = '0002';
 const SLOTS = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring1', 'ring2'];
 const DROP_SLOTS = ['weapon', 'weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring', 'ring'];
 const AFF_ALIAS = { shoulders: 'chest', pants: 'chest', belt: 'helm', bracers: 'gloves', offhand: 'amulet' };
@@ -6,7 +7,7 @@ const OFFHAND = { warden: { n: 'Shield', a: 14 }, ranger: { n: 'Quiver' }, arcan
 const BAG_W = 10, BAG_H = 6, BAG_N = 60;
 const SLOT_NAME = { weapon: 'Weapon', helm: 'Helm', chest: 'Chest', gloves: 'Gloves', boots: 'Boots', amulet: 'Amulet', ring: 'Ring', ring1: 'Ring', ring2: 'Ring', offhand: 'Off-hand', shoulders: 'Shoulders', bracers: 'Bracers', belt: 'Belt', pants: 'Pants' };
 const SLOT_ICON = { weapon: '⚔', helm: '⛑', chest: '♜', gloves: '✋', boots: '♞', amulet: '◈', ring: '◯' };
-const RAR = [{ n: 'Common', c: '#c9c9c9' }, { n: 'Magic', c: '#7396ff' }, { n: 'Rare', c: '#ffd84a' }, { n: 'Legendary', c: '#ff8a2a' }];
+const RAR = [{ n: 'Common', c: '#c9c9c9' }, { n: 'Magic', c: '#7396ff' }, { n: 'Rare', c: '#ffd84a' }, { n: 'Legendary', c: '#ff8a2a' }, { n: 'Mythic', c: '#c070ff' }];
 const EL_COL = { phys: 0xe8e0d0, fire: 0xff7a2a, cold: 0x7ad0ff, light: 0xfff07a, arc: 0xb070ff };
 const EL_CSS = { phys: '#f0e6d2', fire: '#ff9a4a', cold: '#8fd8ff', light: '#fff48a', arc: '#cf9aff' };
 const EL_NAME = { phys: 'Physical', fire: 'Fire', cold: 'Cold', light: 'Lightning' };
@@ -22,7 +23,7 @@ const STATS = {
   projExtra: '+# Projectiles', echo: '#% chance for skills to Echo', procLight: '#% chance to call Lightning on hit', boomFire: 'Slain enemies explode in flames', boomCold: 'Slain enemies burst into frost',
   cull: 'Culls enemies below #% life', cheat: 'Cheat death once every 60 seconds', lowLife: '+#% Damage while below half life'
 };
-function statText(k, v) { const t = STATS[k] || k; const n = Math.abs(v) >= 10 || Number.isInteger(v) ? Math.round(v) : Math.round(v * 10) / 10; return t.replace('#', n); }
+function statText(k, v) { const t = STATS[k] || k; return t.replace('#', Math.max(1, Math.round(v))); }
 
 // key, min, max, scaling (f = flat, grows fast; p = percent, grows slowly; n = none), slots
 const AFFIX = [
@@ -32,7 +33,7 @@ const AFFIX = [
   ['aspd', 3, 6, 'p', 'weapon gloves ring'], ['crit', 1.5, 3, 'p', 'weapon gloves amulet ring'], ['critDmg', 8, 15, 'p', 'weapon amulet ring gloves'],
   ['armor', 8, 14, 'f', 'helm chest gloves boots'], ['resFire', 6, 11, 'p', 'helm chest gloves boots amulet ring'], ['resCold', 6, 11, 'p', 'helm chest gloves boots amulet ring'], ['resLight', 6, 11, 'p', 'helm chest gloves boots amulet ring'],
   ['resAll', 3, 5, 'p', 'chest amulet ring'], ['dodge', 2, 4, 'p', 'boots gloves chest'], ['ms', 4, 7, 'p', 'boots amulet'], ['cdr', 2, 4, 'p', 'helm amulet weapon'], ['area', 4, 8, 'p', 'weapon amulet'],
-  ['lifeOnHit', .8, 1.6, 'f', 'weapon ring gloves'], ['leech', .3, .6, 'n', 'weapon ring'], ['mf', 5, 10, 'p', 'helm boots amulet ring'], ['gf', 8, 15, 'p', 'helm boots amulet ring gloves'],
+  ['lifeOnHit', .8, 1.6, 'f', 'weapon ring gloves'], ['leech', 1, 1, 'n', 'weapon ring'], ['mf', 5, 10, 'p', 'helm boots amulet ring'], ['gf', 8, 15, 'p', 'helm boots amulet ring gloves'],
   ['thorns', 3, 6, 'f', 'chest helm'], ['xp', 2, 4, 'n', 'helm amulet ring']
 ];
 const WEAPONS = [{ n: 'Sword', d: [5, 9], s: 1.45, t: 'sword' }, { n: 'War Axe', d: [7, 11], s: 1.25, t: 'axe' }, { n: 'Maul', d: [10, 15], s: 1.0, t: 'maul' }, { n: 'Staff', d: [8, 13], s: 1.1, t: 'staff' }, { n: 'Wand', d: [4, 8], s: 1.65, t: 'staff' }, { n: 'Longbow', d: [6, 11], s: 1.3, t: 'bow' }, { n: 'Shortbow', d: [4, 8], s: 1.6, t: 'bow' }, { n: 'Cestus', d: [4, 7], s: 1.7, t: 'fist' }, { n: 'Spiked Knuckles', d: [5, 9], s: 1.5, t: 'fist' }];
@@ -42,9 +43,26 @@ const ARMOR = {
   shoulders: [{ n: 'Pauldrons', a: 8 }, { n: 'Leather Mantle', a: 5 }], bracers: [{ n: 'Vambraces', a: 5 }, { n: 'Leather Bracers', a: 4 }], belt: [{ n: 'War Belt', a: 5 }, { n: 'Sash', a: 3 }], pants: [{ n: 'Plate Tassets', a: 12 }, { n: 'Leather Leggings', a: 8 }]
 };
 const JEWEL = { amulet: ['Amulet', 'Pendant', 'Talisman'], ring: ['Ring', 'Band', 'Signet'] };
-const MAGPRE = ['Sturdy', 'Keen', 'Glinting', 'Warded', 'Fierce', 'Humming', 'Etched', 'Tempered', 'Gilded', 'Runed'];
-const RN1 = ['Grim', 'Storm', 'Dusk', 'Ember', 'Bone', 'Wraith', 'Hollow', 'Dread', 'Ash', 'Rune', 'Blight', 'Iron', 'Soul', 'Thorn', 'Frost', 'Void'];
-const RN2 = ['Ward', 'Fang', 'Song', 'Grasp', 'Veil', 'Brand', 'Mark', 'Howl', 'Bite', 'Crest', 'Reach', 'Shard', 'Vow', 'Bane', 'Knell', 'Spire'];
+const MAGPRE = ['Sturdy', 'Keen', 'Glinting', 'Warded', 'Fierce', 'Humming', 'Etched', 'Tempered', 'Gilded', 'Runed', 'Vigilant', 'Savage', 'Patient', 'Wicked', 'Hallowed', 'Restless', 'Stalwart', 'Cunning', 'Baleful', 'Radiant', 'Sullen', 'Thirsting', 'Unbroken', 'Whispering'];
+const RN1 = ['Grim', 'Storm', 'Dusk', 'Ember', 'Bone', 'Wraith', 'Hollow', 'Dread', 'Ash', 'Rune', 'Blight', 'Iron', 'Soul', 'Thorn', 'Frost', 'Void', 'Moon', 'Raven', 'Cinder', 'Gloom', 'Oath', 'Wolf', 'Sorrow', 'Star', 'Blood', 'Night', 'Pyre', 'Mire', 'Stone', 'Wyrm', 'Hex', 'Dawn'];
+const RN2 = ['Ward', 'Fang', 'Song', 'Grasp', 'Veil', 'Brand', 'Mark', 'Howl', 'Bite', 'Crest', 'Reach', 'Shard', 'Vow', 'Bane', 'Knell', 'Spire', 'Call', 'Thirst', 'Edge', 'Whisper', 'Fall', 'Keeper', 'Wake', 'Render', 'Bloom', 'Toll', 'Gaze', 'Heart', 'Roar', 'Shade', 'Weaver', 'Rest'];
+// every item is one of a kind: a seed decides its name, its picture and its history
+const I_WEAR = ['Worn', 'Battered', 'Plain', 'Old', 'Notched', 'Scuffed', 'Trusty', 'Dented', 'Mended', 'Weathered', 'Rough', 'Salvaged', 'Faded', 'Chipped', 'Simple', 'Sound'];
+const I_OF = ['the Fox', 'the Bear', 'the Owl', 'Embers', 'the Deep', 'Vigor', 'the Gale', 'Thorns', 'the Vigil', 'Ruin', 'the Hunt', 'Dusk', 'the Tide', 'Echoes', 'the Pyre', 'Winter', 'the Wolf', 'Grace', 'the Mire', 'Fury', 'the Stag', 'Omens', 'the Crow', 'Hunger', 'the Root', 'Patience', 'the Storm', 'Silence', 'the Forge', 'Stars', 'the Wake', 'Ash'];
+const I_EPI = ['the Last Oath', 'Kingsbane', 'the Unquiet', 'Heart of the Hollow', 'the Long Night', 'Widowmaker', 'the First Flame', 'Gravecall', 'the Pale Promise', 'Stormfather', 'the Hungering', 'Dawnbreaker', 'the Silent Toll', 'Wyrmrest', 'the Red Hour', 'Oathkeeper', 'the Sundered', 'Nightfall', 'the Quiet End', 'Ashbringer', 'the Wandering', 'Rootmother\'s Gift', 'the Drowned', 'Starfall', 'the Unbowed', 'Cinderheart', 'the Thirteenth', 'Mournsong', 'the Bitter Vow', 'Deepcaller', 'the Forsworn', 'Lightless'];
+const I_MAT = {
+  metal: [['Iron', '#9aa0a8'], ['Steel', '#c3cad6'], ['Blacksteel', '#59606e'], ['Bronze', '#c08a4a'], ['Copper', '#cf7a50'], ['Brass', '#cdb055'], ['Silvered steel', '#dfe6ee'], ['Bluesteel', '#7f9cc8'], ['Bloodiron', '#a85248'], ['Verdigris bronze', '#6fa58e'], ['Obsidian', '#4a4458'], ['Moonsilver', '#c9d6f2'], ['Ashen iron', '#857f78'], ['Gilded steel', '#dcc070']],
+  wood: [['Ash wood', '#b9976a'], ['Yew', '#a8703c'], ['Blackthorn', '#5a4636'], ['Bone', '#ddd4bc'], ['Ironwood', '#77685a'], ['Redwood', '#9c5038'], ['Pale birch', '#d2c4a2'], ['Bogwood', '#4f5a44'], ['Horn', '#c0a276'], ['Driftwood', '#a39a8a'], ['Ebony', '#463c44'], ['Elder oak', '#8a6a40']],
+  leather: [['Tanned leather', '#a5713f'], ['Black leather', '#4f4640'], ['Boiled leather', '#7c4f30'], ['Wolfhide', '#8f887c'], ['Doeskin', '#cba878'], ['Scaled hide', '#5f8064'], ['Red leather', '#9a4636'], ['Ashen hide', '#aaa294'], ['Boarhide', '#6e5a48'], ['Oiled leather', '#5f4028']],
+  cloth: [['Linen', '#d5cab2'], ['Wool', '#8c8f9c'], ['Silk', '#b494d6'], ['Velvet', '#8a3a56'], ['Homespun', '#a58e68'], ['Dyed cotton', '#4f86b4'], ['Mourning cloth', '#4c4856'], ['Sun-bleached cloth', '#e6dfc8'], ['Moss-dyed wool', '#6c8a50'], ['Saffron silk', '#dca83c']],
+  jewel: [['Gold', '#e2bc50'], ['Silver', '#d2d8e2'], ['Rose gold', '#e2a084'], ['Electrum', '#d6d28c'], ['Blackened silver', '#727684'], ['Bronze', '#c08a4a'], ['Bone', '#ddd4bc'], ['Jade', '#78b890'], ['Platinum', '#e6eaf0'], ['Copper', '#cf7a50']]
+};
+const I_ACC = ['#e2bc50', '#d2d8e2', '#c08a4a', '#8c8f9c', '#5a4636', '#cf7a50', '#e6eaf0', '#4a4458'];
+const I_GEM = [['garnet', '#e0483e'], ['sapphire', '#4a8cf0'], ['emerald', '#3ecf7a'], ['amethyst', '#b06af0'], ['topaz', '#f2c63a'], ['opal', '#bfeee6'], ['onyx', '#3c3a48'], ['amber', '#f09a2a'], ['moonstone', '#dfe8ff'], ['bloodstone', '#9a2238'], ['jade', '#74c08a'], ['pearl', '#f4efe2']];
+const I_PLACE = ['Vharn', 'the Ashen Coast', 'Old Maren', 'the Sunken Abbey', 'Karrowmere', 'the Glass Wastes', 'Thornwick', 'Highcairn', 'the Salt Road', 'Durn Hollow', 'the Ember Reach', 'Low Saffel', 'the Drowned Quarter', 'Wintermarch', 'the Black Orchard', 'Ostrel', 'the Howling Stair', 'Greywater', 'the Bell Tombs', 'Cael Ruun', 'the Mirelands', 'Stagfall', 'the Lantern Hills', 'Nethermoor'];
+const I_MAKER = ['the Ashen Guild', 'a nameless hermit', 'Brannoch the Younger', 'the Sisters of the Coil', 'a deserter of the Ninth', 'Old Wessa', 'the Lantern Monks', 'a blind smith', 'the Hollow Court', 'Ilde Farrow', 'the river folk', 'a condemned artisan', 'the Cinder Wardens', 'Master Orlec', 'a grave robber', 'the Tallow Company', 'Sera of the Marsh', 'the last of the Stag Lords', 'an apprentice in secret', 'the Pale Choir'];
+const I_VERB = { metal: ['Forged', 'Hammered out', 'Cast', 'Tempered'], wood: ['Carved', 'Shaped', 'Cut', 'Whittled'], leather: ['Stitched', 'Cured', 'Cut and sewn', 'Tooled'], cloth: ['Woven', 'Sewn', 'Spun', 'Embroidered'], jewel: ['Cast', 'Wrought', 'Set', 'Engraved'] };
+const I_NOTE = ['Still warm to the touch.', 'It hums faintly near water.', 'One edge is older than the rest.', 'A name has been scratched out.', 'It smells of woodsmoke.', 'Someone loved this once.', 'It has seen at least three owners.', 'The maker\'s mark is upside down.', 'Rain never seems to cling to it.', 'It is heavier than it looks.', 'It is lighter than it looks.', 'A tally of notches runs along it.', 'It was buried and dug up again.', 'A thread of silver runs through it.', 'It rings softly when struck.', 'Moths will not touch it.', 'It was won at dice.', 'The fit is strangely perfect.', 'There is old wax in the seams.', 'It was mended by a careful hand.', 'A prayer is etched where no one looks.', 'It was made in a hurry.', 'It was made over a whole winter.', 'The balance is a little off, on purpose.'];
 const POWERS = {
   volley: { n: 'Splitshard', d: 'Projectile skills fire 2 additional projectiles.', s: { projExtra: 2 }, slots: ['weapon', 'gloves', 'ring'] },
   echo: { n: 'Twice-Told Oath', d: '25% chance for skills to cast a second time.', s: { echo: 25 }, slots: ['amulet', 'weapon', 'helm'] },
@@ -89,10 +107,10 @@ Object.assign(SKILLS, {
   shot: { n: 'Quick Shot', lv: 1, i: '➶', type: 'proj', el: 'phys', m: 1.0, basic: 1, gen: 5, spd: 36, pr: .4, pierce: 1, range: 16, arrow: 1, d: 'Loose a fast arrow that pierces one enemy.' },
   power: { n: 'Power Shot', lv: 2, i: '➹', type: 'proj', el: 'phys', m: 1.75, as: .62, basic: 1, gen: 10, spd: 42, pr: .5, pierce: 2, range: 17, arrow: 1, d: 'A slow, heavy shot that punches through several enemies.' },
   multi: { n: 'Multishot', lv: 1, i: '⋔', type: 'proj', el: 'phys', m: .85, cost: 18, cnt: 5, spread: .7, spd: 34, pr: .4, range: 15, ct: .32, arrow: 1, d: 'Fire a fan of five arrows.' },
-  roll: { n: 'Vault', lv: 3, i: '↯', type: 'dash', el: 'phys', m: 0, cd: 3.5, range: 9.5, flat: 1, d: 'Tumble a short distance, avoiding all damage.' },
+  roll: { n: 'Vault', lv: 3, i: '↯', type: 'dash', el: 'phys', m: 0, cd: 4, range: 9.5, flat: 1, d: 'Tumble a short distance, avoiding all damage.' },
   arrows: { n: 'Rain of Arrows', lv: 5, i: '⇊', type: 'rain', el: 'phys', m: .9, cost: 25, cd: 5, cnt: 14, spread: 4.6, r: 1.9, delay: .35, stagger: .07, d: 'Blanket an area with fourteen falling arrows.' },
   mark: { n: "Hunter's Mark", lv: 6, i: '◎', type: 'buff', cd: 18, dur: 8, s: { crit: 20, critDmg: 40, aspd: 15 }, d: '+20% critical chance, +40% critical damage and +15% attack speed for 8 seconds.' },
-  trap: { n: 'Frost Trap', lv: 8, i: '❄', type: 'nova', el: 'cold', m: 1.2, cost: 10, cd: 9, r: 5.5, freeze: 2.5, ct: .25, d: 'Spring a trap at your feet that freezes nearby enemies for 2.5 seconds.' },
+  trap: { n: 'Frost Trap', lv: 8, i: '❄', type: 'nova', el: 'cold', m: 1.2, cost: 10, cd: 9, r: 5.5, freeze: 3, ct: .25, d: 'Spring a trap at your feet that freezes nearby enemies for 3 seconds.' },
   pierce: { n: 'Storm Bolt', lv: 10, i: '⚡', type: 'proj', el: 'light', m: 2.7, cost: 22, cd: 3, spd: 44, pierce: 99, pr: .9, range: 18, ct: .4, d: 'A charged bolt that pierces every enemy in its path.' },
   volley: { n: 'Shadow Volley', lv: 12, i: '✺', type: 'barrage', el: 'cold', m: 1.1, cost: 40, cd: 20, cnt: 18, waves: 3, spd: 26, pr: .45, range: 13, d: 'Three rings of freezing arrows burst outward from you.' },
   // Arcanist
@@ -106,11 +124,12 @@ Object.assign(SKILLS, {
   torrent: { n: 'Arcane Torrent', lv: 10, i: '✺', type: 'barrage', el: 'arc', m: .9, cost: 35, cd: 9, cnt: 14, waves: 2, spd: 24, pr: .45, range: 12, d: 'Two rings of arcane missiles burst outward from you.' },
   hole: { n: 'Singularity', lv: 12, i: '●', type: 'rain', el: 'arc', m: 5, cost: 50, cd: 16, cnt: 1, spread: 0, r: 6, delay: 1, freeze: 2, d: 'Tear a hole in space at the target. After a moment it collapses for massive damage.' },
   // Brawler
-  jab: { n: 'Jab', lv: 1, i: '✊', type: 'melee', el: 'phys', m: .9, as: 1.4, range: 2.9, arc: 1.3, basic: 1, gen: 6, d: 'Lightning-fast punches. Builds Spirit.' },
+  punch: { n: 'Punch', lv: 1, i: '✊', type: 'melee', el: 'phys', m: 1, as: 1, range: 2.6, arc: 1.3, basic: 1, gen: 4, d: 'Bare fists. What you fall back on with no weapon in hand.' },
+  jab: { n: 'Jab', lv: 1, i: '✊', type: 'melee', el: 'phys', m: 1.05, as: 1.4, range: 2.9, arc: 1.3, basic: 1, gen: 6, d: 'Lightning-fast punches. Builds Spirit.' },
   hook: { n: 'Heavy Hook', lv: 2, i: '⚒', type: 'melee', el: 'phys', m: 1.5, as: .9, range: 3.1, arc: 1.0, basic: 1, gen: 12, d: 'A slower, crushing blow that builds Spirit quickly.' },
   sweep: { n: 'Sweeping Kick', lv: 1, i: '✹', type: 'nova', el: 'phys', m: 1.6, cost: 18, r: 4.6, ct: .3, d: 'Spin low and kick every enemy around you.' },
   dstrike: { n: 'Dashing Strike', lv: 3, i: '➤', type: 'dash', el: 'phys', m: 1.6, cd: 3, range: 12, land: 2.8, gen: 8, flat: 1, d: 'Dash in a line and strike where you stop.' },
-  cyclone: { n: 'Cyclone Kick', lv: 5, i: '✪', type: 'spin', el: 'phys', m: .6, cost: 25, cd: 5, dur: 2.2, r: 3.4, tick: .15, d: 'A whirling flurry of kicks for 2.2 seconds. You can move while spinning.' },
+  cyclone: { n: 'Cyclone Kick', lv: 5, i: '✪', type: 'spin', el: 'phys', m: .6, cost: 25, cd: 5, dur: 2, r: 3.4, tick: .15, d: 'A whirling flurry of kicks for 2 seconds. You can move while spinning.' },
   iron: { n: 'Iron Skin', lv: 6, i: '⬢', type: 'buff', cd: 14, dur: 6, s: { dr: 30, armorPct: 40, lifeRegen: 6 }, d: '30% damage reduction, +40% armor and faster healing for 6 seconds.' },
   palm: { n: 'Burning Palm', lv: 8, i: '✋', type: 'melee', el: 'fire', m: 2.6, cost: 20, cd: 4, range: 3.4, arc: 1.5, d: 'A flaming palm strike that sets enemies alight.' },
   wave: { n: 'Wave of Force', lv: 10, i: '≋', type: 'proj', el: 'phys', m: 2.2, cost: 30, cd: 6, spd: 22, pierce: 99, pr: 1.4, range: 10, ct: .35, d: 'A wide shockwave that rolls through everything in front of you.' },
@@ -213,5 +232,8 @@ const TREE = (() => {
   }
   return { nodes };
 })();
-function xpNeed(l) { return Math.round(22 * Math.pow(1.13, l) * (10 + l * 5 + l * l * .1)); }
+// Kills needed per level: about 45 at level 1, 330 at level 10, 2,300 at level 30, 6,400 at level 59 (elites and bosses count for more).
+function xpNeed(l) { return Math.round(22 * Math.pow(1.13, l) * (30 + l * 14 + l * l * 1.6)); }
+function paragonNeed(p) { return Math.round(xpNeed(MAX_LEVEL - 1) * (1 + p * .05)); }
+const PARAGON = { dmg: ['Damage', '+1% damage', 0], life: ['Life', '+1% maximum life', 0], armor: ['Armor', '+2% armor', 0], crit: ['Critical damage', '+2% critical damage', 0], mf: ['Magic find', '+1% magic find', 0], ms: ['Move speed', '+1% movement speed', 25] };
 const MAX_LEVEL = 60;

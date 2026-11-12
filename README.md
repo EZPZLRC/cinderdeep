@@ -1,4 +1,6 @@
-# Cinderdeep server
+# Cinderdeep server (build 0002)
+
+The build number shows in the bottom right corner of the game and at /cinderdeep-server on the live site, so you can tell which version is running.
 
 One small Node program that does two jobs:
 

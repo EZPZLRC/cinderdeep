@@ -6,6 +6,7 @@ const PORT = process.env.PORT || 3000, PUB = process.env.PUBLIC_DIR || path.join
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.ico': 'image/x-icon' };
 const simSrc = ['js/data.js', 'js/game.js'].map(f => new vm.Script(fs.readFileSync(path.join(PUB, f), 'utf8'), { filename: f }));
 simSrc.push(new vm.Script(fs.readFileSync(path.join(__dirname, 'sim', 'simsrv.js'), 'utf8'), { filename: 'simsrv.js' }));
+const BUILD = (/const BUILD = '([^']+)'/.exec(fs.readFileSync(path.join(PUB, 'js/data.js'), 'utf8')) || [])[1] || '?';
 const rooms = new Map(); let nextId = 1;
 
 function makeRoom(code) {
@@ -39,7 +40,8 @@ function onMessage(p, m) {
     case 'p': { const x = +m.x, z = +m.z; if (!isFinite(x) || !isFinite(z)) return; const sp = room.ctx.SP[p.id]; sp.x = x; sp.z = z; sp.dead = !!m.dead; sp.lvl = p.lvl = Math.max(1, Math.min(60, m.lvl | 0)); p.st = [p.id, x, z, +m.r || 0, m.mv ? 1 : 0, m.a | 0, Math.max(0, Math.min(100, m.hp | 0)), p.lvl, m.dead ? 1 : 0, clean(m.g, 24)]; break; }
     case 'hit': room.ctx.srvHit(p.id, m); break;
     case 'fx': cast(room, { t: 'fx', k: clean(m.k, 2), x: +m.x || 0, z: +m.z || 0, rot: +m.rot || 0, r: Math.min(80, +m.r || 0), arc: +m.arc || 0, c: m.c | 0 }, p.id); break;
-    case 'chat': { const s = clean(m.m, 140); if (s) cast(room, { t: 'chat', n: p.name, m: s }); break; }
+    case 'found': { const s = clean(m.item, 60), now = Date.now(); if (!s || (m.r !== 3 && m.r !== 4) || now - (p.lastFound || 0) < 4000) break; p.lastFound = now; const raw = JSON.stringify({ t: 'found', n: p.name, item: s, r: m.r }); for (const r of rooms.values()) for (const q of r.players.values()) q.conn.sendRaw(raw); break; }
+    case 'chat': { const s = clean(m.m, 140), now = Date.now(); if (!s || now - (p.lastChat || 0) < 700) break; p.lastChat = now; if (m.g) { const raw = JSON.stringify({ t: 'chat', n: p.name, m: s, g: 1 }); for (const r of rooms.values()) for (const q of r.players.values()) q.conn.sendRaw(raw); } else cast(room, { t: 'chat', n: p.name, m: s }); break; }
     case 'sync': p.conn.send(Object.assign(room.ctx.srvState(), { sync: 1 })); break;
     case 'next': if (room.ctx.srvCleared()) { let lv = 1; for (const q of room.players.values()) lv = Math.max(lv, q.lvl); cast(room, room.ctx.srvNewZone(lv, room.players.size)); } break;
     case 'give': { const q = room.players.get(m.to | 0); if (q && m.item && typeof m.item === 'object' && JSON.stringify(m.item).length < 2000) q.conn.send({ t: 'give', from: p.id, n: p.name, item: m.item, back: !!m.back }); break; }
@@ -48,10 +50,10 @@ function onMessage(p, m) {
 // ---- game loop ----
 let last = Date.now(), tickN = 0;
 setInterval(() => {
-  const now = Date.now(), dt = Math.min(.1, (now - last) / 1000); last = now; tickN++;
+  const now = Date.now(), dt = Math.min(.1, (now - last) / 1000); last = now; tickN++; let online = 0; for (const r of rooms.values()) online += r.players.size;
   for (const [code, room] of rooms) {
     if (!room.players.size) { if (now - room.emptyAt > 60000) rooms.delete(code); continue; }
-    try { room.ctx.srvTick(dt); if (tickN % 2 === 0) cast(room, { t: 's', e: room.ctx.srvSnap(), p: [...room.players.values()].filter(p => p.st).map(p => p.st) }); }
+    try { room.ctx.srvTick(dt); if (tickN % 2 === 0) cast(room, { t: 's', o: online, e: room.ctx.srvSnap(), p: [...room.players.values()].filter(p => p.st).map(p => p.st) }); }
     catch (err) { console.error('room', code, err); }
   }
 }, 50);
@@ -59,7 +61,7 @@ setInterval(() => {
 // ---- http + websocket ----
 const server = http.createServer((req, res) => {
   let u = decodeURIComponent(req.url.split('?')[0]);
-  if (u === '/cinderdeep-server') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ cinderdeep: 1, players: [...rooms.values()].reduce((n, r) => n + r.players.size, 0) })); return; }
+  if (u === '/cinderdeep-server') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ cinderdeep: 1, build: BUILD, players: [...rooms.values()].reduce((n, r) => n + r.players.size, 0) })); return; }
   if (u === '/favicon.ico') { res.writeHead(204); res.end(); return; }
   if (u === '/') u = '/index.html'; const f = path.normalize(path.join(PUB, u));
   if (!f.startsWith(PUB)) { res.writeHead(403); res.end(); return; }
@@ -94,4 +96,4 @@ server.on('upgrade', (req, sock) => {
   sock.on('data', d => conn.feed(d)); sock.on('close', () => conn.close()); sock.on('error', () => conn.close());
 });
 setInterval(() => { for (const c of conns) { if (!c.alive) { c.close(); continue; } c.alive = false; c.ctl(9); } }, 25000);
-server.listen(PORT, () => console.log('Cinderdeep server listening on port ' + PORT));
+server.listen(PORT, () => console.log('Cinderdeep server build ' + BUILD + ' listening on port ' + PORT));

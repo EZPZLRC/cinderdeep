@@ -40,6 +40,7 @@ const SFX = (() => {
         case 'pickup': tone(520, .08, 'triangle', .1, 1.5); break;
         case 'drop1': tone(660, .25, 'sine', .1); break;
         case 'drop2': tone(784, .22, 'triangle', .12); tone(1047, .4, 'triangle', .12, 1, .12); break;
+        case 'drop4': [392, 523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone(f, .9, 'triangle', .13, 1, i * .08)); tone(2637, 1.6, 'sine', .07, 1, .5); tone(131, 1.4, 'sine', .12); break;
         case 'drop3': [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, .7, 'triangle', .13, 1, i * .09)); tone(2093, 1.2, 'sine', .06, 1, .45); break;
         case 'level': [392, 523, 659, 784].forEach((f, i) => tone(f, .5, 'square', .06, 1, i * .1)); break;
         case 'flask': tone(300, .3, 'sine', .12, 2); break;
@@ -53,7 +54,7 @@ const SFX = (() => {
 })();
 
 // ---------- items ----------
-function affixVal(a, ilvl) { let v = a[1] + Math.random() * (a[2] - a[1]); if (a[3] === 'f') v *= Math.pow(1.085, ilvl); else if (a[3] === 'p') v *= 1 + Math.min(ilvl, 60) * .02; return v >= 10 ? Math.round(v) : Math.round(v * 10) / 10; }
+function affixVal(a, ilvl) { let v = a[1] + Math.random() * (a[2] - a[1]); if (a[3] === 'f') v *= Math.pow(1.085, ilvl); else if (a[3] === 'p') v *= 1 + Math.min(ilvl, 60) * .02; return Math.max(1, Math.round(v)); }
 function rollAffix(it) { const have = new Set(it.aff.map(a => a.k)), as = AFF_ALIAS[it.slot] || it.slot; const pool = AFFIX.filter(a => a[4].split(' ').includes(as) && !have.has(a[0])); if (!pool.length) return false; const a = pick(pool); it.aff.push({ k: a[0], v: affixVal(a, it.ilvl) }); return true; }
 function makeItem(ilvl, slot, rar, baseName) {
   slot = slot || pick(DROP_SLOTS);
@@ -62,17 +63,32 @@ function makeItem(ilvl, slot, rar, baseName) {
   else if (slot === 'offhand') { const oc = G.hero ? G.hero.cls : 'warden', b = OFFHAND[oc]; it.base = b.n; it.oc = oc; if (b.a) it.armor = Math.round(b.a * Math.pow(1.085, ilvl) * (1 + rar * .08)); }
   else if (ARMOR[slot]) { const b = pick(ARMOR[slot]); it.base = b.n; it.armor = Math.round(b.a * Math.pow(1.085, ilvl) * (1 + rar * .08)); }
   else it.base = pick(JEWEL[slot]);
-  const n = rar === 0 ? 0 : rar === 1 ? rint(1, 2) : rar === 2 ? rint(3, 5) : rint(4, 5);
+  const n = rar === 0 ? 0 : rar === 1 ? rint(1, 2) : rar === 2 ? rint(3, 5) : rar === 3 ? rint(4, 5) : 6;
   for (let i = 0; i < n; i++) rollAffix(it);
-  if (rar === 3) { { const al = AFF_ALIAS[slot] || slot, ps = Object.keys(POWERS).filter(p => POWERS[p].slots.includes(slot) || POWERS[p].slots.includes(al)); it.power = pick(ps.length ? ps : Object.keys(POWERS)); } it.name = POWERS[it.power].n; }
-  else if (rar === 2) it.name = pick(RN1) + ' ' + pick(RN2); else if (rar === 1) it.name = pick(MAGPRE) + ' ' + it.base; else it.name = it.base;
+  if (rar === 4) for (const a of it.aff) a.v = Math.round(a.v * 1.25);
+  if (rar >= 3) { { const al = AFF_ALIAS[slot] || slot, ps = Object.keys(POWERS).filter(p => POWERS[p].slots.includes(slot) || POWERS[p].slots.includes(al)); it.power = pick(ps.length ? ps : Object.keys(POWERS)); } it.name = POWERS[it.power].n; }
+  it.sd = (Math.random() * 2147483646 | 0) + 1; const L = itemLook(it), r = L.r;
+  if (rar >= 3) it.name = it.name + ', ' + I_EPI[r() * I_EPI.length | 0];
+  else if (rar === 2) it.name = RN1[r() * RN1.length | 0] + RN2[r() * RN2.length | 0].toLowerCase() + ', ' + L.mat[0] + ' ' + it.base;
+  else if (rar === 1) it.name = MAGPRE[r() * MAGPRE.length | 0] + ' ' + it.base + ' of ' + I_OF[r() * I_OF.length | 0];
+  else it.name = I_WEAR[r() * I_WEAR.length | 0] + ' ' + L.mat[0] + ' ' + it.base;
   return it;
 }
-function itemValue(it) { return Math.round((5 + it.ilvl * 3) * [1, 2.5, 6, 25][it.rar]); }
+// what an item is made of and where it came from, all from its seed, so no two are alike
+function itemKind(it) { const b = it.base || ''; return it.slot === 'amulet' || it.slot === 'ring' || /Circlet|Charm|Orb/.test(b) ? 'jewel' : /Leather|Hood|Quiver|Belt/.test(b) ? 'leather' : /Silk|Sash|Robe|Tome/.test(b) ? 'cloth' : it.wt === 'bow' || it.wt === 'staff' ? 'wood' : 'metal'; }
+function itemLook(it) {
+  if (!it.sd) { let h = 7; const k = (it.name || '') + '|' + it.ilvl + '|' + it.slot + '|' + it.aff.map(a => a.k + a.v).join(); for (let i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) % 2147483646; it.sd = h + 1; }
+  let s = it.sd; const r = () => (s = (s * 48271) % 2147483647) / 2147483647; r(); r();
+  const kind = itemKind(it), mat = I_MAT[kind][r() * I_MAT[kind].length | 0], acc = I_ACC[r() * I_ACC.length | 0], gem = I_GEM[r() * I_GEM.length | 0];
+  const v = [r(), r(), r(), r()], lore = I_VERB[kind][r() * 4 | 0] + ' in ' + I_PLACE[r() * I_PLACE.length | 0] + ' by ' + I_MAKER[r() * I_MAKER.length | 0] + '.', note = I_NOTE[r() * I_NOTE.length | 0];
+  return { kind, mat, acc, gem, v, lore, note, r };
+}
+function itemValue(it) { return Math.round((5 + it.ilvl * 3) * [1, 2.5, 6, 25, 80][it.rar]); }
 function luck() { return (P.stats.mf || 0) + Math.min(G.streak, 50) * 2; }
+const MYTHIC_CHANCE = .05; // a Legendary drop has this chance to be Mythic instead; no other drop rate moves
 function rollRarity(bonus) {
   const mf = luck() / 100; const w = [62, 30 * (1 + mf), 7.5 * (1 + mf * 1.2) * (1 + bonus), .5 * (1 + mf * 1.5) * (1 + bonus * 2)];
-  let r = Math.random() * (w[0] + w[1] + w[2] + w[3]); for (let i = 0; i < 4; i++) { if (r < w[i]) return i; r -= w[i]; } return 0;
+  let r = Math.random() * (w[0] + w[1] + w[2] + w[3]); for (let i = 0; i < 4; i++) { if (r < w[i]) return i === 3 && Math.random() < MYTHIC_CHANCE ? 4 : i; r -= w[i]; } return 0;
 }
 function dropItem(x, z, it) { const a = rnd(6.28), d = rnd(.6, 1.8); let dx = x + Math.cos(a) * d, dz = z + Math.sin(a) * d; if (blocked(dx, dz, .3)) { dx = x; dz = z; } G.drops.push({ x: dx, z: dz, item: it, t: 0 }); if (it.rar > 0) SFX.play('drop' + it.rar); }
 function dropGold(x, z, amt) { const a = rnd(6.28), d = rnd(.4, 1.5); let dx = x + Math.cos(a) * d, dz = z + Math.sin(a) * d; if (blocked(dx, dz, .3)) { dx = x; dz = z; } G.drops.push({ x: dx, z: dz, gold: Math.max(1, Math.round(amt * (1 + (P.stats.gf || 0) / 100))), t: 0 }); }
@@ -100,12 +116,12 @@ function moveItem(from, to) {
 function equipFromInv(i, want) {
   const h = G.hero, it = h.inv[i]; if (!it) return false; let sl = it.slot;
   if (!canUse(it)) { hint('A ' + CLASSES[h.cls].n + ' cannot use that.'); return false; }
-  if (sl === 'ring') sl = want === 'ring1' || want === 'ring2' ? want : !h.eq.ring1 ? 'ring1' : !h.eq.ring2 ? 'ring2' : 'ring1'; else if (want && want !== sl) return false;
+  if (sl === 'ring') sl = want === 'ring1' || want === 'ring2' ? want : !h.eq.ring1 ? 'ring1' : !h.eq.ring2 ? 'ring2' : itemScore(h.eq.ring1) <= itemScore(h.eq.ring2) ? 'ring1' : 'ring2'; else if (want && want !== sl) return false;
   const old = h.eq[sl] || null; h.inv[i] = null; if (old && !bagPut(h.inv, old, i)) { h.inv[i] = it; hint('No room in the bag to swap that.'); return false; }
-  h.eq[sl] = it; computeStats(); SFX.play('pickup'); saveGame(); return true;
+  h.eq[sl] = it; computeStats(); if (sl === 'weapon' && typeof UI !== 'undefined' && UI.buildBar) UI.buildBar(); SFX.play('pickup'); saveGame(); return true;
 }
-function unequip(sl, at) { const h = G.hero, it = h.eq[sl]; if (!it) return; if (sl === 'weapon') { hint('You need a weapon in hand.'); return; } if (!addItem(it, at)) { hint('Inventory is full.'); return; } delete h.eq[sl]; computeStats(); saveGame(); }
-function itemShards(it) { return [1, 2, 6, 25][it.rar]; }
+function unequip(sl, at) { const h = G.hero, it = h.eq[sl]; if (!it) return; if (!addItem(it, at)) { hint('Inventory is full.'); return; } delete h.eq[sl]; computeStats(); if (sl === 'weapon' && typeof UI !== 'undefined' && UI.buildBar) { UI.buildBar(); hint('Unarmed: you will punch until you equip a weapon.'); } saveGame(); }
+function itemShards(it) { return [1, 2, 6, 25, 80][it.rar]; }
 function scrapItem(i) { const h = G.hero, it = h.inv[i]; if (!it) return; h.shards = (h.shards || 0) + itemShards(it); h.inv[i] = null; SFX.play('gold'); saveGame(); }
 function scrapAll(maxRar) { const h = G.hero; let g = 0; h.inv.forEach((it, i) => { if (it && it.rar <= maxRar) { g += itemShards(it); h.inv[i] = null; } }); if (g) { h.shards = (h.shards || 0) + g; SFX.play('gold'); hint('Scrapped for ' + g + ' shards.'); saveGame(); } }
 function dropFromInv(i) { const h = G.hero, it = h.inv[i]; if (!it) return; h.inv[i] = null; G.drops.push({ x: P.x + Math.sin(P.rot) * 1.6, z: P.z + Math.cos(P.rot) * 1.6, item: it, t: 0 }); SFX.play('pickup'); saveGame(); }
@@ -118,12 +134,13 @@ function newHero(cls) {
 }
 function calcStats(eq) {
   const h = G.hero, c = CLASSES[h.cls], s = {}; for (const k in STATS) s[k] = 0;
-  let wmin = 3, wmax = 5, wspd = 1.2, arm = 0;
+  const uk = Math.pow(1.11, h.level) * .7; let wmin = Math.max(1, Math.round(3 * uk)), wmax = Math.max(2, Math.round(5 * uk)), wspd = 1.3, arm = 0; // bare fists until a weapon says otherwise
   for (const sl of SLOTS) {
     const it = eq[sl]; if (!it) continue; if (it.dmg) { wmin = it.dmg[0]; wmax = it.dmg[1]; wspd = it.spd; } if (it.armor) arm += it.armor;
     for (const a of it.aff) s[a.k] = (s[a.k] || 0) + a.v; if (it.power) { const p = POWERS[it.power].s; for (const k in p) s[k] = (s[k] || 0) + p[k]; }
   }
   for (const b of P.buffs) for (const k in b.s) s[k] = (s[k] || 0) + b.s[k];
+  const pg = h.pg || {}; s.dmg += pg.dmg || 0; s.lifePct += pg.life || 0; s.armorPct += (pg.armor || 0) * 2; s.critDmg += (pg.crit || 0) * 2; s.mf += pg.mf || 0; s.ms += Math.min(25, pg.ms || 0);
   s.wmin = wmin; s.wmax = wmax; s.wspd = wspd;
   s.maxLife = Math.round((c.life + h.level * c.lifeLv + s.life) * (1 + s.lifePct / 100)); s.maxMana = c.res.max;
   s.armorT = Math.round((arm + s.armor + c.armor * h.level) * (1 + s.armorPct / 100));
@@ -133,25 +150,34 @@ function calcStats(eq) {
   const el = (SKILLS[h.bar && h.bar[0]] || {}).el || 'phys', inc = 1 + (s.dmg + (s[el] || 0) + (el !== 'phys' ? s.ele : 0)) / 100, avg = (wmin + wmax) / 2 + s.addPhys + s.addFire + s.addCold + s.addLight, aps = wspd * (1 + s.aspd / 100);
   s.dps = Math.round(avg * inc * aps * (1 + s.critT / 100 * (s.critM - 1)));
   const hitv = 5 * Math.pow(1.095, h.level), mp = Math.min(.8, s.armorT / (s.armorT + 60 + hitv * 6)), mr = (s.rfire + s.rcold + s.rlight) / 300, taken = (1 - (.6 * mp + .4 * mr)) * (1 - Math.min(50, s.dr) / 100) * (1 - s.dodgeT / 100);
-  s.tough = Math.round(s.maxLife / Math.max(.05, taken)); s.recov = Math.round((s.lifeRegenT + s.lifeOnHit * aps) * 10) / 10;
+  s.tough = Math.round(s.maxLife / Math.max(.05, taken)); s.recov = Math.round(s.lifeRegenT + s.lifeOnHit * aps);
   return s;
 }
 function computeStats() { const s = calcStats(G.hero.eq); P.gear = gearDecode(P.gc = gearCode(G.hero.eq)); P.stats = s; P.hp = Math.min(P.hp, s.maxLife); P.mana = Math.min(P.mana, s.maxMana); return s; }
+function paragonFree() { const h = G.hero, pg = h.pg || {}; let used = 0; for (const k in pg) used += pg[k]; return (h.plvl || 0) - used; }
+function spendParagon(k) { const h = G.hero; if (!PARAGON[k] || paragonFree() < 1) return false; h.pg = h.pg || {}; if (PARAGON[k][2] && (h.pg[k] || 0) >= PARAGON[k][2]) { hint(PARAGON[k][0] + ' is at its limit.'); return false; } h.pg[k] = (h.pg[k] || 0) + 1; computeStats(); SFX.play('pickup'); saveGame(); return true; }
 function gainXp(v) {
-  const h = G.hero; if (h.level >= MAX_LEVEL) return; h.xp += Math.round(v * (1 + (P.stats.xp || 0) / 100));
+  const h = G.hero; v = Math.round(v * (1 + (P.stats.xp || 0) / 100));
+  if (h.level >= MAX_LEVEL) {   // past the cap, experience feeds uncapped Paragon levels
+    h.pxp = (h.pxp || 0) + v; h.plvl = h.plvl || 0;
+    while (h.pxp >= paragonNeed(h.plvl)) { h.pxp -= paragonNeed(h.plvl); h.plvl++; SFX.play('level'); ring(P.x, P.z, 0, 9, .7, 0x7ad0ff); burst(P.x, 1.5, P.z, 0x7ad0ff, 30, 7); floatText(P.x, 3, P.z, 'PARAGON ' + h.plvl, '#7ad0ff', 1.8, 22); hint('Paragon ' + h.plvl + ' reached. Spend the point in your Inventory.'); if (typeof UI !== 'undefined') UI.invDirty = true; }
+    return;
+  }
+  h.xp += v;
   while (h.level < MAX_LEVEL && h.xp >= xpNeed(h.level)) {
-    h.xp -= xpNeed(h.level); h.level++; computeStats(); P.hp = P.stats.maxLife; P.mana = P.stats.maxMana; SFX.play('level'); ring(P.x, P.z, 0, 9, .7, 0xffd84a); burst(P.x, 1.5, P.z, 0xffd84a, 30, 7);
+    h.xp -= xpNeed(h.level); h.level++; computeStats(); P.hp = P.stats.maxLife; P.mana = P.stats.maxMana; SFX.play('level'); ring(P.x, P.z, 0, 9, .7, 0xffd84a); burst(P.x, 1.5, P.z, 0xffd84a, 30, 7); if (h.level >= MAX_LEVEL) { h.pxp = h.xp; h.xp = 0; hint('Level 60! From here you earn Paragon levels with no limit.'); }
     floatText(P.x, 3, P.z, 'LEVEL ' + h.level, '#ffd84a', 1.8, 22); for (const id of CLASSES[h.cls].skills) if (SKILLS[id].lv === h.level) { const sk = SKILLS[id]; let i = sk.basic ? -1 : h.bar.indexOf(null); if (i > 0) { h.bar[i] = id; hint('New skill: ' + sk.n + ' — placed on ' + SLOT_KEY[i] + '.'); } else hint('New skill: ' + sk.n + ' — open Skills to slot it.'); if (typeof UI !== 'undefined') UI.buildBar(); }
   }
 }
 function saveGame() { try { localStorage.setItem(SAVE_KEY + '_' + G.hero.cls, JSON.stringify(G.hero)); if (G.stash) localStorage.setItem(SAVE_KEY + '_stash', JSON.stringify(G.stash)); } catch (e) { } }
-function loadStash() { let st = null; try { st = JSON.parse(localStorage.getItem(SAVE_KEY + '_stash')); } catch (e) { } if (!Array.isArray(st) || st.length !== 100) st = new Array(100).fill(null); for (const it of st) if (it && it.id >= itemId) itemId = it.id + 1; G.stash = st; }
+function loadStash() { let st = null; try { st = JSON.parse(localStorage.getItem(SAVE_KEY + '_stash')); } catch (e) { } if (!Array.isArray(st) || st.length !== 100) st = new Array(100).fill(null); for (const it of st) if (it) { if (it.id >= itemId) itemId = it.id + 1; if (it.aff) for (const a of it.aff) a.v = Math.max(1, Math.round(a.v)); } G.stash = st; }
 function loadGame(cls) {
   try {
     let raw = localStorage.getItem(SAVE_KEY + '_' + cls); if (!raw && cls === 'warden') raw = localStorage.getItem(SAVE_KEY); const h = JSON.parse(raw);
-    if (h && h.v === 1 && h.inv && h.eq && h.eq.weapon && CLASSES[h.cls] && h.cls === cls) {
+    if (h && h.v === 1 && h.inv && h.eq && CLASSES[h.cls] && h.cls === cls) {
       let m = 0; for (const it of h.inv) if (it) m = Math.max(m, it.id); for (const k in h.eq) m = Math.max(m, h.eq[k].id); itemId = Math.max(itemId, m + 1);
       if (h.bagV !== 2 || h.inv.length !== BAG_N) { const old = h.inv.filter(x => x).sort((a, b) => b.rar - a.rar); h.inv = new Array(BAG_N).fill(null); for (const it of old) if (!bagPut(h.inv, it)) h.gold += itemValue(it); h.bagV = 2; }
+      const rd = it => { if (it && it.aff) for (const a of it.aff) a.v = Math.max(1, Math.round(a.v)); }; h.inv.forEach(rd); for (const k in h.eq) rd(h.eq[k]);
       const sk = CLASSES[cls].skills; if (!h.bar || h.bar.some(id => id && !sk.includes(id))) { h.bar = [sk[0], null, null, null]; for (const id of sk) if (!SKILLS[id].basic && SKILLS[id].lv <= h.level) { const i = h.bar.indexOf(null); if (i > 0) h.bar[i] = id; } }
       return h;
     }
@@ -208,39 +234,49 @@ function buildStatic(Z) {
   GLX.statBegin(); const th = Z.th, S = GW * CS, c = Z.cell, col = GLX.col;
   GLX.obj('stat', 'box', S / 2, -.5, S / 2, 0, S + 120, 1, S + 120, col(th.ground), 0, 1, th.gdet);
   srand(Z.def.seed ^ 0x5bd1e995);
-  const bark = col(th.wc[0]), leaf = [col(th.wc[1]), col(th.wc[2]), col(0x3a4a22)], stone = col(0x6c6a64), grassC = [col(0x4e6a2c), col(0x5a7230), col(0x66722e), col(0x3e5a28)];
+  const bark = col(th.wc[0]), leaf = [col(th.wc[1]), col(th.wc[2]), col(0x3a4a22)], stone = col(0x6c6a64), grassC = [col(0x5c7a32), col(0x688236), col(0x748034), col(0x4e6c2e)];
+  const TB = new Float32Array(16), HP = 1.5708, lay = (g, x, y, z, ry, rx, rz, sx, sy, sz, c, m) => { GLX.base(TB, x, y, z, ry, 1); GLX.part('stat', g, TB, 0, 0, 0, rx, 0, rz, 0, 0, 0, sx, sy, sz, c, 0, 1, m); };
+  const roots = (x, z, r, bc) => { for (let k = 0; k < 4; k++) { const a = sr() * 6.28; lay('fol', x + Math.cos(a) * r * .7, .22, z + Math.sin(a) * r * .7, -a + HP, 1.15, 0, r * .6, r * 2.2, r * .6, bc, 3); } };
   const pine = (x, z) => {
-    const h = 6.5 + sr() * 5, k = .8 + sr() * .5, lc = shade(leaf[sr() * 3 | 0], .75 + sr() * .5), ry = sr() * 6.28;
-    GLX.obj('stat', 'trunk', x, h * .24, z, ry, .6 * k, h * .5, .6 * k, shade(bark, .8 + sr() * .4), 0, 1, 3);
-    for (let i = 0; i < 5; i++) { const w = (3.9 - i * .68) * k; GLX.obj('stat', 'fol', x + (sr() - .5) * .25, h * (.36 + i * .145), z + (sr() - .5) * .25, ry + i * 1.3, w, h * .3, w, shade(lc, .85 + i * .07), 0, 1, 2); }
+    const h = 7 + sr() * 5.5, k = .8 + sr() * .5, lc = shade(leaf[sr() * 3 | 0], .7 + sr() * .5), ry = sr() * 6.28, bc = shade(bark, .8 + sr() * .4), lx = (sr() - .5) * .5, lz = (sr() - .5) * .5;
+    GLX.obj('stat', 'trunk', x, h * .26, z, ry, .62 * k, h * .54, .62 * k, bc, 0, 1, 3); roots(x, z, .5 * k, bc);
+    for (let i = 0; i < 7; i++) { const t = i / 6, w = (4.3 - t * 3.3) * k; GLX.obj('stat', 'fol', x + lx * t + (sr() - .5) * .3, h * (.34 + t * .62), z + lz * t + (sr() - .5) * .3, ry + i * 1.3, w, h * .26, w, shade(lc, .8 + t * .35 + sr() * .1), 0, 1, 2); }
+    if (sr() < .5) for (let b = 0; b < 2; b++) { const a = sr() * 6.28; lay('trunk', x + Math.cos(a) * .7, h * (.2 + sr() * .12), z + Math.sin(a) * .7, -a + HP, 1.2, 0, .12, 1.4, .12, bc, 3); }
   };
   const broad = (x, z) => {
-    const h = 4.5 + sr() * 3, lc = shade(leaf[sr() * 3 | 0], .8 + sr() * .5), ry = sr() * 6.28;
-    GLX.obj('stat', 'trunk', x, h * .5, z, ry, .8, h, .8, shade(bark, .8 + sr() * .4), 0, 1, 3);
-    const n = 4 + (sr() * 3 | 0); for (let i = 0; i < n; i++) { const a = sr() * 6.28, d = i ? 1 + sr() * 1.3 : 0, r = 2.4 + sr() * 1.4; GLX.obj('stat', 'blob', x + Math.cos(a) * d, h + .6 + sr() * 1.6, z + Math.sin(a) * d, sr() * 6, r, r * (.7 + sr() * .25), r, shade(lc, .8 + sr() * .35), 0, 1, 2); }
+    const h = 4.5 + sr() * 3.5, lc = shade(leaf[sr() * 3 | 0], .75 + sr() * .5), ry = sr() * 6.28, bc = shade(bark, .8 + sr() * .4);
+    GLX.obj('stat', 'trunk', x, h * .5, z, ry, .9, h, .9, bc, 0, 1, 3); roots(x, z, .6, bc);
+    for (let b = 0; b < 3; b++) { const a = b * 2.1 + sr(), L = 1.6 + sr() * 1.2; lay('trunk', x + Math.cos(a) * L * .4, h * .9 + L * .3, z + Math.sin(a) * L * .4, -a + HP, .9, 0, .28, L * 1.4, .28, bc, 3); }
+    const n = (LOWQ ? 4 : 7) + (sr() * 3 | 0); for (let i = 0; i < n; i++) { const a = sr() * 6.28, d = i ? .8 + sr() * 2 : 0, r = i ? 1.6 + sr() * 1.5 : 3; GLX.obj('stat', 'blob', x + Math.cos(a) * d, h + .7 + sr() * 2.2 - d * .25, z + Math.sin(a) * d, sr() * 6, r, r * (.65 + sr() * .25), r, shade(lc, .7 + sr() * .5), 0, 1, 2); }
   };
-  const rock = (x, z, r) => GLX.obj('stat', 'blob', x, r * .22, z, sr() * 6.28, r * (.8 + sr() * .6), r * (.5 + sr() * .4), r * (.8 + sr() * .5), shade(stone, .7 + sr() * .5), 0, 1, 3);
-  const grass = (x, z, n, sp) => { for (let k = 0; k < n; k++) { const h = .16 + sr() * .34; GLX.obj('stat', 'blade', x + (sr() - .5) * sp, h * .5, z + (sr() - .5) * sp, sr() * 6.28, .09, h, .04, shade(grassC[sr() * 4 | 0], .7 + sr() * .6), 0, 1, 2); } };
-  const gN = LOWQ ? 9 : 24;
+  const dead = (x, z) => { const h = 4 + sr() * 3, bc = shade(bark, .55 + sr() * .2); GLX.obj('stat', 'trunk', x, h * .5, z, sr() * 6, .6, h, .6, bc, 0, 1, 3); roots(x, z, .45, bc); for (let b = 0; b < 4; b++) { const a = sr() * 6.28, L = 1 + sr() * 1.4, y = h * (.5 + sr() * .45); lay('trunk', x + Math.cos(a) * L * .4, y + L * .25, z + Math.sin(a) * L * .4, -a + HP, .8 + sr() * .4, 0, .14, L * 1.3, .14, bc, 3); } };
+  const rock = (x, z, r) => { const ry = sr() * 6.28, w = r * (.8 + sr() * .6), hh = r * (.5 + sr() * .4), d = r * (.8 + sr() * .5); GLX.obj('stat', 'blob', x, hh * .44, z, ry, w, hh, d, shade(stone, .7 + sr() * .5), 0, 1, 3); if (r > .8 && sr() < .7) GLX.obj('stat', 'blob', x, hh * .8, z, ry, w * .8, hh * .35, d * .8, shade(leaf[2], .9 + sr() * .3), 0, 1, 2); if (r > 1 && sr() < .5) GLX.obj('stat', 'blob', x + w * .5, hh * .25, z + d * .3, ry + 1, w * .5, hh * .5, d * .5, shade(stone, .6 + sr() * .4), 0, 1, 3); };
+  const grass = (x, z, n, sp) => { n = Math.max(1, Math.round(n / 4)); for (let k = 0; k < n; k++) { const h = .2 + sr() * .26, w = .5 + sr() * .45; GLX.obj('stat', 'tuft', x + (sr() - .5) * sp, h * .5, z + (sr() - .5) * sp, sr() * 6.28, w, h, w, shade(grassC[sr() * 4 | 0], .9 + sr() * .35), 0, 1, 5); } };
+  const fern = (x, z) => { const fc = shade(leaf[2], 1 + sr() * .5), n = 6 + (sr() * 3 | 0); for (let k = 0; k < n; k++) { const a = k / n * 6.28 + sr() * .4; lay('blade', x + Math.cos(a) * .32, .26, z + Math.sin(a) * .32, -a + HP, 1.05 + sr() * .2, 0, .34, 1.0 + sr() * .4, .05, fc, 2); } };
+  const shroom = (x, z) => { for (let k = 0; k < 3; k++) { const mx = x + (sr() - .5) * .7, mz = z + (sr() - .5) * .7, mh = .14 + sr() * .2; GLX.obj('stat', 'cyl', mx, mh / 2, mz, 0, .06, mh, .06, col(0xd8d0c0)); GLX.obj('stat', 'blob', mx, mh + .03, mz, 0, .22 + sr() * .14, .13, .22 + sr() * .14, col(sr() < .5 ? 0x9a3a2a : 0xb08a4a), 0, 1, 0); } };
+  const logf = (x, z) => { const a = sr() * 6.28, L = 2.2 + sr() * 1.6, bc = shade(bark, .7 + sr() * .3); lay('cyl', x, .3, z, a, HP, 0, .6, L, .6, bc, 3); lay('cyl', x + Math.sin(a) * L * .5, .3, z + Math.cos(a) * L * .5, a, HP, 0, .5, .04, .5, col(0xa88a5a), 0); if (sr() < .6) GLX.obj('stat', 'blob', x, .52, z, a, .7, .22, 1.2, shade(leaf[2], 1.1), 0, 1, 2); };
+  const litter = (x, z) => { for (let k = 0; k < 5; k++) GLX.obj('stat', 'disc', x + (sr() - .5) * 2.6, .02 + k * .002, z + (sr() - .5) * 2.6, sr() * 6, .16 + sr() * .1, 1, .1 + sr() * .08, col([0x8a5a22, 0xa8742a, 0x6a4a1c, 0x9a3a1c][sr() * 4 | 0]), 0, 1, 0); };
+  const gN = LOWQ ? 7 : 18;
   for (let y = 0; y < GW; y++) for (let x = 0; x < GW; x++) {
     const wx = (x + .5) * CS, wz = (y + .5) * CS; GLX.statChunk((x / 6 | 0) + '_' + (y / 6 | 0), ((x / 6 | 0) * 6 + 3) * CS, ((y / 6 | 0) * 6 + 3) * CS);
     if (c[y * GW + x]) {
       let near = 9; for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) { const xx = x + i, yy = y + j; if (xx >= 0 && yy >= 0 && xx < GW && yy < GW && !c[yy * GW + xx]) near = Math.min(near, Math.max(Math.abs(i), Math.abs(j))); }
       if (near > 2) continue;
       if (th.wall === 'tree') {
-        const jx = wx + (sr() - .5) * 1.6, jz = wz + (sr() - .5) * 1.6; if (sr() < .62) pine(jx, jz); else broad(jx, jz);
+        const jx = wx + (sr() - .5) * 1.6, jz = wz + (sr() - .5) * 1.6, tr = sr(); if (tr < .58) pine(jx, jz); else if (tr < .93) broad(jx, jz); else dead(jx, jz);
         if (near === 1 && sr() < .45) pine(wx + (sr() - .5) * 2.6, wz + (sr() - .5) * 2.6);
         if (sr() < .55) { const r = 1 + sr() * .8; GLX.obj('stat', 'blob', wx + (sr() - .5) * 2.4, r * .35, wz + (sr() - .5) * 2.4, sr() * 6, r * 1.3, r, r * 1.2, shade(leaf[sr() * 3 | 0], .7 + sr() * .4), 0, 1, 2); }
         if (sr() < .3) rock(wx + (sr() - .5) * 2.4, wz + (sr() - .5) * 2.4, 1 + sr() * 1.4);
-        if (near === 1) grass(wx, wz, gN >> 1, CS);
+        if (near === 1) { grass(wx, wz, gN >> 1, CS); if (!LOWQ && sr() < .45) fern(wx + (sr() - .5) * 2, wz + (sr() - .5) * 2); if (!LOWQ && sr() < .3) litter(wx, wz); if (sr() < .15) shroom(wx + (sr() - .5) * 2, wz + (sr() - .5) * 2); }
       } else { const h = 2.6 + sr() * 2; GLX.obj('stat', 'box', wx, h / 2, wz, 0, CS, h, CS, col(th.wc[x * 7 + y * 3 & 1]), 0, 1, 3); }
     } else {
-      grass(wx, wz, gN, CS); const r = sr();
+      grass(wx, wz, gN, CS); const r = sr(); if (!LOWQ && sr() < .16) litter(wx, wz); if (!LOWQ && sr() < .05) fern(wx + (sr() - .5) * 2, wz + (sr() - .5) * 2);
       if (r < .07) { grass(wx + (sr() - .5), wz + (sr() - .5), gN, 1.1); }
       else if (r < .13) rock(wx + (sr() - .5) * 2, wz + (sr() - .5) * 2, .3 + sr() * .45);
       else if (r < .155) { GLX.obj('stat', 'cyl', wx, .07, wz, sr() * 6, .1, .1, .9, col(0xc9c2aa), 0, 1, 0); GLX.obj('stat', 'sphere', wx + .4, .13, wz + .3, 0, .3, .24, .26, col(0xc9c2aa), 0, 1, 0); }
-      else if (r < .175) GLX.obj('stat', 'taper', wx, .3, wz, sr() * 6, .95, .6, .95, shade(bark, .9), 0, 1, 3);
-      else if (r < .2) { const fc = col([0xd8c84a, 0xc86a8a, 0xe8e0d0][sr() * 3 | 0]); for (let k = 0; k < 4; k++) { const fx = wx + (sr() - .5) * 1.6, fz = wz + (sr() - .5) * 1.6; GLX.obj('stat', 'blade', fx, .22, fz, 0, .04, .44, .04, grassC[0], 0, 1, 2); GLX.obj('stat', 'sphere', fx, .46, fz, 0, .14, .1, .14, fc, .15, 1, 0); } }
+      else if (r < .175) { GLX.obj('stat', 'taper', wx, .3, wz, sr() * 6, .95, .6, .95, shade(bark, .9), 0, 1, 3); GLX.obj('stat', 'cyl', wx, .61, wz, 0, .56, .02, .56, col(0xa88a5a), 0, 1, 0); }
+      else if (r < .19) logf(wx, wz); else if (r < .2) shroom(wx, wz);
+      else if (r < .23) { const fc = col([0xd8c84a, 0xc86a8a, 0xe8e0d0][sr() * 3 | 0]); for (let k = 0; k < 4; k++) { const fx = wx + (sr() - .5) * 1.6, fz = wz + (sr() - .5) * 1.6; GLX.obj('stat', 'blade', fx, .22, fz, 0, .04, .44, .04, grassC[0], 0, 1, 2); GLX.obj('stat', 'sphere', fx, .46, fz, 0, .14, .1, .14, fc, .15, 1, 0); } }
     }
   }
   for (const L of Z.lamps) {
@@ -260,11 +296,12 @@ function buildStatic(Z) {
   GLX.statEnd();
 }
 // Reference basic-attack hit: expected for the level, kept close to the hero's real hit so normal enemies always die in 2-5 swings.
-function refHit(lvl) { const s = P.stats, exp = 7.5 * Math.pow(1.11, lvl) * (1 + .04 * lvl); if (!s || !s.wmin) return exp; const act = ((s.wmin + s.wmax) / 2 + s.addPhys + s.addFire + s.addCold + s.addLight) * (1 + (s.dmg + s.phys) / 100); return clamp(exp, act * .7, act * 1.25); }
+function refHit(lvl) { const s = P.stats, exp = 7.5 * Math.pow(1.11, lvl) * (1 + .04 * lvl); if (!s || !s.wmin) return exp; const act = ((s.wmin + s.wmax) / 2 + s.addPhys + s.addFire + s.addCold + s.addLight) * (1 + (s.dmg + s.phys) / 100); return clamp(exp, act * .7, act * 1.08); }
 function mkEnemy(md, x, z, lvl, elite, pack) {
   const a = ARCH[md.a], hit = refHit(lvl);
   const e = { id: ++G.eid, md, a, arch: md.a, x, z, rot: rnd(6.28), lvl, elite, pack, r: a.r * (elite ? 1.2 : 1), sc: a.sc * (elite === 1 ? 1.2 : elite === 2 ? 1.38 : 1), maxHp: Math.round(2.8 * hit * a.hp * (elite === 1 ? 2.2 : elite === 2 ? 3.5 : 1)), dmg: 5 * Math.pow(1.095, lvl) * a.dmg * (elite ? 1.3 : 1), spd: a.spd, st: 'chase', t: 0, cd: rnd(.2, 1), walk: rnd(6), awake: false, flash: 0, chill: 0, shock: 0, frozen: 0, burn: 0, burnT: 0, atk: 0, alive: true, deadT: 0, modT: 2, name: md.n, mods: [] };
   if (elite) { const keys = Object.keys(EMODS); while (e.mods.length < elite) { const k = pick(keys); if (!e.mods.includes(k)) e.mods.push(k); } for (const k of e.mods) e[k] = true; if (e.hasted) e.spd *= 1.3; e.name = e.mods.map(k => EMODS[k].n).join(' ') + ' ' + md.n; }
+  if (!elite && !md.boss && P.stats && P.stats.wmin && G.hero) { const s = P.stats, bs = (!G.hero.eq.weapon ? SKILLS.punch : SKILLS[G.hero.bar[0]]) || SKILLS.punch, low = (s.wmin + s.addPhys + s.addFire + s.addCold + s.addLight) * (1 + (s.dmg + (s[bs.el] || 0) + (bs.el !== 'phys' ? s.ele : 0)) / 100) * (bs.m || 1); e.maxHp = Math.max(1, Math.min(e.maxHp, Math.floor(low * 4.8))); }
   e.hp = e.maxHp; G.ents.push(e); return e;
 }
 function spawnAll(Z) {
@@ -314,6 +351,13 @@ function enterTown() {
   const h = G.hero; if (!h.stock || Math.abs(h.kills - (h.stockK || 0)) >= 25 || h.stockL !== h.level) { h.stock = []; for (let i = 0; i < 10; i++) h.stock.push(makeItem(h.level, null, Math.random() < .12 ? 3 : Math.random() < .5 ? 2 : 1)); h.stockK = h.kills; h.stockL = h.level; }
   SFX.play('shrine'); UI.zoneBanner('Emberwatch Camp', 'Stash · Trader · Altar'); saveGame();
 }
+// jump straight to a party member; from town it walks you out through the portal first
+function teleportTo(id) {
+  if (!G.online) return; if (G.inTown) { G.tpTo = id; leaveTown(); return; }
+  const p = NET.peers[id]; if (!p) { hint('That player is not on your floor right now.'); return; } if (P.dead) return;
+  ring(P.x, P.z, 0, 4, .5, 0x7ad0ff); let x = p.x, z = p.z; for (let k = 0; k < 8; k++) { const a = k * .785, tx = p.x + Math.sin(a) * 1.6, tz = p.z + Math.cos(a) * 1.6; if (!blocked(tx, tz, .5)) { x = tx; z = tz; break; } }
+  P.x = x; P.z = z; P.act = null; P.dash = null; P.iframes = Math.max(P.iframes || 0, 1.5); G.tpTo = 0; ring(x, z, 0, 5, .6, 0x7ad0ff); burst(x, 1.2, z, 0x7ad0ff, 24, 6); SFX.play('shrine'); hint('Teleported to ' + p.name + '.');
+}
 function leaveTown() {
   if (!G.inTown) return; const a = G.away; UI.closeTown();
   if (G.online) { NET.send({ t: 'sync' }); hint('Returning to your party…'); return; }
@@ -327,13 +371,13 @@ function sellItem(i) { const h = G.hero, it = h.inv[i]; if (!it) return; h.gold 
 function buyPrice(it) { return itemValue(it) * 5; }
 function buyItem(k) { const h = G.hero, it = h.stock && h.stock[k]; if (!it) return; const pr = buyPrice(it); if (h.gold < pr) { hint('Not enough gold.'); return; } if (!addItem(it)) { hint('Inventory is full.'); return; } h.gold -= pr; h.stock[k] = null; SFX.play('gold'); saveGame(); }
 // Altar: reroll ONE line of an item. Once a line is chosen, only that line can be rerolled again.
-function affixRange(a, ilvl) { const k = a[3] === 'f' ? Math.pow(1.085, ilvl) : a[3] === 'p' ? 1 + Math.min(ilvl, 60) * .02 : 1, r = v => v >= 10 ? Math.round(v) : Math.round(v * 10) / 10; return [r(a[1] * k), r(a[2] * k)]; }
+function affixRange(a, ilvl) { const k = a[3] === 'f' ? Math.pow(1.085, ilvl) : a[3] === 'p' ? 1 + Math.min(ilvl, 60) * .02 : 1, r = v => Math.max(1, Math.round(v)); return [r(a[1] * k), r(a[2] * k)]; }
 function altarPool(it, idx) { const as = AFF_ALIAS[it.slot] || it.slot, have = new Set(it.aff.filter((a, i) => i !== idx).map(a => a.k)); return AFFIX.filter(a => a[4].split(' ').includes(as) && !have.has(a[0])); }
 function altarCost(it) { const n = it.rr || 0; return { shards: Math.round((3 + it.rar * 2) * (1 + n * .5)), gold: Math.round(itemValue(it) * (1 + n * .5)) }; }
-function altarReroll(i, idx) {
-  const h = G.hero, it = h.inv[i]; if (!it || !it.aff[idx]) return false; if (it.ench !== undefined && it.ench !== idx) { hint('Only the line you first changed can be rerolled on this item.'); return false; }
+function altarReroll(sel, idx) {
+  const h = G.hero, it = typeof sel === 'string' ? h.eq[sel] : h.inv[sel]; if (!it || !it.aff[idx]) return false; if (it.ench !== undefined && it.ench !== idx) { hint('Only the line you first changed can be rerolled on this item.'); return false; }
   const c = altarCost(it); if ((h.shards || 0) < c.shards) { hint('Not enough shards. Scrap items to get more.'); return false; } if (h.gold < c.gold) { hint('Not enough gold.'); return false; }
-  const pool = altarPool(it, idx); if (!pool.length) return false; const a = pick(pool); h.shards -= c.shards; h.gold -= c.gold; it.aff[idx] = { k: a[0], v: affixVal(a, it.ilvl) }; it.ench = idx; it.rr = (it.rr || 0) + 1; SFX.play('shrine'); saveGame(); return true;
+  const pool = altarPool(it, idx); if (!pool.length) return false; const a = pick(pool); h.shards -= c.shards; h.gold -= c.gold; it.aff[idx] = { k: a[0], v: affixVal(a, it.ilvl) }; it.ench = idx; it.rr = (it.rr || 0) + 1; if (typeof sel === 'string') computeStats(); SFX.play('shrine'); saveGame(); return true;
 }
 
 // ---------- fx ----------
@@ -371,7 +415,7 @@ function killEnemy(e) {
   if (e.molten && !G.online) addArea({ x: e.x, z: e.z, r: 2.6, delay: .7, owner: 'e', dmg: e.dmg * 1.3, el: 'fire', c: 0xff7a2a });
   if (e.boss) {
     G.zone.cleared = true; G.shake = .9; ring(e.x, e.z, 0, 16, 1.1, e.md.e); burst(e.x, 2, e.z, e.md.e, 60, 11); SFX.play('level'); h.runs++;
-    G.zone.objs.push({ kind: 'portal', x: e.x, z: e.z, name: 'Descend deeper', used: false }); UI.zoneBanner('Guardian slain', 'Take the portal to go deeper'); saveGame();
+    G.zone.objs.push({ kind: 'portal', x: e.x, z: e.z, name: 'Descend deeper', used: false }); UI.zoneBanner('Guardian slain', 'A great gate opens to the next floor'); ring(e.x, e.z, 0, 16, 1.2, 0x7ad0ff); ring(e.x, e.z, 0, 9, .8, 0xb48cff); burst(e.x, 2, e.z, 0x7ad0ff, 60, 12); G.shake = .9; SFX.play('shrine'); saveGame();
   }
 }
 function dmgPlayer(v, el, src) {
@@ -383,7 +427,9 @@ function dmgPlayer(v, el, src) {
   if (P.hp <= 0) { if (s.cheat && P.cheatCd <= 0) { P.hp = s.maxLife; P.cheatCd = 60; ring(P.x, P.z, 0, 10, .8, 0xff8a2a); hint('Emberheart saves you from death!'); } else { P.hp = 0; P.dead = true; P.act = P.spin = P.dash = null; G.streak = 0; SFX.play('die'); UI.showDeath(); } }
 }
 function tryCast(slot, tx, tz) {
-  const h = G.hero, id = h.bar[slot], s = P.stats; if (!id) return false; const sk = SKILLS[id];
+  const h = G.hero, s = P.stats; let id = h.bar[slot];
+  if (!h.eq.weapon) { if (slot !== 0) { if (G.time - P.oomT > 1.5) { P.oomT = G.time; hint('Unarmed: you can only punch until you equip a weapon.'); } return false; } id = 'punch'; }
+  if (!id) return false; const sk = SKILLS[id];
   if (P.act || P.dash || (P.cds[id] || 0) > 0) return false; if (sk.type === 'spin' && P.spin) return false;
   if (P.mana < (sk.cost || 0)) { if (G.time - P.oomT > 1.5) { P.oomT = G.time; hint('Not enough ' + CLASSES[h.cls].res.n + '.'); } return false; }
   if (tx === undefined) { tx = IN.gx; tz = IN.gz; }
@@ -556,6 +602,7 @@ function pickup(d) {
   if (d.gold) { G.hero.gold += d.gold; floatText(d.x, 1.2, d.z, '+' + d.gold + ' gold', '#ffd84a', .9, 13); SFX.play('gold'); G.drops.splice(i, 1); return; }
   if (!addItem(d.item)) { if (G.time - P.oomT > 1.5) { P.oomT = G.time; hint('Inventory is full. Open it (I) and scrap or drop something.'); } return; }
   G.drops.splice(i, 1); SFX.play('pickup'); floatText(d.x, 1.4, d.z, d.item.name, RAR[d.item.rar].c, 1.1, 13); UI.invDirty = true;
+  if (d.item.rar >= 3 && !d.item.fd) { d.item.fd = 1; if (G.online) NET.send({ t: 'found', item: d.item.name, r: d.item.rar }); else hint('You found a ' + RAR[d.item.rar].n + ' item: ' + d.item.name); }
 }
 function pickupNear() { for (const d of G.drops.slice()) if (d.item && Math.hypot(d.x - P.x, d.z - P.z) < 5 && d.item.rar >= G.hero.filter) pickup(d); }
 function interact(o) {
@@ -656,9 +703,9 @@ const BM = new Float32Array(16);
 // What the hero is wearing, as a compact look the model (and other players) can read.
 const GSL = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet'];
 function gearCode(eq) { let c = ''; for (const sl of GSL) { const it = eq[sl]; if (!it) { c += 'xx'; continue; } let b = 0; if (sl === 'weapon') b = Math.max(0, WEAPONS.findIndex(w => w.n === it.base)); else if (ARMOR[sl]) b = Math.max(0, ARMOR[sl].findIndex(a => a.n === it.base)); c += b + '' + it.rar; } return c; }
-function gearDecode(c) { const g = {}; if (typeof c !== 'string' || c.length !== GSL.length * 2) return null; GSL.forEach((sl, i) => { const b = c.charCodeAt(i * 2) - 48, r = c.charCodeAt(i * 2 + 1) - 48; g[sl] = b >= 0 && b <= 9 && r >= 0 && r <= 3 ? [b, r] : null; }); return g; }
+function gearDecode(c) { const g = {}; if (typeof c !== 'string' || c.length !== GSL.length * 2) return null; GSL.forEach((sl, i) => { const b = c.charCodeAt(i * 2) - 48, r = c.charCodeAt(i * 2 + 1) - 48; g[sl] = b >= 0 && b <= 9 && r >= 0 && r <= 4 ? [b, r] : null; }); return g; }
 const DEFGEAR = gearDecode('0101011101010101010100');
-const TRIMC = [0x77726a, 0x5878d8, 0xd8b030, 0xff8a2a];
+const TRIMC = [0x77726a, 0x5878d8, 0xd8b030, 0xff8a2a, 0xb060ff];
 function drawHero(o, self) {
   const col = GLX.col, cls = o.cls || G.hero.cls, L = LOOK[cls] || LOOK.warden, g = o.gear || DEFGEAR, cloth = col(L.cl), leatherC = col(0x6a4a30), dkLeather = col(0x4a3524), steelC = col(0x8e97a8), skin = col(0xc99a78), blade = col(0xc8ced8), gold = col(0xb08a3a), wood = col(0x5a4028), under = shade(cloth, .55);
   const mat = (it, base0, alt) => !it ? null : it[0] === 0 ? [steelC, 4] : [alt || leatherC, 0], tr = it => { const r = it ? it[1] : 0; return [col(TRIMC[r]), r >= 3 ? .7 : r === 2 ? .15 : 0]; };
@@ -669,37 +716,52 @@ function drawHero(o, self) {
   GLX.base(BM, o.x, o.y + bob, o.z, rot, 1.08); const p = (gm2, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, c, m, e) => GLX.part('dyn', gm2, BM, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, c, e === undefined ? em : e + em, 1, m || 0);
   const lg = Math.sin(w) * .8 * mv, air = o.dash ? -1 : 0, ranged = wt === 'bow' || wt === 'staff';
   // legs or robe
-  if (L.robe) { p('taper', 0, .62, 0, 0, 0, 0, 0, 0, 0, .86, 1.2, .8, ac, am); p('cyl', 0, .08, 0, 0, 0, 0, 0, 0, 0, .9, .1, .84, trim, 4, te); p('box', 0, .62, .37, .12, 0, 0, 0, 0, 0, .2, 1.0, .04, trim, 0, te); for (const sd of [1, -1]) p('box', .16 * sd, .1, .1 + sd * lg * .25, 0, 0, 0, 0, 0, 0, .18, .12, .34, bm ? bm[0] : skin, bm ? bm[1] : 0); }
+  if (L.robe) { p('taper', 0, .62, 0, 0, 0, 0, 0, 0, 0, .86, 1.2, .8, ac, am); p('cyl', 0, .08, 0, 0, 0, 0, 0, 0, 0, .9, .1, .84, trim, 4, te); p('box', 0, .62, .37, .12, 0, 0, 0, 0, 0, .2, 1.0, .04, trim, 0, te); for (const sd of [1, -1]) p('sphere', .16 * sd, .08, .12 + sd * lg * .25, 0, 0, 0, 0, 0, 0, .2, .14, .38, bm ? bm[0] : skin, bm ? bm[1] : 0); }
   else for (const sd of [1, -1]) {
-    const r = sd * lg + air * (sd > 0 ? 1 : .5); p('cyl', .17 * sd, .95, 0, r, 0, 0, 0, -.24, 0, .25, .5, .27, pm[0], pm[1]); p('cyl', .17 * sd, .95, 0, r * 1.25, 0, 0, 0, -.66, .02, .21, .46, .23, bm ? bm[0] : g.pants ? pm[0] : skin, bm ? bm[1] : 0); p('box', .17 * sd, .95, 0, r * 1.25, 0, 0, 0, -.9, .08, .22, .12, .38, bm ? bm[0] : skin, bm ? bm[1] : 0);
+    const r = sd * lg + air * (sd > 0 ? 1 : .5), shc = bm ? bm[0] : g.pants ? pm[0] : skin, shm = bm ? bm[1] : 0; p('taper', .16 * sd, .98, 0, r, 0, 0, 0, -.25, 0, .3, -.54, .32, pm[0], pm[1]); p('sphere', .16 * sd, .98, 0, r, 0, 0, 0, -.5, .03, .22, .22, .24, g.pants ? pm[0] : skin, g.pants ? pm[1] : 0); p('taper', .16 * sd, .98, 0, r * 1.25, 0, 0, 0, -.7, .0, .24, -.46, .27, shc, shm); p('sphere', .16 * sd, .98, 0, r * 1.25, 0, 0, 0, -.6, -.06, .2, .26, .2, shc, shm); p('sphere', .16 * sd, .98, 0, r * 1.25, 0, 0, 0, -.93, .1, .2, .13, .4, bm ? bm[0] : skin, bm ? bm[1] : 0);
     if (bm) p('cyl', .17 * sd, .95, 0, r * 1.25, 0, 0, 0, -.5, .02, .25, .07, .27, tr(g.boots)[0], 4, tr(g.boots)[1]);
     if (g.pants) { p('sphere', .17 * sd, .95, 0, r * 1.1, 0, 0, 0, -.46, .1, .2, .18, .2, pm[0], pm[1]); if (g.pants[0] === 0) p('box', .2 * sd, 1.0, .02, .06 + sd * lg * .4, 0, -sd * .12, 0, -.2, .14, .24, .36, .06, steelC, 4); else p('box', .16 * sd, .98, -.02, .16 + mv * .25, 0, 0, 0, -.3, -.2, .16, .5, .04, cloth); }
   }
-  let lean = .06, rx = -lg * .7, ry = 0, lrx = lg * .6 - .2;
-  if (o.act) { const k = o.swing, e = k < .42 ? k / .42 : 1; lean = .28 * Math.sin(k * Math.PI); if (ranged) { rx = -1.55; lrx = -1.5; lean = .05; } else if (o.act.sk.type === 'nova') rx = -3 + e * 2.6; else if (wt === 'fist') { rx = -1.5 + Math.sin(k * 6.28) * .5; lrx = -1.5 - Math.sin(k * 6.28) * .5; } else { rx = -1.5; ry = 1.3 - e * 2.6; } }
+  let lean = .06, rx = -lg * .7, ry = 0, lrx = lg * .6 - .2, lry = 0, drw = -1;
+  if (o.act) { const k = o.swing, e = k < .42 ? k / .42 : 1; lean = .28 * Math.sin(k * Math.PI); if (wt === 'bow') { drw = k < .42 ? k / .42 : 0; const pull = k < .42 ? drw : 1; rx = -1.57; ry = -1.0 - pull * .45; lrx = -1.57; lry = .36; lean = .03; } else if (ranged) { rx = -1.55; lrx = -1.5; lean = .05; } else if (o.act.sk.type === 'nova') rx = -3 + e * 2.6; else if (wt === 'fist' || wt === 'none') { rx = -1.5 + Math.sin(k * 6.28) * .5; lrx = -1.5 - Math.sin(k * 6.28) * .5; } else { rx = -1.5; ry = 1.3 - e * 2.6; } }
   if (spin) { rx = -1.5; ry = .3; lrx = -1.5; } if (o.dash) rx = -2.8;
   // torso, belt
-  p('taper', 0, 1.38, 0, lean, 0, 0, 0, 0, 0, .78, -.74, .5, ac, am); if (!L.robe) p('cyl', 0, .98, 0, lean, 0, 0, 0, -.12, 0, .6, .32, .44, g.pants ? pm[0] : under, g.pants ? pm[1] : 0);
+  p('taper', 0, 1.36, 0, lean, 0, 0, 0, 0, 0, .7, -.7, .46, ac, am); p('sphere', 0, 1.52, -.01, lean, 0, 0, 0, 0, 0, .74, .44, .4, ac, am); p('sphere', 0, 1.06, 0, lean, 0, 0, 0, 0, 0, .6, .34, .42, g.pants && !L.robe ? pm[0] : ac, g.pants && !L.robe ? pm[1] : am); if (!L.robe) p('cyl', 0, .98, 0, lean, 0, 0, 0, -.12, 0, .6, .32, .44, g.pants ? pm[0] : under, g.pants ? pm[1] : 0);
   if (plate) { p('sphere', 0, 1.5, .14, lean, 0, 0, 0, 0, 0, .5, .44, .3, ac, 4); p('cyl', 0, 1.74, 0, lean, 0, 0, 0, 0, 0, .34, .1, .34, ac, 4); p('box', 0, 1.18, .24, lean, 0, 0, 0, 0, 0, .34, .2, .05, shade(ac, .6), 4); }
   else if (g.chest) { p('box', 0, 1.3, .22, lean, 0, 0, 0, 0, 0, .14, .5, .06, trim, 0, te); if (L.robe) p('taper', 0, 1.62, 0, lean, 0, 0, 0, 0, 0, .98, .26, .7, shade(ac, 1.2)); }
   if (g.chest) p('box', 0, 1.46, .26, lean, 0, 0, 0, 0, 0, .5, .05, .04, trim, 4, te);
   if (g.belt) { const bt = tr(g.belt); p('box', 0, 1.0, 0, lean, 0, 0, 0, 0, 0, .56, .16, .4, g.belt[0] === 0 ? dkLeather : cloth); p('box', 0, 1.0, .2, lean, 0, 0, 0, 0, 0, .18, .16, .06, bt[0], 4, bt[1]); } else p('box', 0, 1.0, 0, lean, 0, 0, 0, 0, 0, .5, .06, .34, dkLeather);
   if (g.amulet) { const at = tr(g.amulet); p('gem', 0, 1.6, .3, lean, G.time, 0, 0, 0, 0, .1, .14, .08, at[0], 0, 1.2); }
-  // head
-  p('cyl', 0, 1.78, 0, lean, 0, 0, 0, 0, 0, .2, .14, .2, skin); p('sphere', 0, 2.0, .02, lean, 0, 0, 0, 0, 0, .36, .4, .38, skin);
+  // head (drawn a little smaller than the body so the proportions read as human)
+  const hp = (gm2, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, c, m, e) => p(gm2, px * .84, 1.82 + (py - 1.8) * .84, pz * .84, rx, ry, rz, ox * .84, oy * .84, oz * .84, sx * .84, sy * .84, sz * .84, c, m, e);
+  p('cyl', 0, 1.8, 0, lean, 0, 0, 0, 0, 0, .15, .16, .15, skin); hp('sphere', 0, 2.0, .02, lean, 0, 0, 0, 0, 0, .34, .42, .37, skin); hp('sphere', 0, 1.9, .05, lean, 0, 0, 0, 0, 0, .27, .22, .28, skin);
   const hb = g.helm ? g.helm[0] : -1, ht = tr(g.helm);
-  if (hb === 0) { p('sphere', 0, 2.06, -.01, lean, 0, 0, 0, 0, 0, .43, .4, .44, steelC, 4); p('box', 0, 1.98, .2, lean, 0, 0, 0, 0, 0, .05, .2, .06, steelC, 4); p('box', 0, 2.0, .18, lean, 0, 0, 0, 0, 0, .26, .06, .06, col(0x0a0a0c)); p('cone', 0, 2.34, -.08, lean - .5, 0, 0, 0, .1, 0, .1, .5, .16, cloth); for (const sd of [1, -1]) { p('box', .17 * sd, 1.92, .12, lean, 0, 0, 0, 0, 0, .06, .22, .16, steelC, 4); if (g.helm[1] >= 1) p('cone', .2 * sd, 2.22, -.04, lean, 0, -sd * .8, 0, .12, 0, .09, .2 + g.helm[1] * .08, .09, ht[0], 4, ht[1]); } }
-  else if (hb === 1) { p('sphere', 0, 2.05, -.05, lean, 0, 0, 0, 0, 0, .46, .44, .48, cloth); p('cone', 0, 2.2, -.14, lean - .9, 0, 0, 0, .12, 0, .34, .4, .3, cloth); p('box', 0, 1.98, .19, lean, 0, 0, 0, 0, 0, .22, .16, .04, col(0x120e0c)); p('box', 0, 2.14, .2, lean, 0, 0, 0, 0, 0, .3, .04, .04, ht[0], 4, ht[1]); }
-  else { const hair = col(cls === 'brawler' ? 0x2a2018 : cls === 'elementalist' ? 0x8a3a18 : cls === 'arcanist' ? 0xd8d4e8 : 0x4a3626); p('sphere', 0, 2.1, -.06, lean, 0, 0, 0, 0, 0, .4, .32, .42, hair); if (cls === 'brawler') p('sphere', 0, 2.26, -.1, lean, 0, 0, 0, 0, 0, .16, .16, .16, hair); else p('box', 0, 1.94, -.2, lean, 0, 0, 0, 0, 0, .34, .3, .1, hair); if (hb === 2) { p('cyl', 0, 2.12, 0, lean, 0, 0, 0, 0, 0, .42, .06, .44, gold, 4); p('gem', 0, 2.14, .22, lean, 0, 0, 0, 0, 0, .08, .1, .06, ht[0], 0, 1.4); } for (const sd of [1, -1]) p('sphere', .08 * sd, 2.02, .19, lean, 0, 0, 0, 0, 0, .05, .04, .03, col(0x1a1410)); }
+  if (hb === 0) { hp('sphere', 0, 2.04, -.07, lean, 0, 0, 0, 0, 0, .43, .42, .36, steelC, 4); hp('sphere', 0, 2.12, -.03, lean, 0, 0, 0, 0, 0, .45, .3, .46, steelC, 4); hp('box', 0, 2.13, .2, lean, 0, 0, 0, 0, 0, .3, .05, .05, ht[0], 4, ht[1]); hp('cone', 0, 2.34, -.08, lean - .5, 0, 0, 0, .1, 0, .1, .5, .16, cloth); for (const sd of [1, -1]) { hp('box', .17 * sd, 1.92, .12, lean, 0, 0, 0, 0, 0, .06, .22, .16, steelC, 4); if (g.helm[1] >= 1) hp('cone', .2 * sd, 2.22, -.04, lean, 0, -sd * .8, 0, .12, 0, .09, .2 + g.helm[1] * .08, .09, ht[0], 4, ht[1]); } }
+  else if (hb === 1) { hp('sphere', 0, 2.05, -.05, lean, 0, 0, 0, 0, 0, .46, .44, .48, cloth); hp('cone', 0, 2.2, -.14, lean - .9, 0, 0, 0, .12, 0, .34, .4, .3, cloth); hp('box', 0, 2.14, .2, lean, 0, 0, 0, 0, 0, .3, .04, .04, ht[0], 4, ht[1]); }
+  else { const hair = col(cls === 'brawler' ? 0x2a2018 : cls === 'elementalist' ? 0x8a3a18 : cls === 'arcanist' ? 0x9c98ac : 0x4a3626); hp('sphere', 0, 2.1, -.06, lean, 0, 0, 0, 0, 0, .4, .32, .42, hair); if (cls === 'brawler') hp('sphere', 0, 2.26, -.1, lean, 0, 0, 0, 0, 0, .16, .16, .16, hair); else hp('box', 0, 1.94, -.2, lean, 0, 0, 0, 0, 0, .34, .3, .1, hair); if (hb === 2) { hp('cyl', 0, 2.12, 0, lean, 0, 0, 0, 0, 0, .42, .06, .44, gold, 4); hp('gem', 0, 2.14, .22, lean, 0, 0, 0, 0, 0, .08, .1, .06, ht[0], 0, 1.4); } }
+  // face: eyes that blink, brows, nose, mouth, ears, and a little character per class
+  { const fz = .185, hairF = col(cls === 'brawler' ? 0x2a2018 : cls === 'elementalist' ? 0x8a3a18 : cls === 'arcanist' ? 0x9c98ac : 0x4a3626), blink = ((G.time + o.x * .37) % 4.3) < .12, eyeC = col(cls === 'arcanist' ? 0x9a5aff : cls === 'elementalist' ? 0xc8641e : cls === 'ranger' ? 0x3a7a3a : 0x3a5a8a);
+    for (const sd of [1, -1]) {
+      hp('sphere', .078 * sd, 2.03, fz, lean, 0, 0, 0, 0, 0, .085, blink ? .012 : .058, .03, col(0xf2eee2), 0, .25); if (!blink) hp('sphere', .078 * sd, 2.03, fz + .014, lean, 0, 0, 0, 0, 0, .042, .046, .02, eyeC, 0, cls === 'arcanist' ? 1.2 : .2), hp('sphere', .078 * sd, 2.03, fz + .022, lean, 0, 0, 0, 0, 0, .018, .02, .012, col(0x050505));
+      hp('box', .08 * sd, 2.085, fz + .004, lean, 0, sd * (cls === 'warden' || cls === 'brawler' ? .28 : .1), 0, 0, 0, .1, .02, .025, hairF); hp('sphere', .19 * sd, 2.0, 0, lean, 0, 0, 0, 0, 0, .05, .09, .06, skin);
+      hp('sphere', .115 * sd, 1.955, fz - .04, lean, 0, 0, 0, 0, 0, .07, .06, .04, shade(skin, 1.03, .97, .95));
+    }
+    hp('box', 0, 1.99, fz + .02, lean - .12, 0, 0, 0, 0, 0, .045, .09, .055, shade(skin, .9)); hp('box', 0, 1.9, fz, lean, 0, 0, 0, 0, 0, .1, .02, .02, col(cls === 'elementalist' ? 0xa83a3a : 0x6a322c)); hp('box', 0, 1.84, fz - .03, lean, 0, 0, 0, 0, 0, .12, .05, .05, skin);
+    if (cls === 'warden') { hp('box', 0, 1.86, fz - .035, lean, 0, 0, 0, 0, 0, .24, .1, .05, shade(hairF, .8)); hp('box', 0, 1.93, fz + .005, lean, 0, 0, 0, 0, 0, .13, .025, .02, hairF); hp('box', .1, 1.97, fz + .006, lean, 0, .5, 0, 0, 0, .012, .1, .01, col(0x8a4a40)); }
+    else if (cls === 'arcanist') { hp('cone', 0, 1.86, fz - .04, lean + 3.0, 0, 0, 0, .16, 0, .2, .36, .1, hairF); hp('box', 0, 1.925, fz + .005, lean, 0, 0, 0, 0, 0, .16, .03, .02, hairF); }
+    else if (cls === 'brawler') { hp('box', 0, 1.925, fz + .005, lean, 0, 0, 0, 0, 0, .15, .028, .02, hairF); hp('cone', 0, 1.84, fz - .02, lean + 3.0, 0, 0, 0, .06, 0, .07, .14, .05, hairF); }
+    else if (cls === 'ranger') { for (const sd of [1, -1]) hp('box', .1 * sd, 1.975, fz + .002, lean, 0, 0, 0, 0, 0, .09, .02, .012, col(0x2f6a34)); }
+    else { for (const sd of [1, -1]) hp('box', .078 * sd, 2.06, fz + .006, lean, 0, 0, 0, 0, 0, .1, .012, .012, col(0x1a1210)); hp('sphere', 0, 2.1, fz - .02, lean, 0, 0, 0, 0, 0, .05, .05, .03, col(0xff7a2a), 0, 1.4); }
+  }
   // shoulders
   if (sm) { const st = tr(g.shoulders), big = g.shoulders[0] === 0; for (const sd of [1, -1]) { p('sphere', .47 * sd, 1.7, 0, 0, 0, 0, 0, 0, 0, big ? .44 : .34, big ? .36 : .26, big ? .44 : .36, sm[0], sm[1]); p('cyl', .47 * sd, 1.64, 0, 0, 0, 0, 0, 0, 0, big ? .48 : .38, .05, big ? .48 : .38, st[0], 4, st[1]); if (big && g.shoulders[1] >= 1) p('cone', .56 * sd, 1.84, 0, 0, 0, -sd * .9, 0, .12, 0, .16, .2 + g.shoulders[1] * .08, .16, sm[0], 4); } }
-  else for (const sd of [1, -1]) p('sphere', .47 * sd, 1.7, 0, 0, 0, 0, 0, 0, 0, .24, .22, .24, g.chest ? ac : skin, am);
+  else for (const sd of [1, -1]) p('sphere', .46 * sd, 1.66, 0, 0, 0, 0, 0, 0, 0, .26, .24, .26, g.chest ? ac : skin, am);
   // arms: sleeve, bracer, hand
   for (const sd of [1, -1]) {
-    const arx = sd > 0 ? rx : lrx, ary = sd > 0 ? ry : 0, px = .47 * sd;
-    p('cyl', px, 1.62, 0, arx, ary, 0, 0, -.18, 0, .17, .36, .17, g.chest ? shade(ac, .8) : skin, am);
-    p('cyl', px, 1.62, 0, arx, ary, 0, 0, -.48, 0, brm ? .2 : .15, .3, brm ? .2 : .15, brm ? brm[0] : skin, brm ? brm[1] : 0); if (brm) p('cyl', px, 1.62, 0, arx, ary, 0, 0, -.36, 0, .22, .05, .22, tr(g.bracers)[0], 4, tr(g.bracers)[1]);
-    const fist = wt === 'fist'; p('sphere', px, 1.62, 0, arx, ary, 0, 0, -.66, 0, fist ? .27 : .2, fist ? .27 : .2, fist ? .27 : .2, fist ? dkLeather : gm ? gm[0] : skin, gm ? gm[1] : 0);
+    const arx = sd > 0 ? rx : lrx, ary = sd > 0 ? ry : lry, px = .47 * sd;
+    const slv = g.chest ? shade(ac, .8) : skin; p('taper', px, 1.62, 0, arx, ary, 0, 0, -.18, 0, .21, -.38, .21, slv, am); p('sphere', px, 1.62, 0, arx, ary, 0, 0, -.36, 0, .17, .17, .17, slv, am);
+    p('taper', px, 1.62, 0, arx, ary, 0, 0, -.5, 0, brm ? .21 : .165, -.3, brm ? .21 : .165, brm ? brm[0] : skin, brm ? brm[1] : 0); if (brm) p('cyl', px, 1.62, 0, arx, ary, 0, 0, -.36, 0, .22, .05, .22, tr(g.bracers)[0], 4, tr(g.bracers)[1]);
+    const fist = wt === 'fist'; p('sphere', px, 1.62, 0, arx, ary, 0, 0, -.68, 0, fist ? .25 : .15, fist ? .25 : .2, fist ? .25 : .13, fist ? dkLeather : gm ? gm[0] : skin, gm ? gm[1] : 0); if (!fist) p('sphere', px, 1.62, 0, arx, ary, 0, -sd * .07, -.66, .04, .06, .12, .06, gm ? gm[0] : skin, gm ? gm[1] : 0);
     if (fist) for (let k = 0; k < 3; k++) p('cone', px, 1.62, 0, arx + 1.5708, ary, 0, (k - 1) * .08, .1, .68, .06, .14, .06, wglow || steelC, 4, wglow ? .8 : 0);
   }
   // off-hand
@@ -716,7 +778,15 @@ function drawHero(o, self) {
   else if (wt === 'staff') {
     const len = wb === 4 ? 1.0 : 2.1, tip = wb === 4 ? .86 : 1.4; p('cyl', .47, 1.62, 0, rx + 1.5708, ry, 0, 0, wb === 4 ? .36 : .25, .64, .07, len, .07, wood, 3); const oc = wglow || col(L.orb || 0x9ad0ff), act = o.act ? 1.6 : 1; p('gem', .47, 1.62, 0, rx + 1.5708, ry, 0, 0, tip, .64, .26 * act, .32 * act, .26 * act, oc, 0, 2.2);
     const cr = Math.cos(rot), sr2 = Math.sin(rot), a1 = rx + 1.5708, oy = Math.cos(a1) * tip - Math.sin(a1) * .64, oz = Math.sin(a1) * tip + Math.cos(a1) * .64, wx = o.x + cr * .5 + sr2 * oz, wz = o.z - sr2 * .5 + cr * oz, wy = o.y + 1.75 + oy; GLX.halo(wx, wy, wz, 1.5 * act, oc, .6); if (self) GLX.light(wx, wy, wz, 6, oc, .7, 3);
-  } else if (wt === 'bow') { const bc = wglow || wood; p('box', -.47, 1.62, 0, lrx, 0, 0, 0, -.2, .7, .05, .7, .06, bc, 3, wglow ? .6 : 0); p('box', -.47, 1.62, 0, lrx, 0, 0, 0, -1.0, .64, .05, .7, .06, bc, 3, wglow ? .6 : 0); p('box', -.47, 1.62, 0, lrx, 0, 0, 0, -.62, .5, .015, 1.5, .015, col(0xe8e0d0)); }
+  } else if (wt === 'bow') {
+    const bc = wglow || wood, be = wglow ? .6 : 0, strC = col(0xe8e0d0);
+    if (drw < 0) { p('box', -.47, 1.62, 0, lrx, 0, 0, 0, -.2, .7, .05, .7, .06, bc, 3, be); p('box', -.47, 1.62, 0, lrx, 0, 0, 0, -1.0, .64, .05, .7, .06, bc, 3, be); p('box', -.47, 1.62, 0, lrx, 0, 0, 0, -.62, .5, .015, 1.5, .015, strC); }
+    else {   // aiming: bow upright in the left hand, string drawn back to the cheek, arrow nocked until release
+      const X = -.2, Y = 1.62, Z = .78, az = Z - .14 - drw * .55, tz = Z - .2;
+      p('box', X, Y, Z, 0, 0, 0, 0, 0, 0, .07, .3, .08, col(0x4a3524)); for (const sd of [1, -1]) { p('box', X, Y + sd * .38, Z - .01, -sd * .08, 0, 0, 0, 0, 0, .05, .5, .06, bc, 3, be); p('box', X, Y + sd * .8, Z - .09, -sd * .38, 0, 0, 0, 0, 0, .045, .42, .05, bc, 3, be); const dz = tz - az, len = Math.hypot(.98, dz); p('box', X, Y + sd * .49, az + dz / 2, sd * Math.atan2(dz, .98), 0, 0, 0, 0, 0, .014, len, .014, strC); }
+      if (drw > 0) { p('box', X, Y, az + .6, 0, 0, 0, 0, 0, 0, .025, .025, 1.2, col(0xb89a6a)); p('cone', X, Y, az + 1.24, 1.5708, 0, 0, 0, 0, 0, .07, .14, .07, col(0xc8ced8), 4); for (const a of [0, 1.5708]) p('box', X, Y, az + .06, 0, 0, a, 0, 0, 0, .1, .012, .16, col(0xd8d0c0)); }
+    }
+  }
   if (L.robe) for (let k = 0; k < 3; k++) { const a = G.time * 1.6 + k * 2.09; GLX.obj('glow', 'gem', o.x + Math.cos(a) * .95, o.y + 1.5 + Math.sin(a * 1.7) * .25, o.z + Math.sin(a) * .95, a, .12, .2, .12, col(L.orb), 1.5, .9); }
   if (cls === 'brawler') for (const sd of [1, -1]) p('box', .2 * sd, 1.0, -.2, lean + .3 + mv * .4 + sw2, 0, 0, 0, -.34, 0, .12, .6, .03, cloth);
   if (L.cape) { p('box', 0, 1.66, -.28, lean + .12 + mv * .3 + sw2, 0, 0, 0, -.36, 0, .78, .74, .05, cloth); p('box', 0, 1.66, -.28, lean + .22 + mv * .5 + sw2 * 2, 0, 0, 0, -1.0, -.06, .84, .62, .04, shade(cloth, .8)); p('box', 0, 1.7, -.26, lean, 0, 0, 0, 0, 0, .7, .08, .1, trim, 4, te); }
@@ -807,7 +877,7 @@ function drawItemModel(d, hop) {
     p('ring', 0, .04, -.05, 0, 0, 0, .62, 1, .7, gold, 4); p('ring', 0, .05, -.05, 0, 0, 0, .56, 1, .64, gold, 4); p('gem', 0, .1, .32, 0, G.time * 2, 0, .2, .24, .2, rc, 0, 1.6); p('cyl', 0, .05, .32, 0, 0, 0, .26, .05, .26, gold, 4);
   } else { for (let i = 0; i < 10; i++) { const a = i / 10 * 6.2832; p('sphere', Math.cos(a) * .17, .07, Math.sin(a) * .17, 0, 0, 0, .09, .1, .09, gold, 4); } p('gem', 0, .16, .19, 0, G.time * 2, 0, .15, .18, .15, rc, 0, 1.6); }
 }
-const BEAM = [0, 3.2, 6.5, 12], RC = [0xc9c9c9, 0x5a8cff, 0xffd84a, 0xff8a2a];
+const BEAM = [0, 3.2, 6.5, 12, 18], RC = [0xc9c9c9, 0x5a8cff, 0xffd84a, 0xff8a2a, 0xb060ff];
 function drawWorld() {
   const col = GLX.col, Z = G.zone;
   const sh = G.set.shake ? G.shake * G.shake * 1.5 : 0, sx = (Math.random() - .5) * sh, sz = (Math.random() - .5) * sh;
@@ -823,9 +893,15 @@ function drawWorld() {
     if (o.kind === 'tportal') { const c = col(0x7ad0ff); for (let i = 0; i < 3; i++) GLX.obj('glow', 'ring', o.x, .1 + i * .9 + Math.sin(G.time * 2 + i) * .2, o.z, G.time * (1 + i), 3 - i * .5, 1, 3 - i * .5, c, 1, .9, -1); GLX.halo(o.x, 1.6, o.z, 5, c, .6); GLX.light(o.x, 2, o.z, 12, c, 1.4, 4); continue; }
     if (o.kind === 'chest') { GLX.obj('dyn', 'box', o.x, .4, o.z, .4, 1.4, .8, .9, col(0x5a3a22), hov, 1, 3); GLX.obj('dyn', 'box', o.x, .85, o.z, .4, 1.5, o.used ? .1 : .3, 1, col(0x8a6a2a), hov + .05, 1, 4); GLX.obj('dyn', 'box', o.x, .5, o.z, .4, .2, .9, .96, col(0x8a6a2a), hov, 1, 4); if (!o.used) GLX.halo(o.x, 1.2, o.z, 2.4, col(0xffd84a), .35 + Math.sin(G.time * 3) * .1); }
     else if (o.kind === 'shrine') { GLX.obj('dyn', 'taper', o.x, 1, o.z, 0, 1.1, 2, 1.1, col(0x5a5c60), hov, 1, 3); if (!o.used) { const c = col(o.sh.c); GLX.obj('dyn', 'gem', o.x, 2.7 + Math.sin(G.time * 2) * .2, o.z, G.time, .6, .9, .6, c, 2); GLX.halo(o.x, 2.7, o.z, 3, c, .6); GLX.light(o.x, 2.6, o.z, 9, c, 1); } }
-    else if (o.kind === 'stash' || o.kind === 'vendor' || o.kind === 'altar') UI.openTown(o.kind);
-  else if (o.kind === 'tportal') leaveTown();
-  else if (o.kind === 'portal') { const c = col(0x7ad0ff); for (let i = 0; i < 3; i++) GLX.obj('glow', 'ring', o.x, .1 + i * .9 + Math.sin(G.time * 2 + i) * .2, o.z, G.time * (1 + i), 3 - i * .5, 1, 3 - i * .5, c, 1, .9, -1); GLX.halo(o.x, 1.6, o.z, 5, c, .6); GLX.light(o.x, 2, o.z, 12, c, 1.4, 4); }
+    else if (o.kind === 'portal') { // the way down: a great gate where the guardian fell
+      const c = col(0x7ad0ff), c2 = col(0xb48cff), t = G.time, pulse = 1 + Math.sin(t * 2.2) * .08;
+      for (let i = 0; i < 10; i++) { const a = i / 10 * 6.2832; GLX.obj('dyn', 'taper', o.x + Math.sin(a) * 5.2, .9 + (i % 2) * .5, o.z + Math.cos(a) * 5.2, a, .9, 1.8 + (i % 2), .9, col(0x4a4c56), 0, 1, 3); GLX.obj('glow', 'gem', o.x + Math.sin(a) * 5.2, 2.6 + (i % 2) + Math.sin(t * 2 + i) * .15, o.z + Math.cos(a) * 5.2, t + i, .28, .42, .28, i % 2 ? c2 : c, 2); }
+      GLX.obj('glow', 'disc', o.x, .06, o.z, t * .4, 9.6, 1, 9.6, c, .6, .16, -1);
+      for (let i = 0; i < 7; i++) { const s = (5 - i * .55) * 2 * pulse; GLX.obj('glow', 'ring', o.x, .12 + i * 1.15 + Math.sin(t * 2 + i) * .25, o.z, t * (i % 2 ? -1.4 : 1.1) * (1 + i * .25), s, 1, s, i % 2 ? c2 : c, .8, .5, -1); }
+      GLX.obj('glow', 'cyl', o.x, 11, o.z, t, 1.5 * pulse, 22, 1.5 * pulse, c, 1, .14); GLX.obj('glow', 'cyl', o.x, 11, o.z, -t, 3.4, 22, 3.4, c2, .5, .05);
+      for (let i = 0; i < 12; i++) { const a = t * 1.5 + i * .5236, y = (t * 2.4 + i * .9) % 9, r = 3.6 - y * .32; GLX.obj('glow', 'sphere', o.x + Math.sin(a) * r, y, o.z + Math.cos(a) * r, 0, .16, .16, .16, c, 2.5, .9); }
+      GLX.halo(o.x, 3, o.z, 11, c, .32); GLX.halo(o.x, 9, o.z, 7, c2, .2); GLX.light(o.x, 3, o.z, 24, c, 1.5, 5);
+    }
   }
   for (const d of G.drops) {
     if (Math.hypot(d.x - P.x, d.z - P.z) > 32) continue; const hop = Math.max(0, Math.sin(Math.min(1, d.t * 2.5) * Math.PI)) * 1.6;
