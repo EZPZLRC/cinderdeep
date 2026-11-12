@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#07090a">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Cinderdeep</title>
 <style>
@@ -130,6 +131,43 @@ input{background:#0c0a07;border:1px solid #5a4a2e;border-radius:3px;box-shadow:i
 @media (pointer:coarse){#ctl #bInv,#ctl #bSkl,#ctl #bTown{display:none}#ctl{max-width:calc(100vw - 130px)}#ctl button{padding:8px 8px}}
 @media (max-width:760px){#hud{gap:6px;padding:4px 0 2px;background:none;max-width:100vw}.globe{width:58px;height:58px;box-shadow:0 0 0 1px #1a140c,0 0 0 2px #5a4a2e,0 2px 8px #000,inset 0 0 14px #000}.globe .txt{font-size:9.5px}.sk{width:42px;height:42px;font-size:19px}#mid{padding:4px}#bar{gap:3px}#party{top:232px}#chatlog{bottom:176px;width:min(250px,62vw)}#tbtns{bottom:96px;gap:8px}#tbtns button{width:56px;height:56px;font-size:12px}}
 @media (max-height:480px){#tbtns{display:grid;grid-template-columns:repeat(3,52px);gap:6px;bottom:8px;right:calc(8px + env(safe-area-inset-right))}#tbtns button{width:52px;height:52px;font-size:11px}#party{right:auto;left:8px;top:124px;width:132px}#party .pth{text-align:left}#chatlog{bottom:128px;left:8px;width:min(300px,38vw);font-size:11px}#hints{bottom:92px;right:auto;max-width:36vw;font-size:11px}#onl{top:196px;width:110px}#hud{padding:4px 8px 2px;gap:8px}#streak{right:130px}}
+
+/* ---- build 0003: thumb joystick layout for touch screens ---- */
+#joy{display:none}.sk.use{display:none}
+@media (pointer:coarse){#chatRow{top:calc(8px + env(safe-area-inset-top));bottom:auto;left:8px;right:8px}#chat{flex:1;width:auto;min-width:0}}
+body.tj{--cb:12px;--jb:28px;--g:64px}
+@media (orientation:portrait) and (max-width:760px){body.tj{--cb:84px;--jb:94px}}
+@media (min-width:900px) and (min-height:600px){body.tj{--g:84px}}
+body.tj #joy{display:block;position:fixed;left:calc(26px + env(safe-area-inset-left));bottom:calc(var(--jb) + env(safe-area-inset-bottom));width:124px;height:124px;border-radius:50%;border:2px solid rgba(233,200,122,.5);background:radial-gradient(circle,rgba(30,24,16,.12) 40%,rgba(10,8,6,.55));box-shadow:0 0 0 1px rgba(0,0,0,.6),inset 0 0 18px rgba(0,0,0,.6);pointer-events:none;z-index:8;opacity:.5;transition:opacity .15s}
+body.tj #joy.on{opacity:1}
+#joyK{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;background:radial-gradient(circle at 40% 32%,#8a7246,#2a2116 70%);border:2px solid #e9c87a;box-shadow:0 3px 10px #000,inset 0 1px 0 rgba(255,240,200,.4)}
+body.tj #hud{left:0;right:0;bottom:0;transform:none;display:block;height:0;padding:0;background:none;border-radius:0;max-width:none}
+body.tj #mid{position:static;display:block;background:none;border:0;box-shadow:none;padding:0}
+body.tj .globe{position:absolute;left:50%;width:var(--g);height:var(--g);bottom:calc(12px + env(safe-area-inset-bottom))}
+body.tj #gLife{margin-left:calc(-1 * var(--g) - 5px)}body.tj #gFury{margin-left:5px}body.tj .globe .txt{font-size:10px}
+body.tj #xp{position:absolute;left:50%;bottom:calc(3px + env(safe-area-inset-bottom));width:calc(var(--g) * 2 + 10px);margin-left:calc(-1 * var(--g) - 5px);height:5px}
+body.tj #bar{position:absolute;display:block;right:calc(12px + env(safe-area-inset-right));bottom:calc(var(--cb) + env(safe-area-inset-bottom));width:206px;height:150px}
+body.tj .sk{position:absolute;width:54px;height:54px;border-radius:50%;font-size:23px;border:2px solid #8a7246;background:radial-gradient(circle at 50% 30%,#3b3022,#0c0a07);box-shadow:0 0 0 2px #000,0 3px 10px #000,inset 0 0 12px #000;touch-action:none}
+body.tj .sk:active{filter:brightness(1.6)}
+body.tj .sk:nth-child(1){width:84px;height:84px;right:0;bottom:0;font-size:36px;border-color:#e9c87a}
+body.tj .sk:nth-child(2){right:95px;bottom:15px}body.tj .sk:nth-child(3){right:72px;bottom:72px}body.tj .sk:nth-child(4){right:15px;bottom:95px}
+body.tj .sk:nth-child(5){width:46px;height:46px;right:158px;bottom:19px;font-size:20px;border-color:#a04a3a}
+body.tj .sk.use{display:flex;width:50px;height:50px;right:140px;bottom:76px;font-size:11px;font-weight:600;letter-spacing:.04em;color:#d8ccb0}
+body.tj .sk.use.hot{border-color:#ffd84a;color:#fff;box-shadow:0 0 0 2px #000,0 0 14px #ffd84a}
+body.tj .sk .cost{right:50%;transform:translateX(50%);bottom:3px}
+body.tj #tLoot{display:none}
+body.tj #tbtns{display:flex;flex-direction:column;gap:8px;right:calc(10px + env(safe-area-inset-right));bottom:calc(var(--cb) + 166px + env(safe-area-inset-bottom))}
+body.tj #tbtns button{width:48px;height:48px;font-size:11px}
+body.tj #hints{bottom:calc(var(--jb) + 142px)}body.tj #chatlog{bottom:calc(var(--jb) + 232px)}
+@media (orientation:portrait) and (max-width:760px){body.tj #chatlog{top:150px;bottom:auto;left:8px;width:min(250px,62vw)}body.tj #chatlog div:nth-last-child(n+5){display:none}body.tj #hints{bottom:252px;left:8px;right:70px}body.tj #party{max-height:150px;overflow:auto}}
+@media (max-height:480px){body.tj #tbtns{flex-direction:row;top:calc(6px + env(safe-area-inset-top));bottom:auto;left:50%;right:auto;transform:translateX(-50%)}body.tj #tbtns button{width:44px;height:44px}
+ body.tj #bossbar{top:58px;width:36vw}body.tj #streak{right:136px;top:6px}body.tj #streak .s1{font-size:24px}body.tj #streak .s2{font-size:10px}body.tj #streak .s3{font-size:11px}
+ body.tj #party{left:auto;right:136px;top:74px;width:132px}body.tj #party .pth{text-align:right}
+ body.tj #chatlog{bottom:166px;left:8px;width:min(300px,36vw)}body.tj #chatlog div:nth-last-child(n+4){display:none}
+ body.tj #hints{left:50%;right:auto;transform:translateX(-50%);bottom:84px;max-width:44vw;text-align:center}body.tj #hints div{margin:4px auto 0}}
+@media (orientation:portrait) and (max-width:760px){#streak{left:8px;right:auto;text-align:left;top:40%}#ctl button{padding:8px 6px;font-size:10px;letter-spacing:.04em}}
+#party .pth{white-space:nowrap}
+body.tj #build{left:6px;right:auto;bottom:3px}
 </style>
 </head>
 <body>
@@ -142,6 +180,7 @@ input{background:#0c0a07;border:1px solid #5a4a2e;border-radius:3px;box-shadow:i
   <div id="banner"><div class="b1" id="ban1"></div><div class="b2" id="ban2"></div></div>
   <div id="streak" class="hide"><div class="s1" id="st1"></div><div class="s2">KILL STREAK</div><div class="s3" id="st3"></div></div>
   <div id="hints"></div>
+  <div id="joy"><div id="joyK"></div></div>
   <div id="hud">
     <div class="globe" id="gLife"><div class="fill"></div><div class="txt"></div></div>
     <div id="mid"><div id="bar"></div><div id="xp"><div></div></div></div>

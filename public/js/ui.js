@@ -195,6 +195,7 @@ const UI = (() => {
   $('town').addEventListener('mouseleave', hideTip);
 
   // ---- hud ----
+  const USE_LABEL = { chest: 'Open', shrine: 'Touch', stash: 'Stash', vendor: 'Trade', altar: 'Altar', tportal: 'Leave', portal: 'Enter' };
   function buildBar() {
     const bar = $('bar'), cls = CLASSES[G.hero.cls]; bar.innerHTML = ''; skEls = []; $('gFury').firstElementChild.style.background = cls.res.c;
     for (let i = 0; i < 5; i++) {
@@ -205,6 +206,7 @@ const UI = (() => {
       d.addEventListener('mousemove', e => !lastTouch && showTip(`<div class="tn">${sk.n}</div><div class="ts">${sk.d}</div>${sk.cost ? `<div class="tp">Costs ${sk.cost} ${cls.res.n}</div>` : ''}${sk.gen ? `<div class="tp">Generates ${sk.gen} ${cls.res.n} per enemy hit</div>` : ''}${sk.cd ? `<div class="ts">Cooldown ${sk.cd}s</div>` : ''}`, e.clientX, e.clientY - 140));
       d.addEventListener('mouseleave', hideTip); bar.appendChild(d); skEls.push(d);
     }
+    { const d = document.createElement('div'); d.className = 'sk use'; d.id = 'bUse'; d.style.pointerEvents = 'auto'; d.innerHTML = '<span class="ic">Loot</span>'; d.addEventListener('pointerdown', e => { e.preventDefault(); SFX.unlock(); useNear(); }); bar.appendChild(d); }
   }
   // ---- skills panel ----
   let sklOpen = false, sklSlot = 1;
@@ -230,9 +232,10 @@ const UI = (() => {
       el.classList.toggle('lock', lock); el.classList.toggle('dim', dim); el.children[2].style.height = cd > 0 ? clamp(cd / max * 100, 0, 100) + '%' : '0'; el.children[3].textContent = cd > 0 ? Math.ceil(cd) : '';
     }
     { const par = h.level >= MAX_LEVEL, bar = $('xp').firstElementChild; bar.style.width = clamp(par ? (h.pxp || 0) / paragonNeed(h.plvl || 0) * 100 : h.xp / xpNeed(h.level) * 100, 0, 100) + '%'; bar.style.background = par ? 'linear-gradient(90deg,#2a8ad0,#9ae0ff)' : ''; }
+    if (G.tj) { const ue = $('bUse'); if (ue) { const o = nearObj(), t = o ? USE_LABEL[o.kind] || 'Use' : 'Loot', hot = !!o || G.drops.some(d => d.item && d.item.rar >= h.filter && Math.hypot(d.x - P.x, d.z - P.z) < 5); if (ue.dataset.t !== t) { ue.dataset.t = t; ue.firstElementChild.textContent = t; } ue.classList.toggle('hot', hot); } }
     $('tName').textContent = cls.n + ' · Level ' + h.level + (h.level >= MAX_LEVEL ? ' · Paragon ' + (h.plvl || 0) : '') + (G.online ? ' · Party ' + NET.room + ' (' + (NET.count || 1) + ')' : '');
     { const ids = G.online ? Object.keys(NET.names).filter(i => +i !== NET.id) : [], key = ids.map(i => i + NET.names[i] + (NET.peers[i] ? 1 : 0)).join('|'), pb = $('party'); pb.classList.toggle('hide', !ids.length);
-      if (pb.dataset.k !== key) { pb.dataset.k = key; pb.innerHTML = '<div class="pth">Party · tap to teleport</div>'; for (const i of ids) { const b = document.createElement('button'); b.textContent = '➜ ' + NET.names[i]; if (!NET.peers[i]) b.className = 'far'; b.onclick = () => teleportTo(+i); pb.appendChild(b); } }
+      if (pb.dataset.k !== key) { pb.dataset.k = key; pb.innerHTML = '<div class="pth">Tap to teleport</div>'; for (const i of ids) { const b = document.createElement('button'); b.textContent = '➜ ' + NET.names[i]; if (!NET.peers[i]) b.className = 'far'; b.onclick = () => teleportTo(+i); pb.appendChild(b); } }
       if (G.tpTo && !G.inTown && NET.peers[G.tpTo]) teleportTo(G.tpTo); }
     $('onl').classList.toggle('hide', !G.online); if (G.online) $('onl').textContent = (NET.online || 1) + ' online'; $('chatlog').classList.toggle('hide', !G.online);
     $('bAuto').textContent = 'Auto-play: ' + (G.auto ? 'ON' : 'off'); $('bAuto').classList.toggle('on', G.auto); $('bSpd').textContent = 'Speed ' + (G.online ? 1 : G.speed) + '×'; $('bSpd').classList.toggle('hide', G.online); $('tChat').classList.toggle('hide', !G.online); $('tGold').textContent = h.gold.toLocaleString() + ' gold · ' + (h.shards || 0).toLocaleString() + ' shards';
@@ -305,15 +308,30 @@ const UI = (() => {
 
   // ---- input ----
   let mvId = null, lastTouch = false, pinch = null; const tch = new Map();
+  // thumb joystick: a touch that starts in the lower-left of the screen steers the hero; a quick tap there still counts as a tap
+  let joyId = null, joy0 = null, joyHintT = 0; const JR = 50, joyEl = $('joy'), joyK = $('joyK');
+  const inJoy = (x, y) => { const w = innerWidth, h = innerHeight; return w < h ? x < w * .5 && y > h * .5 : x < w * .42 && y > h * .3; };
+  const joyPlace = () => { joyEl.style.left = (joy0.x - 62) + 'px'; joyEl.style.top = (joy0.y - 62) + 'px'; joyEl.style.bottom = 'auto'; };
+  function joyEnd() { joyId = null; joy0 = null; IN.joy.on = false; IN.joy.x = IN.joy.z = 0; joyEl.classList.remove('on'); joyEl.style.left = joyEl.style.top = joyEl.style.bottom = ''; joyK.style.transform = ''; }
+  function joyStart(e) { joyId = e.pointerId; joy0 = { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t: e.timeStamp, far: 0 }; try { glc.setPointerCapture(e.pointerId); } catch (_) { } IN.joy.on = true; IN.joy.x = IN.joy.z = 0; IN.lmb = false; joyEl.classList.add('on'); joyPlace(); }
+  function joyMove(e) {
+    let dx = e.clientX - joy0.x, dy = e.clientY - joy0.y, d = Math.hypot(dx, dy); joy0.far = Math.max(joy0.far, Math.hypot(e.clientX - joy0.x0, e.clientY - joy0.y0));
+    if (d > JR) { const k = (d - JR) / d; joy0.x += dx * k; joy0.y += dy * k; dx = e.clientX - joy0.x; dy = e.clientY - joy0.y; joyPlace(); }
+    IN.joy.x = dx / JR; IN.joy.z = dy / JR; joyK.style.transform = `translate(${dx}px,${dy}px)`;
+    if (G.auto && d > JR * .5 && performance.now() - joyHintT > 3500) { joyHintT = performance.now(); hint('Auto-play is on. Tap Auto-play to take control.'); }
+  }
+  function tapAt(cx, cy) { const r = glc.getBoundingClientRect(); IN.touch = true; IN.sx = cx - r.left; IN.sy = cy - r.top; if (G.camReady) { const g = GLX.groundAt(IN.sx, IN.sy); if (isFinite(g[0]) && isFinite(g[1])) { IN.gx = g[0]; IN.gz = g[1]; } computeHover(); } IN.lmbFresh = true; P.pickNow = null; IN.sx = IN.sy = -9999; }
   const pdist = () => { const a = [...tch.values()]; return Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) || 1; };
   window.addEventListener('pointerdown', e => { lastTouch = e.pointerType === 'touch'; if (!e.target.closest || !e.target.closest('#tip')) unpin(); }, true);
   const pos = e => { const r = glc.getBoundingClientRect(); IN.sx = e.clientX - r.left; IN.sy = e.clientY - r.top; };
   glc.addEventListener('pointermove', e => {
+    if (e.pointerId === joyId) { joyMove(e); return; }
     if (e.pointerType === 'touch') { if (tch.has(e.pointerId)) tch.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (pinch && tch.size >= 2) { G.zoom = clamp(pinch.z * pinch.d / pdist(), .4, 1.6); return; } if (e.pointerId !== mvId) return; }
     pos(e);
   });
   glc.addEventListener('pointerdown', e => {
     const touch = e.pointerType === 'touch'; SFX.unlock(); if (G.state !== 'play') return; e.preventDefault();
+    if (touch && G.tj && joyId === null && inJoy(e.clientX, e.clientY)) { const r = glc.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top; let lab = false; for (const l of G.labels) if (x >= l.x - 10 && x <= l.x + l.w + 10 && y >= l.y - 10 && y <= l.y + l.h + 10) { lab = true; break; } if (!lab) { joyStart(e); return; } }
     if (touch) { tch.set(e.pointerId, { x: e.clientX, y: e.clientY }); try { glc.setPointerCapture(e.pointerId); } catch (_) { } if (tch.size === 2) { pinch = { d: pdist(), z: G.zoom }; IN.lmb = false; IN.lmbFresh = false; P.move = P.atk = null; mvId = null; return; } if (tch.size > 2 || mvId !== null) return; mvId = e.pointerId; }
     IN.touch = touch; pos(e);
     if (touch || e.button === 0) {
@@ -322,11 +340,11 @@ const UI = (() => {
       for (const l of G.labels) if (IN.sx >= l.x - pad && IN.sx <= l.x + l.w + pad && IN.sy >= l.y - pad && IN.sy <= l.y + l.h + pad) { P.pickNow = l.d; break; }
     } else if (e.button === 2) IN.rmb = true;
   });
-  const up = e => { if (e.pointerType === 'touch') { tch.delete(e.pointerId); if (tch.size < 2) pinch = null; if (e.pointerId === mvId) { mvId = null; IN.lmb = false; IN.sx = IN.sy = -9999; } return; } if (e.button === 0) IN.lmb = false; else if (e.button === 2) IN.rmb = false; };
+  const up = e => { if (e.pointerId === joyId && joyId !== null) { const tap = e.type === 'pointerup' && joy0.far < 9 && e.timeStamp - joy0.t < 260, x = joy0.x0, y = joy0.y0; joyEnd(); if (tap && G.state === 'play') tapAt(x, y); return; } if (e.pointerType === 'touch') { tch.delete(e.pointerId); if (tch.size < 2) pinch = null; if (e.pointerId === mvId) { mvId = null; IN.lmb = false; IN.sx = IN.sy = -9999; } return; } if (e.button === 0) IN.lmb = false; else if (e.button === 2) IN.rmb = false; };
   window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
   glc.addEventListener('contextmenu', e => e.preventDefault());
   glc.addEventListener('wheel', e => { e.preventDefault(); G.zoom = clamp(G.zoom + Math.sign(e.deltaY) * .08, .4, 1.6); }, { passive: false });
-  window.addEventListener('blur', () => { IN.lmb = IN.rmb = IN.shift = false; IN.keys = {}; IN.tb = [false, false, false, false]; mvId = null; });
+  window.addEventListener('blur', () => { IN.lmb = IN.rmb = IN.shift = false; IN.keys = {}; IN.tb = [false, false, false, false]; mvId = null; joyEnd(); });
   $('tBag').onclick = () => { toggleSkl(false); toggleInv(); }; loadStash(); $('tSkl').onclick = () => { toggleInv(false); toggleSkl(); }; $('tLoot').onclick = () => pickupNear();
   window.addEventListener('error', e => { const d = $('err'); d.textContent = 'Something went wrong: ' + (e.message || 'unknown error'); d.classList.remove('hide'); });
   window.addEventListener('keydown', e => {
@@ -351,18 +369,18 @@ const UI = (() => {
   $('chatCh').onclick = () => { setCh(!chatGlobal); $('chat').focus(); }; setCh(true);
   // ---- settings ----
   function loadSet() { try { const o = JSON.parse(localStorage.getItem('cinderdeep_settings')); if (o && typeof o === 'object') Object.assign(G.set, o); } catch (e) { } applySet(); }
-  function applySet() { const st = G.set; SFX.vol(clamp(st.vol, 0, 100) / 100); if (st.gfx !== 'auto') GLX.env.q = clamp(+st.gfx | 0, 0, 2); $('mini').classList.toggle('hide', !st.map); try { localStorage.setItem('cinderdeep_settings', JSON.stringify(st)); } catch (e) { } }
+  function applySet() { const st = G.set; SFX.vol(clamp(st.vol, 0, 100) / 100); if (st.gfx !== 'auto') GLX.env.q = clamp(+st.gfx | 0, 0, 2); $('mini').classList.toggle('hide', !st.map); G.tj = !!st.joy && !!window.matchMedia && matchMedia('(pointer:coarse)').matches; document.body.classList.toggle('tj', G.tj); if (!G.tj) { IN.joy.on = false; IN.joy.x = IN.joy.z = 0; } try { localStorage.setItem('cinderdeep_settings', JSON.stringify(st)); } catch (e) { } }
   function renderSet() {
     const st = G.set, sel = (id, cur, opts) => `<select data-set="${id}">${opts.map(o => `<option value="${o[0]}"${String(cur) === String(o[0]) ? ' selected' : ''}>${o[1]}</option>`).join('')}</select>`, chk = (id, on) => `<input type="checkbox" data-set="${id}"${on ? ' checked' : ''}>`;
     $('set').innerHTML = `<div class="ph"><h3>Settings</h3><button class="xb" data-x="set" aria-label="Close">×</button></div>
       <label>Sound volume <span id="volN">${st.vol}%</span><input type="range" min="0" max="100" step="5" value="${st.vol}" data-set="vol"></label>
       <label>Graphics quality ${sel('gfx', st.gfx, [['auto', 'Automatic'], [2, 'High'], [1, 'Medium'], [0, 'Low (fastest)']])}</label>
       <label>Loot labels ${sel('filter', G.hero ? G.hero.filter : 0, [[0, 'Show all loot'], [1, 'Hide Common'], [2, 'Hide Common and Magic']])}</label>
-      <label>${chk('gps', st.gps)} Quest path on the ground (GPS)</label><label>${chk('shake', st.shake)} Screen shake</label><label>${chk('nums', st.nums)} Damage numbers</label><label>${chk('map', st.map)} Minimap</label>
+      <label>${chk('gps', st.gps)} Quest path on the ground (GPS)</label><label>${chk('shake', st.shake)} Screen shake</label><label>${chk('nums', st.nums)} Damage numbers</label><label>${chk('map', st.map)} Minimap</label><label class="touchOnly">${chk('joy', st.joy)} Thumb joystick and attack buttons</label>${document.documentElement.requestFullscreen ? '<label class="touchOnly"><button data-fs="1">Full screen on / off</button></label>' : ''}
       <div class="sm">Automatic lowers the picture quality by itself if the game runs slowly. Settings are saved on this device.</div><div class="sm" style="margin-top:6px">Cinderdeep build ${BUILD}</div>`;
   }
   function toggleSet(v) { const el = $('set'), open = v === undefined ? el.classList.contains('hide') : v; el.classList.toggle('hide', !open); if (open) renderSet(); }
-  $('set').addEventListener('click', e => { if (e.target.closest('[data-x]')) toggleSet(false); });
+  $('set').addEventListener('click', e => { if (e.target.closest('[data-x]')) toggleSet(false); else if (e.target.dataset && e.target.dataset.fs) { try { if (document.fullscreenElement) document.exitFullscreen(); else { const pr = document.documentElement.requestFullscreen({ navigationUI: 'hide' }); if (pr && pr.catch) pr.catch(() => { }); } } catch (_) { } } });
   $('set').addEventListener('input', e => {
     const k = e.target.dataset && e.target.dataset.set; if (!k) return; const st = G.set;
     if (k === 'vol') { st.vol = +e.target.value; $('volN').textContent = st.vol + '%'; applySet(); SFX.unlock(); SFX.play('pickup'); return; }

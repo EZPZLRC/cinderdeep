@@ -7,9 +7,9 @@ const rint = (a, b) => Math.floor(a + Math.random() * (b - a + 1));
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const CS = 3, GW = 60, SAVE_KEY = 'cinderdeep_save_v1';
-const G = { set: { vol: 70, gfx: 'auto', shake: true, nums: true, map: true, gps: true }, pp: [], online: false, auto: false, speed: 1, state: 'menu', hero: null, zone: null, time: 0, ents: [], projs: [], areas: [], drops: [], fx: [], texts: [], timers: [], shake: 0, zoom: .72, boss: null, hover: null, hoverObj: null, eid: 0, streak: 0, streakT: 0, bestStreak: 0, labels: [], hints: [], hitSfx: 0 };
+const G = { set: { vol: 70, gfx: 'auto', shake: true, nums: true, map: true, gps: true, joy: true }, pp: [], online: false, auto: false, speed: 1, state: 'menu', hero: null, zone: null, time: 0, ents: [], projs: [], areas: [], drops: [], fx: [], texts: [], timers: [], shake: 0, zoom: .72, boss: null, hover: null, hoverObj: null, eid: 0, streak: 0, streakT: 0, bestStreak: 0, labels: [], hints: [], hitSfx: 0 };
 const P = { x: 0, z: 0, y: 0, rot: 0, hp: 1, mana: 1, stats: {}, cds: {}, buffs: [], act: null, spin: null, dash: null, move: null, atk: null, inter: null, pick: null, walk: 0, mv: 0, moving: false, iframes: 0, cheatCd: 0, flaskT: 0, dead: false, hurt: 0, oomT: 0, swing: 0 };
-const IN = { sx: 0, sy: 0, gx: 0, gz: 0, lmb: false, rmb: false, keys: {}, shift: false, lmbFresh: false, touch: false, tb: [false, false, false, false] };
+const IN = { sx: 0, sy: 0, gx: 0, gz: 0, lmb: false, rmb: false, keys: {}, shift: false, lmbFresh: false, touch: false, tb: [false, false, false, false], joy: { on: false, x: 0, z: 0 } };
 let itemId = 1;
 
 // ---------- sound ----------
@@ -567,20 +567,31 @@ function updPlayer(dt) {
   if (P.act) { const a = P.act; a.t += dt; P.swing = a.t / a.dur; if (!a.fired && a.t >= a.fireAt) { a.fired = true; fireSkill(a); } if (a.t >= a.dur) P.act = null; else return; }
   if (G.auto && botStep(dt)) return;
   if (IN.rmb && tryCast(1)) return; if (IN.keys.q && tryCast(2)) return; if (IN.keys.w && tryCast(3)) return;
-  for (let i = 0; i < 4; i++) if (IN.tb[i]) { const t = autoTarget(); if (tryCast(i, t[0], t[1])) return; }
+  // thumb joystick + attack buttons: aim at the nearest foe by itself; a melee button held with the stick at rest walks you into reach
+  const jx = IN.joy.x, jz = IN.joy.z, jm = IN.joy.on ? Math.hypot(jx, jz) : 0; let chase = null;
+  for (let i = 0; i < 4; i++) if (IN.tb[i]) {
+    const e = nearFoe(15), sk = SKILLS[i === 0 && !h.eq.weapon ? 'punch' : h.bar[i]];
+    const melee = sk && sk.type === 'melee', dash = sk && sk.type === 'dash', steer = jm >= .18, far = dash ? sk.range * .85 : 6;
+    if (e && melee) { const d = Math.hypot(e.x - P.x, e.z - P.z); if (d > sk.range * .78 + e.r) { if (steer) continue; if (d < 10) { chase = e; break; } } } // out of reach: the stick steers, or at rest the hero closes in
+    if (!e && steer && sk && (melee || sk.basic)) continue; // nothing to hit while running: keep running
+    const t = steer && (dash || !e) ? [P.x + jx / jm * far, P.z + jz / jm * far] : e && !(dash && !sk.land) ? [e.x, e.z] : [P.x + Math.sin(P.rot) * far, P.z + Math.cos(P.rot) * far];
+    if (tryCast(i, t[0], t[1])) return;
+  }
   if (IN.lmb || IN.lmbFresh) {
     if (IN.shift) { P.atk = P.move = P.inter = P.pick = null; IN.lmbFresh = false; tryCast(0); return; }
     if (IN.lmbFresh) { IN.lmbFresh = false; if (P.pickNow) { P.pick = P.pickNow; P.pickNow = null; P.atk = P.inter = P.move = null; } else if (G.hoverObj) { P.inter = G.hoverObj; P.atk = P.move = P.pick = null; } else if (G.hover) { P.atk = G.hover; P.inter = P.move = P.pick = null; } else { P.atk = P.inter = P.pick = null; P.move = [IN.gx, IN.gz]; } }
     else if (!P.atk && !P.inter && !P.pick) { if (G.hover) P.atk = G.hover; else P.move = [IN.gx, IN.gz]; }
   }
-  let tx, tz;
+  let tx, tz, spK = 1;
   if (P.atk && !P.atk.alive) { P.atk = null; }
-  if (P.atk) { const e = P.atk, d = Math.hypot(e.x - P.x, e.z - P.z); if (d <= (SKILLS[G.hero.bar[0]] || SKILLS.cleave).range * .78 + e.r) { tryCast(0, e.x, e.z); if (!IN.lmb) P.atk = null; return; } tx = e.x; tz = e.z; }
+  if (jm >= .18) { P.atk = P.inter = P.pick = P.move = null; tx = P.x + jx / jm * 4; tz = P.z + jz / jm * 4; spK = Math.min(1, .45 + jm * .7); }
+  else if (chase) { P.atk = P.inter = P.pick = P.move = null; tx = chase.x; tz = chase.z; }
+  else if (P.atk) { const e = P.atk, d = Math.hypot(e.x - P.x, e.z - P.z); if (d <= (SKILLS[G.hero.bar[0]] || SKILLS.cleave).range * .78 + e.r) { tryCast(0, e.x, e.z); if (!IN.lmb) P.atk = null; return; } tx = e.x; tz = e.z; }
   else if (P.pick) { if (!G.drops.includes(P.pick)) P.pick = null; else { if (Math.hypot(P.pick.x - P.x, P.pick.z - P.z) < 2.3) { pickup(P.pick); P.pick = null; return; } tx = P.pick.x; tz = P.pick.z; } }
   else if (P.inter) { const o = P.inter; if (Math.hypot(o.x - P.x, o.z - P.z) < 2.6) { interact(o); P.inter = null; return; } tx = o.x; tz = o.z; }
   else if (P.move) { tx = P.move[0]; tz = P.move[1]; if (Math.hypot(tx - P.x, tz - P.z) < .3) { P.move = null; tx = undefined; } }
   if (tx !== undefined) {
-    const dx = tx - P.x, dz = tz - P.z, d = Math.hypot(dx, dz) || 1, sp = s.msT * (P.spin ? .8 : 1), st = Math.min(d, sp * dt);
+    const dx = tx - P.x, dz = tz - P.z, d = Math.hypot(dx, dz) || 1, sp = s.msT * (P.spin ? .8 : 1) * spK, st = Math.min(d, sp * dt);
     if (!P.spin) { let da = Math.atan2(dx, dz) - P.rot; while (da > Math.PI) da -= 6.2832; while (da < -Math.PI) da += 6.2832; P.rot += da * Math.min(1, dt * 18); }
     const ox = P.x, oz = P.z; moveEnt(P, dx / d * st, dz / d * st, .55); let moved = Math.hypot(P.x - ox, P.z - oz);
     if (moved < st * .5) { const ccx = (Math.floor(P.x / CS) + .5) * CS, ccz = (Math.floor(P.z / CS) + .5) * CS; if (Math.abs(dx) > Math.abs(dz)) moveEnt(P, 0, Math.sign(ccz - P.z) * Math.min(st, Math.abs(ccz - P.z)), .55); else moveEnt(P, Math.sign(ccx - P.x) * Math.min(st, Math.abs(ccx - P.x)), 0, .55); moved = Math.hypot(P.x - ox, P.z - oz); }
@@ -604,6 +615,9 @@ function pickup(d) {
   G.drops.splice(i, 1); SFX.play('pickup'); floatText(d.x, 1.4, d.z, d.item.name, RAR[d.item.rar].c, 1.1, 13); UI.invDirty = true;
   if (d.item.rar >= 3 && !d.item.fd) { d.item.fd = 1; if (G.online) NET.send({ t: 'found', item: d.item.name, r: d.item.rar }); else hint('You found a ' + RAR[d.item.rar].n + ' item: ' + d.item.name); }
 }
+function nearFoe(r) { let b = null, bd = r; for (const e of G.ents) { if (!e.alive || !e.awake) continue; const d = Math.hypot(e.x - P.x, e.z - P.z) - e.r; if (d < bd) { bd = d; b = e; } } return b; }
+function nearObj() { if (!G.zone) return null; let b = null, bd = 1e9; for (const o of G.zone.objs) { if (o.used) continue; const d = Math.hypot(o.x - P.x, o.z - P.z); if (d < (o.kind === 'portal' ? 5.5 : 3.6) && d < bd) { bd = d; b = o; } } return b; }
+function useNear() { const o = nearObj(); if (o) interact(o); else pickupNear(); }
 function pickupNear() { for (const d of G.drops.slice()) if (d.item && Math.hypot(d.x - P.x, d.z - P.z) < 5 && d.item.rar >= G.hero.filter) pickup(d); }
 function interact(o) {
   if (o.used) return;
@@ -929,5 +943,6 @@ function drawWorld() {
   }
   if (GPS.pts.length > 1 && G.set.gps) { const c = col(0xffd84a); let acc = (G.time * 3) % 1.6, tot = 0; for (let i = 1; i < GPS.pts.length && tot < 34; i++) { const a = GPS.pts[i - 1], b = GPS.pts[i], L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, ry = Math.atan2(b[0] - a[0], b[1] - a[1]); while (acc < L && tot + acc < 34) { const t = acc / L, k = 1 - (tot + acc) / 34; if (tot + acc > 1.6) GLX.obj('glow', 'cone', a[0] + (b[0] - a[0]) * t, .1, a[1] + (b[1] - a[1]) * t, ry, .5, .04, .9, c, 1, .75 * k); acc += 1.6; } acc -= L; tot += L; } }
   if (P.move && !P.atk) GLX.obj('glow', 'ring', P.move[0], .06, P.move[1], 0, .8, 1, .8, col(0xffffff), 1, .25, -1);
+  if (G.tj && !G.auto && !P.dead) { const e = nearFoe(15); if (e && e !== G.hover) GLX.obj('glow', 'ring', e.x, .06, e.z, G.time * 1.5, e.r * 2.5, 1, e.r * 2.5, col(0xffb03a), 1, .55, -1); }
   if (G.hover && G.hover.alive) GLX.obj('glow', 'ring', G.hover.x, .06, G.hover.z, 0, G.hover.r * 2.6, 1, G.hover.r * 2.6, col(0xff5a4a), 1, .7, -1);
 }
