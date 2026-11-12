@@ -1,5 +1,5 @@
 'use strict';
-const BUILD = '0004';
+const BUILD = '0005';
 const SLOTS = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring1', 'ring2'];
 const DROP_SLOTS = ['weapon', 'weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring', 'ring'];
 const AFF_ALIAS = { shoulders: 'chest', pants: 'chest', belt: 'helm', bracers: 'gloves', offhand: 'amulet' };

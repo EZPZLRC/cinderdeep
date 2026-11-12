@@ -87,7 +87,7 @@ const GLX = (() => {
   function addGeo(name, arr) { const vbo = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vbo); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(arr), gl.STATIC_DRAW); geo[name] = { vbo, count: arr.length / 6 }; }
 
   // ---- shaders ----
-  const N3 = `float h3(vec3 p){p=fract(p*.1031);p+=dot(p,p.zyx+31.32);return fract((p.x+p.y)*p.z);}
+  const N3 = `float h3(vec3 p){uvec3 q=uvec3(ivec3(p))*uvec3(1597334673U,3812015801U,2798796415U);uint n=(q.x^q.y^q.z)*1597334673U;n^=n>>15;n*=2246822519U;n^=n>>13;return float(n>>8)*(1./16777216.);}
 float n3(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
  return mix(mix(mix(h3(i),h3(i+vec3(1,0,0)),f.x),mix(h3(i+vec3(0,1,0)),h3(i+vec3(1,1,0)),f.x),f.y),mix(mix(h3(i+vec3(0,0,1)),h3(i+vec3(1,0,1)),f.x),mix(h3(i+vec3(0,1,1)),h3(i+vec3(1,1,1)),f.x),f.y),f.z);}`;
   const WPOS = `uniform float uT;
@@ -106,7 +106,7 @@ void main(){vec4 w=wpos(iM,aP,aN,iE.y);vW=w.xyz;vL=aP;mat3 m=mat3(iM);vec3 sc=ve
 precision highp float; precision highp sampler2DShadow;
 in vec3 vW,vN,vL; in vec4 vC; in vec2 vE; in vec4 vS;
 uniform sampler2DShadow uSh; uniform vec3 uSun,uSunC,uSky,uGnd,uFog,uEye,uPl; uniform vec2 uFogR; uniform float uLR,uQ,uT,uWet,uMist; uniform vec4 uLP[8]; uniform vec3 uLC[8]; out vec4 o;
-float h(vec2 p){vec3 q=fract(vec3(p.xyx)*.1031);q+=dot(q,q.yzx+33.33);return fract((q.x+q.y)*q.z);}
+float h(vec2 p){uvec2 q=uvec2(ivec2(p))*uvec2(1597334673U,3812015801U);uint n=(q.x^q.y)*1597334673U;n^=n>>15;n*=2246822519U;n^=n>>13;return float(n>>8)*(1./16777216.);}
 float ns(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
 ${N3}
 void main(){float mat=vE.y;vec3 n=normalize(vN);vec3 a=vC.rgb;float spec=.12,shin=20.,wrap=0.,ao=1.,wet=0.;
