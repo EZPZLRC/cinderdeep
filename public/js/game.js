@@ -7,7 +7,7 @@ const rint = (a, b) => Math.floor(a + Math.random() * (b - a + 1));
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const CS = 3, GW = 60, SAVE_KEY = 'cinderdeep_save_v1';
-const G = { set: { vol: 70, gfx: 'auto', shake: true, nums: true, map: true, gps: true, joy: true, autoLoot: true, ally: true, apSkill: true, apPot: true }, pp: [], online: false, auto: false, speed: 1, state: 'menu', hero: null, zone: null, time: 0, ents: [], projs: [], areas: [], drops: [], fx: [], texts: [], timers: [], shake: 0, zoom: .72, boss: null, hover: null, hoverObj: null, eid: 0, streak: 0, streakT: 0, bestStreak: 0, labels: [], hints: [], hitSfx: 0 };
+const G = { set: { vol: 70, gfx: 'auto', shake: true, nums: true, map: true, gps: true, joy: true, autoLoot: true, chat: true, shadows: true, scale: 100, fps: false, ally: true, apSkill: true, apPot: true }, pp: [], online: false, auto: false, speed: 1, state: 'menu', hero: null, zone: null, time: 0, ents: [], projs: [], areas: [], drops: [], fx: [], texts: [], timers: [], shake: 0, zoom: .72, boss: null, hover: null, hoverObj: null, eid: 0, streak: 0, streakT: 0, bestStreak: 0, labels: [], hints: [], hitSfx: 0 };
 const P = { x: 0, z: 0, y: 0, rot: 0, hp: 1, mana: 1, stats: {}, cds: {}, buffs: [], act: null, spin: null, dash: null, move: null, atk: null, inter: null, pick: null, walk: 0, mv: 0, moving: false, iframes: 0, cheatCd: 0, flaskT: 0, dead: false, hurt: 0, oomT: 0, swing: 0 };
 const IN = { sx: 0, sy: 0, gx: 0, gz: 0, lmb: false, rmb: false, keys: {}, shift: false, lmbFresh: false, touch: false, tb: [false, false, false, false], joy: { on: false, x: 0, z: 0 } };
 let itemId = 1;
@@ -274,7 +274,11 @@ function buildStatic(Z) {
   const grass = (x, z, n, sp) => { n = Math.max(1, Math.round(n / 4)); for (let k = 0; k < n; k++) { const h = .2 + sr() * .26, w = .5 + sr() * .45; GLX.obj('stat', 'tuft', x + (sr() - .5) * sp, h * .5, z + (sr() - .5) * sp, sr() * 6.28, w, h, w, shade(grassC[sr() * 4 | 0], .9 + sr() * .35), 0, 1, 5); } };
   const fern = (x, z) => { const fc = shade(leaf[2], 1 + sr() * .5), n = 6 + (sr() * 3 | 0); for (let k = 0; k < n; k++) { const a = k / n * 6.28 + sr() * .4; lay('blade', x + Math.cos(a) * .32, .26, z + Math.sin(a) * .32, -a + HP, 1.05 + sr() * .2, 0, .34, 1.0 + sr() * .4, .05, fc, 2); } };
   const shroom = (x, z) => { for (let k = 0; k < 3; k++) { const mx = x + (sr() - .5) * .7, mz = z + (sr() - .5) * .7, mh = .14 + sr() * .2; GLX.obj('stat', 'cyl', mx, mh / 2, mz, 0, .06, mh, .06, col(0xd8d0c0)); GLX.obj('stat', 'blob', mx, mh + .03, mz, 0, .22 + sr() * .14, .13, .22 + sr() * .14, col(sr() < .5 ? 0x9a3a2a : 0xb08a4a), 0, 1, 0); } };
-  const logf = (x, z) => { const a = sr() * 6.28, L = 2.2 + sr() * 1.6, bc = shade(bark, .7 + sr() * .3); lay('cyl', x, .3, z, a, HP, 0, .6, L, .6, bc, 3); lay('cyl', x + Math.sin(a) * L * .5, .3, z + Math.cos(a) * L * .5, a, HP, 0, .5, .04, .5, col(0xa88a5a), 0); if (sr() < .6) GLX.obj('stat', 'blob', x, .52, z, a, .7, .22, 1.2, shade(leaf[2], 1.1), 0, 1, 2); };
+  const logf = (x, z) => { const a = sr() * 6.28, Lg = 2.4 + sr() * 1.8, bc = shade(bark, .7 + sr() * .3), sa = Math.sin(a), ca = Math.cos(a), R = .3 + sr() * .1;
+    lay('cyl', x, R, z, a, HP, 0, R * 2, Lg, R * 2, bc, 3); for (const e of [-1, 1]) { const ex = x + sa * Lg * .5 * e, ez = z + ca * Lg * .5 * e; lay('cyl', ex, R, ez, a, HP, 0, R * 1.9, .05, R * 1.9, col(0xb4946a), 0); lay('cyl', ex + sa * .03 * e, R, ez + ca * .03 * e, a, HP, 0, R * 1.2, .03, R * 1.2, col(0x8a6a44), 0); lay('cyl', ex + sa * .05 * e, R, ez + ca * .05 * e, a, HP, 0, R * .5, .03, R * .5, col(0x6a4e30), 0); }
+    for (let k = 0; k < 3; k++) { const u = (sr() - .5) * Lg * .8, sd = sr() < .5 ? 1 : -1; lay('cyl', x + sa * u, R * 2.05, z + ca * u, a, HP, 0, R * 2.06, .1 + sr() * .25, R * .3, shade(bc, .75), 3); if (k < 2) GLX.obj('stat', 'taper', x + sa * u + ca * R * sd, R * 1.3, z + ca * u - sa * R * sd, a, .12, .5 + sr() * .4, .12, shade(bc, .9), 0, 1, 3); }
+    GLX.obj('stat', 'blob', x + sa * (sr() - .5) * Lg * .5, R * 1.9, z + ca * (sr() - .5) * Lg * .5, a, .7, .2, 1.3, shade(leaf[2], 1.15), 0, 1, 2); for (let k = 0; k < 3; k++) { const u = (sr() - .5) * Lg * .7, mx = x + sa * u + ca * (R + .12), mz = z + ca * u - sa * (R + .12), mh = .14 + sr() * .12; GLX.obj('stat', 'cyl', mx, mh * .5, mz, 0, .05, mh, .05, col(0xd8cdb0), 0); GLX.obj('stat', 'cone', mx, mh + .04, mz, 0, .2, .1, .2, col(sr() < .5 ? 0xb8402a : 0xc9a060), 0); }
+    grass(x, z, 6, 2.4); };
   const litter = (x, z) => { for (let k = 0; k < 5; k++) GLX.obj('stat', 'disc', x + (sr() - .5) * 2.6, .02 + k * .002, z + (sr() - .5) * 2.6, sr() * 6, .16 + sr() * .1, 1, .1 + sr() * .08, col([0x8a5a22, 0xa8742a, 0x6a4a1c, 0x9a3a1c][sr() * 4 | 0]), 0, 1, 0); };
   const gN = LOWQ ? 7 : 18;
   for (let y = 0; y < GW; y++) for (let x = 0; x < GW; x++) {
@@ -309,9 +313,22 @@ function buildStatic(Z) {
     for (const o of Z.objs) {
       if (o.kind === 'vendor') { for (const sx of [-1.6, 1.6]) for (const sz of [-1.2, 1.2]) GLX.obj('stat', 'cyl', o.x + sx, 1.4, o.z + sz - 1.6, 0, .16, 2.8, .16, wood, 0, 1, 3); GLX.obj('stat', 'box', o.x, 2.9, o.z - 1.6, 0, 4, .12, 3.2, cloth); GLX.obj('stat', 'box', o.x, .5, o.z - .2, 0, 3.4, 1, .9, wood, 0, 1, 3); GLX.obj('stat', 'box', o.x - 1, 1.15, o.z - .2, .3, .5, .3, .5, canvas2); GLX.obj('stat', 'sphere', o.x + .9, 1.2, o.z - .2, 0, .4, .4, .4, col(0xc9a030), 0, 1, 4); GLX.obj('stat', 'box', o.x - 2.6, .5, o.z - 2, .4, 1, 1, 1, wood, 0, 1, 3); }
       else if (o.kind === 'stash') { GLX.obj('stat', 'box', o.x, .7, o.z, 0, 2.6, 1.4, 1.5, wood, 0, 1, 3); GLX.obj('stat', 'cyl', o.x, 1.4, o.z, 0, 2.6, .5, 1.5, wood, 0, 1, 3); for (const sx of [-1, 0, 1]) GLX.obj('stat', 'box', o.x + sx * 1.1, .9, o.z, 0, .18, 1.9, 1.56, col(0x8a6a2a), 0, 1, 4); GLX.obj('stat', 'box', o.x, .9, o.z + .78, 0, .4, .5, .08, col(0xc9a030), .1, 1, 4); }
-      else if (o.kind === 'altar') { GLX.obj('stat', 'cyl', o.x, .15, o.z, 0, 3.4, .3, 3.4, stn, 0, 1, 3); GLX.obj('stat', 'taper', o.x, .9, o.z, 0, 1.6, 1.2, 1.6, stn, 0, 1, 3); GLX.obj('stat', 'cyl', o.x, 1.56, o.z, 0, 1.9, .14, 1.9, col(0x4a4a50), 0, 1, 4); for (let k = 0; k < 4; k++) { const a = k * 1.57 + .78; GLX.obj('stat', 'taper', o.x + Math.cos(a) * 2.2, 1.2, o.z + Math.sin(a) * 2.2, 0, .4, 2.4, .4, stn, 0, 1, 3); } }
+      else if (o.kind === 'altar') { GLX.obj('stat', 'cyl', o.x, .15, o.z, 0, 3.4, .3, 3.4, stn, 0, 1, 3); GLX.obj('stat', 'taper', o.x, .9, o.z, 0, 1.6, 1.2, 1.6, stn, 0, 1, 3); GLX.obj('stat', 'cyl', o.x, 1.56, o.z, 0, 1.9, .14, 1.9, col(0x4a4a50), 0, 1, 4); GLX.obj('stat', 'cyl', o.x, 1.7, o.z, 0, 1.2, .2, 1.2, col(0xc9a030), .2, 1, 4); }
     }
-    for (let k = 0; k < 3; k++) { const a = 2.2 + k * 1.1, tx = Z.bossAt[0] + Math.cos(a) * 15, tz = Z.bossAt[1] + Math.sin(a) * 15; GLX.obj('stat', 'cone', tx, 1.5, tz, k, 4, 3, 4, canvas2); GLX.obj('stat', 'cyl', tx, 1.6, tz, 0, .12, 3.4, .12, wood, 0, 1, 3); }
+    { // Emberwatch: a walled camp-town. Tall things stand on the far (north) side so nothing hides the people in front.
+      const cx = Z.bossAt[0], cz = Z.bossAt[1], cob = col(0x56524c), cob2 = col(0x625c54), thatch = col(0x8a6a34), plaster = col(0xb8a888), red = col(0x7a2a22), blue = col(0x2a4a7a), iron = col(0x3a3c44);
+      GLX.obj('stat', 'cyl', cx, .04, cz, 0, 20, .08, 20, cob, 0, 1, 3); for (let k = 0; k < 40; k++) { const a = k * 2.399, r = 1.5 + (k * 0.618 % 1) * 8.2; GLX.obj('stat', 'cyl', cx + Math.cos(a) * r, .09, cz + Math.sin(a) * r, a, .9 + (k % 3) * .3, .04, .8 + (k % 2) * .3, k % 2 ? cob2 : shade(cob, .85), 0, 1, 3); }
+      for (const o of Z.objs) { const dx = o.x - cx, dz = o.z - cz, d = Math.hypot(dx, dz), a = Math.atan2(dx, dz); GLX.obj('stat', 'box', cx + dx * .55, .07, cz + dz * .55, a, 2.6, .06, d * .8, cob2, 0, 1, 3); }
+      for (let k = 0; k < 44; k++) { const a = k / 44 * 6.2832; if (Math.abs(a - 1.5708) < .22) continue; const px = cx + Math.cos(a) * 20.6, pz = cz + Math.sin(a) * 20.6; GLX.obj('stat', 'taper', px, 1.1, pz, a, .34, 2.2 + (k % 3) * .25, .34, wood, 0, 1, 3); GLX.obj('stat', 'box', px, 1.2, pz, -a, .12, .16, 3, shade(wood, .8), 0, 1, 3); }
+      const house = (hx, hz, ry, w, roofC) => { GLX.obj('stat', 'box', hx, 1.3, hz, ry, w, 2.6, w * .8, plaster, 0, 1, 3); for (const sx of [-1, 1]) GLX.obj('stat', 'box', hx + Math.cos(ry) * w * .5 * sx, 1.3, hz - Math.sin(ry) * w * .5 * sx, ry, .16, 2.7, w * .82, wood, 0, 1, 3); GLX.obj('stat', 'box', hx, 2.55, hz, ry, w * 1.02, .16, w * .82, wood, 0, 1, 3); GLX.obj('stat', 'taper', hx, 3.5, hz, ry + .785, w * 1.25, 1.9, w * 1.05, roofC, 0, 1, 3); GLX.obj('stat', 'box', hx + Math.sin(ry) * w * .41, .9, hz + Math.cos(ry) * w * .41, ry, .9, 1.8, .08, shade(wood, .7), 0, 1, 3); GLX.obj('stat', 'box', hx + Math.sin(ry) * w * .41 + Math.cos(ry) * w * .28, 1.6, hz + Math.cos(ry) * w * .41 - Math.sin(ry) * w * .28, ry, .6, .6, .06, col(0xffd070), .9); GLX.obj('stat', 'box', hx - Math.cos(ry) * w * .3, 3.9, hz + Math.sin(ry) * w * .3, ry, .5, 1.6, .5, cob, 0, 1, 3); };
+      house(cx - 9.5, cz - 16.5, .25, 5, thatch); house(cx + 9.5, cz - 16.5, -.25, 5, red); house(cx - 16.5, cz - 10.5, .8, 4.2, thatch); house(cx + 16.5, cz - 10.5, -.8, 4.2, shade(blue, 1.1));
+      for (const [tx, tz, cc] of [[-17.5, 5.5, canvas2], [17.5, 5.5, canvas2]]) { GLX.obj('stat', 'cone', cx + tx, 1.3, cz + tz, 0, 3.4, 2.6, 3.4, cc); GLX.obj('stat', 'cyl', cx + tx, 1.5, cz + tz, 0, .1, 3.1, .1, wood, 0, 1, 3); }
+      { const wx = cx + 6.5, wz = cz + 6; GLX.obj('stat', 'cyl', wx, .5, wz, 0, 2.2, 1, 2.2, cob2, 0, 1, 3); GLX.obj('stat', 'cyl', wx, 1.02, wz, 0, 1.7, .04, 1.7, col(0x1a2a3a), 0, 1, 4); for (const sx of [-1, 1]) GLX.obj('stat', 'box', wx + sx * 1, 1.6, wz, 0, .16, 2.2, .16, wood, 0, 1, 3); GLX.obj('stat', 'box', wx, 2.7, wz, 0, 2.5, .14, .9, thatch, 0, 1, 3); GLX.obj('stat', 'cyl', wx, 2.3, wz, 0, .1, .1, 2, wood, 0, 1, 3); }
+      for (const [bx, bz, n] of [[-6, 7, 3], [-15, 2, 2], [15, 2, 2], [4, -11, 2], [-4, -11, 3]]) for (let k = 0; k < n; k++) { const px = cx + bx + (k % 2) * 1.1, pz = cz + bz + (k > 1 ? 1.1 : 0); if (k % 2) { GLX.obj('stat', 'cyl', px, .55, pz, 0, .8, 1.1, .8, wood, 0, 1, 3); for (const y of [.25, .85]) GLX.obj('stat', 'cyl', px, y, pz, 0, .84, .08, .84, iron, 0, 1, 4); } else { GLX.obj('stat', 'box', px, .45, pz, k * .5, .9, .9, .9, shade(wood, 1.1), 0, 1, 3); GLX.obj('stat', 'box', px, .45, pz, k * .5, .94, .1, .94, shade(wood, .7), 0, 1, 3); } }
+      for (const [sx, sz] of [[-3.2, 3.4], [3.2, 3.4]]) { GLX.obj('stat', 'box', cx + sx, .45, cz + sz, sx > 0 ? -.6 : .6, 2.2, .14, .6, wood, 0, 1, 3); for (const e of [-.9, .9]) GLX.obj('stat', 'box', cx + sx + e * Math.cos(sx > 0 ? -.6 : .6), .22, cz + sz - e * Math.sin(sx > 0 ? -.6 : .6), 0, .14, .44, .5, shade(wood, .8), 0, 1, 3); }
+      for (const o of Z.objs) { if (o.kind === 'tportal') continue; const fc = o.kind === 'altar' ? col(0xff7a2a) : o.kind === 'vendor' ? col(0xc9a030) : blue, px = o.x + (o.kind === 'stash' ? 3 : 0), pz = o.z - (o.kind === 'stash' ? 0 : 4.6); GLX.obj('stat', 'cyl', px, 2.4, pz, 0, .12, 4.8, .12, wood, 0, 1, 3); GLX.obj('stat', 'box', px + .7, 4.1, pz, 0, 1.3, 1, .06, fc, .15); GLX.obj('stat', 'cone', px, 4.9, pz, 0, .22, .3, .22, col(0xc9a030), 0, 1, 4); }
+      for (const o of Z.objs) if (o.kind === 'altar') { GLX.obj('stat', 'cyl', o.x, .36, o.z, .3, 5.6, .14, 5.6, col(0x5a5a60), 0, 1, 3); for (let k = 0; k < 6; k++) { const a = k * 1.0472 + .5; GLX.obj('stat', 'taper', o.x + Math.cos(a) * 3.6, 1.8, o.z + Math.sin(a) * 3.6, a, .55, 3.2, .55, stn, 0, 1, 3); GLX.obj('stat', 'cyl', o.x + Math.cos(a) * 3.6, .3, o.z + Math.sin(a) * 3.6, a, .9, .4, .9, col(0x4a4a50), 0, 1, 3); } }
+    }
   }
   GLX.statEnd();
 }
@@ -346,7 +363,7 @@ function repEnemy(e, dt) {
 }
 function enterZone(net) {
   G.inTown = false; G.away = null;
-  const h = G.hero, lvl = net ? net.lvl : h.level, zd = zoneFor(net ? net.d : h.runs); const def = { type: 'zone', theme: zd.theme, lvl, seed: net ? net.seed : (Math.random() * 1e9) | 0, name: zd.name, depth: (net ? net.d | 0 : h.runs) + 1 };
+  const h = G.hero, lvl = net ? net.lvl : h.level, dpt = net ? net.d | 0 : (h.depth === undefined ? (h.depth = h.runs) : h.depth), zd = zoneFor(dpt); const def = { type: 'zone', theme: zd.theme, lvl, seed: net ? net.seed : (Math.random() * 1e9) | 0, name: zd.name, depth: dpt + 1 };
   G.zone = genZone(def); const Z = G.zone; G.ents.length = 0; G.projs.length = 0; G.pp.length = 0; G.areas.length = 0; G.drops.length = 0; G.fx.length = 0; G.texts.length = 0; G.timers.length = 0; G.boss = null; G.streak = 0;
   P.buffs = []; computeStats(); buildStatic(Z); if (net) { for (const i of net.ents) addReplica(i); } else spawnAll(Z); BOT.path = null;
   P.x = Z.start[0]; P.z = Z.start[1]; P.y = 0; P.act = P.spin = P.dash = P.move = P.atk = P.inter = P.pick = null; P.dead = false; P.lastHit = -9; P.flaskCd = 0; P.buffs = []; P.cds = {}; computeStats(); P.hp = P.stats.maxLife; P.mana = CLASSES[h.cls].res.regen ? P.stats.maxMana : 0; P.flaskCd = 0; P.lastHit = -9;
@@ -356,20 +373,20 @@ function enterZone(net) {
 
 // ---------- town ----------
 function genTown() {
-  const th = THEMES.town, c0 = GW / 2, Z = { def: { type: 'town', theme: 'town', lvl: G.hero.level, seed: 4242, name: 'Emberwatch Camp' }, th, cell: new Uint8Array(GW * GW).fill(1), seen: new Uint8Array(GW * GW).fill(1), lamps: [], objs: [], packs: [], cleared: true };
+  const th = THEMES.town, c0 = GW / 2, Z = { def: { type: 'town', theme: 'town', lvl: G.hero.level, seed: 4242, name: 'Emberwatch' }, th, cell: new Uint8Array(GW * GW).fill(1), seen: new Uint8Array(GW * GW).fill(1), lamps: [], objs: [], packs: [], cleared: true };
   for (let y = 0; y < GW; y++) for (let x = 0; x < GW; x++) if (Math.hypot(x + .5 - c0, y + .5 - c0) < 7.2) Z.cell[y * GW + x] = 0;
   const cx = c0 * CS, cz = c0 * CS; Z.start = [cx, cz + 9]; Z.bossAt = [cx, cz]; Z.dist = new Int16Array(GW * GW);
-  Z.lamps.push({ x: cx, z: cz, big: 1 }, { x: cx - 11, z: cz - 8 }, { x: cx + 11, z: cz - 8 }, { x: cx - 8, z: cz + 10 }, { x: cx + 8, z: cz + 10 });
+  Z.lamps.push({ x: cx, z: cz, big: 1 }, { x: cx - 11, z: cz - 8 }, { x: cx + 11, z: cz - 8 }, { x: cx - 8, z: cz + 10 }, { x: cx + 8, z: cz + 10 }, { x: cx - 16, z: cz + 1 }, { x: cx + 16, z: cz + 1 }, { x: cx - 4, z: cz - 15 }, { x: cx + 4, z: cz - 15 });
   Z.objs.push({ kind: 'stash', x: cx, z: cz - 13, name: 'Stash', used: false }, { kind: 'vendor', x: cx - 13, z: cz - 2, name: 'Mirel the Trader', used: false }, { kind: 'altar', x: cx + 13, z: cz - 2, name: 'Altar of Embers', used: false }, { kind: 'tportal', x: cx, z: cz + 14, name: 'Return to the Hollow', used: false });
   return Z;
 }
 function setEnv(Z) { const e = GLX.env, th = Z.th, n = Math.hypot(.55, .66, .42); e.sun = [.55 / n, .66 / n, .42 / n]; e.sunC = th.sunC; e.sky = th.sky; e.gnd = th.gnd; e.fog = GLX.col(th.fog); e.lightR = th.lightR; e.wet = th.wet === undefined ? .4 : th.wet; e.mist = th.mist === undefined ? .35 : th.mist; SFX.ambient(Object.keys(THEMES).find(k => THEMES[k] === th)); }
-function enterTown() { goalDone('town'); P.flaskCd = 0;
+function enterTown() { goalDone('town'); P.fl = FLASK_MAX; P.flaskCd = 0;
   if (G.inTown || P.dead || G.state !== 'play') return; for (const e of G.ents) if (e.alive && e.awake && Math.hypot(e.x - P.x, e.z - P.z) < 16) { hint('You cannot leave while enemies are near.'); return; }
   G.away = { zone: G.zone, ents: G.ents, drops: G.drops, boss: G.boss, x: P.x, z: P.z, seed: G.zone.def.seed }; G.ents = []; G.drops = []; G.projs = []; G.pp = []; G.areas = []; G.fx = []; G.texts = []; G.timers = []; G.boss = null; G.streak = 0;
   G.zone = genTown(); G.inTown = true; buildStatic(G.zone); setEnv(G.zone); P.x = G.zone.start[0]; P.z = G.zone.start[1]; P.y = 0; P.rot = Math.PI; P.act = P.spin = P.dash = P.move = P.atk = P.inter = P.pick = null; BOT.path = null; P.hp = P.stats.maxLife;
   const h = G.hero; if (!h.stock || Math.abs(h.kills - (h.stockK || 0)) >= 25 || h.stockL !== h.level) { h.stock = []; for (let i = 0; i < 10; i++) h.stock.push(makeItem(h.level, null, Math.random() < .12 ? 3 : Math.random() < .5 ? 2 : 1)); h.stockK = h.kills; h.stockL = h.level; }
-  SFX.play('shrine'); UI.zoneBanner('Emberwatch Camp', 'Stash · Trader · Altar'); saveGame();
+  SFX.play('shrine'); UI.zoneBanner('Emberwatch', 'Stash · Trader · Altar'); saveGame();
 }
 // jump straight to a party member; from town it walks you out through the portal first
 function teleportTo(id) {
@@ -436,7 +453,7 @@ function hitEnemy(e, sk, mult, noProc) {
 }
 function killEnemy(e) {
   if (!e.alive) return; e.alive = false; e.deadT = .45; const h = G.hero, s = P.stats; h.kills++; if (h.goals && !h.goals.kill) { h.goals.k = (h.goals.k || 0) + 1; if (h.goals.k >= 5) goalDone('kill'); } if (e.boss) goalDone('boss');
-  let xp = 22 * Math.pow(1.13, e.lvl) * (e.a.xp || 1) * (e.elite === 1 ? 3 : e.elite === 2 ? 6 : 1); const diff = h.level - e.lvl; if (diff > 4) xp *= Math.max(.1, 1 - (diff - 4) * .15); gainXp(xp);
+  let xp = 22 * Math.pow(1.13, e.lvl) * (e.a.xp || 1) * (e.elite === 1 ? 3 : e.elite === 2 ? 6 : 1); const diff = h.level - e.lvl; if (diff > 4) xp *= Math.max(.1, 1 - (diff - 4) * .15); if (G.set.nums !== false && h.level < MAX_LEVEL) floatText(e.x, 2.4 * e.sc, e.z, '+' + Math.max(1, Math.round(xp)) + ' xp', '#cfc4ff', 1, 12); gainXp(xp);
   G.streak++; G.streakT = 4; if (G.streak > G.bestStreak) G.bestStreak = G.streak; if (G.streak > (h.best || 0)) h.best = G.streak;
   dropLoot(e); burst(e.x, 1, e.z, e.md.c2, 14, 6); SFX.play('kill');
   if (!e.noLoot && (e.elite || Math.random() < .12)) G.drops.push({ x: e.x, z: e.z, globe: 1, t: 0 });
@@ -446,7 +463,7 @@ function killEnemy(e) {
   if (e.molten && !G.online) addArea({ x: e.x, z: e.z, r: 2.6, delay: .7, owner: 'e', dmg: e.dmg * 1.3, el: 'fire', c: 0xff7a2a });
   if (e.boss) {
     G.zone.cleared = true; G.shake = .9; ring(e.x, e.z, 0, 16, 1.1, e.md.e); burst(e.x, 2, e.z, e.md.e, 60, 11); SFX.play('level'); h.runs++;
-    G.zone.objs.push({ kind: 'portal', x: e.x, z: e.z, name: 'Descend deeper', used: false }); UI.zoneBanner('Guardian slain', 'A great gate opens to the next floor'); ring(e.x, e.z, 0, 16, 1.2, 0x7ad0ff); ring(e.x, e.z, 0, 9, .8, 0xb48cff); burst(e.x, 2, e.z, 0x7ad0ff, 60, 12); G.shake = .9; SFX.play('shrine'); saveGame();
+    G.zone.objs.push({ kind: 'portal', x: e.x, z: e.z, name: 'Next floor', used: false }); if ((G.zone.def.depth || 1) > 1) G.zone.objs.push({ kind: 'pback', x: e.x + 6, z: e.z + 1.5, name: 'Previous floor', used: false }); h.depthMax = Math.max(h.depthMax || 0, G.zone.def.depth || 1); UI.zoneBanner('Guardian slain', 'A great gate opens to the next floor'); ring(e.x, e.z, 0, 16, 1.2, 0x7ad0ff); ring(e.x, e.z, 0, 9, .8, 0xb48cff); burst(e.x, 2, e.z, 0x7ad0ff, 60, 12); G.shake = .9; SFX.play('shrine'); saveGame();
   }
 }
 // ---- first steps ----
@@ -535,10 +552,14 @@ const BOT = { t: 0, path: null, rv: 0, dodge: 0, kite: 0 };
 // ---- the sellsword: a companion who fights beside you when no other player is in your party ----
 const ALLY = { x: 0, y: 0, z: 0, rot: 0, walk: 0, mv: 0, hurt: 0, act: null, swing: 0, spin: null, dash: false, buffs: null, flaskT: 0, cls: 'ranger', on: false, cd: 0, name: 'Sellsword' };
 const ALLY_SK = { n: 'Sellsword', type: 'ally', el: 'phys', m: .4 };
+// Hand the Sellsword gear: it wears it, and hits harder for every piece (more for rarer, higher-level pieces).
+function allyPower() { const q = G.hero.allyEq || {}; let m = .4; for (const k in q) { const it = q[k]; m += (k === 'weapon' ? .1 : .04) + it.rar * (k === 'weapon' ? .05 : .02) + (it.up || 0) * .01; } return Math.min(1.1, m); }
+function allyGive(i) { const h = G.hero, it = h.inv[i]; if (!it || it.slot === 'ring' || it.slot === 'amulet' || it.slot === 'offhand') { hint('The Sellsword takes weapons and armor.'); return false; } h.allyEq = h.allyEq || {}; const old = h.allyEq[it.slot]; h.allyEq[it.slot] = it; h.inv[i] = null; if (old) addItem(old); ALLY.gear = gearDecode(gearCode(h.allyEq)); ALLY_SK.m = allyPower(); SFX.play('pickup'); hint('The Sellsword equips ' + it.name + '. Its hits are now worth ' + Math.round(ALLY_SK.m * 100) + '% of yours.'); saveGame(); return true; }
+function allyTake(slot) { const h = G.hero, it = h.allyEq && h.allyEq[slot]; if (!it) return; if (!addItem(it)) return; delete h.allyEq[slot]; ALLY.gear = gearDecode(gearCode(h.allyEq)); ALLY_SK.m = allyPower(); saveGame(); }
 function updAlly(dt) {
   const alone = !G.online || !Object.keys(NET.peers).length, want = G.set.ally !== false && !G.inTown && !P.dead && alone && G.state === 'play';
   if (!want) { ALLY.on = false; return; } const h = G.hero;
-  if (!ALLY.on || Math.hypot(ALLY.x - P.x, ALLY.z - P.z) > 26) { ALLY.on = true; ALLY.x = P.x - 1.5; ALLY.z = P.z + 1.5; ALLY.cls = h.cls === 'warden' || h.cls === 'brawler' ? 'ranger' : 'warden'; ALLY.g = null; }
+  if (!ALLY.on || Math.hypot(ALLY.x - P.x, ALLY.z - P.z) > 26) { ALLY.on = true; ALLY.x = P.x - 1.5; ALLY.z = P.z + 1.5; ALLY.cls = h.cls === 'warden' || h.cls === 'brawler' ? 'ranger' : 'warden'; ALLY.gear = h.allyEq && Object.keys(h.allyEq).length ? gearDecode(gearCode(h.allyEq)) : null; ALLY_SK.m = allyPower(); }
   const melee = ALLY.cls === 'warden', range = melee ? 2.4 : 9; let tg = null, bd = 13; for (const e of G.ents) { if (!e.alive || !e.awake) continue; const d = Math.hypot(e.x - ALLY.x, e.z - ALLY.z); if (d < bd && Math.hypot(e.x - P.x, e.z - P.z) < 16) { bd = d; tg = e; } }
   ALLY.cd -= dt; if (ALLY.swing > 0) ALLY.swing -= dt * 3; let tx = null, tz = null;
   if (tg) { ALLY.rot = Math.atan2(tg.x - ALLY.x, tg.z - ALLY.z); if (bd > range + tg.r) { tx = tg.x; tz = tg.z; } else if (ALLY.cd <= 0) { ALLY.cd = 1.15; ALLY.swing = 1; ALLY.act = { t: 0, d: .35, sk: ALLY_SK }; if (!melee) G.fx.push({ bolt: 1, x1: ALLY.x, z1: ALLY.z, x2: tg.x, z2: tg.z, life: .12, max: .12, c: GLX.col(0xfff0c0) }); hitEnemy(tg, ALLY_SK, 1, true); } }
@@ -601,7 +622,7 @@ function botStep(dt) {
 // ---------- update ----------
 function updPlayer(dt) {
   const s = P.stats, h = G.hero; if (P.dead) return;
-  if (!G.menuHold) P.hp = Math.min(s.maxLife, P.hp + s.lifeRegenT * dt); { const rs = CLASSES[h.cls].res; if (rs.regen) P.mana = Math.min(s.maxMana, P.mana + rs.regen * dt); else if (G.time - P.lastHit > 4) P.mana = Math.max(0, P.mana - rs.decay * dt); } if (P.flaskCd > 0) P.flaskCd -= dt;
+  if (!G.menuHold) P.hp = Math.min(s.maxLife, P.hp + s.lifeRegenT * dt); { const rs = CLASSES[h.cls].res; if (rs.regen) P.mana = Math.min(s.maxMana, P.mana + rs.regen * dt); else if (G.time - P.lastHit > 4) P.mana = Math.max(0, P.mana - rs.decay * dt); } if (P.fl === undefined) P.fl = FLASK_MAX; if (P.fl < FLASK_MAX) { P.flaskCd = P.flaskCd > 0 ? P.flaskCd - dt : FLASK_CD; if (P.flaskCd <= 0) { P.fl++; P.flaskCd = P.fl < FLASK_MAX ? FLASK_CD : 0; } } else P.flaskCd = 0;
   for (const k in P.cds) if (P.cds[k] > 0) P.cds[k] -= dt;
   if (P.iframes > 0) P.iframes -= dt; if (P.hurt > 0) P.hurt -= dt; if (P.cheatCd > 0) P.cheatCd -= dt;
   if (P.buffs.length) { let ex = false; for (const b of P.buffs) { b.t -= dt; if (b.t <= 0) ex = true; } if (ex) { P.buffs = P.buffs.filter(b => b.t > 0); computeStats(); } }
@@ -667,7 +688,8 @@ function giveItem(i) {
   const h = G.hero, it = h.inv[i]; if (!it || !G.online) return false; let b = null, bd = 16; for (const id in NET.peers) { const q = NET.peers[id], d = Math.hypot(q.x - P.x, q.z - P.z); if (d < bd) { bd = d; b = q; } }
   if (!b) { hint('No party member close enough to give this to.'); return false; } NET.send({ t: 'give', to: b.id, item: it }); h.inv[i] = null; hint('Gave ' + it.name + ' to ' + b.name + '.'); saveGame(); return true;
 }
-function useFlask() { if (P.dead) return; if (P.flaskCd > 0) { if (G.time - (P.flHint || -9) > 2) { P.flHint = G.time; hint('Potion refills in ' + Math.ceil(P.flaskCd) + ' seconds. It is one flask on a timer, not a stack.'); } return; } if (P.hp >= P.stats.maxLife) { if (G.time - (P.flHint || -9) > 2) { P.flHint = G.time; hint('You are at full health. The potion is saved.'); } return; } P.flaskCd = 30; P.flaskT = 1.2; SFX.play('flask'); burst(P.x, 1.4, P.z, 0xff4a4a, 14, 4); }
+const FLASK_MAX = 5, FLASK_CD = 15; // up to five potions saved; one refills every 15 seconds
+function useFlask() { if (P.dead) return; if (P.fl === undefined) P.fl = FLASK_MAX; if (P.hp >= P.stats.maxLife) { if (G.time - (P.flHint || -9) > 2) { P.flHint = G.time; hint('You are at full health. The potion is saved.'); } return; } if (P.fl <= 0) { if (G.time - (P.flHint || -9) > 2) { P.flHint = G.time; hint('No potions left. The next one is ready in ' + Math.ceil(P.flaskCd) + ' seconds.'); } return; } if (P.flaskT > 0) return; P.fl--; if (!(P.flaskCd > 0)) P.flaskCd = FLASK_CD; P.flaskT = 1.2; SFX.play('flask'); burst(P.x, 1.4, P.z, 0xff4a4a, 14, 4); }
 function pickup(d) {
   const i = G.drops.indexOf(d); if (i < 0) return;
   if (d.globe) { P.hp = Math.min(P.stats.maxLife, P.hp + P.stats.maxLife * .25); floatText(d.x, 1.4, d.z, '+life', '#ff6a6a', .8, 14); SFX.play('flask'); G.drops.splice(i, 1); return; }
@@ -686,7 +708,8 @@ function interact(o) {
   else if (o.kind === 'shrine') { o.used = true; P.buffs.push({ s: o.sh.s, t: 45, n: o.sh.n }); computeStats(); ring(o.x, o.z, 0, 8, .7, o.sh.c); SFX.play('shrine'); hint(o.sh.n + ' empowers you for 45 seconds.'); }
   else if (o.kind === 'stash' || o.kind === 'vendor' || o.kind === 'altar') UI.openTown(o.kind);
   else if (o.kind === 'tportal') leaveTown();
-  else if (o.kind === 'portal') { if (G.online) NET.send({ t: 'next' }); else enterZone(); }
+  else if (o.kind === 'portal') { if (G.online) NET.send({ t: 'next' }); else { G.hero.depth = (G.hero.depth || 0) + 1; enterZone(); } }
+  else if (o.kind === 'pback') { if (G.online) NET.send({ t: 'prev' }); else { G.hero.depth = Math.max(0, (G.hero.depth || 0) - 1); enterZone(); } }
 }
 function eShoot(e, ang, spd, dmgM, el) { G.projs.push({ x: e.x + Math.sin(ang) * e.r, z: e.z + Math.cos(ang) * e.r, vx: Math.sin(ang) * spd, vz: Math.cos(ang) * spd, life: 3, r: .45, dmg: e.dmg * (dmgM || 1), el: el || 'phys', src: e, c: GLX.col(e.md.e) }); }
 function bossPattern(e) {
@@ -766,6 +789,7 @@ function update(dt) {
     if (a.t >= a.delay + .05) G.areas.splice(i, 1);
   }
   // drops
+  if (G.zone && !G.inTown && !P.dead) for (const o of G.zone.objs) { if (o.kind !== 'portal' && o.kind !== 'pback') continue; const dd = Math.hypot(o.x - P.x, o.z - P.z), R = o.kind === 'portal' ? 1.9 : 1.4; if (dd > R + 1.5) o.arm = true; else if (dd < R && o.arm && !o.gone) { o.gone = true; interact(o); return; } } // step into a gate to travel
   for (const d of G.drops.slice()) { d.t += dt; if (d.item && d.t > .5 && G.set.autoLoot !== false && !P.dead && d.item.rar >= G.hero.filter && Math.hypot(d.x - P.x, d.z - P.z) < 1.8 && G.time - (d.tryT || -9) > 2.5) { d.tryT = G.time; pickup(d); continue; } // walk over loot to collect it
     if (d.globe) { if (Math.hypot(d.x - P.x, d.z - P.z) < 1.8 && P.hp < P.stats.maxLife) pickup(d); } else if (d.gold && d.t > .3) { const dd = Math.hypot(d.x - P.x, d.z - P.z); if (dd < 4.5) { d.x += (P.x - d.x) / dd * 14 * dt; d.z += (P.z - d.z) / dd * 14 * dt; if (dd < .9) pickup(d); } } }
   for (let i = G.fx.length - 1; i >= 0; i--) { const f = G.fx[i]; f.life -= dt; if (f.life <= 0) { G.fx.splice(i, 1); continue; } if (!f.ring && !f.slash && !f.bolt && !f.flash) { f.x += f.vx * dt; f.y += f.vy * dt; f.z += f.vz * dt; f.vy -= 14 * dt; if (f.y < .05) { f.y = .05; f.vy *= -.3; } } }
@@ -921,6 +945,7 @@ function drawEnemy(e) {
   if (e.alive && e.elite === 1) GLX.obj('glow', 'ring', e.x, .07, e.z, G.time, 2.6, 1, 2.6, col(0x5a8cff), 1, .7, -1);
   if (e.alive && e.elite === 2) { GLX.obj('glow', 'ring', e.x, .07, e.z, G.time, 3, 1, 3, col(0xffd84a), 1, .8, -1); GLX.light(e.x, 2, e.z, 7, col(0xffd84a), .5, 2); }
   if (e.burnT > 0 && e.alive) GLX.halo(e.x, 1.2 * sc, e.z, 1.8, col(0xff7a2a), .35);
+  if (e.alive && (e.st === 'wind' || e.st === 'cwind')) { const pr = clamp(1 - e.t / ((e.st === 'cwind' ? .7 : e.a.wind) || .5), 0, 1), cast = e.arch === 'caster', wc = col(cast ? 0xffe14a : 0xff3a2a), R = cast ? 1.6 : ((e.a.reach || 2) + e.r) * 2; GLX.obj('glow', 'ring', e.x, .09, e.z, 0, R * (.35 + pr * .65), 1, R * (.35 + pr * .65), wc, 1.4, .35 + pr * .55, -1); if (!cast) GLX.obj('glow', 'disc', e.x + Math.sin(e.rot) * (e.a.reach || 2) * .6, .08, e.z + Math.cos(e.rot) * (e.a.reach || 2) * .6, 0, R * .55, 1, R * .55, wc, 1, .12 + pr * .3, 1); GLX.halo(e.x, 2 * sc, e.z, 1 + pr * 1.4, wc, .25 + pr * .5); }
 }
 function drawItemModel(d, hop) {
   const it = d.item, col = GLX.col, rc = col(RC[it.rar]), steel = col(0xaab2c0), wood = col(0x6a4a2a), leather = col(0x5c4230), gold = col(0xc9a030), cloth = col(0x6a5a8a), em = it.rar ? .1 : 0;
@@ -974,18 +999,25 @@ function drawWorld() {
     if (Math.hypot(o.x - P.x, o.z - P.z) > 34) continue; const hov = G.hoverObj === o ? .5 : 0;
     if (o.kind === 'vendor') { NPCV.x = o.x; NPCV.z = o.z - 1.1; NPCV.rot = Math.atan2(P.x - NPCV.x, P.z - NPCV.z); drawHero(NPCV, false); if (hov) GLX.obj('glow', 'ring', o.x, .07, o.z, G.time, 4.6, 1, 4.6, col(0xffd84a), 1, .5, -1); continue; }
     if (o.kind === 'stash') { GLX.halo(o.x, 1.4, o.z + .8, 2 + hov * 2, col(0xffd84a), .3 + hov * .4); continue; }
-    if (o.kind === 'altar') { const c = col(0xff7a2a); GLX.obj('dyn', 'gem', o.x, 2.5 + Math.sin(G.time * 2) * .15, o.z, G.time, .6, .9, .6, c, 2 + hov * 2); GLX.halo(o.x, 2.5, o.z, 3.4, c, .6); GLX.light(o.x, 2.6, o.z, 10, c, 1.1, 4); continue; }
+    if (o.kind === 'altar') { const c = col(0xff7a2a), c2 = col(0xffd84a), t = G.time; GLX.obj('dyn', 'gem', o.x, 3 + Math.sin(t * 2) * .2, o.z, t, .8, 1.3, .8, c, 2.6); GLX.obj('glow', 'cyl', o.x, 9, o.z, t, .7, 16, .7, c, 1, .2); GLX.obj('glow', 'cyl', o.x, 9, o.z, -t, 1.8, 16, 1.8, c2, .6, .06);
+      for (let k = 0; k < 6; k++) { const a = k * 1.0472 + .5, px = o.x + Math.cos(a) * 3.6, pz = o.z + Math.sin(a) * 3.6; GLX.obj('dyn', 'gem', px, 3.5 + Math.sin(t * 2 + k) * .12, pz, t + k, .26, .4, .26, k % 2 ? c2 : c, 2.2); GLX.halo(px, 3.5, pz, 1.4, c, .5); }
+      for (let k = 0; k < 3; k++) GLX.obj('glow', 'ring', o.x, .4 + k * .05, o.z, t * (k % 2 ? -.6 : .6), 5 + k * 2.2, 1, 5 + k * 2.2, k % 2 ? c2 : c, 1, .5 - k * .12, -1);
+      for (let k = 0; k < 10; k++) { const a = t * .8 + k * .628, y = (t * 1.6 + k * .7) % 6; GLX.obj('glow', 'sphere', o.x + Math.cos(a) * (2.4 - y * .3), 1.6 + y, o.z + Math.sin(a) * (2.4 - y * .3), 0, .1, .1, .1, c2, 2.4 * (1 - y / 6), .9); }
+      GLX.halo(o.x, 3, o.z, 7 + hov * 2, c, .55 + hov * .3); GLX.light(o.x, 3, o.z, 20, c, 1.8, 5); if (hov) GLX.obj('glow', 'ring', o.x, .07, o.z, G.time, 7.4, 1, 7.4, c2, 1, .6, -1); continue; }
     if (o.kind === 'tportal') { const c = col(0x7ad0ff); for (let i = 0; i < 3; i++) GLX.obj('glow', 'ring', o.x, .1 + i * .9 + Math.sin(G.time * 2 + i) * .2, o.z, G.time * (1 + i), 3 - i * .5, 1, 3 - i * .5, c, 1, .9, -1); GLX.halo(o.x, 1.6, o.z, 5, c, .6); GLX.light(o.x, 2, o.z, 12, c, 1.4, 4); continue; }
-    if (o.kind === 'chest') { GLX.obj('dyn', 'box', o.x, .4, o.z, .4, 1.4, .8, .9, col(0x5a3a22), hov, 1, 3); GLX.obj('dyn', 'box', o.x, .85, o.z, .4, 1.5, o.used ? .1 : .3, 1, col(0x8a6a2a), hov + .05, 1, 4); GLX.obj('dyn', 'box', o.x, .5, o.z, .4, .2, .9, .96, col(0x8a6a2a), hov, 1, 4); if (!o.used) GLX.halo(o.x, 1.2, o.z, 2.4, col(0xffd84a), .35 + Math.sin(G.time * 3) * .1); }
-    else if (o.kind === 'shrine') { GLX.obj('dyn', 'taper', o.x, 1, o.z, 0, 1.1, 2, 1.1, col(0x5a5c60), hov, 1, 3); if (!o.used) { const c = col(o.sh.c); GLX.obj('dyn', 'gem', o.x, 2.7 + Math.sin(G.time * 2) * .2, o.z, G.time, .6, .9, .6, c, 2); GLX.halo(o.x, 2.7, o.z, 3, c, .6); GLX.light(o.x, 2.6, o.z, 9, c, 1); } }
-    else if (o.kind === 'portal') { // the way down: a great gate where the guardian fell
-      const c = col(0x7ad0ff), c2 = col(0xb48cff), t = G.time, pulse = 1 + Math.sin(t * 2.2) * .08;
-      for (let i = 0; i < 10; i++) { const a = i / 10 * 6.2832; GLX.obj('dyn', 'taper', o.x + Math.sin(a) * 5.2, .9 + (i % 2) * .5, o.z + Math.cos(a) * 5.2, a, .9, 1.8 + (i % 2), .9, col(0x4a4c56), 0, 1, 3); GLX.obj('glow', 'gem', o.x + Math.sin(a) * 5.2, 2.6 + (i % 2) + Math.sin(t * 2 + i) * .15, o.z + Math.cos(a) * 5.2, t + i, .28, .42, .28, i % 2 ? c2 : c, 2); }
-      GLX.obj('glow', 'disc', o.x, .06, o.z, t * .4, 9.6, 1, 9.6, c, .6, .16, -1);
-      for (let i = 0; i < 7; i++) { const s = (5 - i * .55) * 2 * pulse; GLX.obj('glow', 'ring', o.x, .12 + i * 1.15 + Math.sin(t * 2 + i) * .25, o.z, t * (i % 2 ? -1.4 : 1.1) * (1 + i * .25), s, 1, s, i % 2 ? c2 : c, .8, .5, -1); }
-      GLX.obj('glow', 'cyl', o.x, 11, o.z, t, 1.5 * pulse, 22, 1.5 * pulse, c, 1, .14); GLX.obj('glow', 'cyl', o.x, 11, o.z, -t, 3.4, 22, 3.4, c2, .5, .05);
-      for (let i = 0; i < 12; i++) { const a = t * 1.5 + i * .5236, y = (t * 2.4 + i * .9) % 9, r = 3.6 - y * .32; GLX.obj('glow', 'sphere', o.x + Math.sin(a) * r, y, o.z + Math.cos(a) * r, 0, .16, .16, .16, c, 2.5, .9); }
-      GLX.halo(o.x, 3, o.z, 11, c, .32); GLX.halo(o.x, 9, o.z, 7, c2, .2); GLX.light(o.x, 3, o.z, 24, c, 1.5, 5);
+    if (o.kind === 'chest') { const wd = col(0x6a4426), wd2 = col(0x4e3018), ir = col(0x3a3c44), gd = col(0xc9a030), ry = .4, cs = Math.cos(ry), sn = Math.sin(ry), at = (lx, lz) => [o.x + lx * cs + lz * sn, o.z - lx * sn + lz * cs];
+      GLX.obj('dyn', 'box', o.x, .42, o.z, ry, 1.5, .84, .95, wd, hov, 1, 3); for (const lx of [-.5, 0, .5]) { const q = at(lx, 0); GLX.obj('dyn', 'box', q[0], .42, q[1], ry, .03, .86, .97, wd2, hov, 1, 3); }
+      const ly = o.used ? 1.2 : .98; GLX.obj('dyn', 'box', o.x, ly, o.z - (o.used ? .35 : 0), ry, 1.56, .3, 1, wd, hov, 1, 3); GLX.obj('dyn', 'box', o.x, ly + .17, o.z - (o.used ? .35 : 0), ry, 1.4, .08, .84, wd2, hov, 1, 3);
+      for (const lx of [-.6, .6]) { const q = at(lx, 0); GLX.obj('dyn', 'box', q[0], .5, q[1], ry, .12, 1.02, 1.0, ir, hov, 1, 4); } { const q = at(0, .5); GLX.obj('dyn', 'box', q[0], .78, q[1], ry, .26, .3, .08, gd, hov + .1, 1, 4); } for (const lx of [-.72, .72]) for (const lz of [-.44, .44]) { const q = at(lx, lz); GLX.obj('dyn', 'box', q[0], .1, q[1], ry, .12, .2, .12, ir, hov, 1, 4); }
+      if (!o.used) GLX.halo(o.x, 1.2, o.z, 2.4, col(0xffd84a), .35 + Math.sin(G.time * 3) * .1); else GLX.obj('glow', 'box', o.x, .86, o.z, ry, 1.2, .04, .7, col(0xffd84a), 1, .25); }
+    else if (o.kind === 'shrine') { const st = col(0x5a5c60), c = col(o.sh.c), t = G.time; GLX.obj('dyn', 'cyl', o.x, .12, o.z, 0, 3, .24, 3, st, hov, 1, 3); GLX.obj('dyn', 'cyl', o.x, .34, o.z, .4, 2.2, .22, 2.2, col(0x6a6c70), hov, 1, 3); GLX.obj('dyn', 'taper', o.x, 1.7, o.z, .78, 1.1, 2.6, 1.1, st, hov, 1, 3); GLX.obj('dyn', 'taper', o.x, 3.2, o.z, .78, .7, .5, .7, col(0x44464c), hov, 1, 3);
+      for (let k = 0; k < 4; k++) { const a = k * 1.5708 + .78; GLX.obj('dyn', 'taper', o.x + Math.cos(a) * 1.25, .75, o.z + Math.sin(a) * 1.25, a, .3, 1, .3, st, hov, 1, 3); }
+      if (!o.used) { for (const y of [1.1, 1.8, 2.5]) GLX.obj('glow', 'ring', o.x, y, o.z, t * .5 + y, 1.5 - y * .22, 1, 1.5 - y * .22, c, 1.2, .7, -1); GLX.obj('dyn', 'gem', o.x, 4 + Math.sin(t * 2) * .2, o.z, t, .8, 1.2, .8, c, 2.4); GLX.obj('glow', 'cyl', o.x, 7, o.z, t, .5, 9, .5, c, 1, .18); GLX.obj('glow', 'ring', o.x, .3, o.z, -t, 5.6, 1, 5.6, c, 1, .5 + Math.sin(t * 3) * .2, -1); GLX.halo(o.x, 4, o.z, 4.5, c, .7); GLX.light(o.x, 3, o.z, 13, c, 1.3); } }
+    else if (o.kind === 'portal' || o.kind === 'pback') { // one clean gate: step in to travel
+      const back = o.kind === 'pback', c = col(back ? 0xffb03a : 0x7ad0ff), t = G.time, R = back ? 1.6 : 2.4;
+      GLX.obj('dyn', 'cyl', o.x, .08, o.z, 0, R * 2.3, .16, R * 2.3, col(0x4a4c56), 0, 1, 3); GLX.obj('glow', 'disc', o.x, .2, o.z, t * .6, R * 2, 1, R * 2, c, 1, .55, 1);
+      for (let k = 0; k < 3; k++) GLX.obj('glow', 'ring', o.x, .3 + k * 1.1 + Math.sin(t * 2 + k) * .15, o.z, t * (k % 2 ? -1.2 : 1.2), R * (2 - k * .35), 1, R * (2 - k * .35), c, 1, .8, -1);
+      GLX.obj('glow', 'cyl', o.x, 5, o.z, t, R * .5, 10, R * .5, c, 1, .16); GLX.halo(o.x, 2, o.z, R * 3.2, c, .4); GLX.light(o.x, 2.5, o.z, back ? 10 : 18, c, 1.3, 5);
     }
   }
   for (const d of G.drops) {
@@ -997,8 +1029,8 @@ function drawWorld() {
   }
   let pl = 0;
   for (const p of G.pp) {
-    if (p.arrow) { GLX.obj('dyn', 'box', p.x, 1.25, p.z, p.rot, .05, .05, 1.2, col(0xd8c8a0), .3); GLX.obj('glow', 'box', p.x - Math.sin(p.rot) * .9, 1.25, p.z - Math.cos(p.rot) * .9, p.rot, .05, .05, 1.6, p.c, 1, .35); }
-    else { const s = p.r * 1.5; GLX.obj('glow', 'sphere', p.x, 1.25, p.z, 0, s, s, s, p.c, 1.8, 1); GLX.halo(p.x, 1.25, p.z, p.r * 5.5, p.c, .6); GLX.obj('glow', 'box', p.x - Math.sin(p.rot) * .8, 1.25, p.z - Math.cos(p.rot) * .8, p.rot, p.r * .5, p.r * .5, 1.6, p.c, 1, .4); if (pl++ < 3) GLX.light(p.x, 1.5, p.z, 6, p.c, .8, 1); }
+    if (p.arrow) { GLX.obj('dyn', 'box', p.x, 1.25, p.z, p.rot, .05, .05, 1.2, col(0xd8c8a0), .3); GLX.obj('dyn', 'cone', p.x + Math.sin(p.rot) * .65, 1.25, p.z + Math.cos(p.rot) * .65, p.rot, .1, .1, .22, col(0xc8ced8), .2, 1, 4); GLX.halo(p.x, 1.25, p.z, 1.1, p.c, .35); GLX.obj('glow', 'box', p.x - Math.sin(p.rot) * 1.8, 1.25, p.z - Math.cos(p.rot) * 1.8, p.rot, .03, .03, 2.4, p.c, 1, .18); GLX.obj('glow', 'box', p.x - Math.sin(p.rot) * .9, 1.25, p.z - Math.cos(p.rot) * .9, p.rot, .05, .05, 1.6, p.c, 1, .35); }
+    else { const s = p.r * 1.5, sx = Math.sin(p.rot), cz2 = Math.cos(p.rot); GLX.obj('glow', 'sphere', p.x, 1.25, p.z, 0, s, s, s, p.c, 2.2, 1); GLX.obj('glow', 'sphere', p.x, 1.25, p.z, 0, s * .5, s * .5, s * .5, col(0xffffff), 2, .9); GLX.halo(p.x, 1.25, p.z, p.r * 7, p.c, .7); for (let k = 1; k <= 5; k++) { const q = s * (1 - k * .15), wob = Math.sin(G.time * 30 + k * 1.7) * .08 * k; GLX.obj('glow', 'sphere', p.x - sx * k * .42 + cz2 * wob, 1.25 + Math.cos(G.time * 26 + k) * .05 * k, p.z - cz2 * k * .42 - sx * wob, 0, q, q, q, p.c, 1.4, .6 - k * .1); } GLX.obj('glow', 'ring', p.x, 1.25, p.z, G.time * 8, s * 1.9, 1, s * 1.9, p.c, 1, .35, -1); GLX.obj('glow', 'box', p.x - Math.sin(p.rot) * .8, 1.25, p.z - Math.cos(p.rot) * .8, p.rot, p.r * .5, p.r * .5, 1.6, p.c, 1, .4); if (pl++ < 3) GLX.light(p.x, 1.5, p.z, 6, p.c, .8, 1); }
   }
   for (const p of G.projs) { GLX.obj('glow', 'sphere', p.x, 1.2, p.z, 0, p.r * 1.6, p.r * 1.6, p.r * 1.6, p.c, 1.6, 1); GLX.halo(p.x, 1.2, p.z, p.r * 5, p.c, .6); }
   for (const a of G.areas) {
@@ -1020,9 +1052,9 @@ function drawWorld() {
   for (const f of G.fx) {
     const k = f.life / f.max;
     if (f.flash) { GLX.halo(f.x, f.y, f.z, f.r * (1.25 - k * .5), f.c, k * .85); GLX.obj('glow', 'sphere', f.x, f.y, f.z, 0, f.r * .22 * k, f.r * .22 * k, f.r * .22 * k, f.c, 2, k); }
-    else if (f.ring) { const r = (f.r0 + (f.r1 - f.r0) * (1 - k)) * 2; GLX.obj('glow', 'ring', f.x, .12, f.z, 0, r, 1, r, f.c, 1, k, -1); GLX.obj('glow', 'disc', f.x, .1, f.z, 0, r, 1, r, f.c, 1, k * .25, 1); }
+    else if (f.ring) { const r = (f.r0 + (f.r1 - f.r0) * (1 - k)) * 2; GLX.obj('glow', 'ring', f.x, .12, f.z, 0, r, 1, r, f.c, 1, k, -1); GLX.obj('glow', 'ring', f.x, .16, f.z, G.time * 3, r * .8, 1, r * .8, col(0xffffff), 1, k * .5, -1); GLX.obj('glow', 'ring', f.x, .5 + (1 - k) * 1.2, f.z, -G.time * 2, r * .92, 1, r * .92, f.c, 1, k * .45, -1); if (f.r1 > 3) { GLX.halo(f.x, 1, f.z, r * .7, f.c, k * .35); for (let q = 0; q < 8; q++) { const a = q * .785 + f.r1; GLX.obj('glow', 'box', f.x + Math.cos(a) * r * .5, .3 + (1 - k) * 1.6, f.z + Math.sin(a) * r * .5, -a, .07, .5 * k, .07, f.c, 1.5, k); } } GLX.obj('glow', 'disc', f.x, .1, f.z, 0, r, 1, r, f.c, 1, k * .25, 1); }
     else if (f.bolt) { const dx = f.x2 - f.x1, dz = f.z2 - f.z1, L = Math.hypot(dx, dz), a = Math.atan2(dx, dz); for (let j = 0; j < 2; j++) GLX.obj('glow', 'box', (f.x1 + f.x2) / 2 + (Math.random() - .5) * .4, 1.3 + (Math.random() - .5) * .4, (f.z1 + f.z2) / 2 + (Math.random() - .5) * .4, a + (Math.random() - .5) * .08, .12, .12, L, f.c, 1.6, k); GLX.halo(f.x2, 1.3, f.z2, 2.4, f.c, k * .8); }
-    else if (f.slash) { for (let i = 0; i < 7; i++) { const a = f.rot + (i / 6 - .5) * f.arc * (1.2 - k * .4), rr = f.r * .82; GLX.obj('glow', 'box', f.x + Math.sin(a) * rr, 1.25, f.z + Math.cos(a) * rr, a + 1.5708, .12, .08, f.r * .62, f.c, 1, k * .9); } }
+    else if (f.slash) { for (let i = 0; i < 9; i++) { const a = f.rot + (i / 8 - .5) * f.arc * (1.25 - k * .4), rr = f.r * .95; GLX.obj('glow', 'box', f.x + Math.sin(a) * rr, 1.25, f.z + Math.cos(a) * rr, a + 1.5708, .1, .03, f.r * .5, col(0xffffff), 1.5, k * .7); } GLX.halo(f.x + Math.sin(f.rot) * f.r * .8, 1.2, f.z + Math.cos(f.rot) * f.r * .8, f.r * 1.3, f.c, k * .3); for (let i = 0; i < 7; i++) { const a = f.rot + (i / 6 - .5) * f.arc * (1.2 - k * .4), rr = f.r * .82; GLX.obj('glow', 'box', f.x + Math.sin(a) * rr, 1.25, f.z + Math.cos(a) * rr, a + 1.5708, .12, .08, f.r * .62, f.c, 1, k * .9); } }
     else GLX.obj('glow', 'gem', f.x, f.y, f.z, f.life * 9, f.size, f.size, f.size, f.c, 1, k);
   }
   if (GPS.pts.length > 1 && G.set.gps) { const c = col(0xffd84a); let acc = (G.time * 3) % 1.6, tot = 0; for (let i = 1; i < GPS.pts.length && tot < 34; i++) { const a = GPS.pts[i - 1], b = GPS.pts[i], L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, ry = Math.atan2(b[0] - a[0], b[1] - a[1]); while (acc < L && tot + acc < 34) { const t = acc / L, k = 1 - (tot + acc) / 34; if (tot + acc > 1.6) GLX.obj('glow', 'cone', a[0] + (b[0] - a[0]) * t, .1, a[1] + (b[1] - a[1]) * t, ry, .5, .04, .9, c, 1, .75 * k); acc += 1.6; } acc -= L; tot += L; } }
