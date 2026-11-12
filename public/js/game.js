@@ -7,7 +7,7 @@ const rint = (a, b) => Math.floor(a + Math.random() * (b - a + 1));
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const CS = 3, GW = 60, SAVE_KEY = 'cinderdeep_save_v1';
-const G = { set: { vol: 70, gfx: 'auto', shake: true, nums: true, map: true, gps: true, joy: true, ally: true, apSkill: true, apPot: true }, pp: [], online: false, auto: false, speed: 1, state: 'menu', hero: null, zone: null, time: 0, ents: [], projs: [], areas: [], drops: [], fx: [], texts: [], timers: [], shake: 0, zoom: .72, boss: null, hover: null, hoverObj: null, eid: 0, streak: 0, streakT: 0, bestStreak: 0, labels: [], hints: [], hitSfx: 0 };
+const G = { set: { vol: 70, gfx: 'auto', shake: true, nums: true, map: true, gps: true, joy: true, autoLoot: true, ally: true, apSkill: true, apPot: true }, pp: [], online: false, auto: false, speed: 1, state: 'menu', hero: null, zone: null, time: 0, ents: [], projs: [], areas: [], drops: [], fx: [], texts: [], timers: [], shake: 0, zoom: .72, boss: null, hover: null, hoverObj: null, eid: 0, streak: 0, streakT: 0, bestStreak: 0, labels: [], hints: [], hitSfx: 0 };
 const P = { x: 0, z: 0, y: 0, rot: 0, hp: 1, mana: 1, stats: {}, cds: {}, buffs: [], act: null, spin: null, dash: null, move: null, atk: null, inter: null, pick: null, walk: 0, mv: 0, moving: false, iframes: 0, cheatCd: 0, flaskT: 0, dead: false, hurt: 0, oomT: 0, swing: 0 };
 const IN = { sx: 0, sy: 0, gx: 0, gz: 0, lmb: false, rmb: false, keys: {}, shift: false, lmbFresh: false, touch: false, tb: [false, false, false, false], joy: { on: false, x: 0, z: 0 } };
 let itemId = 1;
@@ -134,7 +134,7 @@ function moveItem(from, to) {
 function equipFromInv(i, want) {
   const h = G.hero, it = h.inv[i]; if (!it) return false; let sl = it.slot;
   if (!canUse(it)) { hint('A ' + CLASSES[h.cls].n + ' cannot use that.'); return false; }
-  if (sl === 'ring') sl = want === 'ring1' || want === 'ring2' ? want : !h.eq.ring1 ? 'ring1' : !h.eq.ring2 ? 'ring2' : itemScore(h.eq.ring1) <= itemScore(h.eq.ring2) ? 'ring1' : 'ring2'; else if (want && want !== sl) return false;
+  if (sl === 'ring') sl = 'ring1'; // one ring only else if (want && want !== sl) return false;
   const old = h.eq[sl] || null; h.inv[i] = null; if (old && !bagPut(h.inv, old, i)) { h.inv[i] = it; hint('No room in the bag to swap that.'); return false; }
   h.eq[sl] = it; goalDone('equip'); computeStats(); if (sl === 'weapon' && typeof UI !== 'undefined' && UI.buildBar) UI.buildBar(); SFX.play('pickup'); saveGame(); return true;
 }
@@ -184,7 +184,7 @@ function gainXp(v) { if (v > 0 && G.hero && G.hero.level < MAX_LEVEL) { G.xpPop 
   h.xp += v;
   while (h.level < MAX_LEVEL && h.xp >= xpNeed(h.level)) {
     h.xp -= xpNeed(h.level); h.level++; computeStats(); P.hp = P.stats.maxLife; P.mana = P.stats.maxMana; SFX.play('level'); ring(P.x, P.z, 0, 9, .7, 0xffd84a); burst(P.x, 1.5, P.z, 0xffd84a, 30, 7); if (h.level >= MAX_LEVEL) { h.pxp = h.xp; h.xp = 0; hint('Level 60! From here you earn Paragon levels with no limit.'); }
-    floatText(P.x, 3, P.z, 'LEVEL ' + h.level, '#ffd84a', 1.8, 22); { const b = P.stats.maxLife; computeStats(); hint('Level ' + h.level + ': maximum life ' + b + ' → ' + P.stats.maxLife + ', and you hit harder. Life and ' + CLASSES[h.cls].res.n + ' refilled.'); const nt = TIER_LV.find(l => l > h.level); if (nt && skillTiers(h.cls)[TIER_LV.indexOf(nt)]) hint('Next skill choice at level ' + nt + '.'); } if (pendingPick(h) >= 0) { if (G.auto) { const i = pendingPick(h); pickSkill(i, skillTiers(h.cls)[i][Math.random() * 2 | 0]); } else if (typeof UI !== 'undefined') UI.openPick(); }
+    floatText(P.x, 3, P.z, 'LEVEL ' + h.level, '#ffd84a', 1.8, 22); { computeStats(); hint('Level ' + h.level + '! More life, harder hits. Life and ' + CLASSES[h.cls].res.n + ' refilled.'); const nt = TIER_LV.find(l => l > h.level); if (nt && skillTiers(h.cls)[TIER_LV.indexOf(nt)]) hint('Next skill choice at level ' + nt + '.'); } if (pendingPick(h) >= 0) { if (G.auto) { const i = pendingPick(h); pickSkill(i, skillTiers(h.cls)[i][Math.random() * 2 | 0]); } else if (typeof UI !== 'undefined') UI.openPick(); }
   }
 }
 function saveGame() { try { localStorage.setItem(SAVE_KEY + '_' + G.hero.cls, JSON.stringify(G.hero)); if (G.stash) localStorage.setItem(SAVE_KEY + '_stash', JSON.stringify(G.stash)); } catch (e) { } }
@@ -196,6 +196,7 @@ function loadGame(cls) {
       let m = 0; for (const it of h.inv) if (it) m = Math.max(m, it.id); for (const k in h.eq) m = Math.max(m, h.eq[k].id); itemId = Math.max(itemId, m + 1);
       if (h.bagV !== 2 || h.inv.length !== BAG_N) { const old = h.inv.filter(x => x).sort((a, b) => b.rar - a.rar); h.inv = new Array(BAG_N).fill(null); for (const it of old) if (!bagPut(h.inv, it)) h.gold += itemValue(it); h.bagV = 2; }
       const rd = it => { if (it && it.aff) for (const a of it.aff) a.v = Math.max(1, Math.round(a.v)); }; h.inv.forEach(rd); for (const k in h.eq) rd(h.eq[k]);
+      if (h.eq.ring2) { const r2 = h.eq.ring2; delete h.eq.ring2; if (!h.eq.ring1) h.eq.ring1 = r2; else if (!bagPut(h.inv, r2)) h.gold += itemValue(r2); } // the second ring slot is gone: the ring goes back in the bag
       if (!h.picks) { h.picks = skillTiers(cls).map(t => t.find(id => (h.bar || []).includes(id)) || null); if (h.bar) h.bar = h.bar.map((id, i) => i === 0 || (id && h.picks.includes(id)) ? id : null); }
       const sk = CLASSES[cls].skills; if (!h.bar || h.bar.some(id => id && !sk.includes(id))) { h.bar = [sk[0], null, null, null]; for (const id of sk) if (!SKILLS[id].basic && SKILLS[id].lv <= h.level) { const i = h.bar.indexOf(null); if (i > 0) h.bar[i] = id; } }
       return h;
@@ -548,7 +549,7 @@ const cellOf = (x, z) => clamp(Math.floor(z / CS), 0, GW - 1) * GW + clamp(Math.
 function los(x1, z1, x2, z2) { const d = Math.hypot(x2 - x1, z2 - z1), n = Math.ceil(d / .4); for (let i = 1; i < n; i++) { const t = i / n; if (cellAt(x1 + (x2 - x1) * t, z1 + (z2 - z1) * t)) return false; } return true; }
 function botGear() {
   const h = G.hero; let ch = false;
-  h.inv.forEach((it, i) => { if (!it || !canUse(it)) return; let cur; if (it.slot === 'ring') cur = !h.eq.ring1 || !h.eq.ring2 ? null : h.eq.ring1; else cur = h.eq[it.slot]; if (!cur || itemScore(it) > itemScore(cur) * 1.02) { if (equipFromInv(i)) ch = true; } });
+  h.inv.forEach((it, i) => { if (!it || !canUse(it)) return; let cur; cur = h.eq[it.slot === 'ring' ? 'ring1' : it.slot]; if (!cur || itemScore(it) > itemScore(cur) * 1.02) { if (equipFromInv(i)) ch = true; } });
   if (bagFree() < 16) { scrapAll(2); ch = true; } if (ch) UI.invDirty = true;
 }
 function botStep(dt) {
@@ -645,7 +646,6 @@ function knows(h, id) { const sk = SKILLS[id]; return !!sk && (sk.basic ? CLASSE
 function pendingPick(h) { const t = skillTiers(h.cls); for (let i = 0; i < t.length; i++) if (h.level >= TIER_LV[i] && !h.picks[i]) return i; return -1; }
 function pickSkill(i, id) {
   const h = G.hero, t = skillTiers(h.cls)[i]; if (!t || !t.includes(id) || h.level < TIER_LV[i]) return false; const old = h.picks[i]; if (old === id) return true;
-  if (old && !G.inTown) { hint('Skill choices can be changed in town.'); return false; }
   h.picks[i] = id; let j = old ? h.bar.indexOf(old) : -1; if (j < 1) j = h.bar.indexOf(null, 1); if (j > 0) h.bar[j] = id; else if (old) { const k = h.bar.indexOf(old); if (k > 0) h.bar[k] = null; }
   SFX.play('shrine'); hint((old ? 'Swapped to ' : 'Learned ') + SKILLS[id].n + (j > 0 ? ' — on ' + SLOT_KEY[j] + '.' : ' — open Skills to slot it.')); if (typeof UI !== 'undefined') UI.buildBar(); saveGame(); return true;
 }
@@ -723,6 +723,7 @@ function updEnemy(e, dt) {
   }
 }
 function update(dt) {
+  if (typeof UI !== 'undefined' && UI.panelOpen && UI.panelOpen()) { if (!G.online) return; P.iframes = Math.max(P.iframes || 0, .4); P.move = P.atk = null; } // menus pause the game; online, where the world cannot stop, they shield you instead
   if (G.hitStop > 0) { G.hitStop -= dt; dt *= .12; } // a heavy blow lands: the world holds its breath for a few frames
   if (G.auto && G.hero && G.hero.picks) { const i = pendingPick(G.hero); if (i >= 0) pickSkill(i, skillTiers(G.hero.cls)[i][Math.random() * 2 | 0]); }
   SFX.ambTick(dt); updAlly(dt); G.time += dt; if (G.shake > 0) G.shake = Math.max(0, G.shake - dt * 1.8);
@@ -755,7 +756,8 @@ function update(dt) {
     if (a.t >= a.delay + .05) G.areas.splice(i, 1);
   }
   // drops
-  for (const d of G.drops.slice()) { d.t += dt; if (d.globe) { if (Math.hypot(d.x - P.x, d.z - P.z) < 1.8 && P.hp < P.stats.maxLife) pickup(d); } else if (d.gold && d.t > .3) { const dd = Math.hypot(d.x - P.x, d.z - P.z); if (dd < 4.5) { d.x += (P.x - d.x) / dd * 14 * dt; d.z += (P.z - d.z) / dd * 14 * dt; if (dd < .9) pickup(d); } } }
+  for (const d of G.drops.slice()) { d.t += dt; if (d.item && d.t > .5 && G.set.autoLoot !== false && !P.dead && d.item.rar >= G.hero.filter && Math.hypot(d.x - P.x, d.z - P.z) < 1.8 && G.time - (d.tryT || -9) > 2.5) { d.tryT = G.time; pickup(d); continue; } // walk over loot to collect it
+    if (d.globe) { if (Math.hypot(d.x - P.x, d.z - P.z) < 1.8 && P.hp < P.stats.maxLife) pickup(d); } else if (d.gold && d.t > .3) { const dd = Math.hypot(d.x - P.x, d.z - P.z); if (dd < 4.5) { d.x += (P.x - d.x) / dd * 14 * dt; d.z += (P.z - d.z) / dd * 14 * dt; if (dd < .9) pickup(d); } } }
   for (let i = G.fx.length - 1; i >= 0; i--) { const f = G.fx[i]; f.life -= dt; if (f.life <= 0) { G.fx.splice(i, 1); continue; } if (!f.ring && !f.slash && !f.bolt && !f.flash) { f.x += f.vx * dt; f.y += f.vy * dt; f.z += f.vz * dt; f.vy -= 14 * dt; if (f.y < .05) { f.y = .05; f.vy *= -.3; } } }
   for (let i = G.texts.length - 1; i >= 0; i--) { const t = G.texts[i]; t.life -= dt; t.y += dt * 1.6; if (t.life <= 0) G.texts.splice(i, 1); }
   for (let i = G.hints.length - 1; i >= 0; i--) { G.hints[i].life -= dt; if (G.hints[i].life <= 0) G.hints.splice(i, 1); }

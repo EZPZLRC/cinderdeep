@@ -1,0 +1,40 @@
+Right clicking your spell on the bottom UI should toggle auto cast. It should also auto target enemies while you walk. Only cast when enemies are present.
+Walk over loot to collect. Add a loot filter to menu
+Enemy attacks should be more distinct
+Going to your inventory should pause game
+Tip jar on the button for donate
+Make the fonts more exciting
+An option to give feedback in menu
+Option to go back to previous floor once floor completed 
+Main attack generates resources
+Check the "if equipped" arrows for gear upgrades. The gear that makes you strong should get a green arrow up. Weaker is red arrow down.
+If an item is weaker than what is equipped it should be red arrow down, not green arrow up
+Shrine of Stone needs to be more bold in the map. Upgrade the graphics as well
+You can get rid of the found a mythic/unique message after 5 seconds
+The skill choice system is confusing and needs to be simpler for the player. Also, I want you to be able to change skills anywhere
+I think the alter should just upgrade current items up to level 5 instead of changing the skill trait on the item
+The alter needs to be made to feel special in terms of it being a big deal
+Chests can be made to look more wooden
+Logs on the ground need detail
+Add as much detail to objects as possible within reason
+Make the town nicer and feel like a town
+Back to fight teleport in town should return you to where you left from
+Cleanup the descend deeper teleporter. Make it simpler and easier to use
+Make it so that you can outfit your Sellsword follower
+Need a scrap all button in inventory
+Monster level should adjust to character level
+Get rid of the 2nd ring, there will only be 1 ring able to equipped
+Enhance the spell graphics
+
+from Muse Ai:
+Public parties take over the game. Lee44's shared XP carried me from level 1 to 6 and killed every boss while I was in menus. There's no solo/private option and no way to leave a party except exiting to the menu. Add a private/solo mode and a leave-party button.
+Low graphics doesn't help performance. Dropping to Low with screen shake off changed nothing I could feel, and Low still renders the full foliage. Settings has no resolution, shadow, particle, or FPS options — the graphics menu needs real levers, not just a label.
+Foliage, tents, and darkness hide the game. Giant trees covered 60–70% of the screen on Floors 1–2, a white tent in town hides the Trader, and the Catacombs are very dark. Fade anything between the camera and the player.
+The Trader doesn't work and the Altar is missing. The Trader is labelled "Click to use," but no click from any side opens a shop. I walked all of Emberwatch and found no Altar at all. Fix the Trader's click target and give the Altar a marker.
+XP feedback contradicts itself. No per-kill XP numbers, gains arrive in unexplained chunks, one screen showed two different XP totals at once, and the level-up banner printed "maximum life 165 → 165." One XP number, shown on every kill.
+Loot can vanish entirely. After 222 kills my bag was empty with 6 gold to show for it — exactly one visible drop in 38 minutes. My Warden run this morning had the opposite: loot everywhere. That swing is too wide; drops and pickups need to be consistent and visible.
+Potions are a black box. There's no potion count or timer shown anywhere. This morning's run watched a counter drain 29 → 0 untouched; today's death tip says potions "refill on a short timer." Pick one system, show the count and the timer.
+Death behaves two different ways. First death: respawned in place, fine. Second death: dumped to hero select, and re-entering put me on the next floor — the boss drop was gone. Same death, same result, every time, and say on the death screen what was lost.
+The controls wording misleads new players. Left mouse is both move and attack, the controls list uses melee wording ("hold to keep swinging") for a bow class, skill slots show unexplained Focus costs, MENU exits the game instead of pausing, and level-up choices pop up mid-fight. Pause the game for level-up picks and make MENU a pause.
+Quest guidance breaks at the edges. The GPS dots run off the minimap, the portal is an unlabelled red glow, and the quest text stayed on "Find and slay Warden of Bones" after he was already dead. Label the portal and update the quest the moment a guardian falls.
+What did work this time: zero disconnects in 38 minutes, and the Ranger's skills (Rain of Arrows, Multishot) read clearly when I could see them.

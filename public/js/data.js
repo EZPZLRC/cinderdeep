@@ -1,6 +1,6 @@
 'use strict';
-const BUILD = '0009';
-const SLOTS = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring1', 'ring2'];
+const BUILD = '0010';
+const SLOTS = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring1'];
 const DROP_SLOTS = ['weapon', 'weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring', 'ring'];
 const AFF_ALIAS = { shoulders: 'chest', pants: 'chest', belt: 'helm', bracers: 'gloves', offhand: 'amulet' };
 const OFFHAND = { warden: { n: 'Shield', a: 14 }, ranger: { n: 'Quiver' }, arcanist: { n: 'Orb' }, brawler: { n: 'Charm' }, elementalist: { n: 'Tome' } };

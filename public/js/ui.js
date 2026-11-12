@@ -70,7 +70,8 @@ const UI = (() => {
     return `<svg viewBox="-1 -1 26 26" stroke="#000" stroke-opacity=".6" stroke-width=".55" stroke-linejoin="round"><g transform="rotate(${tilt} 12 12)">${s}</g></svg>`;
   }
   function slotSvg(sl) { const k = sl === 'weapon' ? 'sword' : sl === 'offhand' ? 'o_' + OFFHAND[G.hero.cls].n : sl.replace(/\d/, ''); return '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="0">' + (IC[k] || IC.ring) + '</svg>'; }
-  function itemEl(it, attr, cls, style) { return `<div class="it r${it.rar} ${cls || ''}" ${attr} style="${style || ''}">${iconSvg(it)}<span class="lv">${it.ilvl}</span></div>`; }
+  function verdict(it) { try { if (!G.hero || !canUse(it) || !P.stats) return 0; const eq = Object.assign({}, G.hero.eq); eq[eqSlotFor(it)] = it; const a = P.stats, b = calcStats(eq), v = (b.dps - a.dps) / Math.max(1, a.dps) + (b.tough - a.tough) / Math.max(1, a.tough); return v > .004 ? 1 : v < -.004 ? -1 : 0; } catch (e) { return 0; } }
+  function itemEl(it, attr, cls, style) { const v = /data-i=/.test(attr || '') ? verdict(it) : 0; return `<div class="it r${it.rar} ${cls || ''}" ${attr} style="${style || ''}">${iconSvg(it)}<span class="lv">${it.ilvl}</span>${v ? `<span class="ar ${v > 0 ? 'up' : 'dn'}">${v > 0 ? '▲' : '▼'}</span>` : ''}</div>`; }
   function gridHtml(inv, key, mark) {
     let h = ''; for (let i = 0; i < inv.length; i++) h += `<div class="bc" data-${key}c="${i}" style="grid-column:${i % 10 + 1};grid-row:${(i / 10 | 0) + 1}"></div>`;
     inv.forEach((it, i) => { if (it) h += itemEl(it, `data-${key}="${i}"`, (mark && mark(it, i) ? 'up ' : '') + (itemH(it) === 2 ? 'tall' : ''), `grid-column:${i % 10 + 1};grid-row:${(i / 10 | 0) + 1} / span ${itemH(it)}`); }); return h;
@@ -80,7 +81,7 @@ const UI = (() => {
   let townMode = null, altarSel = null, altarLine = null;
   function wdps(it) { return (it.dmg[0] + it.dmg[1]) / 2 * it.spd; }
   const score = itemScore;
-  function eqSlotFor(it) { const h = G.hero; if (it.slot !== 'ring') return it.slot; return !h.eq.ring1 ? 'ring1' : !h.eq.ring2 ? 'ring2' : (score(h.eq.ring1) <= score(h.eq.ring2) ? 'ring1' : 'ring2'); }
+  function eqSlotFor(it) { const h = G.hero; if (it.slot !== 'ring') return it.slot; return 'ring1'; return !h.eq.ring1 ? 'ring1' : !h.eq.ring2 ? 'ring2' : (score(h.eq.ring1) <= score(h.eq.ring2) ? 'ring1' : 'ring2'); }
   function eqFor(it) { return G.hero.eq[eqSlotFor(it)] || null; }
   function tipHtml(it, mode) {
     const pc = (a, b) => b ? Math.round((a / b - 1) * 100) : 0, sg = v => (v > 0 ? '+' : '') + v;
@@ -92,7 +93,7 @@ const UI = (() => {
     if (it.power) h += `<div class="tp">${POWERS[it.power].d}</div>`;
     h += `<div class="tl">${L.mat[0]}, set with ${L.gem[0]}. ${L.lore} ${L.note}</div>`;
     if (!canUse(it)) h += `<div class="tc dn">Your ${CLASSES[G.hero.cls].n} cannot use this</div>`;
-    else if (mode !== 'eq') { const eq = Object.assign({}, G.hero.eq); eq[eqSlotFor(it)] = it; const a = P.stats, b = calcStats(eq), d = pc(b.dps, a.dps), t = pc(b.tough, a.tough); h += (it.slot === 'ring' && G.hero.eq.ring1 && G.hero.eq.ring2 ? `<div class="tl">Replaces your ${eqSlotFor(it) === 'ring1' ? 'left' : 'right'} ring (the weaker one). Drag it onto a ring slot to choose.</div>` : '') + `<div class="tc">If equipped: <span class="${d >= 0 ? 'up' : 'dn'}">${sg(d)}% Damage</span> · <span class="${t >= 0 ? 'up' : 'dn'}">${sg(t)}% Toughness</span></div>`; }
+    else if (mode !== 'eq') { const eq = Object.assign({}, G.hero.eq); eq[eqSlotFor(it)] = it; const a = P.stats, b = calcStats(eq), d = pc(b.dps, a.dps), t = pc(b.tough, a.tough); h += `<div class="tv ${d + t > 0 ? 'up' : d + t < 0 ? 'dn' : ''}">${d + t > 0 ? '▲ Upgrade' : d + t < 0 ? '▼ Weaker than what you wear' : '＝ About the same'}</div><div class="tc">If equipped: <span class="${d > 0 ? 'up' : d < 0 ? 'dn' : ''}">${d > 0 ? '▲' : d < 0 ? '▼' : ''} ${sg(d)}% Damage</span> · <span class="${t > 0 ? 'up' : t < 0 ? 'dn' : ''}">${t > 0 ? '▲' : t < 0 ? '▼' : ''} ${sg(t)}% Toughness</span></div>`; }
     const tips = { eq: townMode === 'altar' ? 'Click to place on the altar' : 'Click to unequip', stash: 'Click to take', shop: 'Click to buy for ' + (mode === 'shop' ? buyPrice(it) : 0) + ' gold', bag: townMode === 'stash' ? 'Click to put in the stash' : townMode === 'vendor' ? 'Click to sell for ' + itemValue(it) + ' gold' : townMode === 'altar' ? 'Click to place on the altar' : 'Click to equip · Drag to move, drop or scrap (' + itemShards(it) + ' shards)' + (G.online ? ' · Shift-click to give' : '') };
     return h + `<div class="th">${tips[mode] || ''}</div>`;
   }
@@ -102,7 +103,7 @@ const UI = (() => {
   function sheet(it, key, mode) {
     const b = (a, t) => `<button data-a="${a}">${t}</button>`; let acts = '';
     if (mode === 'eq') acts = (townMode === 'altar' ? b('al', 'Place on altar') : '') + b('un', 'Unequip'); else if (mode === 'stash') acts = b('tk', 'Take'); else if (mode === 'shop') acts = b('buy', 'Buy · ' + buyPrice(it) + 'g');
-    else acts = (townMode === 'stash' ? b('st', 'Stash') : townMode === 'vendor' ? b('sell', 'Sell · ' + itemValue(it) + 'g') : townMode === 'altar' ? b('al', 'Place on altar') : '') + (it.slot === 'ring' ? b('e1', 'Equip left ring') + b('e2', 'Equip right ring') : b('eq', 'Equip')) + b('sc', 'Scrap · ' + itemShards(it)) + b('dr', 'Drop') + (G.online ? b('gv', 'Give to nearest') : '');
+    else acts = (townMode === 'stash' ? b('st', 'Stash') : townMode === 'vendor' ? b('sell', 'Sell · ' + itemValue(it) + 'g') : townMode === 'altar' ? b('al', 'Place on altar') : '') + b('eq', 'Equip') + b('sc', 'Scrap · ' + itemShards(it)) + b('dr', 'Drop') + (G.online ? b('gv', 'Give to nearest') : '');
     tip.innerHTML = tipHtml(it, mode).replace(/<div class="th">.*?<\/div>/, '') + `<div class="acts">${acts}${b('x', 'Close')}</div>`;
     tip.dataset.k = key; tip.classList.remove('hide'); tip.classList.add('pin'); tip.style.left = '50%'; tip.style.top = '50%'; tip.style.transform = 'translate(-50%,-50%)';
   }
@@ -113,7 +114,7 @@ const UI = (() => {
   });
 
   // ---- inventory ----
-  const DOLL = { shoulders: [1, 1, 2], helm: [2, 1, 2], amulet: [3, 2, 1], gloves: [1, 3, 2], chest: [2, 3, 2], bracers: [3, 3, 2], ring1: [1, 5, 1], belt: [2, 5, 1], ring2: [3, 5, 1], weapon: [1, 6, 2], pants: [2, 6, 2], offhand: [3, 6, 2], boots: [2, 8, 2] };
+  const DOLL = { shoulders: [1, 1, 2], helm: [2, 1, 2], amulet: [3, 2, 1], gloves: [1, 3, 2], chest: [2, 3, 2], bracers: [3, 3, 2], ring1: [1, 5, 1], belt: [2, 5, 1], weapon: [1, 6, 2], pants: [2, 6, 2], offhand: [3, 6, 2], boots: [2, 8, 2] };
   const fmt = n => Math.round(n).toLocaleString();
   function renderInv() {
     const h = G.hero, s = P.stats; U.invDirty = false; let d = '';
@@ -219,18 +220,18 @@ const UI = (() => {
       html += `<div class="srow${on ? ' on' : ''}${locked ? ' lock' : ''}" data-k="${id}"><div class="si">${sk.i}</div><div><b>${sk.n}</b> <span class="sm">${locked ? 'Unlocks at level ' + sk.lv : (sk.cost ? sk.cost + ' ' + RN : sk.gen ? 'Builds ' + RN : 'Free') + (sk.cd ? ' · ' + sk.cd + 's cooldown' : '') + (on ? ' · equipped here' : else_ ? ' · on ' + SLOT_KEY[h.bar.indexOf(id)] : '')}</span><div class="sd">${sk.d}</div></div></div>`;
     }
     html += '</div><div class="ph" style="margin-top:10px"><h3>Skill choices</h3></div><div class="list">';
-    skillTiers(h.cls).forEach((t, i) => { const pk = h.picks[i], open = h.level >= TIER_LV[i]; html += `<div class="srow tier${open ? '' : ' lock'}" data-t="${i}"><div class="si">${pk ? SKILLS[pk].i : open ? '?' : '🔒'}</div><div><b>Level ${TIER_LV[i]} choice</b> <span class="sm">${!open ? 'Unlocks at level ' + TIER_LV[i] : pk ? SKILLS[pk].n + ' chosen over ' + SKILLS[t.find(x => x !== pk)].n : 'Waiting for your pick'}</span>${open ? `<div class="sd">${pk ? (G.inTown ? 'Tap to change this choice.' : 'Can be changed for free in town.') : 'Tap to choose.'}</div>` : ''}</div></div>`; });
+    skillTiers(h.cls).forEach((t, i) => { const pk = h.picks[i], open = h.level >= TIER_LV[i]; html += `<div class="srow tier${open ? '' : ' lock'}" data-t="${i}"><div class="si">${pk ? SKILLS[pk].i : open ? '?' : '🔒'}</div><div><b>Level ${TIER_LV[i]} choice</b> <span class="sm">${!open ? 'Unlocks at level ' + TIER_LV[i] : pk ? SKILLS[pk].n + ' chosen over ' + SKILLS[t.find(x => x !== pk)].n : 'Waiting for your pick'}</span>${open ? `<div class="sd">${pk ? 'Tap to switch to the other skill, any time.' : 'Tap to choose.'}</div>` : ''}</div></div>`; });
     $('skl').innerHTML = html + '</div><div class="sm" style="margin-top:8px">Pick a slot, then pick a skill you have learned. You can re-slot at any time, even mid-fight.</div>';
   }
   function toggleSkl(v, slot) { sklOpen = v === undefined ? !sklOpen : v; if (sklOpen && townMode) closeTown(); if (slot !== undefined) sklSlot = slot; $('skl').classList.toggle('hide', !sklOpen); if (sklOpen) renderSkl(); }
-  $('skl').addEventListener('click', e => { if (e.target.closest('[data-x]')) { toggleSkl(false); return; } const t = e.target.closest('[data-s]'); if (t) { sklSlot = +t.dataset.s; renderSkl(); return; } const tr = e.target.closest('.srow.tier'); if (tr) { const i = +tr.dataset.t; if (G.hero.level >= TIER_LV[i] && (!G.hero.picks[i] || G.inTown)) openPick(i); else if (G.hero.picks[i]) hint('Skill choices can be changed in town.'); return; } const r = e.target.closest('.srow'); if (r && setSkill(sklSlot, r.dataset.k)) { buildBar(); renderSkl(); } });
+  $('skl').addEventListener('click', e => { if (e.target.closest('[data-x]')) { toggleSkl(false); return; } const t = e.target.closest('[data-s]'); if (t) { sklSlot = +t.dataset.s; renderSkl(); return; } const tr = e.target.closest('.srow.tier'); if (tr) { const i = +tr.dataset.t; if (G.hero.level >= TIER_LV[i]) openPick(i); return; } const r = e.target.closest('.srow'); if (r && setSkill(sklSlot, r.dataset.k)) { buildBar(); renderSkl(); } });
   // ---- the skill choice: two cards, pick one ----
   function openPick(i) {
     const h = G.hero; if (i === undefined) i = pendingPick(h); if (i < 0) { $('pick').classList.add('hide'); return; } const t = skillTiers(h.cls)[i], RN = CLASSES[h.cls].res.n, cur = h.picks[i];
-    $('pick').innerHTML = `<div class="box"><div class="ph"><h3>${cur ? 'Change your level ' + TIER_LV[i] + ' skill' : 'Level ' + TIER_LV[i] + ' · choose a skill'}</h3><button class="xb" data-x="1" aria-label="Decide later">×</button></div><div class="pk2">` + t.map(id => { const sk = SKILLS[id]; return `<button class="pcard${cur === id ? ' on' : ''}" data-p="${id}" data-i="${i}"><div class="pi">${sk.i}</div><b>${sk.n}</b><span class="sm">${(sk.cost ? sk.cost + ' ' + RN : sk.gen ? 'Builds ' + RN : 'Free') + (sk.cd ? ' · ' + sk.cd + 's cooldown' : '')}</span><div class="sd">${sk.d}</div><div class="pgo">${cur === id ? 'Current choice' : 'Choose'}</div></button>`; }).join('') + `</div><div class="sm" style="margin-top:10px;text-align:center">You take one and leave the other. You can swap this choice for free in town.</div></div>`;
+    $('pick').innerHTML = `<div class="box"><div class="ph"><h3>${cur ? 'Change your level ' + TIER_LV[i] + ' skill' : 'Level ' + TIER_LV[i] + ' · choose a skill'}</h3><button class="xb" data-x="1" aria-label="Decide later">×</button></div><div class="pk2">` + t.map(id => { const sk = SKILLS[id]; return `<button class="pcard${cur === id ? ' on' : ''}" data-p="${id}" data-i="${i}"><div class="pi">${sk.i}</div><b>${sk.n}</b><span class="sm">${(sk.cost ? sk.cost + ' ' + RN : sk.gen ? 'Builds ' + RN : 'Free') + (sk.cd ? ' · ' + sk.cd + 's cooldown' : '')}</span><div class="sd">${sk.d}</div><div class="pgo">${cur === id ? 'Current choice' : 'Choose'}</div></button>`; }).join('') + `</div><div class="sm" style="margin-top:10px;text-align:center">You use one at a time. Switch between them whenever you like from the Skills panel.</div></div>`;
     $('pick').classList.remove('hide');
   }
-  U.openPick = openPick;
+  U.openPick = openPick; U.panelOpen = () => invOpen || sklOpen || !$('pick').classList.contains('hide') || !$('set').classList.contains('hide');
   $('pick').addEventListener('click', e => { if (e.target.closest('[data-x]')) { $('pick').classList.add('hide'); return; } const c = e.target.closest('[data-p]'); if (!c) return; if (pickSkill(+c.dataset.i, c.dataset.p)) { if (sklOpen) renderSkl(); openPick(); } });
   $('pickBtn').onclick = () => openPick();
   U.iconSvg = it => iconSvg(it);
@@ -252,7 +253,7 @@ const UI = (() => {
       gb.innerHTML = '<span>First steps</span>' + GOALS.map(g => `<div class="${gl[g[0]] ? 'ok' : g === nx ? 'now' : ''}">${gl[g[0]] ? '✓' : '○'} ${g[1]}${g[0] === 'kill' && !gl.kill ? ' (' + (gl.k || 0) + '/5)' : ''}</div>`).join('') + (nx ? `<div class="how">${HOW[nx[0]]}</div>` : '') + (blessed() ? '<div class="bl">Newcomer\'s blessing: you take less damage until the guardian falls.</div>' : ''); } } }
     $('pickBtn').classList.toggle('hide', pendingPick(h) < 0 || !$('pick').classList.contains('hide'));
     { const pb = partyBonus(), el = $('onl'); if (el.dataset.pb !== '' + pb) { el.dataset.pb = pb; el.title = pb ? 'Party bonus +' + pb + '% damage' : ''; } $('pbonus').textContent = pb ? 'Party bonus +' + pb + '% damage' : ALLY.on ? 'Sellsword at your side' : ''; }
-    $('tName').textContent = innerWidth < 760 ? cls.n + ' · Lv ' + h.level : cls.n + ' · Level ' + h.level + (h.level >= MAX_LEVEL ? ' · Paragon ' + (h.plvl || 0) : '') + (G.online ? ' · Party ' + NET.room + ' (' + (NET.count || 1) + ')' : '');
+    $('tName').textContent = innerWidth < 760 ? cls.n + ' · Lv ' + h.level : cls.n + ' · Level ' + h.level + (h.level >= MAX_LEVEL ? ' · Paragon ' + (h.plvl || 0) : '') + (G.online ? (/^solo/.test(NET.room || '') && (NET.count || 1) < 2 ? ' · Solo' : ' · Party ' + NET.room + ' (' + (NET.count || 1) + ')') : '');
     { const ids = G.online ? Object.keys(NET.names).filter(i => +i !== NET.id) : [], key = ids.map(i => i + NET.names[i] + (NET.peers[i] ? 1 : 0)).join('|'), pb = $('party'); pb.classList.toggle('hide', !ids.length);
       if (pb.dataset.k !== key) { pb.dataset.k = key; pb.innerHTML = '<div class="pth">Tap to teleport</div>'; for (const i of ids) { const b = document.createElement('button'); b.textContent = '➜ ' + NET.names[i]; if (!NET.peers[i]) b.className = 'far'; b.onclick = () => teleportTo(+i); pb.appendChild(b); } }
       if (G.tpTo && !G.inTown && NET.peers[G.tpTo]) teleportTo(G.tpTo); }
@@ -372,7 +373,7 @@ const UI = (() => {
     IN.shift = e.shiftKey; if (G.state !== 'play' || e.ctrlKey || e.metaKey) return; const k = e.key.toLowerCase(); IN.keys[k] = true;
     if (e.repeat) return;
     if (k === '1') useFlask(); else if (k === 'i' || k === 'c' || k === 'b') toggleInv(); else if (k === 's' || k === 'k') toggleSkl(); else if (k === ' ' || k === 'f') { e.preventDefault(); pickupNear(); }
-    else if (k === 'z') { G.hero.filter = (G.hero.filter + 1) % 3; hint(['Showing all loot.', 'Hiding Common loot.', 'Hiding Common and Magic loot.'][G.hero.filter]); }
+    else if (k === 'z') { G.hero.filter = (G.hero.filter + 1) % 4; hint(['Showing all loot.', 'Skipping Common loot.', 'Skipping Common and Magic loot.', 'Only Legendary and Mythic loot.'][G.hero.filter]); }
     else if (k === 'm') { G.set.vol = G.set.vol > 0 ? 0 : 70; applySet(); hint(G.set.vol ? 'Sound on.' : 'Sound off.'); } else if (k === 'o') toggleSet(); else if (k === 'g') { G.set.gps = !G.set.gps; GPS.t = 0; applySet(); hint(G.set.gps ? 'Quest path on.' : 'Quest path off.'); } else if (k === '\u0000') toggleAuto(); else if (k === '\u0001') cycleSpeed(); else if (k === 'enter' && G.online) { e.preventDefault(); openChat(); } else if (k === 't') { if (G.inTown) leaveTown(); else enterTown(); } else if (k === 'escape') { if (tip.classList.contains('pin')) unpin(); else if (!$('set').classList.contains('hide')) toggleSet(false); else if (townMode) closeTown(); else if (invOpen) toggleInv(false); else toggleSkl(false); }
   });
   window.addEventListener('keyup', e => { IN.shift = e.shiftKey; IN.keys[e.key.toLowerCase()] = false; });
@@ -383,7 +384,7 @@ const UI = (() => {
   function openChat() { $('chatRow').classList.remove('hide'); $('chat').focus(); }
   function closeChat() { $('chatRow').classList.add('hide'); $('chat').blur(); }
   U.chat = (name, msg, kind) => {
-    chatLines.push([name, msg, kind]); if (chatLines.length > 40) chatLines.shift(); const box = $('chatlog'); box.innerHTML = '';
+    if (msg !== undefined) { const ln = [name, msg, kind]; chatLines.push(ln); if (chatLines.length > 40) chatLines.shift(); if (kind === 'l' || kind === 'm') setTimeout(() => { const i = chatLines.indexOf(ln); if (i >= 0) { chatLines.splice(i, 1); U.chat(); } }, 5000); } const box = $('chatlog'); box.innerHTML = '';
     for (const l of chatLines.slice(-8)) { const d = document.createElement('div'), t = document.createElement('span'); t.className = l[2] === 'g' ? 'gl' : l[2] === 'p' ? 'pt' : 'sy'; if (l[2] === 'm' || l[2] === 'l') { d.className = l[2] === 'm' ? 'cmy' : 'clg'; t.textContent = '★ '; d.appendChild(t); d.appendChild(document.createTextNode(l[1])); box.appendChild(d); continue; } t.textContent = l[2] === 'g' ? '[Global] ' : l[2] === 'p' ? '[Party] ' : ''; d.appendChild(t); if (l[0]) { const n = document.createElement('b'); n.textContent = l[0] + ': '; d.appendChild(n); } d.appendChild(document.createTextNode(l[1])); box.appendChild(d); }
   };
   $('chatCh').onclick = () => { setCh(!chatGlobal); $('chat').focus(); }; setCh(true);
@@ -395,7 +396,7 @@ const UI = (() => {
     $('set').innerHTML = `<div class="ph"><h3>Settings</h3><button class="xb" data-x="set" aria-label="Close">×</button></div>
       <label>Sound volume <span id="volN">${st.vol}%</span><input type="range" min="0" max="100" step="5" value="${st.vol}" data-set="vol"></label>
       <label>Graphics quality ${sel('gfx', st.gfx, [['auto', 'Automatic'], [2, 'High'], [1, 'Medium'], [0, 'Low (fastest)']])}</label>
-      <label>Loot labels ${sel('filter', G.hero ? G.hero.filter : 0, [[0, 'Show all loot'], [1, 'Hide Common'], [2, 'Hide Common and Magic']])}</label>
+      <label>Loot filter ${sel('filter', G.hero ? G.hero.filter : 0, [[0, 'Show and collect all loot'], [1, 'Skip Common'], [2, 'Skip Common and Magic'], [3, 'Only Legendary and Mythic']])}</label><label>${chk('autoLoot', st.autoLoot !== false)} Collect loot by walking over it</label>
       <label>${chk('gps', st.gps)} Quest path on the ground (GPS)</label><label>${chk('shake', st.shake)} Screen shake</label><label>${chk('nums', st.nums)} Damage numbers</label><label>${chk('map', st.map)} Minimap</label><label>${chk('ally', st.ally !== false)} Sellsword companion when you are alone</label><div class="sm" style="margin-top:10px">Your heroes are saved in this browser on this device. Back them up, or move them to another device:</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px"><button data-io="out">Back up my heroes</button><button data-io="in">Restore from backup</button>${location.protocol !== 'file:' ? '<button data-io="inv">Copy party invite link</button>' : ''}</div><textarea id="saveIO" placeholder="Backup text appears here. To restore, paste a backup here and press Restore."></textarea><label class="touchOnly">${chk('joy', st.joy)} Thumb joystick and attack buttons</label>${document.documentElement.requestFullscreen ? '<label class="touchOnly"><button data-fs="1">Full screen on / off</button></label>' : ''}
       <div class="sm">Automatic lowers the picture quality by itself if the game runs slowly. Settings are saved on this device.</div><div class="sm" style="margin-top:6px">Cinderdeep build ${BUILD}</div>`;
   }
@@ -455,7 +456,7 @@ const UI = (() => {
     if (!hasServer && (serverChecked || !web)) $('menuMsg').textContent = 'This is an offline preview copy. Cinderdeep itself is online only, at your game server address.'; $('btnReset').classList.toggle('hide', !sv); resetArmed = false; $('btnReset').textContent = 'Reset this hero';
   }
   $('classes').onclick = e => { const c = e.target.closest('.ccard'); if (c) { selCls = c.dataset.c; try { localStorage.setItem('cinderdeep_class', selCls); } catch (_) { } renderClasses(); } };
-  $('btnNew').onclick = () => { const hero = loadGame(selCls) || newHero(selCls); if (!hasServer) { start(hero); return; } const name = $('oName').value.trim() || CLASSES[selCls].n, room = $('oRoom').value.trim(); try { localStorage.setItem('cinderdeep_name', name); } catch (_) { } start(hero, { name, room }); };
+  $('btnNew').onclick = () => { const hero = loadGame(selCls) || newHero(selCls); if (!hasServer) { start(hero); return; } const name = $('oName').value.trim() || CLASSES[selCls].n, room = $('oRoom').value.trim() || 'solo' + Math.random().toString(36).slice(2, 8); try { localStorage.setItem('cinderdeep_name', name); } catch (_) { } start(hero, { name, room }); };
   $('btnReset').onclick = () => { if (!resetArmed) { resetArmed = true; $('btnReset').textContent = 'Click again to erase this hero'; return; } try { localStorage.removeItem(SAVE_KEY + '_' + selCls); if (selCls === 'warden') localStorage.removeItem(SAVE_KEY); } catch (_) { } renderClasses(); };
   renderClasses();
   U.revive = () => $('revive').onclick();
