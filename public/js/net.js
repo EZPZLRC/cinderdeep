@@ -41,8 +41,8 @@ const NET = (() => {
       case 'fx': if (m.k === 'p') G.projs.push({ x: +m.x, z: +m.z, vx: Math.sin(+m.rot) * +m.r, vz: Math.cos(+m.rot) * +m.r, life: clamp(+m.arc || .5, .1, 2), r: .4, dmg: 0, el: 'phys', vis: 1, peer: 1, c: GLX.col(m.c | 0) }); else if (m.k === 's') G.fx.push({ slash: 1, x: +m.x, z: +m.z, rot: +m.rot, r: +m.r, arc: +m.arc, life: .16, max: .16, c: GLX.col(0xfff0d0) }); else ring(+m.x, +m.z, .5, +m.r, .35, m.c || 0xffc890); break;
       case 'chat': UI.chat(txt(m.n, 16), txt(m.m, 140), m.g ? 'g' : 'p'); break;
       case 'found': UI.chat('', txt(m.n, 16) + ' found a ' + (m.r === 4 ? 'Mythic' : 'Legendary') + ' item: ' + txt(m.item, 60), m.r === 4 ? 'm' : 'l'); if (m.r === 4) SFX.play('drop1'); break;
-      case 'join': if (m.name !== N.me) UI.chat('', txt(m.name, 16) + ' joined the party.', 's'); break;
-      case 'leave': delete N.peers[m.id]; if (m.name !== N.me) UI.chat('', txt(m.name, 16) + ' left the party.', 's'); break;
+      case 'join': if (m.name !== N.me && N.quiet('j' + m.name)) UI.chat('', txt(m.name, 16) + ' joined the party.', 's'); break;
+      case 'leave': delete N.peers[m.id]; if (m.name !== N.me && N.quiet('l' + m.name)) UI.chat('', txt(m.name, 16) + ' left the party.', 's'); break;
       case 'players': N.names = {}; N.cls = {}; for (const p of m.list) { N.names[p.id] = txt(p.name, 16); N.cls[p.id] = CLASSES[p.cls] ? p.cls : 'warden'; if (N.peers[p.id]) { N.peers[p.id].name = N.names[p.id]; N.peers[p.id].cls = N.cls[p.id]; } } N.count = m.list.length; break;
       case 'give': { const it = cleanItem(m.item); if (!it) break; if (addItem(it)) { hint(txt(m.n, 16) + (m.back ? ' could not carry it, so it came back: ' : ' gave you ') + it.name + '.'); UI.invDirty = true; saveGame(); } else if (!m.back) N.send({ t: 'give', to: m.from, item: m.item, back: true }); break; }
     }
@@ -51,6 +51,7 @@ const NET = (() => {
   N.probe = async () => { try { if (!/^https?:$/.test(location.protocol)) return false; const r = await fetch('cinderdeep-server', { cache: 'no-store' }); if (!r.ok) return false; const j = await r.json(); return !!(j && j.cinderdeep); } catch (e) { return false; } };
   N.close = () => { if (ws) { N.quit = true; N.on = false; G.online = false; N.peers = {}; try { ws.close(); } catch (e) { } ws = null; } };
   N.send = o => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); };
+  const seen = {}; N.quiet = k => { const t = Date.now(); if (seen[k] && t - seen[k] < 60000) return false; seen[k] = t; return true; }; // a flaky connection should not flood chat
   N.connect = (name, room) => { N.me = name;
     try { ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws'); } catch (e) { UI.netFail('Could not reach the server.'); return; }
     ws.onopen = () => N.send({ t: 'join', name, room, lvl: G.hero.level, cls: G.hero.cls });

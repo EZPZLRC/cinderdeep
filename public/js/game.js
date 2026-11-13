@@ -148,7 +148,7 @@ function dropFromInv(i) { const h = G.hero, it = h.inv[i]; if (!it) return; h.in
 function newHero(cls) {
   cls = CLASSES[cls] ? cls : 'warden'; const c = CLASSES[cls], sk = c.skills;
   const h = { v: 1, name: c.n, cls, level: 1, xp: 0, gold: 0, inv: new Array(BAG_N).fill(null), bagV: 2, eq: {}, bar: [sk[0], null, null, null], picks: [null, null, null, null], goals: {}, filter: 0, kills: 0, runs: 0, best: 0 };
-  h.eq.weapon = makeItem(1, 'weapon', 0, c.w); return h;
+  h.eq.weapon = makeItem(1, 'weapon', 0, c.w); applyKit(h); return h;
 }
 function calcStats(eq) {
   const h = G.hero, c = CLASSES[h.cls], s = {}; for (const k in STATS) s[k] = 0;
@@ -184,9 +184,10 @@ function gainXp(v) { if (v > 0 && G.hero && G.hero.level < MAX_LEVEL) { G.xpPop 
   h.xp += v;
   while (h.level < MAX_LEVEL && h.xp >= xpNeed(h.level)) {
     h.xp -= xpNeed(h.level); h.level++; computeStats(); P.hp = P.stats.maxLife; P.mana = P.stats.maxMana; SFX.play('level'); ring(P.x, P.z, 0, 9, .7, 0xffd84a); burst(P.x, 1.5, P.z, 0xffd84a, 30, 7); if (h.level >= MAX_LEVEL) { h.pxp = h.xp; h.xp = 0; hint('Level 60! From here you earn Paragon levels with no limit.'); }
-    floatText(P.x, 3, P.z, 'LEVEL ' + h.level, '#ffd84a', 1.8, 22); { computeStats(); hint('Level ' + h.level + '! More life, harder hits. Life and ' + CLASSES[h.cls].res.n + ' refilled.'); const nt = TIER_LV.find(l => l > h.level); if (nt && skillTiers(h.cls)[TIER_LV.indexOf(nt)]) hint('Next skill choice at level ' + nt + '.'); } if (pendingPick(h) >= 0) { if (G.auto) { const i = pendingPick(h); pickSkill(i, skillTiers(h.cls)[i][Math.random() * 2 | 0]); } else if (typeof UI !== 'undefined') UI.openPick(); }
+    floatText(P.x, 3, P.z, 'LEVEL ' + h.level, '#ffd84a', 1.8, 22); { computeStats(); hint('Level ' + h.level + '! More life, harder hits. Life and ' + CLASSES[h.cls].res.n + ' refilled.'); const nt = TIER_LV.find(l => l > h.level); if (nt && skillTiers(h.cls)[TIER_LV.indexOf(nt)]) hint('Next skill choice at level ' + nt + '.'); } applyKit(h, true);
   }
 }
+function seasonCheck() { try { if (localStorage.getItem('cinderdeep_season') === SEASON) return false; const old = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.indexOf(SAVE_KEY + '_') === 0) old.push(k); } old.forEach(k => localStorage.removeItem(k)); localStorage.setItem('cinderdeep_season', SEASON); return old.length > 0; } catch (e) { return false; } }
 function saveGame() { try { localStorage.setItem(SAVE_KEY + '_' + G.hero.cls, JSON.stringify(G.hero)); if (G.stash) localStorage.setItem(SAVE_KEY + '_stash', JSON.stringify(G.stash)); } catch (e) { } }
 function loadStash() { let st = null; try { st = JSON.parse(localStorage.getItem(SAVE_KEY + '_stash')); } catch (e) { } if (!Array.isArray(st) || st.length !== 100) st = new Array(100).fill(null); for (const it of st) if (it) { if (it.id >= itemId) itemId = it.id + 1; if (it.aff) for (const a of it.aff) a.v = Math.max(1, Math.round(a.v)); } G.stash = st; }
 function loadGame(cls) {
@@ -197,7 +198,7 @@ function loadGame(cls) {
       if (h.bagV !== 2 || h.inv.length !== BAG_N) { const old = h.inv.filter(x => x).sort((a, b) => b.rar - a.rar); h.inv = new Array(BAG_N).fill(null); for (const it of old) if (!bagPut(h.inv, it)) h.gold += itemValue(it); h.bagV = 2; }
       const rd = it => { if (it && it.aff) for (const a of it.aff) a.v = Math.max(1, Math.round(a.v)); }; h.inv.forEach(rd); for (const k in h.eq) rd(h.eq[k]);
       if (h.eq.ring2) { const r2 = h.eq.ring2; delete h.eq.ring2; if (!h.eq.ring1) h.eq.ring1 = r2; else if (!bagPut(h.inv, r2)) h.gold += itemValue(r2); } // the second ring slot is gone: the ring goes back in the bag
-      if (!h.picks) { h.picks = skillTiers(cls).map(t => t.find(id => (h.bar || []).includes(id)) || null); if (h.bar) h.bar = h.bar.map((id, i) => i === 0 || (id && h.picks.includes(id)) ? id : null); }
+      applyKit(h);
       const sk = CLASSES[cls].skills; if (!h.bar || h.bar.some(id => id && !sk.includes(id))) { h.bar = [sk[0], null, null, null]; for (const id of sk) if (!SKILLS[id].basic && SKILLS[id].lv <= h.level) { const i = h.bar.indexOf(null); if (i > 0) h.bar[i] = id; } }
       return h;
     }
@@ -699,7 +700,8 @@ function updPlayer(dt) {
   }
 }
 // ---- skill choices ----
-function knows(h, id) { const sk = SKILLS[id]; return !!sk && (sk.basic ? CLASSES[h.cls].skills.includes(id) : (h.picks || []).includes(id)); }
+function knows(h, id) { const sk = SKILLS[id]; if (!sk) return false; if (sk.basic) return CLASSES[h.cls].skills.includes(id); const i = (KIT[h.cls] || []).indexOf(id); return i >= 0 && h.level >= KIT_LV[i]; }
+function applyKit(h, announce) { const k = KIT[h.cls] || []; h.bar = h.bar || [CLASSES[h.cls].skills[0], null, null, null]; if (!h.bar[0] || !knows(h, h.bar[0])) h.bar[0] = CLASSES[h.cls].skills[0]; k.forEach((id, i) => { if (h.level >= KIT_LV[i] && h.bar[i + 1] !== id) { h.bar[i + 1] = id; if (announce) hint('New skill: ' + SKILLS[id].n + ' — on ' + SLOT_KEY[i + 1] + '.'); } else if (h.level < KIT_LV[i]) h.bar[i + 1] = null; }); if (typeof UI !== 'undefined' && UI.buildBar && G.hero === h) UI.buildBar(); }
 function pendingPick(h) { const t = skillTiers(h.cls); for (let i = 0; i < t.length; i++) if (h.level >= TIER_LV[i] && !h.picks[i]) return i; return -1; }
 function pickSkill(i, id) {
   const h = G.hero, t = skillTiers(h.cls)[i]; if (!t || !t.includes(id) || h.level < TIER_LV[i]) return false; const old = h.picks[i]; if (old === id) return true;
@@ -815,7 +817,7 @@ function update(dt) {
     if (a.t >= a.delay + .05) G.areas.splice(i, 1);
   }
   // drops
-  if (G.zone && !G.inTown && !P.dead) for (const o of G.zone.objs) { if (o.kind !== 'portal' && o.kind !== 'pback') continue; const dd = Math.hypot(o.x - P.x, o.z - P.z), R = o.kind === 'portal' ? 1.9 : 1.4; if (dd > R + 1.5) o.arm = true; else if (dd < R && o.arm && !o.gone) { o.gone = true; interact(o); return; } } // step into a gate to travel
+  if (G.zone && !G.inTown && !P.dead) for (const o of G.zone.objs) { if (o.kind !== 'portal' && o.kind !== 'pback') continue; const dd = Math.hypot(o.x - P.x, o.z - P.z), R = o.kind === 'portal' ? 1.9 : 1.4; if (dd > R + 1.5) o.arm = true; else if (dd < R && o.arm && !o.gone) { o.arm = false; if (typeof UI !== 'undefined' && UI.askGate) UI.askGate(o); else { o.gone = true; interact(o); } return; } } // step into a gate to travel
   for (const d of G.drops.slice()) { d.t += dt; if (d.item && d.t > .5 && G.set.autoLoot !== false && !P.dead && d.item.rar >= G.hero.filter && Math.hypot(d.x - P.x, d.z - P.z) < 1.8 && G.time - (d.tryT || -9) > 2.5) { d.tryT = G.time; pickup(d); continue; } // walk over loot to collect it
     if (d.globe) { if (Math.hypot(d.x - P.x, d.z - P.z) < 1.8 && P.hp < P.stats.maxLife) pickup(d); } else if (d.gold && d.t > .3) { const dd = Math.hypot(d.x - P.x, d.z - P.z); if (dd < 4.5) { d.x += (P.x - d.x) / dd * 14 * dt; d.z += (P.z - d.z) / dd * 14 * dt; if (dd < .9) pickup(d); } } }
   for (let i = G.fx.length - 1; i >= 0; i--) { const f = G.fx[i]; f.life -= dt; if (f.life <= 0) { G.fx.splice(i, 1); continue; } if (!f.ring && !f.slash && !f.bolt && !f.flash) { f.x += f.vx * dt; f.y += f.vy * dt; f.z += f.vz * dt; f.vy -= 14 * dt; if (f.y < .05) { f.y = .05; f.vy *= -.3; } } }
@@ -1084,11 +1086,14 @@ function drawWorld() {
     else if (o.kind === 'shrine') { const st = col(0x5a5c60), c = col(o.sh.c), t = G.time; GLX.obj('dyn', 'cyl', o.x, .12, o.z, 0, 3, .24, 3, st, hov, 1, 3); GLX.obj('dyn', 'cyl', o.x, .34, o.z, .4, 2.2, .22, 2.2, col(0x6a6c70), hov, 1, 3); GLX.obj('dyn', 'taper', o.x, 1.7, o.z, .78, 1.1, 2.6, 1.1, st, hov, 1, 3); GLX.obj('dyn', 'taper', o.x, 3.2, o.z, .78, .7, .5, .7, col(0x44464c), hov, 1, 3);
       for (let k = 0; k < 4; k++) { const a = k * 1.5708 + .78; GLX.obj('dyn', 'taper', o.x + Math.cos(a) * 1.25, .75, o.z + Math.sin(a) * 1.25, a, .3, 1, .3, st, hov, 1, 3); }
       if (!o.used) { for (const y of [1.1, 1.8, 2.5]) GLX.obj('glow', 'ring', o.x, y, o.z, t * .5 + y, 1.5 - y * .22, 1, 1.5 - y * .22, c, 1.2, .7, -1); GLX.obj('dyn', 'gem', o.x, 4 + Math.sin(t * 2) * .2, o.z, t, .8, 1.2, .8, c, 2.4); GLX.obj('glow', 'cyl', o.x, 7, o.z, t, .5, 9, .5, c, 1, .18); GLX.obj('glow', 'ring', o.x, .3, o.z, -t, 5.6, 1, 5.6, c, 1, .5 + Math.sin(t * 3) * .2, -1); GLX.halo(o.x, 4, o.z, 4.5, c, .7); GLX.light(o.x, 3, o.z, 13, c, 1.3); } }
-    else if (o.kind === 'portal' || o.kind === 'pback') { // one clean gate: step in to travel
-      const back = o.kind === 'pback', c = col(back ? 0xffb03a : 0x7ad0ff), t = G.time, R = back ? 1.6 : 2.4;
-      GLX.obj('dyn', 'cyl', o.x, .08, o.z, 0, R * 2.3, .16, R * 2.3, col(0x4a4c56), 0, 1, 3); GLX.obj('glow', 'disc', o.x, .2, o.z, t * .6, R * 2, 1, R * 2, c, 1, .55, 1);
-      for (let k = 0; k < 3; k++) GLX.obj('glow', 'ring', o.x, .3 + k * 1.1 + Math.sin(t * 2 + k) * .15, o.z, t * (k % 2 ? -1.2 : 1.2), R * (2 - k * .35), 1, R * (2 - k * .35), c, 1, .8, -1);
-      GLX.obj('glow', 'cyl', o.x, 5, o.z, t, R * .5, 10, R * .5, c, 1, .16); GLX.halo(o.x, 2, o.z, R * 3.2, c, .4); GLX.light(o.x, 2.5, o.z, back ? 10 : 18, c, 1.3, 5);
+    else if (o.kind === 'portal' || o.kind === 'pback') { // a turning rainbow kaleidoscope: step in to travel
+      const t = G.time, R = 2.4, hue = (hh, l) => { const h6 = ((hh % 1) + 1) % 1 * 6, x = 1 - Math.abs(h6 % 2 - 1), q = h6 < 1 ? [1, x, 0] : h6 < 2 ? [x, 1, 0] : h6 < 3 ? [0, 1, x] : h6 < 4 ? [0, x, 1] : h6 < 5 ? [x, 0, 1] : [1, 0, x]; return [q[0] * l, q[1] * l, q[2] * l]; };
+      GLX.obj('dyn', 'cyl', o.x, .08, o.z, 0, R * 2.5, .16, R * 2.5, col(0x2a2830), 0, 1, 4); GLX.obj('glow', 'disc', o.x, .18, o.z, t * .5, R * 2.2, 1, R * 2.2, hue(t * .15, 1), .6, .22, 1);
+      for (let ring = 0; ring < 3; ring++) { const n = 12, rr = R * (.45 + ring * .38), sp = (ring % 2 ? -1 : 1) * (.8 + ring * .4); for (let k = 0; k < n; k++) { const a = k / n * 6.2832 + t * sp, c = hue(k / n + t * .2 + ring * .15, 1); GLX.obj('glow', 'box', o.x + Math.cos(a) * rr, .22 + ring * .02, o.z + Math.sin(a) * rr, -a, .9 - ring * .15, .03, .22, c, 1.4, .8); GLX.obj('glow', 'gem', o.x + Math.cos(a) * rr, 1.2 + ring * 1.1 + Math.sin(t * 3 + k) * .25, o.z + Math.sin(a) * rr, a, .18, .36, .18, c, 2.4, .85); } }
+      for (let k = 0; k < 6; k++) { const yy = .4 + k * .9, s = R * (2 - k * .22) * (1 + Math.sin(t * 2.5 + k) * .06); GLX.obj('glow', 'ring', o.x, yy, o.z, t * (k % 2 ? -1.3 : 1.1), s, 1, s, hue(t * .25 + k / 6, 1), .9, .5, -1); }
+      GLX.obj('glow', 'cyl', o.x, 7, o.z, t, R * .45, 14, R * .45, hue(t * .3, 1), 1, .14); GLX.obj('glow', 'cyl', o.x, 7, o.z, -t * 1.4, R * .95, 14, R * .95, hue(t * .3 + .5, 1), .8, .08);
+      for (let k = 0; k < 14; k++) { const a = t * 1.8 + k * .449, y = (t * 2 + k * .6) % 7, r2 = R * (1.1 - y * .1); GLX.obj('glow', 'sphere', o.x + Math.cos(a) * r2, y, o.z + Math.sin(a) * r2, 0, .1, .1, .1, hue(k / 14 + t * .3, 1), 2.6, 1 - y / 7); }
+      GLX.halo(o.x, 2.5, o.z, R * 3.2, hue(t * .2, 1), .2); GLX.light(o.x, 2.5, o.z, 18, hue(t * .2, 1), 1, 5);
     }
   }
   for (const d of G.drops) {

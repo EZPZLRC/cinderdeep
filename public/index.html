@@ -217,6 +217,29 @@ h1{font-weight:700;letter-spacing:.22em;text-shadow:0 2px 0 #000,0 0 24px rgba(2
 #fps{position:fixed;left:50%;top:2px;transform:translateX(-50%);font-size:11px;color:#9effa8;text-shadow:0 1px 2px #000;z-index:9;pointer-events:none}
 .tabs{display:flex;gap:6px;margin:-2px 0 10px}.tabs button{padding:6px 14px;font-size:12px;text-transform:uppercase;letter-spacing:.1em;opacity:.7}.tabs button.on{opacity:1;border-color:var(--gold2);color:#fff}
 #inv.ally .itop{display:none}.allyrow{display:grid;grid-template-columns:1fr 1fr;gap:5px}.allyrow button{overflow:hidden;text-overflow:ellipsis}
+.sk .ab{display:none}body.tj .sk .ab{display:flex;position:absolute;top:-8px;right:-8px;width:26px;height:26px;border-radius:50%;background:#1a140c;border:1px solid #8a7246;font:700 12px system-ui,sans-serif;color:#a99c80;align-items:center;justify-content:center;pointer-events:auto;box-shadow:0 1px 4px #000;z-index:2}body.tj .sk.auto .ab{background:#1f5a2a;border-color:#5aff7a;color:#fff;box-shadow:0 0 8px #5aff7a}body.tj .sk.auto::after{display:none}
+/* ---- build 0015: thumb cluster laid out on an arc around the attack button ---- */
+body.tj #bar{width:240px;height:232px}
+body.tj .sk{width:60px;height:60px;font-size:25px}
+body.tj .sk:nth-child(1){width:88px;height:88px;right:0;bottom:0;font-size:38px}
+body.tj .sk:nth-child(2){right:130px;bottom:14px}
+body.tj .sk:nth-child(3){right:100px;bottom:88px}
+body.tj .sk:nth-child(4){right:26px;bottom:118px}
+body.tj .sk:nth-child(5){width:50px;height:50px;right:185px;bottom:91px;font-size:21px}
+body.tj .sk.use{width:50px;height:50px;right:103px;bottom:174px}
+body.tj .sk .ab{top:3px;right:auto;left:50%;transform:translateX(-50%);width:auto;height:15px;padding:0 5px;border-radius:8px;font-size:9.5px;letter-spacing:.06em}
+body.tj .sk.auto .ab::after{content:"UTO"}
+body.tj .sk:nth-child(n+2) .key{display:none}
+body.tj #tbtns{flex-direction:column;right:calc(8px + env(safe-area-inset-right));bottom:auto;top:calc(196px + env(safe-area-inset-top))}
+@media (max-height:480px){body.tj #tbtns{flex-direction:row;top:calc(6px + env(safe-area-inset-top));right:auto;left:50%;transform:translateX(-50%)}body.tj #bar{transform:scale(.92);transform-origin:100% 100%}}
+body.tj .sk:nth-child(5){right:172px;bottom:100px}
+@media (orientation:portrait) and (max-width:760px){body.tj #hints{top:auto;bottom:calc(330px + env(safe-area-inset-bottom));left:8px;right:8px}}
+/* iPhone: no double-tap zoom, no long-press callouts */
+html,body,#game,#hud,button,.sk{touch-action:manipulation}#gl{touch-action:none}
+body{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-text-size-adjust:100%}input,textarea{-webkit-user-select:text;user-select:text}
+.tabs button[data-b]{opacity:1;text-transform:none;letter-spacing:.02em}.tabs button.warn{border-color:#ff6a5a;color:#ffb0a0}
+#gateAsk{position:fixed;inset:0;z-index:28;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45)}#gateAsk .box{background:var(--panel);border:1px solid #6b5533;border-radius:4px;padding:18px 22px;text-align:center;box-shadow:0 10px 40px #000;max-width:90vw}#gateAsk h3{margin:0 0 6px;font-size:18px;letter-spacing:.08em;color:var(--gold2)}#gateAsk .row{display:flex;gap:10px;justify-content:center;margin-top:14px}#gateAsk button{min-width:110px;padding:10px 16px}
+.allywrap{display:flex;gap:14px;align-items:flex-start;margin-top:6px}#adoll{display:grid;grid-template-columns:repeat(3,calc(var(--d) + 8px));grid-auto-rows:var(--d);gap:4px;flex:none;--d:30px}#adoll .it{min-width:0;min-height:0}#adoll .it,#adoll .ds{width:100%;height:100%}.allyhelp{line-height:1.45}
 </style>
 </head>
 <body>
@@ -227,6 +250,7 @@ h1{font-weight:700;letter-spacing:.22em;text-shadow:0 2px 0 #000,0 0 24px rgba(2
   <div id="questBox" class="hide"><span>Quest</span><div id="quest"></div></div>
   <div id="goals" class="hide"></div>
   <div id="recon" class="hide"></div>
+  <div id="gateAsk" class="hide"></div>
   <div id="fps" class="hide"></div>
   <div id="bossbar" class="hide"><div class="bn" id="bossName"></div><div class="bb"><div class="bf" id="bossFill"></div></div></div>
   <div id="banner"><div class="b1" id="ban1"></div><div class="b2" id="ban2"></div></div>
@@ -283,10 +307,10 @@ h1{font-weight:700;letter-spacing:.22em;text-shadow:0 2px 0 #000,0 0 24px rgba(2
     <b>G</b><span>Quest path on the ground on/off</span>
   </div>
 </div>
-<script src="js/gl.js?v=0014"></script>
-<script src="js/data.js?v=0014"></script>
-<script src="js/game.js?v=0014"></script>
-<script src="js/net.js?v=0014"></script>
-<script src="js/ui.js?v=0014"></script>
+<script src="js/gl.js?v=0015"></script>
+<script src="js/data.js?v=0015"></script>
+<script src="js/game.js?v=0015"></script>
+<script src="js/net.js?v=0015"></script>
+<script src="js/ui.js?v=0015"></script>
 </body>
 </html>

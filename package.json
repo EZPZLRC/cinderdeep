@@ -1,7 +1,7 @@
 {
   "name": "cinderdeep-server",
   "version": "1.1.2",
-  "description": "Cinderdeep build 0014: 3D action RPG with a dedicated multiplayer server. No dependencies.",
+  "description": "Cinderdeep build 0015: 3D action RPG with a dedicated multiplayer server. No dependencies.",
   "main": "server.js",
   "scripts": { "start": "node server.js" },
   "engines": { "node": ">=18" },
