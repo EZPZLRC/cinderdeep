@@ -1,5 +1,5 @@
 'use strict';
-const BUILD = '0020';
+const BUILD = '0021';
 // Fresh start: every hero and the stash are wiped whenever this number changes. It follows the build, so each new build is a new season.
 const SEASON = BUILD;
 const SLOTS = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring1'];
@@ -168,7 +168,7 @@ const KIT = { warden: ['slam', 'stomp', 'quake'], ranger: ['multi', 'arrows', 'v
 function skillTiers(cls) { return []; }
 function skillTiersOld(cls) { const s = CLASSES[cls].skills.filter(id => !SKILLS[id].basic).sort((a, b) => SKILLS[a].lv - SKILLS[b].lv), out = []; for (let i = 0; i + 1 < s.length && out.length < TIER_LV.length; i += 2) out.push([s[i], s[i + 1]]); return out; }
 const CLASS_IDS = Object.keys(CLASSES);
-const NEWS = ['Emberwatch is home now: an inn, a smithy, a windmill, cottages and gardens, and townsfolk with a quest line', 'Faster early levels, big XP for guardians, and every skill starts on autocast', 'Rock music, weather, Ember the fox, badges, Hardcore, a Daily challenge, and chests and shrines you just walk over', 'Blank party code joins other players; your loot is your own and matches your class'];
+const NEWS = ['Parties: see everyone playing and tap Join, no code needed (or tick Solo to play alone)', 'The Rift Stone in town: a timed floor for your party, with a Fastest Rift leaderboard', 'Doran\'s forge turns shards into new gear; quest chapter 2 with five new jobs and a statue for you', 'Unlock new pets with badges: frost owl, ember drake, shadow cat, golden fox', 'Fixes: one announcement per guardian, holding a button on a phone keeps using it, tidier landscape buttons'];
 // achievements (build 0020): badges that show next to your name in chat. They reset with each build, like heroes.
 const ACH = [
   ['blood', '⚔', 'First Blood', 'Defeat your first monster', h => h.kills >= 1],
@@ -196,8 +196,16 @@ const QUESTS = [
   { id: 'pip', by: 'lysa', t: 'Lost in the Wilds', ask: 'My boy Pip chased a fox through the gate and never came back! He is out on the next floor somewhere. Please find him and send him home.', goal: { k: 'rescue', n: 1, item: 'Pip' }, thanks: 'Pip! Oh, you silly boy. Thank you, hero. Your meals at the inn are on the house, forever.', gold: 1.5, rar: 3 },
   { id: 'steel', by: 'doran', t: 'Champion Steel', ask: 'The champions out there, the ones with names over their heads, carry the finest iron. Beat 4 of them and bring me their steel. I will forge you something proper.', goal: { k: 'elite', n: 4, item: 'Champion steel' }, thanks: 'Now that is steel. Hear the forge roar? Take this, fresh from the anvil.', gold: 1.8, rar: 3 },
   { id: 'siege', by: 'roek', t: 'Break the Siege', ask: 'A guardian down in the deep keeps sending raiders at our walls. Slay a floor guardian and Emberwatch can finally sleep.', goal: { k: 'boss', n: 1, item: 'Guardian slain' }, thanks: 'The raids have stopped! Tonight we hang the lanterns and celebrate, and you are the guest of honour.', gold: 2.5, rar: 3 },
+  // chapter 2 (build 0021): jobs from deeper down; the town keeps growing
+  { id: 'lily', by: 'bram', ch: 2, t: 'Frost Lilies for the Fields', ask: 'The soil is tired, hero. Frost Lilies, the kind that only grow from floor 4 down, would wake it up. Bring me 6 and the fields will bloom all year.', goal: { k: 'collect', n: 6, item: 'Frost Lily', c: 0xbfe8ff, p: .2, min: 4 }, thanks: 'Look at them glow! Planted round the well, they will keep the frost off the whole square.', gold: 3, rar: 3 },
+  { id: 'brew', by: 'hesta', ch: 2, t: 'The Witch\'s Brew', ask: 'Those spell-casting monsters out there are brewing something foul, dear. Put down 12 of the casters before their magic reaches our wells.', goal: { k: 'arch', arch: 'caster', n: 12, item: 'Casters defeated' }, thanks: 'Their magic is broken. I have a little of my own for you, too.', gold: 3.2, rar: 3 },
+  { id: 'feast', by: 'lysa', ch: 2, t: 'A Feast for Emberwatch', ask: 'We are throwing a feast for the town, and the larder is empty! Monsters out there carry good meat. Bring me 10 Hams.', goal: { k: 'collect', n: 10, item: 'Ham', c: 0xe08a6a, p: .22 }, thanks: 'A feast fit for a king! Come and sit at the long tables whenever you like.', gold: 3.4, rar: 3 },
+  { id: 'magma', by: 'doran', ch: 2, t: 'Heart of the Mountain', ask: 'The guardians deep down carry hearts of living fire. Slay a guardian on floor 5 or deeper and I will have fire for a hundred years of forging.', goal: { k: 'boss', n: 1, min: 5, item: 'Deep guardian slain' }, thanks: 'Feel that heat! The forge has never burned so hot. Here, the first thing it made is yours.', gold: 4, rar: 3 },
+  { id: 'deep', by: 'roek', ch: 2, t: 'Into the Deep', ask: 'No one from Emberwatch has ever seen floor 10. Get there, and the town will raise a statue in your honour.', goal: { k: 'floor', n: 10, item: 'Deepest floor' }, thanks: 'Floor 10! They are already carving your statue by the gate. Emberwatch will never forget you.', gold: 5, rar: 3 },
 ];
 const BOUNTY = { id: 'bounty', by: 'roek', t: 'Thin the Hordes', ask: 'The roads are still crawling. Defeat 30 monsters out there and I pay a bounty, every time.', goal: { k: 'kills', n: 30, item: 'Monsters defeated' }, thanks: 'Good hunting. Here is your bounty, as promised.', gold: 1, rar: 2, repeat: 1 };
+// pets (build 0021): Ember the fox to start; more looks unlock with badges
+const PETS = [['fox', 'Ember the fox', null], ['owl', 'Frost owl', 'f10'], ['drake', 'Ember drake', 'slayer'], ['cat', 'Shadow cat', 'streak'], ['gold', 'Golden fox', 'myth']];
 const CLASS_COL = { warden: 0xd8a040, ranger: 0x4aa850, arcanist: 0x9a5aff, brawler: 0xe0503a, elementalist: 0xff7a2a };
 const LOOK = {
   vil1: { a: 0x8a6a48, am: 0, d: 0x4a3a2a, cl: 0xc8b088, w: 'none' }, vil2: { a: 0x5a6a3a, am: 0, d: 0x3a3026, cl: 0x6a7a4a, robe: 1, w: 'none' }, vil3: { a: 0x8a3a3a, am: 0, d: 0x3a2a26, cl: 0xa84a3a, robe: 1, w: 'none' }, vil4: { a: 0x4a3a30, am: 0, d: 0x2a2018, cl: 0x5a4a3a, w: 'none' }, vil5: { a: 0x3a4a6a, am: 0, d: 0x2a3040, cl: 0x4a5a8a, w: 'none' }, vil6: { a: 0x6a5a7a, am: 0, d: 0x3a3040, cl: 0x8a7aa0, robe: 1, w: 'none' }, kid: { a: 0x6a8a4a, am: 0, d: 0x3a4a2a, cl: 0x7aa05a, w: 'none' },

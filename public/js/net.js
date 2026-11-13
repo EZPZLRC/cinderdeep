@@ -16,13 +16,13 @@ const NET = (() => {
   function handle(m) {
     if (m.t === 's' && m.o !== undefined) N.online = m.o;
     if (G.inTown && (m.t === 's' || m.t === 'spawn' || m.t === 'die' || m.t === 'dmg' || m.t === 'area' || m.t === 'proj' || m.t === 'fx')) return;
-    if (G.inTown && m.t === 'zone' && !m.sync) { hint('Your party has moved deeper. Take the portal to rejoin them.'); return; }
+    if (G.inTown && m.t === 'zone' && !m.sync && m.rift === undefined) { hint('Your party has moved deeper. Take the portal to rejoin them.'); return; }
     switch (m.t) {
       case 'hello': N.id = m.id; N.room = m.room; N.on = true; G.online = true; G.speed = 1; break;
       case 'error': UI.netFail(m.m); break;
       case 'zone': if (N.retry > 0) { if (N.back && N.back.seed === m.seed) { m.sync = 1; m.pos = [N.back.x, N.back.z]; } N.retry = 0; N.back = null; UI.reconnecting(0); if (G.inTown) { G.away = null; } } if (m.sync && G.away && G.away.seed === m.seed) m.pos = [G.away.x, G.away.z]; enterZone(m); if (m.cleared && m.bossAt) { G.zone.cleared = true; G.zone.objs.push({ kind: 'portal', x: m.bossAt[0], z: m.bossAt[1], name: 'Next floor', used: false }); } UI.netZone(); break;
       case 's': {
-        for (const a of m.e) { const e = find(a[0]); if (!e || !e.alive) continue; e.tx = a[1]; e.tz = a[2]; e.trot = a[3]; e.hp = a[4] > e.hp + e.maxHp * .04 ? a[4] : Math.min(e.hp, a[4]); e.st = STN[a[5]] || 'chase'; if (!e.awake) { e.awake = true; if (e.boss) { SFX.play('boss'); UI.zoneBanner(e.name, 'Guardian of the Hollow'); } } }
+        for (const a of m.e) { const e = find(a[0]); if (!e || !e.alive) continue; e.tx = a[1]; e.tz = a[2]; e.trot = a[3]; e.hp = a[4] > e.hp + e.maxHp * .04 ? a[4] : Math.min(e.hp, a[4]); e.st = STN[a[5]] || 'chase'; if (!e.awake) e.awake = true; /* the boss intro card is the one announcement */ }
         const seen = {};
         for (const a of m.p) {
           if (!a || a[0] === N.id) continue; seen[a[0]] = 1; let p = N.peers[a[0]];
@@ -34,6 +34,7 @@ const NET = (() => {
         break;
       }
       case 'spawn': for (const i of m.ents) { addReplica(i); const e = find(i.id); if (e) ring(e.x, e.z, 0, 2, .4, e.md.e); } break;
+      case 'riftDone': if (G.zone && G.zone.def.rift && !G.riftDone) riftDone(+m.ms || 0, m.tier | 0); break;
       case 'die': { const e = find(m.id); if (e && e.alive) { e.hp = 0; killEnemy(e); } break; }
       case 'dmg': dmgPlayer(+m.v || 0, m.el === 'fire' || m.el === 'cold' || m.el === 'light' ? m.el : 'phys', m.src ? find(m.src) : null); break;
       case 'area': addArea({ x: +m.x, z: +m.z, r: +m.r, delay: +m.delay, owner: 'e', vis: 1, dmg: 0, el: 'phys', c: m.c | 0 }); break;
