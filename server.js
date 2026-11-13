@@ -126,3 +126,8 @@ server.on('upgrade', (req, sock) => {
 });
 setInterval(() => { for (const c of conns) { if (!c.alive) { c.close(); continue; } c.alive = false; c.ctl(9); } }, 25000);
 server.listen(PORT, () => console.log('Cinderdeep server build ' + BUILD + ' listening on port ' + PORT));
+// Keep the free host awake (Lee approved a 10-minute ping, Nov 12). GitHub's scheduled ping only ran a few times a day,
+// so the server also calls its own public address every 10 minutes. Render sets RENDER_EXTERNAL_URL; locally SELF_PING_URL can be used.
+const SELF_URL = process.env.SELF_PING_URL || process.env.RENDER_EXTERNAL_URL;
+function selfPing() { if (!SELF_URL) return; try { const u = new URL('/cinderdeep-server', SELF_URL), mod = u.protocol === 'https:' ? require('https') : http; const rq = mod.get(u, { timeout: 30000 }, r => { r.resume(); lastPing = { at: Date.now(), code: r.statusCode }; }); rq.on('timeout', () => rq.destroy()); rq.on('error', () => { }); } catch (e) { } }
+let lastPing = null; if (SELF_URL) { setTimeout(selfPing, 60000); setInterval(selfPing, (+process.env.SELF_PING_MS || 10 * 60 * 1000)); }

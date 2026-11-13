@@ -1,5 +1,5 @@
 'use strict';
-const BUILD = '0022';
+const BUILD = '0023';
 // Fresh start: every hero and the stash are wiped whenever this number changes. It follows the build, so each new build is a new season.
 const SEASON = BUILD;
 const SLOTS = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring1'];
@@ -168,7 +168,7 @@ const KIT = { warden: ['slam', 'stomp', 'quake'], ranger: ['multi', 'arrows', 'v
 function skillTiers(cls) { return []; }
 function skillTiersOld(cls) { const s = CLASSES[cls].skills.filter(id => !SKILLS[id].basic).sort((a, b) => SKILLS[a].lv - SKILLS[b].lv), out = []; for (let i = 0; i + 1 < s.length && out.length < TIER_LV.length; i += 2) out.push([s[i], s[i + 1]]); return out; }
 const CLASS_IDS = Object.keys(CLASSES);
-const NEWS = ['Parties now hold up to 10 players, and a blank party code matches you with up to 9 others', 'Monsters toughen up or ease off as players join or leave, so the fight always fits the party size', 'A rift no longer pulls teammates out of a fight: it opens once everyone is back in town']
+const NEWS = ['No more loot dry spells: an item at least every 14 kills', 'Clicking the portal, or pressing E or Use next to it, now asks before you go deeper, the same as walking in', 'Phones: the quest box no longer hides under the skill and town buttons', 'Small windows: the First Steps panel no longer covers the hint lines', 'The server now stays awake, so the game should open without a long wait'];
 // achievements (build 0020): badges that show next to your name in chat. They reset with each build, like heroes.
 const ACH = [
   ['blood', '⚔', 'First Blood', 'Defeat your first monster', h => h.kills >= 1],

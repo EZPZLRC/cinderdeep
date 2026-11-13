@@ -145,7 +145,7 @@ function dropItem(x, z, it) { const a = rnd(6.28), d = rnd(.6, 1.8); let dx = x 
 function dropGold(x, z, amt) { const a = rnd(6.28), d = rnd(.4, 1.5); let dx = x + Math.cos(a) * d, dz = z + Math.sin(a) * d; if (blocked(dx, dz, .3)) { dx = x; dz = z; } G.drops.push({ x: dx, z: dz, gold: Math.max(1, Math.round(amt * (1 + (P.stats.gf || 0) / 100))), t: 0 }); }
 function dropLoot(e) {
   const lv = Math.max(e.lvl, G.hero.level), x = e.x, z = e.z; let n = 0, bonus = 0, minR = 0;
-  if (e.boss) { n = 5; bonus = 3; minR = 2; } else if (e.elite === 2) { n = 2; bonus = 1.5; } else if (e.elite === 1) { n = 1 + (Math.random() < .5 ? 1 : 0); bonus = .8; } else if (Math.random() < .12) n = 1;
+  if (e.boss) { n = 5; bonus = 3; minR = 2; } else if (e.elite === 2) { n = 2; bonus = 1.5; } else if (e.elite === 1) { n = 1 + (Math.random() < .5 ? 1 : 0); bonus = .8; } else if (Math.random() < .12 || (G.dry || 0) >= 14) n = 1; /* Lee, Nov 13: never more than 14 plain kills in a row without an item */ G.dry = n ? 0 : (G.dry || 0) + 1;
   for (let i = 0; i < n; i++) { let r = rollRarity(bonus); if (i === 0 && r < minR) r = minR; dropItem(x, z, makeItem(lv, null, r)); }
   if (e.boss || e.elite || Math.random() < .4) dropGold(x, z, (4 + lv * 2.2) * rnd(.6, 1.4) * (e.boss ? 12 : e.elite ? 4 : 1));
 }
@@ -745,7 +745,7 @@ function botStep(dt) {
   }
   if (BOT.t <= 0 || !BOT.path) {
     BOT.t = .35; const f = botField();
-    if (!goal) { let bdist = 1e9, be = null; for (const e of G.ents) { if (!e.alive) continue; const dc = f.dist[cellOf(e.x, e.z)]; if (dc >= 0 && dc < bdist) { bdist = dc; be = e; } } if (be) goal = [be.x, be.z]; else { const po = G.zone.objs.find(o => o.kind === 'portal' && !o.used); if (po) { goal = [po.x, po.z]; act = () => interact(po); } } }
+    if (!goal) { let bdist = 1e9, be = null; for (const e of G.ents) { if (!e.alive) continue; const dc = f.dist[cellOf(e.x, e.z)]; if (dc >= 0 && dc < bdist) { bdist = dc; be = e; } } if (be) goal = [be.x, be.z]; else { const po = G.zone.objs.find(o => o.kind === 'portal' && !o.used); if (po) { goal = [po.x, po.z]; act = () => { po.gone = true; interact(po); }; } } }
     if (!goal) { BOT.path = null; return false; }
     const g = cellOf(goal[0], goal[1]), out = [goal]; if (f.prev[g] >= 0) { let k = g; while (k !== f.s) { k = f.prev[k]; if (k !== f.s) out.push([(k % GW + .5) * CS, ((k / GW | 0) + .5) * CS]); } } BOT.path = out.reverse(); BOT.act = act; BOT.goal = goal;
   }
@@ -957,6 +957,7 @@ function interact(o) {
   else if (o.kind === 'tportal') leaveTown();
   else if (o.kind === 'npc') UI.openFolk && UI.openFolk(o.id);
   else if (o.kind === 'lost') { o.used = true; o.runT = G.time; tqAdd('rescue'); SFX.play('shrine'); burst(o.x, 1.2, o.z, 0xff9ad0, 24, 5); hint('Pip: "You found me! I will run straight home to Mum!"'); }
+  else if ((o.kind === 'portal' || o.kind === 'pback') && !o.gone && typeof UI !== 'undefined' && UI.askGate) { UI.askGate(o); return; } /* click, E or the phone Use button: ask before leaving the floor, like walking in */
   else if (o.kind === 'portal') { if (G.online) NET.send({ t: 'next' }); else { if (!G.zone.def.rift) G.hero.depth = (G.hero.depth || 0) + 1; enterZone(); } }
   else if (o.kind === 'rift') UI.openRift && UI.openRift();
   else if (o.kind === 'pback') { if (G.online) NET.send({ t: 'prev' }); else { G.hero.depth = Math.max(0, (G.hero.depth || 0) - 1); enterZone(); } }

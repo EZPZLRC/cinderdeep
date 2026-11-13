@@ -306,7 +306,7 @@ body.tj #xp{height:16px!important}body.tj #xp #xpT{line-height:14px;font-size:10
  #goals{width:min(200px,54vw)!important;font-size:11px!important;line-height:1.28!important;padding:4px 7px!important}#goals .how{font-size:10.5px}
  #questBox{width:112px!important;font-size:10.5px!important;padding:4px 6px!important}
  #mini{width:100px!important;height:100px!important}
- #tbtns{gap:7px!important}#tbtns button{width:46px!important;height:46px!important;font-size:11px!important}
+ #tbtns{gap:7px!important}#tbtns button{width:46px!important;height:46px!important;font-size:11px!important}body.tj #tbtns{top:calc(210px + env(safe-area-inset-top))!important}#questBox{max-height:84px;overflow:hidden}
  #streak{top:46%!important}#streak .s1{font-size:24px!important}#streak .s2{font-size:9px!important}#streak .s3{font-size:10px!important}
  #top .n{font-size:13px}#top .g{font-size:11.5px}
 }
@@ -316,8 +316,8 @@ body.tj #xp{height:16px!important}body.tj #xp #xpT{line-height:14px;font-size:10
  #goals{top:calc(96px + env(safe-area-inset-top))!important;bottom:auto!important;left:calc(8px + env(safe-area-inset-left))!important;width:min(250px,32vw)!important;font-size:11px!important;line-height:1.28!important;padding:4px 7px!important}#goals .how{font-size:10.5px!important}
  body.bossOn #goals{display:none!important}
  #party{left:calc(8px + env(safe-area-inset-left))!important;right:auto!important;top:calc(176px + env(safe-area-inset-top))!important;width:140px!important;max-height:84px;overflow:auto}#party .pth{text-align:left!important}#party button{padding:5px 8px!important;font-size:11.5px!important}
- #questBox{top:calc(122px + env(safe-area-inset-top))!important;right:calc(12px + env(safe-area-inset-right))!important;width:110px!important;font-size:10.5px!important;line-height:1.28!important;padding:4px 6px!important;max-height:76px;overflow:hidden}
- #mini{width:104px!important;height:104px!important}
+ #questBox{top:calc(108px + env(safe-area-inset-top))!important;right:calc(12px + env(safe-area-inset-right))!important;width:110px!important;font-size:10.5px!important;line-height:1.28!important;padding:4px 6px!important;max-height:calc(100vh - 292px);max-height:calc(100dvh - 292px);overflow:hidden}
+ #mini{width:92px!important;height:92px!important}
  #ctl button{width:32px!important;height:32px!important}#ctl #bMenu::before,#ctl #bSet::before,#ctl #bLb::before,#ctl #bInvite::before,#ctl #bLeave::before{font-size:14px!important}
  #tbtns button{width:44px!important;height:44px!important;font-size:10.5px!important}
  #bossbar{top:calc(58px + env(safe-area-inset-top))!important}
@@ -331,6 +331,7 @@ body.tj #xp{height:16px!important}body.tj #xp #xpT{line-height:14px;font-size:10
 #ctl #bParty::before{content:"⚑";font-size:16px}
 #riftT{display:block;margin:0 0 6px;text-align:center;padding:3px 8px;border-radius:12px;background:rgba(40,16,60,.85);border:1px solid #b070ff;color:#f0e0ff;font-weight:700;font-size:14px;letter-spacing:.08em;box-shadow:0 0 14px rgba(176,112,255,.5)}
 #soloWrap{display:flex;align-items:center;gap:5px;font-size:13px;color:#c8bca0;cursor:pointer;padding:6px 10px;border:1px solid #4a3d28;border-radius:4px;background:rgba(20,16,10,.7)}
+@media (pointer:fine) and (max-height:640px){#goals{font-size:11.5px!important;line-height:1.3!important;top:140px}}/* short desktop windows: first steps panel stays clear of the hint lines */
 </style>
 </head>
 <body>
@@ -410,10 +411,10 @@ body.tj #xp{height:16px!important}body.tj #xp #xpT{line-height:14px;font-size:10
   <div id="news"></div>
   <div id="mfoot"><button id="mInvite" class="hide">Share the game</button><button id="mTip" class="hide">♥ Support the game</button><button id="mFeed" class="hide">Send feedback</button></div>
 </div>
-<script src="js/gl.js?v=0022"></script>
-<script src="js/data.js?v=0022"></script>
-<script src="js/game.js?v=0022"></script>
-<script src="js/net.js?v=0022"></script>
-<script src="js/ui.js?v=0022"></script>
+<script src="js/gl.js?v=0023"></script>
+<script src="js/data.js?v=0023"></script>
+<script src="js/game.js?v=0023"></script>
+<script src="js/net.js?v=0023"></script>
+<script src="js/ui.js?v=0023"></script>
 </body>
 </html>
