@@ -1,5 +1,5 @@
 'use strict';
-const BUILD = '0019';
+const BUILD = '0020';
 // Fresh start: every hero and the stash are wiped whenever this number changes. It follows the build, so each new build is a new season.
 const SEASON = BUILD;
 const SLOTS = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring1'];
@@ -168,9 +168,39 @@ const KIT = { warden: ['slam', 'stomp', 'quake'], ranger: ['multi', 'arrows', 'v
 function skillTiers(cls) { return []; }
 function skillTiersOld(cls) { const s = CLASSES[cls].skills.filter(id => !SKILLS[id].basic).sort((a, b) => SKILLS[a].lv - SKILLS[b].lv), out = []; for (let i = 0; i + 1 < s.length && out.length < TIER_LV.length; i += 2) out.push([s[i], s[i + 1]]); return out; }
 const CLASS_IDS = Object.keys(CLASSES);
-const NEWS = ['Heroes got a makeover: ink outlines, fuller hair, straps, pouches, knee guards and boot cuffs', 'Smoother lighting on characters, and no more dotted screen under trees', 'Auto-potion: right-click the potion (or tap its A) to drink by yourself below half life', 'Everyone starts fresh this build. Race to the top!'];
+const NEWS = ['Emberwatch is home now: an inn, a smithy, a windmill, cottages and gardens, and townsfolk with a quest line', 'Faster early levels, big XP for guardians, and every skill starts on autocast', 'Rock music, weather, Ember the fox, badges, Hardcore, a Daily challenge, and chests and shrines you just walk over', 'Blank party code joins other players; your loot is your own and matches your class'];
+// achievements (build 0020): badges that show next to your name in chat. They reset with each build, like heroes.
+const ACH = [
+  ['blood', '⚔', 'First Blood', 'Defeat your first monster', h => h.kills >= 1],
+  ['slayer', '♜', 'Guardian Slayer', 'Defeat a floor guardian', h => h.runs >= 1],
+  ['f5', '▼', 'Delver', 'Reach floor 5', h => (h.depth || 0) + 1 >= 5],
+  ['f10', '◆', 'Deep Diver', 'Reach floor 10', h => (h.depth || 0) + 1 >= 10],
+  ['f20', '✦', 'Abyss Walker', 'Reach floor 20', h => (h.depth || 0) + 1 >= 20],
+  ['l10', '★', 'Seasoned', 'Reach level 10', h => h.level >= 10],
+  ['l30', '✪', 'Veteran', 'Reach level 30', h => h.level >= 30],
+  ['leg', '♛', 'Golden Find', 'Find a Legendary item', h => !!h.f3],
+  ['myth', '❖', 'Mythic Find', 'Find a Mythic item', h => !!h.f4],
+  ['streak', '☄', 'Unstoppable', 'Reach a 50 kill streak', h => (h.best || 0) >= 50],
+];
+// townsfolk of Emberwatch and their quests (build 0020): talk to them in town, go out into the world, come home for a reward
+const FOLK = {
+  bram: { n: 'Bram the Miller', look: 'vil1', at: [-2.8, -15.4], hair: 0x8a8070, beard: 1 },
+  hesta: { n: 'Old Hesta', look: 'vil2', at: [-14.2, 3.4], hair: 0xd8d4cc },
+  lysa: { n: 'Lysa the Innkeeper', look: 'vil3', at: [-8.0, -10.6], hair: 0xa8502a },
+  doran: { n: 'Doran the Smith', look: 'vil4', at: [9.0, -11.8], hair: 0x1a1410, beard: 1 },
+  roek: { n: 'Captain Roek', look: 'vil5', at: [-2.6, 12.0], hair: 0x3a2a1a, guard: 1 },
+};
+const QUESTS = [
+  { id: 'grain', by: 'bram', t: 'The Stolen Grain', ask: 'Raiders from the Hollow smashed my mill cart and ran off with the grain. Monsters out there carry the sacks now. Bring me 6 Sacks of Grain and the mill turns again.', goal: { k: 'collect', n: 6, item: 'Sack of Grain', c: 0xe0c070, p: .22 }, thanks: 'My grain! Listen to that, the sails are turning again. Emberwatch eats tonight, thanks to you.', gold: 1, rar: 2 },
+  { id: 'herbs', by: 'hesta', t: 'Glowcaps for the Fever', ask: 'A fever is spreading through the town, dear. Glowcaps sprout where monsters fall in the wilds. Gather 5 for my brew, would you?', goal: { k: 'collect', n: 5, item: 'Glowcap', c: 0x8affc0, p: .18 }, thanks: 'Lovely, still glowing. The fever will break by morning. Look, my garden is blooming again too.', gold: 1.2, rar: 2 },
+  { id: 'pip', by: 'lysa', t: 'Lost in the Wilds', ask: 'My boy Pip chased a fox through the gate and never came back! He is out on the next floor somewhere. Please find him and send him home.', goal: { k: 'rescue', n: 1, item: 'Pip' }, thanks: 'Pip! Oh, you silly boy. Thank you, hero. Your meals at the inn are on the house, forever.', gold: 1.5, rar: 3 },
+  { id: 'steel', by: 'doran', t: 'Champion Steel', ask: 'The champions out there, the ones with names over their heads, carry the finest iron. Beat 4 of them and bring me their steel. I will forge you something proper.', goal: { k: 'elite', n: 4, item: 'Champion steel' }, thanks: 'Now that is steel. Hear the forge roar? Take this, fresh from the anvil.', gold: 1.8, rar: 3 },
+  { id: 'siege', by: 'roek', t: 'Break the Siege', ask: 'A guardian down in the deep keeps sending raiders at our walls. Slay a floor guardian and Emberwatch can finally sleep.', goal: { k: 'boss', n: 1, item: 'Guardian slain' }, thanks: 'The raids have stopped! Tonight we hang the lanterns and celebrate, and you are the guest of honour.', gold: 2.5, rar: 3 },
+];
+const BOUNTY = { id: 'bounty', by: 'roek', t: 'Thin the Hordes', ask: 'The roads are still crawling. Defeat 30 monsters out there and I pay a bounty, every time.', goal: { k: 'kills', n: 30, item: 'Monsters defeated' }, thanks: 'Good hunting. Here is your bounty, as promised.', gold: 1, rar: 2, repeat: 1 };
 const CLASS_COL = { warden: 0xd8a040, ranger: 0x4aa850, arcanist: 0x9a5aff, brawler: 0xe0503a, elementalist: 0xff7a2a };
 const LOOK = {
+  vil1: { a: 0x8a6a48, am: 0, d: 0x4a3a2a, cl: 0xc8b088, w: 'none' }, vil2: { a: 0x5a6a3a, am: 0, d: 0x3a3026, cl: 0x6a7a4a, robe: 1, w: 'none' }, vil3: { a: 0x8a3a3a, am: 0, d: 0x3a2a26, cl: 0xa84a3a, robe: 1, w: 'none' }, vil4: { a: 0x4a3a30, am: 0, d: 0x2a2018, cl: 0x5a4a3a, w: 'none' }, vil5: { a: 0x3a4a6a, am: 0, d: 0x2a3040, cl: 0x4a5a8a, w: 'none' }, vil6: { a: 0x6a5a7a, am: 0, d: 0x3a3040, cl: 0x8a7aa0, robe: 1, w: 'none' }, kid: { a: 0x6a8a4a, am: 0, d: 0x3a4a2a, cl: 0x7aa05a, w: 'none' },
   warden: { a: 0x8e97a8, am: 4, d: 0x3c4250, cl: 0x6e2420, head: 'helm', pauld: 1, shield: 1, cape: 1, w: 'sword' },
   ranger: { a: 0x4f5c38, am: 0, d: 0x3d3326, cl: 0x2c4a2a, head: 'hood', cape: 1, w: 'bow' },
   arcanist: { a: 0x4a3a80, am: 0, d: 0x2c2448, cl: 0x7a52c8, head: 'hat', robe: 1, w: 'staff', orb: 0xb070ff },
@@ -190,15 +220,15 @@ const EMODS = {
 };
 const THEMES = {
   town: { amb: 'fly', wet: 0.45, mist: 0.2, ground: 0x4e5632, gdet: .4, wall: 'tree', wc: [0x4a382a, 0x24402a, 0x2f4f2c], sunC: [1.2, 1.0, .74], sky: [.16, .2, .26], gnd: [.07, .08, .06], fog: 0x0a1012, torch: 0xffb070, lightR: 46, lamp: 0xffa040 },
-  forest: { amb: 'fly', wet: 0.8, mist: 0.5, ground: 0x485a30, gdet: .4, wall: 'tree', wc: [0x4a382a, 0x24402a, 0x2f4f2c], sunC: [1.15, .98, .72], sky: [.13, .18, .24], gnd: [.06, .07, .05], fog: 0x080e10, torch: 0xffb070, lightR: 34, lamp: 0x7dff6a, elem: 'phys',
+  forest: { wx: 'rain', amb: 'fly', wet: 0.8, mist: 0.5, ground: 0x485a30, gdet: .4, wall: 'tree', wc: [0x4a382a, 0x24402a, 0x2f4f2c], sunC: [1.15, .98, .72], sky: [.13, .18, .24], gnd: [.06, .07, .05], fog: 0x080e10, torch: 0xffb070, lightR: 34, lamp: 0x7dff6a, elem: 'phys',
     mon: [{ a: 'grunt', n: 'Rotting Husk', c: 0x6b7a4a, c2: 0x3a4226, e: 0xd0ff60 }, { a: 'swarm', n: 'Blight Crawler', c: 0x4a3a2a, c2: 0x7a9a3a, e: 0xc0ff40 }, { a: 'caster', n: 'Spore Seer', c: 0x3a5a3a, c2: 0x9adf5a, e: 0xa0ff70 }, { a: 'brute', n: 'Mossback', c: 0x4a5a3a, c2: 0x2a3a22, e: 0xffe060 }] },
   crypt: { amb: 'dust', wet: 0.6, mist: 0.6, ground: 0x3a3c46, gdet: .22, wall: 'block', wc: [0x4a4d5a, 0x3a3d48, 0x5a5d6a], sunC: [.32, .36, .5], sky: [.12, .13, .2], gnd: [.05, .05, .07], fog: 0x05060a, torch: 0xffb070, lightR: 25, lamp: 0x6aa8ff, elem: 'cold',
     mon: [{ a: 'grunt', n: 'Bonewalker', c: 0xd8d2bc, c2: 0x6a6658, e: 0x7ad0ff }, { a: 'swarm', n: 'Crypt Rat', c: 0x5a5048, c2: 0x3a3430, e: 0xff5050 }, { a: 'caster', n: 'Grave Chanter', c: 0x3a3a5a, c2: 0x8a9aff, e: 0x9ab0ff }, { a: 'brute', n: 'Tomb Guardian', c: 0x7a7a86, c2: 0x4a4a56, e: 0x70c0ff }, { a: 'bomber', n: 'Corpse Bloat', c: 0x8a9a6a, c2: 0x5a6a3a, e: 0xc0ff60 }] },
-  lava: { amb: 'ember', wet: 0, mist: 0.3, ground: 0x3a2620, gdet: .45, wall: 'rock', wc: [0x2a2020, 0x3a2a26, 0xff5a1a], sunC: [.6, .34, .2], sky: [.22, .1, .07], gnd: [.1, .04, .03], fog: 0x0c0403, torch: 0xff9050, lightR: 27, lamp: 0xff5a1a, elem: 'fire',
+  lava: { wx: 'ash', amb: 'ember', wet: 0, mist: 0.3, ground: 0x3a2620, gdet: .45, wall: 'rock', wc: [0x2a2020, 0x3a2a26, 0xff5a1a], sunC: [.6, .34, .2], sky: [.22, .1, .07], gnd: [.1, .04, .03], fog: 0x0c0403, torch: 0xff9050, lightR: 27, lamp: 0xff5a1a, elem: 'fire',
     mon: [{ a: 'grunt', n: 'Cinder Thrall', c: 0x5a3028, c2: 0x2a1a18, e: 0xff7a2a }, { a: 'swarm', n: 'Ember Imp', c: 0xa03a20, c2: 0x5a2010, e: 0xffc040 }, { a: 'caster', n: 'Flame Herald', c: 0x4a2020, c2: 0xff7a2a, e: 0xffa040 }, { a: 'brute', n: 'Magma Hulk', c: 0x3a2a2a, c2: 0xff5a1a, e: 0xff8a2a }, { a: 'bomber', n: 'Living Bomb', c: 0xc04a1a, c2: 0x6a2a10, e: 0xffe060 }] },
-  ice: { amb: 'snow', wet: .25, mist: .15, ground: 0x7a8a9a, gdet: .2, wall: 'crystal', wc: [0x8ac0e0, 0xc0e0f0, 0x5a90c0], sunC: [.55, .65, .8], sky: [.2, .26, .36], gnd: [.08, .1, .14], fog: 0x0a1018, torch: 0xffd0a0, lightR: 29, lamp: 0x8ae0ff, elem: 'cold',
+  ice: { wx: 'snow', torchI: .55, amb: 'snow', wet: .06, mist: .1, ground: 0x3a4656, gdet: .2, wall: 'crystal', wc: [0x5a86a6, 0x7a9cb4, 0x3a6488], sunC: [.4, .47, .6], sky: [.12, .16, .23], gnd: [.045, .06, .085], fog: 0x0a1018, torch: 0xffd0a0, lightR: 29, lamp: 0x8ae0ff, elem: 'cold',
     mon: [{ a: 'grunt', n: 'Frostbitten', c: 0x7a9ab0, c2: 0x3a5a70, e: 0xc0f0ff }, { a: 'swarm', n: 'Ice Skitter', c: 0xa0d0e0, c2: 0x5a8aa0, e: 0xffffff }, { a: 'caster', n: 'Rime Witch', c: 0x4a6a9a, c2: 0xc0f0ff, e: 0xa0e0ff }, { a: 'brute', n: 'Glacial Yeti', c: 0xd0e0e8, c2: 0x8aa0b0, e: 0x60c0ff }] },
-  void: { amb: 'dust', wet: 0.4, mist: 0.35, ground: 0x241c30, gdet: .4, wall: 'pillar', wc: [0x1c1426, 0x3a2a56, 0xb060ff], sunC: [.4, .28, .6], sky: [.14, .09, .22], gnd: [.05, .03, .08], fog: 0x07040c, torch: 0xd0a0ff, lightR: 26, lamp: 0xb060ff, elem: 'light',
+  void: { wx: 'motes', amb: 'dust', wet: 0.4, mist: 0.35, ground: 0x241c30, gdet: .4, wall: 'pillar', wc: [0x1c1426, 0x3a2a56, 0xb060ff], sunC: [.4, .28, .6], sky: [.14, .09, .22], gnd: [.05, .03, .08], fog: 0x07040c, torch: 0xd0a0ff, lightR: 26, lamp: 0xb060ff, elem: 'light',
     mon: [{ a: 'grunt', n: 'Voidspawn', c: 0x3a2a56, c2: 0x1c1426, e: 0xd080ff }, { a: 'swarm', n: 'Null Mite', c: 0x5a3a8a, c2: 0x2a1a46, e: 0xff80ff }, { a: 'caster', n: 'Rift Oracle', c: 0x2a1a46, c2: 0xb060ff, e: 0xfff07a }, { a: 'brute', n: 'Abyssal Maw', c: 0x2a2036, c2: 0x7a3ac0, e: 0xff60d0 }, { a: 'bomber', n: 'Unstable Wisp', c: 0x9a5aff, c2: 0x5a2ac0, e: 0xffffff }] }
 };
 // Two guardians per region: which one you meet depends on the floor.
@@ -252,7 +282,7 @@ const TREE = (() => {
   return { nodes };
 })();
 // Kills needed per level: about 45 at level 1, 330 at level 10, 2,300 at level 30, 6,400 at level 59 (elites and bosses count for more).
-function xpNeed(l) { return Math.round(22 * Math.pow(1.13, l) * (30 + l * 14 + l * l * 1.6)); }
+function xpNeed(l) { return Math.round(22 * Math.pow(1.13, l) * (30 + l * 14 + l * l * 1.6) * Math.min(1, .3 + l * .05)); } // Lee, Nov 13: level faster early on (35% of the old need at level 1, back to full by level 14)
 function paragonNeed(p) { return Math.round(xpNeed(MAX_LEVEL - 1) * (1 + p * .05)); }
 const PARAGON = { dmg: ['Damage', '+1% damage', 0], life: ['Life', '+1% maximum life', 0], armor: ['Armor', '+2% armor', 0], crit: ['Critical damage', '+2% critical damage', 0], mf: ['Magic find', '+1% magic find', 0], ms: ['Move speed', '+1% movement speed', 25] };
 const MAX_LEVEL = 60;

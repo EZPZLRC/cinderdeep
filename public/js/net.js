@@ -39,7 +39,7 @@ const NET = (() => {
       case 'area': addArea({ x: +m.x, z: +m.z, r: +m.r, delay: +m.delay, owner: 'e', vis: 1, dmg: 0, el: 'phys', c: m.c | 0 }); break;
       case 'proj': G.projs.push({ x: +m.x, z: +m.z, vx: +m.vx, vz: +m.vz, life: 3, r: .45, dmg: 0, el: 'phys', vis: 1, c: GLX.col(m.c | 0) }); break;
       case 'fx': if (m.k === 'p') G.projs.push({ x: +m.x, z: +m.z, vx: Math.sin(+m.rot) * +m.r, vz: Math.cos(+m.rot) * +m.r, life: clamp(+m.arc || .5, .1, 2), r: .4, dmg: 0, el: 'phys', vis: 1, peer: 1, c: GLX.col(m.c | 0) }); else if (m.k === 's') G.fx.push({ slash: 1, x: +m.x, z: +m.z, rot: +m.rot, r: +m.r, arc: +m.arc, life: .16, max: .16, c: GLX.col(0xfff0d0) }); else ring(+m.x, +m.z, .5, +m.r, .35, m.c || 0xffc890); break;
-      case 'chat': UI.chat(txt(m.n, 16), txt(m.m, 140), m.g ? 'g' : 'p'); break;
+      case 'chat': { const bd = typeof m.b === 'string' && ACH.some(a => a[1] === m.b) ? m.b + ' ' : ''; UI.chat(bd + txt(m.n, 16), txt(m.m, 140), m.g ? 'g' : 'p'); break; }
       case 'found': UI.chat('', txt(m.n, 16) + ' found a ' + (m.r === 4 ? 'Mythic' : 'Legendary') + ' item: ' + txt(m.item, 60), m.r === 4 ? 'm' : 'l'); if (m.r === 4) SFX.play('drop1'); break;
       case 'join': if (m.name !== N.me && N.quiet('j' + m.name)) UI.chat('', txt(m.name, 16) + ' joined the party.', 's'); break;
       case 'leave': delete N.peers[m.id]; if (m.name !== N.me && N.quiet('l' + m.name)) UI.chat('', txt(m.name, 16) + ' left the party.', 's'); break;
@@ -63,7 +63,7 @@ const NET = (() => {
       const p = N.peers[id], k = Math.min(1, dt * 10), ox = p.x, oz = p.z; p.x += (p.tx - p.x) * k; p.z += (p.tz - p.z) * k; let da = p.trot - p.rot; while (da > Math.PI) da -= 6.2832; while (da < -Math.PI) da += 6.2832; p.rot += da * k;
       p.walk += Math.hypot(p.x - ox, p.z - oz) * 1.5; p.mv += ((p.tmv ? 1 : 0) - p.mv) * Math.min(1, dt * 12); p.y = p.dash ? 1.6 : 0; if (p.act) { p.swing += dt / .4; if (p.swing >= 1) p.swing = 0; }
     }
-    acc += dt; if (acc >= .1) { acc = 0; N.send({ t: 'p', x: r2(P.x), z: r2(P.z), r: r2(P.rot), mv: P.moving ? 1 : 0, a: P.spin ? 3 : P.dash ? 4 : P.act ? (P.act.sk.type === 'nova' ? 2 : 1) : 0, hp: Math.round(clamp(P.hp / P.stats.maxLife, 0, 1) * 100), lvl: G.hero.level, pl: G.hero.plvl || 0, dp: (G.hero.depth || 0) + 1, dead: P.dead || G.inTown ? 1 : 0, g: P.gc || '' }); }
+    acc += dt; if (acc >= .1) { acc = 0; N.send({ t: 'p', x: r2(P.x), z: r2(P.z), r: r2(P.rot), mv: P.moving ? 1 : 0, a: P.spin ? 3 : P.dash ? 4 : P.act ? (P.act.sk.type === 'nova' ? 2 : 1) : 0, hp: Math.round(clamp(P.hp / P.stats.maxLife, 0, 1) * 100), lvl: G.hero.level, pl: G.hero.plvl || 0, dp: (G.hero.depth || 0) + 1, hc: G.hero.hc ? 1 : 0, fc: G.hero.maxClear || 0, dead: P.dead || G.inTown ? 1 : 0, g: P.gc || '' }); }
   };
   return N;
 })();

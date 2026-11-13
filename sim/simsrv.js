@@ -7,7 +7,7 @@ function r2(v) { return Math.round(v * 100) / 100; }
 function entInfo(e) { return { id: e.id, md: e.md, arch: e.arch, x: r2(e.x), z: r2(e.z), rot: r2(e.rot), lvl: e.lvl, elite: e.elite, pack: e.pack, r: e.r, sc: e.sc, maxHp: e.maxHp, hp: Math.round(e.hp), dmg: e.dmg, spd: e.spd, name: e.name, mods: e.mods, boss: !!e.boss, awake: !!e.awake, noLoot: !!e.noLoot }; }
 let depth = 0;
 function srvNewZone(lvl, nPlayers, next) {
-  if (next === 'prev') depth = Math.max(0, depth - 1); else if (next) depth++; const zd = zoneFor(depth), def = { type: 'zone', theme: zd.theme, lvl: Math.max(1, lvl | 0), seed: (Math.random() * 1e9) | 0, name: zd.name, depth: depth + 1 };
+  if (next === 'prev') depth = Math.max(0, depth - 1); else if (next) depth++; const zd = zoneFor(depth), def = { type: 'zone', theme: zd.theme, lvl: Math.max(1, lvl | 0), seed: typeof DAILY === 'number' ? (Math.imul(DAILY ^ (depth + 1), 2654435761) >>> 0) % 1000000000 : (Math.random() * 1e9) | 0, name: zd.name, depth: depth + 1 };
   G.zone = genZone(def); G.ents.length = 0; G.projs.length = 0; G.areas.length = 0; G.boss = null; spawnAll(G.zone);
   const k = 1 + .5 * Math.max(0, nPlayers - 1); known = new Set();
   for (const e of G.ents) { e.maxHp = Math.round(e.maxHp * k); e.hp = e.maxHp; known.add(e.id); }
@@ -36,6 +36,7 @@ function srvHit(pid, m) {
 }
 function srvTick(dt) {
   G.time += dt; const all = Object.values(SP), pl = all.filter(p => !p.dead);
+  repop(dt, all.filter(p => p.x > -900)); // monsters slowly repopulate the floor, far from every player
   if (all.length && !pl.length) { for (const e of G.ents) if (e.alive && e.awake) { e.awake = false; e.st = 'chase'; if (e.boss) { e.hp = e.maxHp; e.x = G.zone.bossAt[0]; e.z = G.zone.bossAt[1]; } } }
   const act = [];
   for (const e of G.ents) {
@@ -58,7 +59,7 @@ function srvTick(dt) {
     if (a.t >= a.delay + .05) G.areas.splice(i, 1);
   }
   G.fx.length = 0; G.texts.length = 0; G.hints.length = 0; G.drops.length = 0;
-  const ns = []; for (const e of G.ents) if (!known.has(e.id)) { known.add(e.id); ns.push(entInfo(e)); } if (ns.length) __emit(null, { t: 'spawn', ents: ns });
+  const ns = []; for (const e of G.ents) if (!known.has(e.id)) { known.add(e.id); if (!e.boss) { const k = 1 + .5 * Math.max(0, all.length - 1); e.maxHp = Math.round(e.maxHp * k); e.hp = e.maxHp; } ns.push(entInfo(e)); } if (ns.length) __emit(null, { t: 'spawn', ents: ns });
 }
 function srvSnap() { const o = []; for (const e of G.ents) if (e.alive && e.awake) o.push([e.id, r2(e.x), r2(e.z), r2(e.rot), Math.max(0, Math.round(e.hp)), ST[e.st] | 0]); return o; }
 function srvCleared() { return !!(G.zone && G.zone.cleared); }
