@@ -20,18 +20,11 @@ The server has no dependencies.
 
 ## How online play works
 
-<<<<<<< Updated upstream
-- On the menu, type a name and a party code, then press Play online. Everyone who types the same code plays together (up to 10). Leave the code blank for the public world.
-- Monsters live on the server, so everyone sees and fights the same ones. Their life scales up with party size.
-- Loot is personal. Shift-click an item in the bag (or tap it and choose Give) to hand it to the nearest player.
-- Town (T) is private to each player for now. Taking the town portal returns you to your party.
-=======
 - On the menu, pick a hero and press Play. With the party code left blank you join other players automatically. Type a code to play with friends (up to 10 in a party), or tick Solo to play alone.
 - In the game, the Parties button lists everyone playing; tap Join to move to their party. Leave party puts you on your own.
 - Monsters live on the server, so everyone in a party fights the same ones. Their life scales with party size.
 - Loot is personal: every player in a kill gets their own drops. Give an item to the nearest player from the bag.
 - Town is private to each player. The town portal returns you to your party. The Rift Stone in town opens a timed floor for the whole party.
->>>>>>> Stashed changes
 - Press Enter to chat.
 - Heroes and the stash are saved in each player's own browser. The server keeps only the leaderboard.
 
