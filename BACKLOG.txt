@@ -38,3 +38,11 @@ Death behaves two different ways. First death: respawned in place, fine. Second 
 The controls wording misleads new players. Left mouse is both move and attack, the controls list uses melee wording ("hold to keep swinging") for a bow class, skill slots show unexplained Focus costs, MENU exits the game instead of pausing, and level-up choices pop up mid-fight. Pause the game for level-up picks and make MENU a pause.
 Quest guidance breaks at the edges. The GPS dots run off the minimap, the portal is an unlabelled red glow, and the quest text stayed on "Find and slay Warden of Bones" after he was already dead. Label the portal and update the quest the moment a guardian falls.
 What did work this time: zero disconnects in 38 minutes, and the Ranger's skills (Rain of Arrows, Multishot) read clearly when I could see them.
+Approved for build 0017 (Lee said "Yes please" on Nov 12):
+- Weather per region (forest rain, lava ash, ice snowfall)
+- Kill streak popups ("x10 Rampage!") with a small bonus
+- Daily challenge floor: same seed for everyone each day, own leaderboard
+- Boss intro cards: name slams on screen, short camera pan
+- Pets: tiny companion that follows you and picks up gold
+- Achievements: badges ("First Mythic", "Floor 20") shown by your name in chat
+- Hardcore heroes: one life, skull marker on the leaderboard

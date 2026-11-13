@@ -16,6 +16,7 @@ html,body{height:100%;overflow:hidden;background:#07090a;color:#e8e2d4;font-fami
 button{font:inherit;color:#f3ead6;background:#3a2c1c;border:1px solid #8a6a3a;border-radius:4px;padding:8px 16px;cursor:pointer}
 button:hover{background:#523d24;border-color:#d0a050}
 button.big{font-size:18px;padding:12px 34px;letter-spacing:.06em}
+#top{display:grid;grid-template-columns:auto 1fr;column-gap:9px;align-content:start}#top>*:not(#port){grid-column:2}#port{grid-column:1;grid-row:1/span 4;width:52px;height:52px;filter:drop-shadow(0 2px 6px #000)}@media (max-width:760px),(max-height:480px){#port{width:36px;height:36px}#top{column-gap:6px}}#hurtFx{position:fixed;inset:0;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 45%,rgba(190,10,0,.85) 100%);z-index:4}
 #top{position:fixed;left:14px;top:12px;text-shadow:0 1px 3px #000;pointer-events:none}
 #top .n{font-size:16px;font-weight:600}#top .g{color:#ffd84a;margin-top:2px}#top .z{color:#a9b3a0;margin-top:2px;font-size:12px}
 #mini{position:fixed;right:12px;top:12px;width:170px;height:170px;border:2px solid #c9a45a;border-radius:4px;background:rgba(5,8,6,.72);pointer-events:none;box-shadow:0 0 0 1px #000,0 2px 10px #000}
@@ -86,6 +87,7 @@ input{font:inherit;color:#f3ead6;background:#14110c;border:1px solid #8a6a3a;bor
 #tip .up,.up{color:#5aff7a}.dn{color:#ff6a5a}
 @media (max-width:760px){#inv,#town{--c:27px;--d:25px;left:6px;right:80px;width:auto;top:50px;bottom:86px;padding:8px}#town{z-index:11;bottom:auto;max-height:46vh}#inv{top:calc(46vh + 56px)}#town.hide+#inv{top:50px}.olist{columns:1}.hl b{font-size:14px}#stats{font-size:11px}}
 @media (max-height:480px){#inv,#town{--c:27px;--d:22px;top:6px;bottom:6px}#inv{left:auto;right:84px;width:calc(var(--c)*10 + 44px)}#town{left:6px;right:auto;max-height:none;width:calc(100vw - var(--c)*10 - 150px)}}
+#lb{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:46;width:min(560px,94vw);max-height:88vh;overflow:auto;background:rgba(14,12,9,.97);border:1px solid #8a6a3a;border-radius:6px;padding:14px 16px;text-align:left}#lb h2{margin:0 0 4px;font-size:18px;letter-spacing:.12em;color:#f0d890;text-align:center}#lb .sub{text-align:center;font-size:12px;color:#a89a80;margin-bottom:10px}#lb .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}@media (max-width:520px){#lb .cols{grid-template-columns:1fr}}#lb h3{font-size:13px;margin:0 0 6px;color:#d8c8a0;letter-spacing:.08em}#lb ol{margin:0;padding:0;list-style:none}#lb li{display:flex;gap:8px;align-items:center;padding:5px 6px;border-bottom:1px solid #2a2218;font-size:13px}#lb li .r{width:20px;color:#8a7a5a;text-align:right}#lb li .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#lb li .v{color:#f0d890;font-variant-numeric:tabular-nums}#lb li.me{background:rgba(240,216,144,.08)}#lb li .dot{width:9px;height:9px;border-radius:50%;flex:none}#lb .x{display:block;margin:12px auto 0}
 #set{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:45;width:min(380px,92vw);max-height:90vh;overflow:auto;background:rgba(14,12,9,.97);border:1px solid #8a6a3a;border-radius:6px;padding:14px;text-align:left}#set label{display:flex;align-items:center;gap:10px;justify-content:space-between;margin:10px 0;font-size:14px;flex-wrap:wrap}#set input[type=range]{width:100%}#set input[type=checkbox]{width:20px;height:20px;order:-1}#set label:has(input[type=checkbox]){justify-content:flex-start}select{font:inherit;color:#f3ead6;background:#14110c;border:1px solid #8a6a3a;border-radius:4px;padding:6px 8px}#ctl{flex-wrap:wrap;max-width:60vw}
 #questBox{position:fixed;right:12px;top:194px;width:174px;background:rgba(5,8,6,.72);border:1px solid #6a5636;border-radius:4px;padding:6px 8px;font-size:12.5px;line-height:1.35;pointer-events:none}#questBox span{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#ffd84a}
 @media (max-width:760px){#questBox{top:122px;right:12px;width:104px;font-size:11px;padding:4px 6px}}@media (max-height:480px){#questBox{top:128px;width:110px;font-size:11px}}
@@ -245,7 +247,8 @@ body{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webki
 <body>
 <canvas id="gl"></canvas><canvas id="ov"></canvas>
 <div id="game" class="hide">
-  <div id="top"><div class="n" id="tName"></div><div class="g" id="tGold"></div><div class="z" id="tZone"></div><div id="pbonus" style="font-size:12px;color:#9fd8ff"></div></div>
+  <div id="hurtFx"></div>
+  <div id="top"><canvas id="port" width="112" height="112"></canvas><div class="n" id="tName"></div><div class="g" id="tGold"></div><div class="z" id="tZone"></div><div id="pbonus" style="font-size:12px;color:#9fd8ff"></div></div>
   <canvas id="mini" width="170" height="170"></canvas>
   <div id="questBox" class="hide"><span>Quest</span><div id="quest"></div></div>
   <div id="goals" class="hide"></div>
@@ -262,7 +265,7 @@ body{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webki
     <div id="mid"><div id="bar"></div><div id="xpT"></div><div id="xp"><div></div></div></div>
     <div class="globe" id="gFury"><div class="fill"></div><div class="txt"></div></div>
   </div>
-  <div id="ctl"><button id="bMenu">Exit</button><button id="bSet">Settings</button><button id="bInvite">Invite</button><button id="bLeave" class="hide">Leave party</button><button id="bInv">Inventory</button><button id="bSkl">Skills</button><button id="bTown">Town</button><button id="bAuto">Auto-play: off</button><button id="bSpd">Speed 1×</button></div>
+  <div id="ctl"><button id="bMenu">Exit</button><button id="bSet">Settings</button><button id="bLb">Leaders</button><button id="bInvite">Invite</button><button id="bLeave" class="hide">Leave party</button><button id="bInv">Inventory</button><button id="bSkl">Skills</button><button id="bTown">Town</button><button id="bAuto">Auto-play: off</button><button id="bSpd">Speed 1×</button></div>
   <div id="party" class="hide"></div><div id="onl" class="hide"></div><div id="chatlog" class="hide"></div>
   <div id="chatRow" class="hide"><button id="chatCh">Global</button><input id="chat" maxlength="140"><button id="chatX" class="xb" aria-label="Close chat">×</button></div>
   <div id="tbtns"><button id="tChat" class="hide">Chat</button><button id="tTown">Town</button><button id="tLoot">Loot</button><button id="tSkl">Skills</button><button id="tBag">Bag</button></div>
@@ -274,6 +277,7 @@ body{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webki
 </div>
 <div id="build"></div>
 <div id="set" class="hide"></div>
+<div id="lb" class="hide"></div>
 <div id="tip" class="hide"></div>
 <div id="err" class="hide"></div>
 <div id="death" class="ov hide"><h1>You have fallen</h1><div id="deathBy"></div><div id="deathTip"></div><button class="big" id="revive">Rise again · with a second wind</button><button id="deathMenu">Exit to menu</button></div>
@@ -283,7 +287,7 @@ body{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webki
   <p id="menuMsg">Pick a hero, carve through the Blighted Hollow, slay its guardian, and take the portal deeper.</p>
   <div id="classes"></div>
   <div id="online" class="hide"><input id="oName" maxlength="16" placeholder="Your name"><input id="oRoom" maxlength="12" placeholder="Party code (blank = solo)"><div id="onlineN"></div><button id="mInvite" class="hide">Share the game</button><button id="mTip" class="hide">♥ Support the game</button><button id="mFeed" class="hide">Send feedback</button></div>
-  <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center"><button class="big" id="btnNew">Play</button><button id="btnReset" class="hide">Reset this hero</button><button id="mSet">Settings</button></div>
+  <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center"><button class="big" id="btnNew">Play</button><button id="btnReset" class="hide">Reset this hero</button><button id="mLb">Leaderboard</button><button id="mSet">Settings</button></div>
   <div class="keys touchOnly">
     <b>Left thumb stick</b><span>Move (or tap the ground)</span>
     <b>Big round button</b><span>Attack the nearest enemy</span>
@@ -307,10 +311,10 @@ body{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webki
     <b>G</b><span>Quest path on the ground on/off</span>
   </div>
 </div>
-<script src="js/gl.js?v=0015"></script>
-<script src="js/data.js?v=0015"></script>
-<script src="js/game.js?v=0015"></script>
-<script src="js/net.js?v=0015"></script>
-<script src="js/ui.js?v=0015"></script>
+<script src="js/gl.js?v=0016"></script>
+<script src="js/data.js?v=0016"></script>
+<script src="js/game.js?v=0016"></script>
+<script src="js/net.js?v=0016"></script>
+<script src="js/ui.js?v=0016"></script>
 </body>
 </html>

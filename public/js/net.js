@@ -63,7 +63,7 @@ const NET = (() => {
       const p = N.peers[id], k = Math.min(1, dt * 10), ox = p.x, oz = p.z; p.x += (p.tx - p.x) * k; p.z += (p.tz - p.z) * k; let da = p.trot - p.rot; while (da > Math.PI) da -= 6.2832; while (da < -Math.PI) da += 6.2832; p.rot += da * k;
       p.walk += Math.hypot(p.x - ox, p.z - oz) * 1.5; p.mv += ((p.tmv ? 1 : 0) - p.mv) * Math.min(1, dt * 12); p.y = p.dash ? 1.6 : 0; if (p.act) { p.swing += dt / .4; if (p.swing >= 1) p.swing = 0; }
     }
-    acc += dt; if (acc >= .1) { acc = 0; N.send({ t: 'p', x: r2(P.x), z: r2(P.z), r: r2(P.rot), mv: P.moving ? 1 : 0, a: P.spin ? 3 : P.dash ? 4 : P.act ? (P.act.sk.type === 'nova' ? 2 : 1) : 0, hp: Math.round(clamp(P.hp / P.stats.maxLife, 0, 1) * 100), lvl: G.hero.level, dead: P.dead || G.inTown ? 1 : 0, g: P.gc || '' }); }
+    acc += dt; if (acc >= .1) { acc = 0; N.send({ t: 'p', x: r2(P.x), z: r2(P.z), r: r2(P.rot), mv: P.moving ? 1 : 0, a: P.spin ? 3 : P.dash ? 4 : P.act ? (P.act.sk.type === 'nova' ? 2 : 1) : 0, hp: Math.round(clamp(P.hp / P.stats.maxLife, 0, 1) * 100), lvl: G.hero.level, pl: G.hero.plvl || 0, dp: (G.hero.depth || 0) + 1, dead: P.dead || G.inTown ? 1 : 0, g: P.gc || '' }); }
   };
   return N;
 })();

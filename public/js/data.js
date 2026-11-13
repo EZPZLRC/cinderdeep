@@ -1,5 +1,5 @@
 'use strict';
-const BUILD = '0015';
+const BUILD = '0016';
 // Fresh start: every hero and the stash are wiped whenever this number changes. It follows the build, so each new build is a new season.
 const SEASON = BUILD;
 const SLOTS = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring1'];
@@ -168,6 +168,7 @@ const KIT = { warden: ['slam', 'stomp', 'quake'], ranger: ['multi', 'arrows', 'v
 function skillTiers(cls) { return []; }
 function skillTiersOld(cls) { const s = CLASSES[cls].skills.filter(id => !SKILLS[id].basic).sort((a, b) => SKILLS[a].lv - SKILLS[b].lv), out = []; for (let i = 0; i + 1 < s.length && out.length < TIER_LV.length; i += 2) out.push([s[i], s[i + 1]]); return out; }
 const CLASS_IDS = Object.keys(CLASSES);
+const CLASS_COL = { warden: 0xd8a040, ranger: 0x4aa850, arcanist: 0x9a5aff, brawler: 0xe0503a, elementalist: 0xff7a2a };
 const LOOK = {
   warden: { a: 0x8e97a8, am: 4, d: 0x3c4250, cl: 0x6e2420, head: 'helm', pauld: 1, shield: 1, cape: 1, w: 'sword' },
   ranger: { a: 0x4f5c38, am: 0, d: 0x3d3326, cl: 0x2c4a2a, head: 'hood', cape: 1, w: 'bow' },

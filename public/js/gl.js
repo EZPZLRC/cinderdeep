@@ -3,7 +3,7 @@
 const GLX = (() => {
   const STRIDE = 22, SH = 2048;
   let gl, cv, pMain, pDepth, pGlow, pPost, fbo, shTex, post = null;
-  const geo = {}, sets = { stat: {}, dyn: {}, glow: {} };
+  const geo = {}, sets = { stat: {}, dyn: {}, glow: {}, xr: {} };
   const view = new Float32Array(16), proj = new Float32Array(16), vp = new Float32Array(16), ivp = new Float32Array(16),
     lvp = new Float32Array(16), t1 = new Float32Array(16), t2 = new Float32Array(16), M = new Float32Array(16);
   const cam = { eye: [0, 0, 0], right: [1, 0, 0], up: [0, 1, 0], back: [0, 0, 1] };
@@ -298,7 +298,7 @@ void main(){
     const nx = mx / cv.clientWidth * 2 - 1, ny = 1 - my / cv.clientHeight * 2; const a = unproj(nx, ny, -1), b = unproj(nx, ny, 1);
     const dy = b[1] - a[1]; if (Math.abs(dy) < 1e-6) return [a[0], a[2]]; const t = -a[1] / dy; return [a[0] + (b[0] - a[0]) * t, a[2] + (b[2] - a[2]) * t];
   }
-  function begin() { env.verts = 0; for (const g in sets.dyn) sets.dyn[g].n = 0; for (const g in sets.glow) sets.glow[g].n = 0; lights.length = 0; }
+  function begin() { env.verts = 0; for (const g in sets.dyn) sets.dyn[g].n = 0; for (const g in sets.glow) sets.glow[g].n = 0; for (const g in sets.xr) sets.xr[g].n = 0; lights.length = 0; }
   function statBegin() { for (const k in chunks) { for (const g in chunks[k].b) { gl.deleteBuffer(chunks[k].b[g].buf); gl.deleteVertexArray(chunks[k].b[g].vao); } delete chunks[k]; } statChunk('all', 0, 0, true); }
   function statChunk(key, x, z, always) { curChunk = chunks[key] || (chunks[key] = { x, z, always: !!always, b: {} }); }
   function upload(set, usage) { const box = typeof set === 'string' ? sets[set] : set; for (const g in box) { const b = box[g]; if (!b.n) continue; gl.bindBuffer(gl.ARRAY_BUFFER, b.buf); gl.bufferData(gl.ARRAY_BUFFER, b.data.subarray(0, b.n * STRIDE), usage); } }
@@ -310,7 +310,7 @@ void main(){
   const LP = new Float32Array(32), LC = new Float32Array(24);
   let aoOK = 1;
   function render() {
-    resize(); ensurePost(); upload('dyn', gl.DYNAMIC_DRAW); upload('glow', gl.DYNAMIC_DRAW);
+    resize(); ensurePost(); upload('dyn', gl.DYNAMIC_DRAW); upload('glow', gl.DYNAMIC_DRAW); upload('xr', gl.DYNAMIC_DRAW);
     const p = env.player, s = env.sun;
     lookAt(t1, [p[0] + s[0] * 60, s[1] * 60, p[2] + s[2] * 60], [p[0], 0, p[2]], [0, 1, 0]); ortho(t2, -38, 38, -38, 38, 1, 140); mul(lvp, t2, t1);
     gl.enable(gl.DEPTH_TEST);
@@ -325,7 +325,10 @@ void main(){
     gl.uniform3fv(u.uSun, env.sun); gl.uniform3fv(u.uSunC, env.sunC); gl.uniform3fv(u.uSky, env.sky); gl.uniform3fv(u.uGnd, env.gnd); gl.uniform3fv(u.uFog, env.fog);
     gl.uniform3fv(u.uEye, cam.eye); gl.uniform3fv(u.uPl, env.player); gl.uniform2f(u.uFogR, env.fogN, env.fogF); gl.uniform1f(u.uLR, env.lightR);
     gl.uniform4fv(u['uLP[0]'], LP); gl.uniform3fv(u['uLC[0]'], LC);
-    gl.uniform1f(pMain.u.uRim, 0); drawSet('stat'); gl.uniform1f(pMain.u.uRim, env.q > 0 ? 1 : .5); drawSet('dyn'); gl.uniform1f(pMain.u.uRim, 0);
+    gl.uniform1f(pMain.u.uRim, 0); drawSet('stat');
+    // hero ghost: drawn against the world only, before the hero, so it shows only where walls or trees hide them
+    { let n = 0; for (const g in sets.xr) n += sets.xr[g].n; if (n) { const gu = pGlow.u; gl.useProgram(pGlow.p); gl.uniformMatrix4fv(gu.uVP, false, vp); gl.uniformMatrix4fv(gu.uLVP, false, lvp); gl.uniform3fv(gu.uPl, env.player); gl.uniform1f(gu.uLR, env.lightR); gl.uniform1f(gu.uT, env.t); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.depthMask(false); gl.depthFunc(gl.GREATER); drawSet('xr'); gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.disable(gl.BLEND); gl.useProgram(pMain.p); } }
+    gl.uniform1f(pMain.u.uRim, env.q > 0 ? 1 : .5); drawSet('dyn'); gl.uniform1f(pMain.u.uRim, 0);
     u = pGlow.u; gl.useProgram(pGlow.p); gl.uniformMatrix4fv(u.uVP, false, vp); gl.uniformMatrix4fv(u.uLVP, false, lvp); gl.uniform3fv(u.uPl, env.player); gl.uniform1f(u.uLR, env.lightR); gl.uniform1f(u.uT, env.t);
     gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.depthMask(false); drawSet('glow'); gl.depthMask(true); gl.disable(gl.BLEND); gl.bindVertexArray(null);
     gl.bindFramebuffer(gl.READ_FRAMEBUFFER, post.ms); gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, post.sc.f); const mid = env.q > 0; gl.blitFramebuffer(0, 0, post.w, post.h, 0, 0, post.w, post.h, gl.COLOR_BUFFER_BIT, gl.NEAREST);

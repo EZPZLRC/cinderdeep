@@ -68,7 +68,28 @@ const SFX = (() => {
     else if (k === 'ice') tone(2200 + Math.random() * 1400, .5, 'sine', .009, .97);
     else tone(70 + Math.random() * 30, 2.5, 'sine', .028, 1.1);
   }
-  return { unlock: ctx, play, ambient, ambTick, toggle() { mute = !mute; setAmb(); return mute; }, vol(v) { master = v; mute = v <= 0; setAmb(); } };
+
+  // background music: a light, happy loop written on the fly (C major, I-V-vi-IV), quiet under the effects
+  let mBus = null, mLvl = .4, mNext = 0, mStep = 0, mOn = true;
+  const MF = n => 261.63 * Math.pow(2, n / 12), CH = [[0, 4, 7], [7, 11, 14], [9, 12, 16], [5, 9, 12]], PENT = [0, 2, 4, 7, 9, 12, 14, 16];
+  const mVol = () => (mute || !mOn ? 0 : mLvl * master * .5);
+  function mnote(f, t, d, type, v) { const o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t + .015); g.gain.exponentialRampToValueAtTime(.0001, t + d); o.connect(g); g.connect(mBus); o.start(t); o.stop(t + d + .05); }
+  let mSeed = 7; const mr = () => { mSeed = (mSeed * 16807) % 2147483647; return mSeed / 2147483647; }; let mel = null;
+  function makeMel() { mel = []; for (let b = 0; b < 4; b++) { const row = []; for (let i = 0; i < 8; i++) { const c = CH[b]; row.push(mr() < .3 ? null : i % 2 === 0 ? c[(mr() * 3) | 0] + 12 : PENT[(mr() * PENT.length) | 0] + 12); } mel.push(row); } }
+  function musTick() {
+    if (!ac || ac.state !== 'running') return; if (!mBus) { mBus = ac.createGain(); mBus.gain.value = 0; const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3200; mBus.connect(lp); lp.connect(ac.destination); mNext = ac.currentTime + .1; makeMel(); }
+    mBus.gain.setTargetAtTime(mVol(), ac.currentTime, .5); if (mVol() <= 0) { mNext = ac.currentTime + .1; return; }
+    const st = 60 / 104 / 2; if (mNext < ac.currentTime - .5) mNext = ac.currentTime + .05;
+    while (mNext < ac.currentTime + .25) {
+      const bar = (mStep >> 3) % 4, i = mStep % 8, c = CH[bar], t = mNext, phrase = (mStep >> 5) % 4;
+      if (i % 2 === 0) mnote(MF(c[0] - 24), t, st * 1.8, 'sine', .22);                    // bass
+      mnote(MF(c[[0, 1, 2, 1][i % 4]] + (i >= 4 ? 12 : 0)), t, st * 1.4, 'triangle', .07);   // arpeggio
+      if (phrase !== 3) { const n = mel[bar][i]; if (n !== null) mnote(MF(n + (phrase === 2 && i % 4 === 0 ? 2 : 0)), t, st * 1.9, 'square', .025), mnote(MF(n + 12), t, st * 1.2, 'sine', .03); } // melody, with a rest phrase every fourth time
+      if (i % 4 === 2) { const b2 = ac.createBufferSource(); if (nb) { b2.buffer = nb; const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 7000; const g = ac.createGain(); g.gain.setValueAtTime(.05, t); g.gain.exponentialRampToValueAtTime(.0001, t + .05); b2.connect(f); f.connect(g); g.connect(mBus); b2.start(t, Math.random() * .5, .06); } }  // soft hi-hat
+      mStep++; mNext += st; if (mStep % 128 === 0) makeMel();
+    }
+  }
+  return { unlock: ctx, play, ambient, ambTick(dt) { ambTick(dt); musTick(); }, musTick, music(v) { mLvl = v; }, toggle() { mute = !mute; setAmb(); return mute; }, vol(v) { master = v; mute = v <= 0; setAmb(); } };
 })();
 
 // ---------- items ----------
@@ -183,7 +204,7 @@ function gainXp(v) { if (v > 0 && G.hero && G.hero.level < MAX_LEVEL) { G.xpPop 
   }
   h.xp += v;
   while (h.level < MAX_LEVEL && h.xp >= xpNeed(h.level)) {
-    h.xp -= xpNeed(h.level); h.level++; computeStats(); P.hp = P.stats.maxLife; P.mana = P.stats.maxMana; SFX.play('level'); ring(P.x, P.z, 0, 9, .7, 0xffd84a); burst(P.x, 1.5, P.z, 0xffd84a, 30, 7); if (h.level >= MAX_LEVEL) { h.pxp = h.xp; h.xp = 0; hint('Level 60! From here you earn Paragon levels with no limit.'); }
+    h.xp -= xpNeed(h.level); h.level++; computeStats(); P.hp = P.stats.maxLife; P.mana = P.stats.maxMana; SFX.play('level'); G.fx.push({ pillar: 1, x: P.x, z: P.z, life: 1.8, max: 1.8, c: GLX.col(0xffd84a) }); ring(P.x, P.z, 0, 9, .7, 0xffd84a); burst(P.x, 1.5, P.z, 0xffd84a, 30, 7); if (h.level >= MAX_LEVEL) { h.pxp = h.xp; h.xp = 0; hint('Level 60! From here you earn Paragon levels with no limit.'); }
     floatText(P.x, 3, P.z, 'LEVEL ' + h.level, '#ffd84a', 1.8, 22); { computeStats(); hint('Level ' + h.level + '! More life, harder hits. Life and ' + CLASSES[h.cls].res.n + ' refilled.'); const nt = TIER_LV.find(l => l > h.level); if (nt && skillTiers(h.cls)[TIER_LV.indexOf(nt)]) hint('Next skill choice at level ' + nt + '.'); } applyKit(h, true);
   }
 }
@@ -501,7 +522,7 @@ function dmgPlayer(v, el, src) {
   if (P.dead || P.iframes > 0) return; const s = P.stats; if (blessed()) v *= .6; if (src && src.name) P.killer = src.name; else if (!src) P.killer = '';
   if (Math.random() * 100 < s.dodgeT) { floatText(P.x, 2.6, P.z, 'Dodge', '#9fe', .7); return; }
   if (el === 'phys') v *= 1 - Math.min(.8, s.armorT / (s.armorT + 60 + v * 6)); else v *= 1 - (s['r' + el] || 0) / 100; v *= 1 - Math.min(50, s.dr) / 100; v = Math.max(1, Math.round(v));
-  P.hp -= v; P.hurt = .25; P.lastHit = G.time; P.mana = Math.min(s.maxMana, P.mana + 2); G.shake = Math.min(.7, G.shake + .12 + v / s.maxLife); floatText(P.x, 2.6, P.z, '-' + v, '#ff5a4a', .9, 17); SFX.play('hurt');
+  P.hp -= v; P.hurt = .25; P.lastHit = G.time; P.mana = Math.min(s.maxMana, P.mana + 2); G.shake = Math.min(.7, G.shake + .12 + v / s.maxLife); floatText(P.x, 2.6, P.z, '-' + v, '#ff5a4a', .9, 17); SFX.play('hurt'); burst(P.x, 1.4, P.z, 0xffc070, 7, 5); { const hf = typeof document !== 'undefined' && document.getElementById('hurtFx'); if (hf && hf.animate) hf.animate([{ opacity: Math.min(.75, .3 + v / s.maxLife * 2) }, { opacity: 0 }], { duration: 450, easing: 'ease-out' }); }
   if (src && src.alive && s.thorns > 0) { src.flash = .1; if (G.online) NET.send({ t: 'hit', id: src.id, v: s.thorns, el: 'phys' }); else { src.hp -= s.thorns; if (src.hp <= 0) killEnemy(src); } }
   if (P.hp <= 0) { if (s.cheat && P.cheatCd <= 0) { P.hp = s.maxLife; P.cheatCd = 60; ring(P.x, P.z, 0, 10, .8, 0xff8a2a); hint('Emberheart saves you from death!'); } else { P.hp = 0; P.dead = true; P.act = P.spin = P.dash = null; G.streak = 0; SFX.play('die'); UI.showDeath(); } }
 }
@@ -820,7 +841,7 @@ function update(dt) {
   if (G.zone && !G.inTown && !P.dead) for (const o of G.zone.objs) { if (o.kind !== 'portal' && o.kind !== 'pback') continue; const dd = Math.hypot(o.x - P.x, o.z - P.z), R = o.kind === 'portal' ? 1.9 : 1.4; if (dd > R + 1.5) o.arm = true; else if (dd < R && o.arm && !o.gone) { o.arm = false; if (typeof UI !== 'undefined' && UI.askGate) UI.askGate(o); else { o.gone = true; interact(o); } return; } } // step into a gate to travel
   for (const d of G.drops.slice()) { d.t += dt; if (d.item && d.t > .5 && G.set.autoLoot !== false && !P.dead && d.item.rar >= G.hero.filter && Math.hypot(d.x - P.x, d.z - P.z) < 1.8 && G.time - (d.tryT || -9) > 2.5) { d.tryT = G.time; pickup(d); continue; } // walk over loot to collect it
     if (d.globe) { if (Math.hypot(d.x - P.x, d.z - P.z) < 1.8 && P.hp < P.stats.maxLife) pickup(d); } else if (d.gold && d.t > .3) { const dd = Math.hypot(d.x - P.x, d.z - P.z); if (dd < 4.5) { d.x += (P.x - d.x) / dd * 14 * dt; d.z += (P.z - d.z) / dd * 14 * dt; if (dd < .9) pickup(d); } } }
-  for (let i = G.fx.length - 1; i >= 0; i--) { const f = G.fx[i]; f.life -= dt; if (f.life <= 0) { G.fx.splice(i, 1); continue; } if (!f.ring && !f.slash && !f.bolt && !f.flash) { f.x += f.vx * dt; f.y += f.vy * dt; f.z += f.vz * dt; f.vy -= 14 * dt; if (f.y < .05) { f.y = .05; f.vy *= -.3; } } }
+  for (let i = G.fx.length - 1; i >= 0; i--) { const f = G.fx[i]; f.life -= dt; if (f.life <= 0) { G.fx.splice(i, 1); continue; } if (!f.ring && !f.slash && !f.bolt && !f.flash && !f.pillar) { f.x += f.vx * dt; f.y += f.vy * dt; f.z += f.vz * dt; f.vy -= 14 * dt; if (f.y < .05) { f.y = .05; f.vy *= -.3; } } }
   for (let i = G.texts.length - 1; i >= 0; i--) { const t = G.texts[i]; t.life -= dt; t.y += dt * 1.6; if (t.life <= 0) G.texts.splice(i, 1); }
   for (let i = G.hints.length - 1; i >= 0; i--) { G.hints[i].life -= dt; if (G.hints[i].life <= 0) G.hints.splice(i, 1); }
   // fog of war
@@ -849,7 +870,9 @@ function drawHero(o, self) {
   const pm = mat(g.pants) || [under, 0], bm = mat(g.boots, 0, dkLeather), gm = mat(g.gloves), brm = mat(g.bracers), sm = mat(g.shoulders), plate = !!g.chest && g.chest[0] === 0;
   const wb = g.weapon ? g.weapon[0] : -1, wt = wb < 0 ? 'none' : WEAPONS[wb] ? WEAPONS[wb].t : 'sword', wr = g.weapon ? g.weapon[1] : 0, wglow = wr >= 2 ? col(TRIMC[wr]) : null;
   const spin = !!o.spin, rot = spin ? G.time * 20 : o.rot, w = o.walk, mv = o.mv, bob = Math.abs(Math.sin(w)) * .07 * mv, em = o.hurt > 0 ? .9 : 0, sw2 = Math.sin(G.time * 2.2 + o.x) * .06;
-  GLX.base(BM, o.x, o.y + bob, o.z, rot, 1.08); const p = (gm2, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, c, m, e) => GLX.part('dyn', gm2, BM, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, c, e === undefined ? em : e + em, 1, m || 0);
+  const breath = (1 - Math.min(1, mv)) * Math.sin(G.time * 2.3 + o.x) * .022; GLX.base(BM, o.x, o.y + bob + breath, o.z, rot, 1.08);
+  if (o.dead) { if (o.fallT0 === undefined) o.fallT0 = G.time; const fk = Math.min(1, (G.time - o.fallT0) * 2.6), fa = 1.45 * fk * fk; const c = Math.cos(fa), sn = Math.sin(fa); for (let i = 0; i < 3; i++) { const u = BM[4 + i], f = BM[8 + i]; BM[4 + i] = u * c - f * sn; BM[8 + i] = u * sn + f * c; } BM[13] += .12 * fk; } else o.fallT0 = undefined; const p = (gm2, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, c, m, e) => GLX.part('dyn', gm2, BM, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, c, e === undefined ? em : e + em, 1, m || 0);
+  { const st = Math.sin(w) > 0; if (mv > .5 && o.lstep !== undefined && st !== o.lstep && !o.dash && G.state === 'play') { const sd = st ? 1 : -1; for (let i = 0; i < 3; i++) G.fx.push({ dust: 1, x: o.x + Math.cos(rot) * .16 * sd + (Math.random() - .5) * .3, y: .12, z: o.z - Math.sin(rot) * .16 * sd + (Math.random() - .5) * .3, vx: (Math.random() - .5) * .8, vy: .5 + Math.random() * .5, vz: (Math.random() - .5) * .8, life: .55, max: .55, c: GLX.col(G.zone && G.zone.th && G.zone.th.dust || 0xa89878) }); } o.lstep = st; }
   const lg = Math.sin(w) * .8 * mv, air = o.dash ? -1 : 0, ranged = wt === 'bow' || wt === 'staff';
   // legs or robe
   if (L.robe) { p('taper', 0, .62, 0, 0, 0, 0, 0, 0, 0, .86, 1.2, .8, ac, am); p('cap', 0, .08, 0, 0, 0, 0, 0, 0, 0, .9, .1, .84, trim, 4, te); p('rbox', 0, .62, .37, .12, 0, 0, 0, 0, 0, .2, 1.0, .04, trim, 0, te); for (const sd of [1, -1]) p('sphere', .16 * sd, .08, .12 + sd * lg * .25, 0, 0, 0, 0, 0, 0, .2, .14, .38, bm ? bm[0] : skin, bm ? bm[1] : 0); }
@@ -861,6 +884,8 @@ function drawHero(o, self) {
   let lean = .06, rx = -lg * .7, ry = 0, lrx = lg * .6 - .2, lry = 0, drw = -1;
   if (o.act) { const k = o.swing, e = k < .42 ? k / .42 : 1; lean = .28 * Math.sin(k * Math.PI); if (wt === 'bow') { drw = k < .42 ? k / .42 : 0; const pull = k < .42 ? drw : 1; rx = -1.57; ry = -1.0 - pull * .45; lrx = -1.57; lry = .36; lean = .03; } else if (ranged) { rx = -1.55; lrx = -1.5; lean = .05; } else if (o.act.sk.type === 'nova') rx = -3 + e * 2.6; else if (wt === 'fist' || wt === 'none') { rx = -1.5 + Math.sin(k * 6.28) * .5; lrx = -1.5 - Math.sin(k * 6.28) * .5; } else { rx = -1.5; ry = 1.3 - e * 2.6; } }
   if (spin) { rx = -1.5; ry = .3; lrx = -1.5; } if (o.dash) rx = -2.8;
+  lean += Math.min(1, mv) * .12; if (o.act && o.swing < .18 && !ranged) { lean -= .18; rx -= .5; } if (o.hurt > 0) { lean -= Math.min(.3, o.hurt) * 1.3; rx -= o.hurt * 2; lrx -= o.hurt * 2; }
+  if (o.dead) { rx = lrx = -2.6; }
   // torso, belt
   p('taper', 0, 1.36, 0, lean, 0, 0, 0, 0, 0, .7, -.7, .46, ac, am); p('sphere', 0, 1.52, -.01, lean, 0, 0, 0, 0, 0, .74, .44, .4, ac, am); p('sphere', 0, 1.06, 0, lean, 0, 0, 0, 0, 0, .6, .34, .42, g.pants && !L.robe ? pm[0] : ac, g.pants && !L.robe ? pm[1] : am); if (!L.robe) p('cap', 0, .98, 0, lean, 0, 0, 0, -.12, 0, .6, .32, .44, g.pants ? pm[0] : under, g.pants ? pm[1] : 0);
   if (plate) { p('sphere', 0, 1.5, .14, lean, 0, 0, 0, 0, 0, .5, .44, .3, ac, 4); p('cap', 0, 1.74, 0, lean, 0, 0, 0, 0, 0, .34, .1, .34, ac, 4); p('rbox', 0, 1.18, .24, lean, 0, 0, 0, 0, 0, .34, .2, .05, shade(ac, .6), 4); }
@@ -927,6 +952,40 @@ function drawHero(o, self) {
   if (L.robe) for (let k = 0; k < 3; k++) { const a = G.time * 1.6 + k * 2.09; GLX.obj('glow', 'gem', o.x + Math.cos(a) * .95, o.y + 1.5 + Math.sin(a * 1.7) * .25, o.z + Math.sin(a) * .95, a, .12, .2, .12, col(L.orb), 1.5, .9); }
   if (cls === 'brawler') for (const sd of [1, -1]) p('rbox', .2 * sd, 1.0, -.2, lean + .3 + mv * .4 + sw2, 0, 0, 0, -.34, 0, .12, .6, .03, cloth);
   if (L.cape) { p('rbox', 0, 1.66, -.28, lean + .12 + mv * .3 + sw2, 0, 0, 0, -.36, 0, .78, .74, .05, cloth); p('rbox', 0, 1.66, -.28, lean + .22 + mv * .5 + sw2 * 2, 0, 0, 0, -1.0, -.06, .84, .62, .04, shade(cloth, .8)); p('rbox', 0, 1.7, -.26, lean, 0, 0, 0, 0, 0, .7, .08, .1, trim, 4, te); }
+
+  // ---- class signature look (build 0016): silhouette, class colour, moving cloth, aura, rarity glow ----
+  { const CC = col(CLASS_COL[cls] || 0xd8a040), t = G.time, sway = Math.sin(t * 2.6 + o.x) * .08 + Math.min(1, mv) * .35, cr = Math.cos(rot), sr = Math.sin(rot);
+    const hand = (sd, arx) => { const lx = .47 * sd * 1.08, ly = (1.62 - .68 * Math.cos(arx)) * 1.08, lz = -.68 * Math.sin(arx) * 1.08; return [o.x + cr * lx + sr * lz, o.y + ly, o.z - sr * lx + cr * lz]; };
+    p('rbox', 0, 1.12, .25, lean, 0, 0, 0, -.18, 0, .26, .58, .025, shade(CC, .42), 3); // tabard in the class colour
+    p('rbox', 0, 1.12, .262, lean, 0, 0, 0, .06, 0, .08, .08, .02, shade(CC, .7), 3);
+    if (cls === 'warden') {
+      for (const sd of [1, -1]) { p('sphere', .5 * sd, 1.76, 0, 0, 0, -sd * .25, 0, 0, 0, .42, .24, .42, shade(steelC, .7), 4); p('cap', .5 * sd, 1.7, 0, 0, 0, -sd * .25, 0, 0, 0, .45, .04, .45, shade(CC, .7), 4); hp('cone', .2 * sd, 2.28, -.02, lean, 0, -sd * 1.1, 0, .14, 0, .07, .34, .07, col(0xe8dcc0), 3); }
+      if (!g.offhand) { p('rbox', 0, 1.35, -.34, lean * .5, 0, 0, 0, 0, 0, .78, 1.0, .07, steelC, 4); p('rbox', 0, 1.35, -.38, lean * .5, 0, 0, 0, 0, 0, .58, .8, .03, CC, 0, .1); }
+    } else if (cls === 'ranger') {
+      if (!g.helm) { hp('sphere', 0, 2.08, -.08, lean, 0, 0, 0, 0, 0, .5, .48, .5, cloth); hp('cone', 0, 2.1, -.3, lean - 1.2 - sway * .4, 0, 0, 0, .12, 0, .2, .4, .16, cloth); }
+      if (!g.offhand) { p('rbox', .1, 1.5, -.3, lean + .3, 0, .4, 0, 0, 0, .2, .7, .16, leatherC); for (let k = 0; k < 3; k++) p('rbox', .22 + k * .05, 1.95, -.36, lean + .3, 0, .4, 0, 0, 0, .03, .3, .03, k === 1 ? CC : wood); }
+      p('rbox', 0, 1.62, -.26, lean + .1 + sway, 0, 0, 0, -.5, 0, .6, 1.0, .03, shade(CC, .55));
+    } else if (cls === 'arcanist') {
+      if (!g.helm) { hp('cap', 0, 2.17, 0, lean, 0, 0, 0, 0, 0, .58, .05, .58, cloth); hp('cone', 0, 2.2, -.02, lean - .15 - sway * .3, 0, 0, 0, .34, 0, .3, .7, .3, cloth); hp('cap', 0, 2.2, 0, lean, 0, 0, 0, 0, 0, .34, .05, .34, CC, 0, .6); }
+      if (!g.offhand) { const a = t * 1.3, x = o.x + Math.cos(a) * .9, z = o.z + Math.sin(a) * .9, y = o.y + 2.1 + Math.sin(a * 2) * .15; GLX.obj('glow', 'sphere', x, y, z, 0, .22, .22, .22, CC, 1.4, 1); GLX.halo(x, y, z, 1, CC, .45); }
+    } else if (cls === 'brawler') {
+      for (const sd of [1, -1]) { const arx = sd > 0 ? rx : lrx, ary = sd > 0 ? ry : lry; for (let k = 0; k < 3; k++) p('cap', .47 * sd, 1.62, 0, arx, ary, 0, 0, -.42 - k * .07, 0, .2, .035, .2, col(0xe8e0d0)); }
+      p('cap', 0, 1.02, 0, lean, 0, 0, 0, 0, 0, .66, .1, .5, CC, 0, .05); p('rbox', .22, .98, .18, lean + .1 + sway, 0, -.2, 0, -.3, 0, .12, .5, .03, CC);
+      hp('sphere', 0, 2.34, -.12, lean, 0, 0, 0, 0, 0, .14, .2, .14, col(0x2a2018)); hp('cap', 0, 2.26, -.1, lean, 0, 0, 0, 0, 0, .12, .04, .12, CC);
+    } else if (cls === 'elementalist') {
+      for (let k = 0; k < 5; k++) { const a = t * .9 + k * 1.2566, x = o.x + Math.cos(a) * .42, z = o.z + Math.sin(a) * .42, y = o.y + 2.55 + Math.sin(t * 2 + k) * .06; GLX.obj('glow', 'gem', x, y, z, a, .08, .14, .08, k % 2 ? CC : col(0xffd06a), 1.6, .95); }
+      for (const sd of [1, -1]) { const h = hand(sd, sd > 0 ? rx : lrx); GLX.obj('glow', 'sphere', h[0], h[1], h[2], 0, .12, .12, .12, CC, 1.6, .7); GLX.halo(h[0], h[1], h[2], .5, CC, .28); }
+    }
+    if (L.robe) for (const sd of [1, -1]) p('rbox', .22 * sd, .5, -.28, sway * .6 + Math.sin(t * 3.1 + sd) * .05, 0, 0, 0, -.35, 0, .26, .7, .03, shade(ac, .85), am); // robe tails
+    // aura: motes rising around the feet
+    for (let k = 0; k < 6; k++) { const ph = (t * .35 + k / 6 + o.x * .1) % 1, a = k * 1.047 + t * .4, r = .55 + ph * .2; GLX.obj('glow', 'gem', o.x + Math.cos(a) * r, o.y + .1 + ph * 2.2, o.z + Math.sin(a) * r, a, .05, .09, .05, CC, 1.4, (1 - ph) * .7); }
+    GLX.obj('glow', 'ring', o.x, o.y + .05, o.z, t * .3, 1.5, 1, 1.5, CC, 1, .12 + Math.sin(t * 2) * .04, -1);
+    // weapons shine by rarity: rare and up glow, legendary and mythic trail sparks
+    if (wr >= 2 && wt !== 'none' && wt !== 'bow') { const h = hand(1, rx), rc = col(TRIMC[wr]); GLX.halo(h[0], h[1] + .3, h[2], wr >= 4 ? 1.6 : 1.1, rc, wr >= 4 ? .5 : .3); if (wr >= 4) for (let k = 0; k < 3; k++) { const ph = (t * 1.2 + k / 3) % 1; GLX.obj('glow', 'gem', h[0] + Math.sin(k * 2 + t) * .3, h[1] + .2 + ph * 1.2, h[2] + Math.cos(k * 2 + t) * .3, t, .05, .09, .05, rc, 2, 1 - ph); } }
+    // see your hero through walls: a soft class-coloured ghost drawn only where walls hide you
+    if (self && GLX.cam.eye && typeof blocked === 'function') { const E = GLX.cam.eye, dx = E[0] - o.x, dz = E[2] - o.z, dl = Math.hypot(dx, dz) || 1; let hid = false; for (let d = 1; d <= 5 && !hid; d += .5) hid = blocked(o.x + dx / dl * d, o.z + dz / dl * d, .1);
+      o.xrK = (o.xrK || 0) + ((hid ? 1 : 0) - (o.xrK || 0)) * .12; const k = o.xrK; if (k > .02) { GLX.obj('xr', 'sphere', o.x, o.y + 1.3, o.z, rot, .62, 1.05, .5, CC, 1, .5 * k); GLX.obj('xr', 'sphere', o.x, o.y + 2.08, o.z, rot, .3, .32, .3, CC, 1, .5 * k); GLX.obj('xr', 'sphere', o.x, o.y + .5, o.z, rot, .42, .7, .36, CC, 1, .45 * k); } }
+  }
   if (self) GLX.light(o.x, 3, o.z, 15, col(G.zone.th.torch), 1.1, 10);
   if (spin) { for (let i = 0; i < 3; i++) { const a = G.time * 20 + i * 2.09; GLX.obj('glow', 'box', o.x + Math.sin(a) * 2.2, 1.2, o.z + Math.cos(a) * 2.2, a + 1.57, .16, .1, 3, col(0xfff0d0), 1, .7); } GLX.obj('glow', 'ring', o.x, .1, o.z, 0, o.spin.sk.r * 2, 1, o.spin.sk.r * 2, col(0xfff0d0), 1, .25, -1); }
   if (o.buffs && o.buffs.length) GLX.obj('glow', 'ring', o.x, .08, o.z, G.time, 2.4, 1, 2.4, col(0xffd84a), 1, .5, -1);
@@ -1129,7 +1188,9 @@ function drawWorld() {
   }
   for (const f of G.fx) {
     const k = f.life / f.max;
-    if (f.flash) { GLX.halo(f.x, f.y, f.z, f.r * (1.25 - k * .5), f.c, k * .85); GLX.obj('glow', 'sphere', f.x, f.y, f.z, 0, f.r * .22 * k, f.r * .22 * k, f.r * .22 * k, f.c, 2, k); }
+    if (f.pillar) { const e = Math.min(1, (1 - k) * 6), w = (1.3 + (1 - k) * .4) * e; f.x = P.x; f.z = P.z; GLX.obj('glow', 'cyl', f.x, 9, f.z, G.time, w, 18, w, f.c, 1.5, k * .55); GLX.obj('glow', 'cyl', f.x, 9, f.z, -G.time, w * .4, 18, w * .4, col(0xffffff), 2, k * .7); GLX.halo(f.x, 1.2, f.z, 5 * e, f.c, k * .6); for (let i = 0; i < 10; i++) { const ph = ((1 - k) * 1.6 + i / 10) % 1, a = i * .63 + G.time * 2; GLX.obj('glow', 'gem', f.x + Math.cos(a) * w * .9, ph * 10, f.z + Math.sin(a) * w * .9, a, .1, .2, .1, f.c, 2, k); } GLX.light(f.x, 3, f.z, 12, f.c, 1.6 * k, 9); }
+    else if (f.dust) { const s2 = .18 + (1 - k) * .35; GLX.obj('glow', 'sphere', f.x, f.y, f.z, 0, s2, s2 * .7, s2, f.c, .2, k * .28); }
+    else if (f.flash) { GLX.halo(f.x, f.y, f.z, f.r * (1.25 - k * .5), f.c, k * .85); GLX.obj('glow', 'sphere', f.x, f.y, f.z, 0, f.r * .22 * k, f.r * .22 * k, f.r * .22 * k, f.c, 2, k); }
     else if (f.ring) { const r = (f.r0 + (f.r1 - f.r0) * (1 - k)) * 2; GLX.obj('glow', 'ring', f.x, .12, f.z, 0, r, 1, r, f.c, 1, k, -1); GLX.obj('glow', 'ring', f.x, .16, f.z, G.time * 3, r * .8, 1, r * .8, col(0xffffff), 1, k * .5, -1); GLX.obj('glow', 'ring', f.x, .5 + (1 - k) * 1.2, f.z, -G.time * 2, r * .92, 1, r * .92, f.c, 1, k * .45, -1); if (f.r1 > 3) { GLX.halo(f.x, 1, f.z, r * .7, f.c, k * .35); for (let q = 0; q < 8; q++) { const a = q * .785 + f.r1; GLX.obj('glow', 'box', f.x + Math.cos(a) * r * .5, .3 + (1 - k) * 1.6, f.z + Math.sin(a) * r * .5, -a, .07, .5 * k, .07, f.c, 1.5, k); } } GLX.obj('glow', 'disc', f.x, .1, f.z, 0, r, 1, r, f.c, 1, k * .25, 1); }
     else if (f.bolt) { // jagged lightning: a forked chain of segments with a white-hot core
       if (!f.pts || Math.random() < .35) { const n = 7, pts = [[f.x1, 1.35, f.z1]]; for (let q = 1; q < n; q++) { const u = q / n; pts.push([f.x1 + (f.x2 - f.x1) * u + (Math.random() - .5) * .9, 1.35 + (Math.random() - .5) * .8, f.z1 + (f.z2 - f.z1) * u + (Math.random() - .5) * .9]); } pts.push([f.x2, 1.3, f.z2]); f.pts = pts; }
