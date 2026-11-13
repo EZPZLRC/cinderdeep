@@ -24,7 +24,7 @@ It has no dependencies. Any host that can run Node 18 or newer will do.
 
 ## How online play works
 
-- On the menu, type a name and a party code, then press Play online. Everyone who types the same code plays together (up to 8). Leave the code blank for the public world.
+- On the menu, type a name and a party code, then press Play online. Everyone who types the same code plays together (up to 10). Leave the code blank for the public world.
 - Monsters live on the server, so everyone sees and fights the same ones. Their life scales up with party size.
 - Loot is personal. Shift-click an item in the bag (or tap it and choose Give) to hand it to the nearest player.
 - Town (T) is private to each player for now. Taking the town portal returns you to your party.

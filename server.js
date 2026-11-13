@@ -8,6 +8,7 @@ const simSrc = ['js/data.js', 'js/game.js'].map(f => new vm.Script(fs.readFileSy
 simSrc.push(new vm.Script(fs.readFileSync(path.join(__dirname, 'sim', 'simsrv.js'), 'utf8'), { filename: 'simsrv.js' }));
 const BUILD = (/const BUILD = '([^']+)'/.exec(fs.readFileSync(path.join(PUB, 'js/data.js'), 'utf8')) || [])[1] || '?';
 const rooms = new Map(); let nextId = 1;
+const PARTY_MAX = 10; // players per party, for both party codes and blank-code matching (build 0022)
 
 function makeRoom(code) {
   const room = { code, players: new Map(), emptyAt: 0 };
@@ -21,8 +22,10 @@ function cast(room, msg, except) { const s = JSON.stringify(msg); for (const p o
 function roster(room) { return { t: 'players', list: [...room.players.values()].map(p => ({ id: p.id, name: p.name, cls: p.cls })) }; }
 function leave(p) {
   const room = p.room; if (!room) return; p.room = null; room.players.delete(p.id); delete room.ctx.SP[p.id];
-  cast(room, { t: 'leave', id: p.id, name: p.name }); cast(room, roster(room)); if (!room.players.size) room.emptyAt = Date.now();
+  cast(room, { t: 'leave', id: p.id, name: p.name }); cast(room, roster(room)); if (!room.players.size) room.emptyAt = Date.now(); else rescale(room);
 }
+// monster life follows the party size as people come and go, not only when a floor is made (build 0022)
+function rescale(room, except) { const r = room.ctx.srvScale(room.players.size); if (r) cast(room, { t: 'scale', r }, except); }
 function clean(s, n) { return String(s == null ? '' : s).replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, n); }
 function onMessage(p, m) {
   if (!m || typeof m.t !== 'string') return;
@@ -30,13 +33,13 @@ function onMessage(p, m) {
     if (p.room) return; p.name = clean(m.name, 16) || 'Warden'; let code = (clean(m.room, 12) || 'public').toLowerCase(); p.lvl = Math.max(1, Math.min(60, m.lvl | 0)); p.cls = clean(m.cls, 14) || 'warden';
     // auto-party (build 0020): a blank party code puts you with other players of a similar level, up to 6 per party
     if (code === 'auto' || /^dly\d{6}au$/.test(code)) { const base = code === 'auto' ? 'pub' : code.slice(0, 9) + 'p'; let pick = null, k = 1;
-      for (const [c, r] of rooms) { if (c.indexOf(base) !== 0 || r.players.size >= 6 || !r.players.size) continue; let lv = 1; for (const q of r.players.values()) lv = Math.max(lv, q.lvl); if (Math.abs(lv - p.lvl) <= 6 && (!pick || r.players.size > pick[1].players.size)) pick = [c, r]; }
+      for (const [c, r] of rooms) { if (c.indexOf(base) !== 0 || r.players.size >= PARTY_MAX || !r.players.size) continue; let lv = 1; for (const q of r.players.values()) lv = Math.max(lv, q.lvl); if (Math.abs(lv - p.lvl) <= 6 && (!pick || r.players.size > pick[1].players.size)) pick = [c, r]; }
       if (pick) code = pick[0]; else { while (rooms.has(base + k) && rooms.get(base + k).players.size) k++; code = base + k; } }
     let room = rooms.get(code), fresh = false; if (!room) { if (rooms.size >= 50) { p.conn.send({ t: 'error', m: 'Server is full.' }); return; } room = makeRoom(code); fresh = true; }
-    if (room.players.size >= 8) { p.conn.send({ t: 'error', m: 'That party is full (8 players).' }); return; }
+    if (room.players.size >= PARTY_MAX) { p.conn.send({ t: 'error', m: 'That party is full (' + PARTY_MAX + ' players).' }); return; }
     p.room = room; room.players.set(p.id, p); room.emptyAt = 0; p.st = null;
     p.conn.send({ t: 'hello', id: p.id, room: code });
-    p.conn.send(fresh ? room.ctx.srvNewZone(p.lvl, 1) : room.ctx.srvState());
+    if (fresh) p.conn.send(room.ctx.srvNewZone(p.lvl, 1)); else { rescale(room, p.id); p.conn.send(room.ctx.srvState()); }
     room.ctx.SP[p.id] = { id: p.id, x: -999, z: -999, dead: true, lvl: p.lvl };
     cast(room, { t: 'join', id: p.id, name: p.name }, p.id); cast(room, roster(room)); return;
   }
@@ -50,7 +53,10 @@ function onMessage(p, m) {
     case 'sync': p.conn.send(Object.assign(room.ctx.srvState(), { sync: 1 })); break;
     case 'prev': if (room.ctx.srvCleared()) { let lv = 1; for (const q of room.players.values()) lv = Math.max(lv, q.lvl); cast(room, room.ctx.srvNewZone(lv, room.players.size, 'prev')); } break;
     case 'feedback': { const s = clean(m.m, 600), now = Date.now(); if (!s || now - (p.lastFb || 0) < 20000) break; p.lastFb = now; console.log('[FEEDBACK] ' + new Date().toISOString() + ' build ' + BUILD + ' from ' + p.name + ' (level ' + p.lvl + ' ' + p.cls + '): ' + s); p.conn.send({ t: 'chat', n: '', m: 'Thank you. Your feedback was sent.', s: 1 }); break; }
-    case 'rift': { const now = Date.now(); if (now - (room.riftT || 0) < 8000) break; room.riftT = now; let lv = 1; for (const q of room.players.values()) lv = Math.max(lv, q.lvl); cast(room, room.ctx.srvNewZone(lv, room.players.size, 'rift')); break; } // open a timed rift for the whole party
+    case 'rift': { const now = Date.now(); if (now - (room.riftT || 0) < 8000) break;
+      // a rift moves the whole party, so it only opens when nobody else is out fighting on the floor (build 0022)
+      { const busy = [...room.players.values()].filter(q => q.id !== p.id && room.ctx.SP[q.id] && !room.ctx.SP[q.id].dead).map(q => q.name); if (busy.length) { p.conn.send({ t: 'note', m: (busy.length === 1 ? busy[0] + ' is' : busy.length + ' party members are') + ' still fighting on the floor. The rift opens when everyone is back in town.' }); break; } }
+      room.riftT = now; let lv = 1; for (const q of room.players.values()) lv = Math.max(lv, q.lvl); cast(room, room.ctx.srvNewZone(lv, room.players.size, 'rift')); break; } // open a timed rift for the whole party
     case 'next': if (room.ctx.srvCleared()) { let lv = 1; for (const q of room.players.values()) lv = Math.max(lv, q.lvl); cast(room, room.ctx.srvNewZone(lv, room.players.size, true)); } break;
     case 'give': { const q = room.players.get(m.to | 0); if (q && m.item && typeof m.item === 'object' && JSON.stringify(m.item).length < 2000) q.conn.send({ t: 'give', from: p.id, n: p.name, item: m.item, back: !!m.back }); break; }
   }
@@ -83,7 +89,7 @@ function lbNote(p, pl, dp, room, fc) {
 const server = http.createServer((req, res) => {
   let u = decodeURIComponent(req.url.split('?')[0]);
   if (u === '/cinderdeep-server') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ cinderdeep: 1, build: BUILD, players: [...rooms.values()].reduce((n, r) => n + r.players.size, 0) })); return; }
-  if (u === '/parties') { const list = []; for (const [code, r] of rooms) { if (!r.players.size || /^solo/.test(code)) continue; const pl = [...r.players.values()].map(q => ({ n: q.name, c: q.cls, l: q.lvl | 0 })); list.push({ code, players: pl, floor: r.ctx.srvFloor ? r.ctx.srvFloor() : 1, daily: !!r.daily }); } list.sort((a, b) => b.players.length - a.players.length); res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ parties: list.slice(0, 40) })); return; } // party browser (build 0021)
+  if (u === '/parties') { const list = []; for (const [code, r] of rooms) { if (!r.players.size || /^solo/.test(code)) continue; const pl = [...r.players.values()].map(q => ({ n: q.name, c: q.cls, l: q.lvl | 0 })); list.push({ code, players: pl, floor: r.ctx.srvFloor ? r.ctx.srvFloor() : 1, daily: !!r.daily }); } list.sort((a, b) => b.players.length - a.players.length); res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ parties: list.slice(0, 40), max: PARTY_MAX })); return; } // party browser (build 0021)
   if (u === '/leaderboard') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ build: BUILD, lvl: LB.lvl, deep: LB.deep, rift: LB.rift || [], daily: LB.dlyDate === lbToday() ? LB.dly || [] : [], today: lbToday() })); return; }
   if (u === '/favicon.ico') { res.writeHead(204); res.end(); return; }
   if (u === '/') u = '/index.html'; const f = path.normalize(path.join(PUB, u));

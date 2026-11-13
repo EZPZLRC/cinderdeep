@@ -1,5 +1,5 @@
 'use strict';
-const BUILD = '0021';
+const BUILD = '0022';
 // Fresh start: every hero and the stash are wiped whenever this number changes. It follows the build, so each new build is a new season.
 const SEASON = BUILD;
 const SLOTS = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring1'];
@@ -168,7 +168,7 @@ const KIT = { warden: ['slam', 'stomp', 'quake'], ranger: ['multi', 'arrows', 'v
 function skillTiers(cls) { return []; }
 function skillTiersOld(cls) { const s = CLASSES[cls].skills.filter(id => !SKILLS[id].basic).sort((a, b) => SKILLS[a].lv - SKILLS[b].lv), out = []; for (let i = 0; i + 1 < s.length && out.length < TIER_LV.length; i += 2) out.push([s[i], s[i + 1]]); return out; }
 const CLASS_IDS = Object.keys(CLASSES);
-const NEWS = ['Parties: see everyone playing and tap Join, no code needed (or tick Solo to play alone)', 'The Rift Stone in town: a timed floor for your party, with a Fastest Rift leaderboard', 'Doran\'s forge turns shards into new gear; quest chapter 2 with five new jobs and a statue for you', 'Unlock new pets with badges: frost owl, ember drake, shadow cat, golden fox', 'Fixes: one announcement per guardian, holding a button on a phone keeps using it, tidier landscape buttons'];
+const NEWS = ['Parties now hold up to 10 players, and a blank party code matches you with up to 9 others', 'Monsters toughen up or ease off as players join or leave, so the fight always fits the party size', 'A rift no longer pulls teammates out of a fight: it opens once everyone is back in town']
 // achievements (build 0020): badges that show next to your name in chat. They reset with each build, like heroes.
 const ACH = [
   ['blood', '⚔', 'First Blood', 'Defeat your first monster', h => h.kills >= 1],
