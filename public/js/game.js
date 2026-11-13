@@ -899,7 +899,7 @@ function drawHero(o, self) {
   // legs or robe
   if (L.robe) { p('taper', 0, .62, 0, 0, 0, 0, 0, 0, 0, .86, 1.2, .8, ac, am); p('cap', 0, .08, 0, 0, 0, 0, 0, 0, 0, .9, .1, .84, trim, 4, te); p('rbox', 0, .62, .37, .12, 0, 0, 0, 0, 0, .2, 1.0, .04, trim, 0, te); for (const sd of [1, -1]) p('sphere', .16 * sd, .08, .12 + sd * lg * .25, 0, 0, 0, 0, 0, 0, .2, .14, .38, bm ? bm[0] : skin, bm ? bm[1] : 0); }
   else for (const sd of [1, -1]) {
-    const r = sd * lg + air * (sd > 0 ? 1 : .5), shc = bm ? bm[0] : pm[0], shm = bm ? bm[1] : pm[1]; p('taper', .16 * sd, .98, 0, r, 0, 0, 0, -.25, 0, .3, -.54, .32, pm[0], pm[1]); p('sphere', .16 * sd, .98, 0, r, 0, 0, 0, -.5, .03, .22, .22, .24, pm[0], pm[1]); p('taper', .16 * sd, .98, 0, r * 1.25, 0, 0, 0, -.7, .0, .24, -.46, .27, shc, shm); p('sphere', .16 * sd, .98, 0, r * 1.25, 0, 0, 0, -.6, -.06, .2, .26, .2, shc, shm); p('sphere', .16 * sd, .98, 0, r * 1.25, 0, 0, 0, -.93, .1, .2, .13, .4, bm ? bm[0] : dkLeather, bm ? bm[1] : 0);
+    const r = sd * lg + air * (sd > 0 ? 1 : .5), shc = bm ? bm[0] : pm[0], shm = bm ? bm[1] : pm[1]; p('taper', .16 * sd, .98, 0, r, 0, 0, 0, -.25, 0, .3, -.54, .32, pm[0], pm[1]); p('sphere', .16 * sd, .98, 0, r, 0, 0, 0, -.5, .03, .22, .22, .24, pm[0], pm[1]); p('taper', .16 * sd, .98, 0, r * 1.25, 0, 0, 0, -.7, .0, .24, -.46, .27, shc, shm); p('sphere', .16 * sd, .98, 0, r * 1.25, 0, 0, 0, -.6, -.06, .2, .26, .2, shc, shm); p('sphere', .16 * sd, .98, 0, r * 1.25, 0, 0, 0, -.93, .1, .2, .13, .4, bm ? bm[0] : dkLeather, bm ? bm[1] : 0); p('sphere', .16 * sd, .98, 0, r, 0, 0, 0, -.5, .1, .14, .14, .08, shade(pm[0], .8), pm[1]); p('cap', .16 * sd, .98, 0, r * 1.25, 0, 0, 0, -.74, .0, .27, .05, .29, shade(shc, .75), shm); p('rbox', .16 * sd, .98, 0, r * 1.25, 0, 0, 0, -.97, .3, .16, .06, .1, shade(bm ? bm[0] : dkLeather, .7), bm ? bm[1] : 0);
     if (bm) p('cap', .17 * sd, .95, 0, r * 1.25, 0, 0, 0, -.5, .02, .25, .07, .27, tr(g.boots)[0], 4, tr(g.boots)[1]);
     if (g.pants) { p('sphere', .17 * sd, .95, 0, r * 1.1, 0, 0, 0, -.46, .1, .2, .18, .2, pm[0], pm[1]); if (g.pants[0] === 0) p('rbox', .2 * sd, 1.0, .02, .06 + sd * lg * .4, 0, -sd * .12, 0, -.2, .14, .24, .36, .06, steelC, 4); else p('rbox', .16 * sd, .98, -.02, .16 + mv * .25, 0, 0, 0, -.3, -.2, .16, .5, .04, cloth); }
   }
@@ -910,12 +910,14 @@ function drawHero(o, self) {
   lean += Math.min(1, mv) * .12; if (o.hurt > 0) { lean -= Math.min(.3, o.hurt) * 1.3; rx -= o.hurt * 2; lrx -= o.hurt * 2; }
   if (o.dead) { rx = lrx = -2.6; }
   // torso, belt
-  p('taper', 0, 1.36, 0, lean, 0, 0, 0, 0, 0, .7, -.7, .46, ac, am); p('sphere', 0, 1.52, -.01, lean, 0, 0, 0, 0, 0, .74, .44, .4, ac, am); p('sphere', 0, 1.06, 0, lean, 0, 0, 0, 0, 0, .6, .34, .42, g.pants && !L.robe ? pm[0] : ac, g.pants && !L.robe ? pm[1] : am); if (!L.robe) p('cap', 0, .98, 0, lean, 0, 0, 0, -.12, 0, .6, .32, .44, g.pants ? pm[0] : under, g.pants ? pm[1] : 0);
+  p('taper', 0, 1.36, 0, lean, 0, 0, 0, 0, 0, .76, -.72, .46, ac, am); p('sphere', 0, 1.53, -.01, lean, 0, 0, 0, 0, 0, .8, .46, .42, ac, am); p('sphere', 0, 1.24, .02, lean, 0, 0, 0, 0, 0, .52, .4, .38, shade(ac, .93), am); p('cap', 0, 1.76, 0, lean, 0, 0, 0, 0, 0, .3, .07, .28, g.chest ? trim : shade(ac, .8), g.chest ? 4 : 0, g.chest ? te * .5 : 0); p('sphere', 0, 1.06, 0, lean, 0, 0, 0, 0, 0, .6, .34, .42, g.pants && !L.robe ? pm[0] : ac, g.pants && !L.robe ? pm[1] : am); if (!L.robe) p('cap', 0, .98, 0, lean, 0, 0, 0, -.12, 0, .6, .32, .44, g.pants ? pm[0] : under, g.pants ? pm[1] : 0);
   if (plate) { p('sphere', 0, 1.5, .14, lean, 0, 0, 0, 0, 0, .5, .44, .3, ac, 4); p('cap', 0, 1.74, 0, lean, 0, 0, 0, 0, 0, .34, .1, .34, ac, 4); p('rbox', 0, 1.18, .24, lean, 0, 0, 0, 0, 0, .34, .2, .05, shade(ac, .6), 4); }
   else if (g.chest) { p('rbox', 0, 1.3, .22, lean, 0, 0, 0, 0, 0, .14, .5, .06, trim, 0, te); if (L.robe) p('taper', 0, 1.62, 0, lean, 0, 0, 0, 0, 0, .98, .26, .7, shade(ac, 1.2)); }
   if (g.chest) p('rbox', 0, 1.46, .26, lean, 0, 0, 0, 0, 0, .5, .05, .04, trim, 4, te);
   if (g.chest && g.chest[1] >= 2) { const cw = Math.sin((o.walk || 0) * .9) * .06 + (o.mv || (o.moving) ? .28 : .05); p('rbox', 0, 1.66, -.2, lean * .4 + cw, 0, 0, 0, -.5, -.03, .62, 1.0, .035, shade(trim, .55), 0, te * .3); p('rbox', 0, 1.66, -.2, lean * .4 + cw, 0, 0, 0, -.99, -.035, .64, .06, .04, trim, 4, te); } // rare and better chests come with a cape
-  if (g.belt) { const bt = tr(g.belt); p('rbox', 0, 1.0, 0, lean, 0, 0, 0, 0, 0, .56, .16, .4, g.belt[0] === 0 ? dkLeather : cloth); p('rbox', 0, 1.0, .2, lean, 0, 0, 0, 0, 0, .18, .16, .06, bt[0], 4, bt[1]); } else p('rbox', 0, 1.0, 0, lean, 0, 0, 0, 0, 0, .5, .06, .34, dkLeather);
+  if (g.belt) { const bt = tr(g.belt); p('rbox', 0, 1.0, 0, lean, 0, 0, 0, 0, 0, .56, .16, .4, g.belt[0] === 0 ? dkLeather : cloth); p('rbox', 0, 1.0, .2, lean, 0, 0, 0, 0, 0, .18, .16, .06, bt[0], 4, bt[1]); } else { p('rbox', 0, 1.0, 0, lean, 0, 0, 0, 0, 0, .52, .08, .4, dkLeather); p('rbox', 0, 1.0, .2, lean, 0, 0, 0, 0, 0, .1, .09, .03, gold, 4); }
+  if (!L.robe) for (const sd of [1, -1]) { p('rbox', .25 * sd, .96, .1, lean, 0, sd * .3, 0, 0, 0, .12, .14, .08, leatherC); p('rbox', .25 * sd, 1.02, .12, lean, 0, sd * .3, 0, 0, 0, .13, .04, .09, shade(leatherC, .8)); }
+  if (cls === 'ranger' || cls === 'warden') p('rbox', 0, 1.36, .23, lean, 0, 0, cls === 'ranger' ? .62 : -.62, 0, 0, .09, .82, .03, cls === 'ranger' ? dkLeather : shade(dkLeather, .9)); // shoulder strap across the chest
   if (g.amulet) { const at = tr(g.amulet); p('gem', 0, 1.6, .3, lean, G.time, 0, 0, 0, 0, .1, .14, .08, at[0], 0, 1.2); }
   // head (drawn a little smaller than the body so the proportions read as human)
   const hp = (gm2, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, c, m, e) => p(gm2, px * .84, 1.82 + (py - 1.8) * .84, pz * .84, rx, ry, rz, ox * .84, oy * .84, oz * .84, sx * .84, sy * .84, sz * .84, c, m, e);
@@ -923,7 +925,11 @@ function drawHero(o, self) {
   const hb = g.helm ? g.helm[0] : -1, ht = tr(g.helm);
   if (hb === 0) { hp('sphere', 0, 2.04, -.07, lean, 0, 0, 0, 0, 0, .43, .42, .36, steelC, 4); hp('sphere', 0, 2.12, -.03, lean, 0, 0, 0, 0, 0, .45, .3, .46, steelC, 4); hp('rbox', 0, 2.13, .2, lean, 0, 0, 0, 0, 0, .3, .05, .05, ht[0], 4, ht[1]); hp('cone', 0, 2.34, -.08, lean - .5, 0, 0, 0, .1, 0, .1, .5, .16, cloth); for (const sd of [1, -1]) { hp('rbox', .17 * sd, 1.92, .12, lean, 0, 0, 0, 0, 0, .06, .22, .16, steelC, 4); if (g.helm[1] >= 1) hp('cone', .2 * sd, 2.22, -.04, lean, 0, -sd * .8, 0, .12, 0, .09, .2 + g.helm[1] * .08, .09, ht[0], 4, ht[1]); } }
   else if (hb === 1) { hp('sphere', 0, 2.05, -.05, lean, 0, 0, 0, 0, 0, .46, .44, .48, cloth); hp('cone', 0, 2.2, -.14, lean - .9, 0, 0, 0, .12, 0, .34, .4, .3, cloth); hp('rbox', 0, 2.14, .2, lean, 0, 0, 0, 0, 0, .3, .04, .04, ht[0], 4, ht[1]); }
-  else { const hair = col(cls === 'brawler' ? 0x2a2018 : cls === 'elementalist' ? 0x8a3a18 : cls === 'arcanist' ? 0x9c98ac : 0x4a3626); hp('sphere', 0, 2.1, -.06, lean, 0, 0, 0, 0, 0, .4, .32, .42, hair); if (cls === 'brawler') hp('sphere', 0, 2.26, -.1, lean, 0, 0, 0, 0, 0, .16, .16, .16, hair); else hp('rbox', 0, 1.94, -.2, lean, 0, 0, 0, 0, 0, .34, .3, .1, hair); if (hb === 2) { hp('cap', 0, 2.12, 0, lean, 0, 0, 0, 0, 0, .42, .06, .44, gold, 4); hp('gem', 0, 2.14, .22, lean, 0, 0, 0, 0, 0, .08, .1, .06, ht[0], 0, 1.4); } }
+  else { const hair = col(cls === 'brawler' ? 0x2a2018 : cls === 'elementalist' ? 0x8a3a18 : cls === 'arcanist' ? 0x9c98ac : 0x4a3626); hp('sphere', 0, 2.1, -.06, lean, 0, 0, 0, 0, 0, .4, .32, .42, hair); if (cls === 'brawler') hp('sphere', 0, 2.26, -.1, lean, 0, 0, 0, 0, 0, .16, .16, .16, hair); else hp('rbox', 0, 1.94, -.2, lean, 0, 0, 0, 0, 0, .34, .3, .1, hair);
+    hp('sphere', 0, 2.06, -.14, lean, 0, 0, 0, 0, 0, .4, .36, .3, shade(hair, .9)); for (const sd of [1, -1]) hp('rbox', .18 * sd, 2.0, .04, lean, 0, 0, 0, 0, 0, .04, .16, .1, hair); // fuller hair and sideburns
+    if (cls === 'ranger') { hp('sphere', 0, 2.0, -.24, lean, 0, 0, 0, 0, 0, .12, .12, .12, shade(hair, .8)); hp('rbox', 0, 1.82, -.27, lean + .15 + Math.sin(G.time * 3 + o.x) * .06 + Math.min(1, mv) * .3, 0, 0, 0, -.12, 0, .09, .3, .07, hair); }
+    else if (cls === 'elementalist') for (let k = 0; k < 5; k++) hp('cone', (k - 2) * .07, 2.2, -.04 - Math.abs(k - 2) * .02, lean - .3, 0, (k - 2) * .35, 0, .08, 0, .09, .2, .09, k % 2 ? shade(hair, 1.25) : hair);
+    else if (cls === 'arcanist') hp('rbox', 0, 1.86, -.2, lean + .06, 0, 0, 0, -.1, 0, .32, .44, .08, hair); if (hb === 2) { hp('cap', 0, 2.12, 0, lean, 0, 0, 0, 0, 0, .42, .06, .44, gold, 4); hp('gem', 0, 2.14, .22, lean, 0, 0, 0, 0, 0, .08, .1, .06, ht[0], 0, 1.4); } }
   // face: eyes that blink, brows, nose, mouth, ears, and a little character per class
   { const fz = .185, hairF = col(cls === 'brawler' ? 0x2a2018 : cls === 'elementalist' ? 0x8a3a18 : cls === 'arcanist' ? 0x9c98ac : 0x4a3626), blink = ((G.time + o.x * .37) % 4.3) < .12, eyeC = col(cls === 'arcanist' ? 0x9a5aff : cls === 'elementalist' ? 0xc8641e : cls === 'ranger' ? 0x3a7a3a : 0x3a5a8a);
     for (const sd of [1, -1]) {
@@ -940,7 +946,7 @@ function drawHero(o, self) {
   }
   // shoulders
   if (sm) { const st = tr(g.shoulders), big = g.shoulders[0] === 0; for (const sd of [1, -1]) { p('sphere', .47 * sd, 1.7, 0, 0, 0, 0, 0, 0, 0, big ? .44 : .34, big ? .36 : .26, big ? .44 : .36, sm[0], sm[1]); p('cap', .47 * sd, 1.64, 0, 0, 0, 0, 0, 0, 0, big ? .48 : .38, .05, big ? .48 : .38, st[0], 4, st[1]); if (big && g.shoulders[1] >= 1) p('cone', .56 * sd, 1.84, 0, 0, 0, -sd * .9, 0, .12, 0, .16, .2 + g.shoulders[1] * .08, .16, sm[0], 4); } }
-  else for (const sd of [1, -1]) p('sphere', .46 * sd, 1.66, 0, 0, 0, 0, 0, 0, 0, .26, .24, .26, ac, am);
+  else for (const sd of [1, -1]) p('sphere', .45 * sd, 1.66, 0, 0, 0, sd * .2, 0, 0, 0, .24, .2, .26, shade(ac, .95), am);
   // arms: sleeve, bracer, hand
   for (const sd of [1, -1]) {
     const arx = sd > 0 ? rx : lrx, ary = sd > 0 ? ry : lry, px = .47 * sd;
@@ -979,8 +985,8 @@ function drawHero(o, self) {
   // ---- class signature look (build 0016): silhouette, class colour, moving cloth, aura, rarity glow ----
   { const CC = col(CLASS_COL[cls] || 0xd8a040), t = G.time, sway = Math.sin(t * 2.6 + o.x) * .08 + Math.min(1, mv) * .35, cr = Math.cos(rot), sr = Math.sin(rot);
     const hand = (sd, arx) => { const lx = .47 * sd * 1.08, ly = (1.62 - .68 * Math.cos(arx)) * 1.08, lz = -.68 * Math.sin(arx) * 1.08; return [o.x + cr * lx + sr * lz, o.y + ly, o.z - sr * lx + cr * lz]; };
-    p('rbox', 0, 1.12, .25, lean, 0, 0, 0, -.18, 0, .2, .56, .025, shade(CC, .28), 3); // tabard in the class colour
-    p('rbox', 0, 1.12, .262, lean, 0, 0, 0, .06, 0, .08, .08, .02, shade(CC, .7), 3);
+    p('rbox', 0, 1.12, .25, lean, 0, 0, 0, -.18, 0, .2, .56, .04, shade(CC, .42)); // tabard in the class colour (plain material: the rock/bark one bends thin parts)
+    p('rbox', 0, 1.12, .27, lean, 0, 0, 0, .06, 0, .08, .08, .03, shade(CC, .75), 4);
     if (cls === 'warden') {
       for (const sd of [1, -1]) { p('sphere', .5 * sd, 1.76, 0, 0, 0, -sd * .25, 0, 0, 0, .42, .24, .42, shade(steelC, .7), 4); p('cap', .5 * sd, 1.7, 0, 0, 0, -sd * .25, 0, 0, 0, .45, .04, .45, shade(CC, .7), 4); hp('cone', .2 * sd, 2.28, -.02, lean, 0, -sd * 1.1, 0, .14, 0, .07, .34, .07, col(0xe8dcc0), 3); }
       if (!g.offhand) { p('rbox', 0, 1.35, -.34, lean * .5, 0, 0, 0, 0, 0, .78, 1.0, .07, steelC, 4); p('rbox', 0, 1.35, -.38, lean * .5, 0, 0, 0, 0, 0, .58, .8, .03, CC, 0, .1); }

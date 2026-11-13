@@ -1,5 +1,5 @@
 'use strict';
-const BUILD = '0018';
+const BUILD = '0019';
 // Fresh start: every hero and the stash are wiped whenever this number changes. It follows the build, so each new build is a new season.
 const SEASON = BUILD;
 const SLOTS = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring1'];
@@ -168,7 +168,7 @@ const KIT = { warden: ['slam', 'stomp', 'quake'], ranger: ['multi', 'arrows', 'v
 function skillTiers(cls) { return []; }
 function skillTiersOld(cls) { const s = CLASSES[cls].skills.filter(id => !SKILLS[id].basic).sort((a, b) => SKILLS[a].lv - SKILLS[b].lv), out = []; for (let i = 0; i + 1 < s.length && out.length < TIER_LV.length; i += 2) out.push([s[i], s[i + 1]]); return out; }
 const CLASS_IDS = Object.keys(CLASSES);
-const NEWS = ['Auto-potion: right-click the potion (or tap its A) to drink by yourself below half life', 'Smoother attacks with swing trails, and spells that hit with a bang', 'New start screen, hero portraits and a server leaderboard', 'Everyone starts fresh this build. Race to the top!'];
+const NEWS = ['Heroes got a makeover: ink outlines, fuller hair, straps, pouches, knee guards and boot cuffs', 'Smoother lighting on characters, and no more dotted screen under trees', 'Auto-potion: right-click the potion (or tap its A) to drink by yourself below half life', 'Everyone starts fresh this build. Race to the top!'];
 const CLASS_COL = { warden: 0xd8a040, ranger: 0x4aa850, arcanist: 0x9a5aff, brawler: 0xe0503a, elementalist: 0xff7a2a };
 const LOOK = {
   warden: { a: 0x8e97a8, am: 4, d: 0x3c4250, cl: 0x6e2420, head: 'helm', pauld: 1, shield: 1, cape: 1, w: 'sword' },
