@@ -191,6 +191,7 @@ void main(){
   c=max(c,0.)+texture(uB,uv).rgb*.85;
   float l=dot(c,vec3(.3,.59,.11));c=mix(vec3(l),c,1.14);c*=mix(vec3(.93,1.,1.1),vec3(1.07,1.01,.9),smoothstep(.12,.7,l));
   c=clamp(c,0.,1.);c=mix(c,c*c*(3.-2.*c),.4);
+  {float L=dot(c,vec3(.3,.59,.11));vec3 g=mix(vec3(L),c,.6);float warm=clamp((c.r-c.b)*2.2,0.,1.);g=mix(g,c,warm*.65);g=mix(g*vec3(.84,.92,1.08),g*vec3(1.12,1.,.8),smoothstep(.15,.65,L));c=clamp(pow(g,vec3(1.15))*1.04,0.,1.);c*=mix(1.,smoothstep(.9,.2,length(q*vec2(1.,1.08))),.35);} /* build 0025: the Ashen Gothic look, cold grey world, warm fire and magic */
   c*=mix(1.,smoothstep(.98,.28,length(q*vec2(1.,1.08))),.6);
   c+=(fract(sin(dot(uv+fract(uT),vec2(12.9898,78.233)))*43758.5453)-.5)*.016;o=vec4(c,1.);}}`;
   function prog(vs, fs, names) {

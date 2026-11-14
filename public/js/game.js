@@ -682,7 +682,11 @@ function fireSkill(a) {
 // ---------- quest + GPS path ----------
 const GPS = { t: 0, pts: [], goal: null, text: '' };
 function questTarget() {
-  const Z = G.zone; if (!Z) return null; if (G.inTown) { const o = Z.objs.find(o => o.kind === 'tportal'); return { x: o.x, z: o.z, text: 'Take the portal back to the Hollow' }; }
+  const Z = G.zone; if (!Z) return null; const h = G.hero, cq = tqCur ? tqCur() : null;
+  if (G.inTown) { /* build 0025: the path leads to whoever is waiting for you first */ const who = cq ? (h.tq.n >= cq.goal.n ? cq.by : null) : tqNext().by, npc = who && Z.objs.find(o => o.kind === 'npc' && o.id === who);
+    if (npc) { const at = npc.st || npc; return { x: at.x, z: at.z, text: (cq ? 'Collect your reward from ' : 'Talk to ') + FOLK[who].n + (cq ? '' : ': they have a job for you') }; }
+    const o = Z.objs.find(o => o.kind === 'tportal'); return { x: o.x, z: o.z, text: cq ? 'Take the portal back out to work on ' + cq.t : 'Take the portal back to the Hollow' }; }
+  if (cq && cq.goal.k === 'rescue' && h.tq.n < cq.goal.n) { const pip = Z.objs.find(o => o.kind === 'lost' && !o.used); if (pip) return { x: pip.x, z: pip.z, text: 'Find Pip: follow the path, he is hiding on this floor' }; }
   const po = Z.objs.find(o => o.kind === 'portal' && !o.used); if (po) return { x: po.x, z: po.z, text: 'Take the portal deeper' };
   const b = G.boss; return { x: b ? b.x : Z.bossAt[0], z: b ? b.z : Z.bossAt[1], text: 'Find and slay ' + (b ? b.name : bossFor(Z.def.theme, Z.def.depth).n) };
 }
@@ -917,12 +921,17 @@ function achBadge() { const got = G.ach || (G.ach = achLoad()); let b = ''; for 
 function tqCur() { const h = G.hero; if (!h || !h.tq) return null; return h.tq.id === 'bounty' ? BOUNTY : QUESTS.find(q => q.id === h.tq.id) || null; }
 function tqNext() { const d = (G.hero && G.hero.tqd) || []; return QUESTS.find(q => !d.includes(q.id)) || BOUNTY; }
 function tqMark(id) { const h = G.hero, q = tqCur(); if (q) return q.by !== id ? '' : h.tq.n >= q.goal.n ? '?' : '.'; return tqNext().by === id ? '!' : ''; }
+function tqStep(q) { const g = q.goal, h = G.hero, fl = G.inTown ? 0 : (G.zone.def.depth || 1), left = g.n - h.tq.n;
+  if (h.tq.n >= g.n) return { t: G.inTown ? 'Done! Follow the gold path to ' + FOLK[q.by].n.split(' ')[0] + ' for your reward' : 'Done! Go to town (Town button) and see ' + FOLK[q.by].n.split(' ')[0] + ' for your reward', ok: 1 };
+  if (G.inTown) return { t: g.k === 'rescue' ? 'Leave town: Pip is out on the next floor' : 'Take the portal out to the wilds to do this' };
+  if (g.min && fl < g.min && (g.k === 'collect' || g.k === 'boss')) return { t: 'Not on this floor: go deeper to floor ' + g.min + ' (you are on ' + fl + ')', warn: 1 };
+  return { t: g.k === 'collect' ? 'Kill monsters here: they drop ' + g.item + ' (' + left + ' to go)' : g.k === 'arch' ? 'Kill spell-casters: the robed ones that throw magic from afar' : g.k === 'elite' ? 'Kill champions: monsters with a name over their head' : g.k === 'boss' ? 'Slay this floor\'s guardian' : g.k === 'floor' ? 'Go deeper: slay the guardian, then take its portal (' + left + ' floor' + (left === 1 ? '' : 's') + ' to go)' : g.k === 'rescue' ? 'Find Pip: follow the gold path' : 'Kill any monsters (' + left + ' to go)' }; }
 function tqHow(q) { const g = q.goal; return g.k === 'collect' ? 'Monsters ' + (g.min ? 'on floor ' + g.min + ' and deeper' : 'out in the world') + ' now drop ' + g.item + '. Collect ' + g.n + '.' : g.k === 'arch' ? 'Defeat ' + g.n + ' spell-casting monsters out in the world.' : g.k === 'floor' ? 'Reach floor ' + g.n + '. Take the portal after each guardian to go deeper.' : g.k === 'rescue' ? 'Leave town and search the floor for Pip. Look for the pink star on your map.' : g.k === 'elite' ? 'Defeat ' + g.n + ' champions: the monsters with names over their heads.' : g.k === 'boss' ? 'Defeat a floor guardian' + (g.min ? ' on floor ' + g.min + ' or deeper' : '') + '.' : 'Defeat ' + g.n + ' monsters out in the world.'; }
 function tqReward(q) { const lv = G.hero.level; return { gold: Math.round((60 + 30 * lv) * q.gold), shards: 3 + Math.floor(lv / 3), rar: q.rar }; }
 function tqAdd(kind, amt) { const h = G.hero, q = tqCur(); if (!q || q.goal.k !== kind || h.tq.n >= q.goal.n) return; h.tq.n = Math.min(q.goal.n, h.tq.n + (amt || 1));
-  if (h.tq.n >= q.goal.n) { hint('Quest done: ' + q.t + '! Go back to ' + FOLK[q.by].n + ' in Emberwatch (press T) for your reward.'); SFX.play('shrine'); UI.streakPop && UI.streakPop('Quest complete!', q.t + ' · return to town', 0x8affc0); }
+  if (h.tq.n >= q.goal.n) { hint('Quest done: ' + q.t + '! Go back to ' + FOLK[q.by].n + ' in Emberwatch (press T) for your reward.'); SFX.play('shrine'); UI.zoneBanner && UI.zoneBanner('Quest complete: ' + q.t, 'Go to town and see ' + FOLK[q.by].n + ' for your reward'); if (typeof GPS !== 'undefined') GPS.t = 0; }
   else if (kind !== 'kills' || h.tq.n % 10 === 0) hint(q.goal.item + ': ' + h.tq.n + ' / ' + q.goal.n); saveGame(); }
-function tqAccept() { const h = G.hero, q = tqNext(); h.tq = { id: q.id, n: 0 }; saveGame(); SFX.play('pickup'); hint('New quest: ' + q.t + '. ' + tqHow(q)); }
+function tqAccept() { const h = G.hero, q = tqNext(); h.tq = { id: q.id, n: 0 }; saveGame(); SFX.play('pickup'); hint('New quest: ' + q.t + '. ' + tqHow(q)); UI.zoneBanner && UI.zoneBanner('New quest: ' + q.t, tqStep(q).t); if (typeof GPS !== 'undefined') GPS.t = 0; }
 function tqClaim() { const h = G.hero, q = tqCur(); if (!q || h.tq.n < q.goal.n) return null; const r = tqReward(q); h.gold += r.gold; h.shards = (h.shards || 0) + r.shards; const it = makeItem(h.level, null, r.rar); if (!addItem(it)) dropItem(P.x, P.z, it);
   h.tqd = h.tqd || []; if (!q.repeat && !h.tqd.includes(q.id)) h.tqd.push(q.id); h.tq = null; saveGame(); UI.invDirty = true; SFX.play('level'); ring(P.x, P.z, 0, 8, .8, 0xffd84a); burst(P.x, 1.5, P.z, 0xffd84a, 30, 7); if (G.inTown) buildStatic(G.zone); return { r, it, q }; }
 function questZone(Z) { // the rescue quest puts Pip somewhere far out on the next floor you visit

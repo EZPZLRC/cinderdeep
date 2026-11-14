@@ -1,5 +1,5 @@
 'use strict';
-const BUILD = '0024';
+const BUILD = '0025';
 // Fresh start: every hero and the stash are wiped whenever this number changes. It follows the build, so each new build is a new season.
 const SEASON = BUILD;
 const SLOTS = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring1'];
@@ -168,7 +168,7 @@ const KIT = { warden: ['slam', 'stomp', 'quake'], ranger: ['multi', 'arrows', 'v
 function skillTiers(cls) { return []; }
 function skillTiersOld(cls) { const s = CLASSES[cls].skills.filter(id => !SKILLS[id].basic).sort((a, b) => SKILLS[a].lv - SKILLS[b].lv), out = []; for (let i = 0; i + 1 < s.length && out.length < TIER_LV.length; i += 2) out.push([s[i], s[i + 1]]); return out; }
 const CLASS_IDS = Object.keys(CLASSES);
-const NEWS = ['The Catacombs rebuilt: stone floors, warm flickering torches, candles and bone piles', 'Monsters break apart into leaves, bone, embers, ice or void crystal', 'Swords are real broadswords now', 'Ember arrows show the quest path', 'Trees near you fade cleanly instead of turning to dots, and fire glare is softer'];
+const NEWS = ['A new look: Ashen Gothic. A cold, grey world where fire and magic burn warm', 'Quests always say what to do next, with a progress bar', 'The gold path leads to the townsperson waiting for you, and to Pip', 'Big cards when a quest starts and when it is done', 'A warning when you are on a floor too shallow for a quest item'];
 // achievements (build 0020): badges that show next to your name in chat. They reset with each build, like heroes.
 const ACH = [
   ['blood', '⚔', 'First Blood', 'Defeat your first monster', h => h.kills >= 1],
