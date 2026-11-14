@@ -610,7 +610,7 @@ const UI = (() => {
       if (!on && id === menuHover) GLX.obj('glow', 'ring', o.x, .06, o.z, -t, 1.9, 1, 1.9, col(CLASS_COL[id]), 1, .45, -1); /* build 0028: hover glow */ { const fs = GLX.toScreen(o.x, 0, o.z), hs = GLX.toScreen(o.x, 2.75, o.z), cr = glc.getBoundingClientRect(); menuSpots[id] = fs && hs ? [fs[0] + cr.left, fs[1] + cr.top, hs[0] + cr.left, hs[1] + cr.top] : null; }
       if (on) { const cc = col(CLASS_COL[id]); GLX.obj('glow', 'ring', o.x, .06, o.z, t, 2.4, 1, 2.4, cc, 1, .8, -1); GLX.obj('glow', 'disc', o.x, .07, o.z, 0, 3.4, 1, 3.4, col(0xfff0d0), .6, .16, 1); GLX.light(o.x, 1.5, o.z - 1.5, 5, cc, .7, 8); }
     });
-    menuTags();     SFX.musTick(); GLX.light(0, 5, 6, 26, col(0xffc890), .75, 9); GLX.light(-7, 3, -2, 12, col(0x6a8cff), .5, 2); GLX.light(7, 3, -2, 12, col(0xff7a2a), .5, 2); GLX.render();
+    menuTags();     SFX.theme(selCls); SFX.musTick(); GLX.light(0, 5, 6, 26, col(0xffc890), .75, 9); GLX.light(-7, 3, -2, 12, col(0x6a8cff), .5, 2); GLX.light(7, 3, -2, 12, col(0xff7a2a), .5, 2); GLX.render();
   }
   let selCls = 'warden', resetArmed = false, hasServer = false, serverChecked = false; try { const c = localStorage.getItem('cinderdeep_class'); if (CLASSES[c]) selCls = c; } catch (e) { }
   function renderClasses() {

@@ -1,5 +1,5 @@
 'use strict';
-const BUILD = '0032';
+const BUILD = '0033';
 // Fresh start: every hero and the stash are wiped whenever this number changes. It follows the build, so each new build is a new season.
 const SEASON = '0028'; /* Lee, Nov 14: heroes now carry over between builds. Only change this to start a brand-new season on purpose */
 const SLOTS = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring1'];
@@ -170,7 +170,7 @@ const KIT = { warden: ['slam', 'stomp', 'quake'], ranger: ['multi', 'arrows', 'v
 function skillTiers(cls) { return []; }
 function skillTiersOld(cls) { const s = CLASSES[cls].skills.filter(id => !SKILLS[id].basic).sort((a, b) => SKILLS[a].lv - SKILLS[b].lv), out = []; for (let i = 0; i + 1 < s.length && out.length < TIER_LV.length; i += 2) out.push([s[i], s[i + 1]]); return out; }
 const CLASS_IDS = Object.keys(CLASSES);
-const NEWS = ['Upgrade arrows now count unique effects, weighed for the skills on your bar', 'The Sellsword no longer needs gear: it always fights at full strength, and anything it wore is back in your bag', 'Items look real now: brushed metal, wood grain, leather, cloth and cut gems, on the ground too', 'Your hero now carries over to new builds: no more resets', 'Space is now a dodge roll on PC (E or F to use and pick up)', 'Grow Emberwatch: spend gold and shards at the Town Planner in the plaza on six projects, each with three levels and a lasting bonus'];
+const NEWS = ['Every hero has their own theme music on the selection screen, and heroes now have fingers and patterned outfits', 'Upgrade arrows now count unique effects, weighed for the skills on your bar', 'The Sellsword no longer needs gear: it always fights at full strength, and anything it wore is back in your bag', 'Items look real now: brushed metal, wood grain, leather, cloth and cut gems, on the ground too', 'Your hero now carries over to new builds: no more resets', 'Space is now a dodge roll on PC (E or F to use and pick up)', 'Grow Emberwatch: spend gold and shards at the Town Planner in the plaza on six projects, each with three levels and a lasting bonus'];
 // achievements (build 0020): badges that show next to your name in chat. They reset with each build, like heroes.
 const ACH = [
   ['blood', '⚔', 'First Blood', 'Defeat your first monster', h => h.kills >= 1],

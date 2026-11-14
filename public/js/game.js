@@ -80,12 +80,50 @@ const SFX = (() => {
   function kick(t) { const o = ac.createOscillator(), g = ac.createGain(); o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(42, t + .14); env(g, t, .003, .55, .28); o.connect(g); g.connect(mBus); o.start(t); o.stop(t + .32); hit(t, 3000, 'lowpass', .08, .03, mBus); }
   function snare(t, v) { hit(t, 1900, 'bandpass', .32 * v, .17, mBus); osc('triangle', 190, t, .09, .14 * v, mBus); }
   function chord(n, t, d, v) { for (const [k, det] of [[0, -7], [0, 7], [7, 0], [12, 4]]) osc('sawtooth', MF(n + k), t, d, v * (k === 12 ? .5 : 1), gBus, det); }
+  /* build 0033: each hero has a theme on the selection screen. Same instruments as the rock loop, plus a clean bus with an echo for bells, flutes and pads. Degrees index the theme's scale; null is a rest */
+  const SC = { min: [0, 2, 3, 5, 7, 8, 10], dor: [0, 2, 3, 5, 7, 9, 10], hmin: [0, 2, 3, 5, 7, 8, 11], blues: [0, 3, 5, 6, 7, 10] }, _ = null;
+  const THEMES = {
+    warden: { bpm: 92, base: 73.42, len: 8, sc: 'min', prog: [0, 0, -2, -2, -4, -4, -5, -5], kick: [0, 3, 4], snare: [6], tom: [1, 5, 7], gtr: 'hold', bass: 'root', crash: 1,
+      lead: { w: 'sawtooth', v: .05, lp: 1300, oct: 12, m: [0, _, _, 0, 2, _, 4, _, 3, _, 2, _, 0, _, _, _, 0, _, _, 0, 2, _, 4, _, 5, _, 4, _, 7, _, _, _] }, pad: { w: 'sawtooth', v: .018, lp: 700 } },
+    ranger: { bpm: 172, base: 110, len: 6, sc: 'dor', prog: [0, 0, -2, -2, 0, 0, -5, -2], kick: [0, 3], snare: [], tom: [5], hat: [0, 1, 2, 3, 4, 5], hv: .035, bass: 'root', bw: 'triangle',
+      arp: { w: 'triangle', v: .05, d: .28, n: [0, 7, 12, 15, 12, 7] }, lead: { w: 'sine', v: .09, oct: 24, vib: 1, m: [4, _, 3, 2, _, 0, 1, _, 2, 4, _, _, 4, _, 5, 6, _, 4, 3, _, 2, 0, _, _] } },
+    arcanist: { bpm: 76, base: 65.41, len: 8, sc: 'hmin', prog: [0, 0, -4, -4, -7, -7, -5, -5], kick: [0], snare: [], hat: [3, 7], hv: .02, bass: 'long', bw: 'sine', echo: .45,
+      arp: { w: 'sine', v: .06, d: 1.4, oct: 24, n: [0, 3, 7, 12, 15, 12, 7, 3] }, pad: { w: 'sine', v: .05, det: 9 }, lead: { w: 'triangle', v: .06, oct: 36, m: [_, _, 6, _, 4, _, _, _, 5, _, 4, _, 2, _, 3, _, _, _, 6, _, 7, _, 8, _, 7, _, 6, _, 4, _, _, _] } },
+    brawler: { bpm: 176, base: 82.41, len: 8, sc: 'blues', prog: [0, 0, 0, 0, 5, 5, 3, -2], kick: [0, 3, 4], snare: [2, 6], hat: [0, 1, 2, 3, 4, 5, 6, 7], hv: .06, gtr: 'chug', bass: 'pulse', hey: 1,
+      lead: { w: 'square', v: .03, oct: 12, dist: 1, m: [0, _, 1, 2, 3, _, 2, _, 0, _, 2, _, 1, 0, _, _, 0, _, 1, 2, 3, _, 5, _, 4, 3, 2, _, 1, 0, _, _] } },
+    elementalist: { bpm: 128, base: 92.5, len: 8, sc: 'min', prog: [0, 0, -4, -4, 3, 3, -2, -2], kick: [0, 2, 4, 6], snare: [2, 6], hat: [1, 3, 5, 7], hv: .07, bass: 'off', bw: 'sawtooth', echo: .3,
+      arp: { w: 'square', v: .03, d: .18, oct: 24, n: [0, 7, 12, 15, 12, 7, 3, 7], split: 1 }, pad: { w: 'sawtooth', v: .02, lp: 1800, det: 12 }, lead: { w: 'sawtooth', v: .045, oct: 24, lp: 2400, m: [4, _, _, 3, 4, _, 6, _, 7, _, 6, _, 4, _, _, _, 2, _, _, 3, 4, _, 2, _, 0, _, _, _, _, _, _, _] } }
+  };
+  let theme = null, themeK = '', cBus = null;
+  if (typeof setInterval !== 'undefined' && typeof document !== 'undefined') setInterval(() => { try { musTick(); } catch (e) { } }, 90); /* keeps the music steady when frames are slow */
+  function setTheme(k) { k = THEMES[k] ? k : ''; if (k === themeK) return; themeK = k; theme = THEMES[k] || null; if (mBus && ac) { mBus.gain.cancelScheduledValues(ac.currentTime); mBus.gain.setValueAtTime(0, ac.currentTime); } mStep = 0; if (ac) mNext = ac.currentTime + .25; }
+  function tom(t, f, v) { const o = ac.createOscillator(), g = ac.createGain(); o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * .55, t + .3); env(g, t, .003, v, .45); o.connect(g); g.connect(mBus); o.start(t); o.stop(t + .5); hit(t, 600, 'lowpass', v * .3, .08, mBus); }
+  function filt(out, f) { const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = f; lp.connect(out); return lp; }
+  function themeStep(t, st) {
+    const T = theme, L = T.len, i = mStep % L, bar = Math.floor(mStep / L) % 4, phrase = Math.floor(mStep / L / 4) % 4, half = i < L / 2 ? 0 : 1, root = T.prog[bar * 2 + half], F = n => T.base * Math.pow(2, n / 12), scl = SC[T.sc];
+    const deg = (d, o) => { const k = scl.length; return scl[((d % k) + k) % k] + 12 * Math.floor(d / k) + (o || 0); };
+    if (T.kick.includes(i)) kick(t); if (T.snare.includes(i)) snare(t, .9); if (T.tom && T.tom.includes(i)) tom(t, i === T.tom[T.tom.length - 1] ? 70 : 105, .32);
+    if (T.hat) for (const h of T.hat) if (h === i) hit(t, 8000, 'highpass', T.hv * (i % 2 ? .7 : 1), .04, mBus);
+    if (T.crash || i === 0) if (i === 0 && bar === 0) hit(t, 5000, 'highpass', .14, 1.4, mBus);
+    if (T.hey && bar === 3 && i === 6) { hit(t, 1100, 'bandpass', .3, .16, mBus); hit(t, 1500, 'bandpass', .2, .14, mBus); }
+    const ch = i === 0 || i === L / 2;
+    if (T.gtr === 'hold' && ch) for (const [k, det] of [[0, -7], [0, 7], [7, 0], [12, 4]]) osc('sawtooth', F(root + k), t, st * (L / 2) * .95, .05 * (k === 12 ? .5 : 1), gBus, det);
+    if (T.gtr === 'chug') for (const [k, det] of [[0, -7], [0, 7], [7, 0]]) osc('sawtooth', F(root + k), t, st * (ch ? 1.6 : .5), ch ? .06 : .035, gBus, det);
+    const bw = T.bw || 'sawtooth', bf = (() => { let f = F(root - 12); while (f < 40) f *= 2; return f; })(), bs = (d, v) => { osc(bw, bf, t, d, v, mBus); osc('sine', bf, t, d, v * .9, mBus); };
+    if (T.bass === 'root' && ch) bs(st * (L / 2) * .8, .12); else if (T.bass === 'long' && i === 0) bs(st * L * .95, .1); else if (T.bass === 'pulse') bs(st * .85, .11); else if (T.bass === 'off' && i % 2) bs(st * .8, .12);
+    if (T.pad && ch) { const o = T.pad.lp ? filt(cBus, T.pad.lp) : cBus; for (const k of [0, 3, 7, 12]) { osc(T.pad.w, F(root + k + 12), t, st * (L / 2) * 1.05, T.pad.v, o, -(T.pad.det || 0)); if (T.pad.det) osc(T.pad.w, F(root + k + 12), t, st * (L / 2) * 1.05, T.pad.v, o, T.pad.det); } }
+    if (T.arp) { const A = T.arp, n = A.n[i % A.n.length]; osc(A.w, F(root + n + (A.oct || 12)), t, A.d, A.v, cBus); if (A.split) osc(A.w, F(root + n + (A.oct || 12)), t + st / 2, A.d, A.v * .7, cBus); }
+    if (T.lead && !(phrase === 0 && bar < 2)) { const Ld = T.lead, d = Ld.m[(mStep % (L * 4)) % Ld.m.length]; if (d !== null && d !== undefined) { let len = 1; while (len < 4 && Ld.m[(mStep + len) % Ld.m.length] === null) len++;
+      const out = Ld.dist ? gBus : Ld.lp ? filt(cBus, Ld.lp) : cBus, o = osc(Ld.w, F(deg(d, Ld.oct || 12)), t, st * len * .95, Ld.v, out); if (Ld.vib) { o.detune.setValueAtTime(0, t); for (let q = 1; q <= len * 3; q++) o.detune.linearRampToValueAtTime(q % 2 ? 14 : -14, t + q * st / 3); } } }
+  }
   function musTick() {
     if (!ac || ac.state !== 'running') return;
     if (!mBus) { mBus = ac.createGain(); mBus.gain.value = 0; const comp = ac.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 4; mBus.connect(comp); comp.connect(ac.destination);
       gBus = ac.createGain(); gBus.gain.value = .5; const ws = ac.createWaveShaper(), cv = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = i / 512 - 1; cv[i] = Math.tanh(x * 6) * .8; } ws.curve = cv; ws.oversample = '2x'; const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2600; const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 90; gBus.connect(ws); ws.connect(hp); hp.connect(lp); lp.connect(mBus); mNext = ac.currentTime + .1; }
+    if (!cBus) { cBus = ac.createGain(); cBus.gain.value = 1; const dl = ac.createDelay(1), fb = ac.createGain(), wet = ac.createGain(); dl.delayTime.value = .33; fb.gain.value = .32; wet.gain.value = .3; cBus.connect(mBus); cBus.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(wet); wet.connect(mBus); cBus.wet = wet; }
     mBus.gain.setTargetAtTime(mVol(), ac.currentTime, .5); if (mVol() <= 0) { mNext = ac.currentTime + .1; return; }
-    const st = 60 / BPM / 2; if (mNext < ac.currentTime - .5) mNext = ac.currentTime + .05;
+    const st = 60 / (theme ? theme.bpm : BPM) / 2; if (mNext < ac.currentTime - .5) mNext = ac.currentTime + .05;
+    if (theme) { cBus.wet.gain.value = theme.echo || .2; while (mNext < ac.currentTime + .25) { themeStep(mNext, st); mStep++; mNext += st; } return; }
     while (mNext < ac.currentTime + .25) {
       const t = mNext, i = mStep % 8, bar = (mStep >> 3) % 4, phrase = (mStep >> 5) % 4, root = RIFF[bar * 2 + (i >> 2)], fill = bar === 3 && phrase % 2 === 1 && i >= 4;
       // drums: kick on 1 and 3 with a push before 3, snare on 2 and 4, eighth-note hats, a crash at the top of each phrase, a snare fill every other phrase
@@ -101,7 +139,7 @@ const SFX = (() => {
       mStep++; mNext += st;
     }
   }
-  return { unlock: ctx, play, ambient, ambTick(dt) { ambTick(dt); musTick(); }, musTick, music(v) { mLvl = v; }, toggle() { mute = !mute; setAmb(); return mute; }, vol(v) { master = v; mute = v <= 0; setAmb(); } };
+  return { unlock: ctx, play, ambient, ambTick(dt) { setTheme(''); ambTick(dt); musTick(); }, musTick, theme: setTheme, music(v) { mLvl = v; }, toggle() { mute = !mute; setAmb(); return mute; }, vol(v) { master = v; mute = v <= 0; setAmb(); } };
 })();
 
 // ---------- items ----------
@@ -1167,7 +1205,7 @@ function drawHero(o, self) {
   else for (const sd of [1, -1]) {
     const r = sd * lg + air * (sd > 0 ? 1 : .5), shc = bm ? bm[0] : pm[0], shm = bm ? bm[1] : pm[1]; p('taper', .16 * sd, .98, 0, r, 0, 0, 0, -.25, 0, .3, -.54, .32, pm[0], pm[1]); p('sphere', .16 * sd, .98, 0, r, 0, 0, 0, -.5, .03, .22, .22, .24, pm[0], pm[1]); p('taper', .16 * sd, .98, 0, r * 1.25, 0, 0, 0, -.7, .0, .24, -.46, .27, shc, shm); p('sphere', .16 * sd, .98, 0, r * 1.25, 0, 0, 0, -.6, -.06, .2, .26, .2, shc, shm); p('sphere', .16 * sd, .98, 0, r * 1.25, 0, 0, 0, -.93, .1, .2, .13, .4, bm ? bm[0] : dkLeather, bm ? bm[1] : 0); p('sphere', .16 * sd, .98, 0, r, 0, 0, 0, -.5, .1, .14, .14, .08, shade(pm[0], .8), pm[1]); p('cap', .16 * sd, .98, 0, r * 1.25, 0, 0, 0, -.74, .0, .27, .05, .29, shade(shc, .75), shm); p('rbox', .16 * sd, .98, 0, r * 1.25, 0, 0, 0, -.97, .3, .16, .06, .1, shade(bm ? bm[0] : dkLeather, .7), bm ? bm[1] : 0);
     if (bm) p('cap', .17 * sd, .95, 0, r * 1.25, 0, 0, 0, -.5, .02, .25, .07, .27, tr(g.boots)[0], 4, tr(g.boots)[1]);
-    if (g.pants) { p('sphere', .17 * sd, .95, 0, r * 1.1, 0, 0, 0, -.46, .1, .2, .18, .2, pm[0], pm[1]); if (g.pants[0] === 0) p('rbox', .2 * sd, 1.0, .02, .06 + sd * lg * .4, 0, -sd * .12, 0, -.2, .14, .24, .36, .06, steelC, 4); else p('rbox', .16 * sd, .98, -.02, .16 + mv * .25, 0, 0, 0, -.3, -.2, .16, .5, .04, cloth); }
+    if (g.pants && g.pants[0] !== 0) p('rbox', .16 * sd, .98, 0, r, 0, 0, sd * .145, -.3, 0, .018, .44, .1, trim, 0, te * .3); if (g.pants) { p('sphere', .17 * sd, .95, 0, r * 1.1, 0, 0, 0, -.46, .1, .2, .18, .2, pm[0], pm[1]); if (g.pants[0] === 0) p('rbox', .2 * sd, 1.0, .02, .06 + sd * lg * .4, 0, -sd * .12, 0, -.2, .14, .24, .36, .06, steelC, 4); else p('rbox', .16 * sd, .98, -.02, .16 + mv * .25, 0, 0, 0, -.3, -.2, .16, .5, .04, cloth); }
   }
   let lean = .06, rx = -lg * .7, ry = 0, lrx = lg * .6 - .2, lry = 0, drw = -1;
   if (AP && AW > .01) { const m = (a, b) => a + (b - a) * AW; rx = m(rx, AP.rx); ry = m(ry, AP.ry); lrx = m(lrx, AP.lrx); lry = m(lry, AP.lry); lean = m(lean, AP.lean); if (o.act) drw = AP.drw; }
@@ -1184,6 +1222,17 @@ function drawHero(o, self) {
   if (g.belt) { const bt = tr(g.belt); p('rbox', 0, 1.0, 0, lean, 0, 0, 0, 0, 0, .56, .16, .4, g.belt[0] === 0 ? dkLeather : cloth); p('rbox', 0, 1.0, .2, lean, 0, 0, 0, 0, 0, .18, .16, .06, bt[0], 4, bt[1]); } else { p('rbox', 0, 1.0, 0, lean, 0, 0, 0, 0, 0, .52, .08, .4, dkLeather); p('rbox', 0, 1.0, .2, lean, 0, 0, 0, 0, 0, .1, .09, .03, gold, 4); }
   if (!L.robe) for (const sd of [1, -1]) { p('rbox', .25 * sd, .96, .1, lean, 0, sd * .3, 0, 0, 0, .12, .14, .08, leatherC); p('rbox', .25 * sd, 1.02, .12, lean, 0, sd * .3, 0, 0, 0, .13, .04, .09, shade(leatherC, .8)); }
   if (cls === 'ranger' || cls === 'warden') p('rbox', 0, 1.36, .23, lean, 0, 0, cls === 'ranger' ? .62 : -.62, 0, 0, .09, .82, .03, cls === 'ranger' ? dkLeather : shade(dkLeather, .9)); // shoulder strap across the chest
+  { /* build 0033: outfit patterns. The chest material sets the base (plate seams and rivets, leather stitching, cloth bands) and each hero adds a motif of their own */
+    const pc = CLASS_COL[cls] ? col(CLASS_COL[cls]) : trim, brass = col(0x9a7a3a), dk = shade(ac, .55), cmK = g.chest ? g.chest[0] : -1;
+    if (cmK === 0) { for (const y of [1.22, 1.4]) p('cap', 0, y, 0, lean, 0, 0, 0, 0, 0, .75, .022, .47, dk, 4); for (const sd of [1, -1]) for (const y of [1.25, 1.43]) p('sphere', .3 * sd, y, .17, lean, 0, 0, 0, 0, 0, .035, .035, .035, brass, 4); }
+    else if (cmK === 1 || (!g.chest && !L.robe)) { for (const sd of [1, -1]) { p('rbox', .13 * sd, 1.34, .232, lean, 0, 0, 0, 0, 0, .014, .5, .02, dk); for (let k = 0; k < 4; k++) p('sphere', .13 * sd, 1.16 + k * .12, .24, lean, 0, 0, 0, 0, 0, .022, .022, .022, brass, 4); } }
+    else if (!L.robe) for (const y of [1.18, 1.52]) p('cap', 0, y, 0, lean, 0, 0, 0, 0, 0, .78, .03, .48, shade(pc, .8));
+    if (cls === 'warden') { for (const sd of [1, -1]) p('rbox', .05 * sd, 1.2, .278, lean, 0, 0, sd * .75, 0, 0, .028, .17, .02, gold, 4); p('sphere', 0, 1.33, .276, lean, 0, 0, 0, 0, 0, .05, .05, .02, gold, 4); }
+    else if (cls === 'ranger') for (let k = 0; k < 4; k++) for (const sd of [1, -1]) p('rbox', 0, 1.5 - k * .08, .238, lean, 0, 0, sd * .8, 0, 0, .012, .085, .02, col(0xc8a878));
+    else if (cls === 'arcanist') { for (let k = 0; k < 10; k++) { const a = k / 10 * 6.283; p('rbox', Math.sin(a) * .41, .3, Math.cos(a) * .38, 0, a, 0, 0, 0, 0, .05, .05, .02, pc, 0, .9); } for (const y of [.55, .8]) p('cap', 0, y, 0, 0, 0, 0, 0, 0, 0, y > .6 ? .72 : .78, .02, y > .6 ? .64 : .7, shade(pc, .7), 0, .3); }
+    else if (cls === 'elementalist') { for (let k = 0; k < 3; k++) p('rbox', 0, 1.2 + k * .13, .25, lean, 0, 0, .785, 0, 0, .06, .06, .02, col(k === 1 ? 0xffb050 : 0xe0602a), 0, .6); for (let k = 0; k < 3; k++) p('rbox', 0, .9 - k * .22, .37 + k * .02, .12, 0, 0, .785, 0, 0, .07, .07, .02, col(0xe0702a), 0, .5); }
+    else if (cls === 'brawler') for (const sd of [1, -1]) for (let k = 0; k < 3; k++) p('rbox', .2 * sd, 1.5 - k * .1, .215, lean, 0, 0, sd * (.5 + k * .15), 0, 0, .14, .022, .02, shade(skin, .45));
+  }
   if (g.amulet) { const at = tr(g.amulet); p('gem', 0, 1.6, .3, lean, G.time, 0, 0, 0, 0, .1, .14, .08, at[0], 0, 1.2); }
   // head (drawn a little smaller than the body so the proportions read as human)
   const hp = (gm2, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, c, m, e) => p(gm2, px * .84, 1.82 + (py - 1.8) * .84, pz * .84, rx, ry, rz, ox * .84, oy * .84, oz * .84, sx * .84, sy * .84, sz * .84, c, m, e);
@@ -1219,6 +1268,8 @@ function drawHero(o, self) {
     const slv = shade(ac, g.chest ? .8 : .92); p('taper', px, 1.62, 0, arx, ary, 0, 0, -.18, 0, .21, -.38, .21, slv, am); p('sphere', px, 1.62, 0, arx, ary, 0, 0, -.36, 0, .17, .17, .17, slv, am);
     p('taper', px, 1.62, 0, arx, ary, 0, 0, -.5, 0, brm ? .21 : .165, -.3, brm ? .21 : .165, brm ? brm[0] : skin, brm ? brm[1] : 0); if (brm) p('cap', px, 1.62, 0, arx, ary, 0, 0, -.36, 0, .22, .05, .22, tr(g.bracers)[0], 4, tr(g.bracers)[1]);
     const fist = wt === 'fist'; p('sphere', px, 1.62, 0, arx, ary, 0, 0, -.68, 0, fist ? .25 : .15, fist ? .25 : .2, fist ? .25 : .13, fist ? dkLeather : gm ? gm[0] : skin, gm ? gm[1] : 0); if (!fist) p('sphere', px, 1.62, 0, arx, ary, 0, -sd * .07, -.66, .04, .06, .12, .06, gm ? gm[0] : skin, gm ? gm[1] : 0);
+    if (!fist) { const hc = gm ? gm[0] : skin, hm = gm ? gm[1] : 0; for (let k = 0; k < 4; k++) { const fx = (k - 1.5) * .036; p('rbox', px, 1.62, 0, arx, ary, 0, fx, -.79 + Math.abs(k - 1.5) * .014, .025, .029, .11 - Math.abs(k - 1.5) * .018, .033, hc, hm); p('sphere', px, 1.62, 0, arx, ary, 0, fx, -.735, .045, .026, .02, .02, shade(hc, .85), hm); } } /* build 0033: four fingers with knuckles (the thumb is the small sphere above) */
+    if (cls === 'brawler') for (const y of [-.47, -.53, -.59]) p('cap', px, 1.62, 0, arx, ary, 0, 0, y, 0, .2, .03, .2, col(0xe8e0cc));
     if (fist) for (let k = 0; k < 3; k++) p('cone', px, 1.62, 0, arx + 1.5708, ary, 0, (k - 1) * .08, .1, .68, .06, .14, .06, wglow || steelC, 4, wglow ? .8 : 0);
   }
   // off-hand
