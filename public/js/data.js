@@ -1,7 +1,7 @@
 'use strict';
-const BUILD = '0028';
+const BUILD = '0029';
 // Fresh start: every hero and the stash are wiped whenever this number changes. It follows the build, so each new build is a new season.
-const SEASON = BUILD;
+const SEASON = '0028'; /* Lee, Nov 14: heroes now carry over between builds. Only change this to start a brand-new season on purpose */
 const SLOTS = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring1'];
 const DROP_SLOTS = ['weapon', 'weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring', 'ring'];
 const AFF_ALIAS = { shoulders: 'chest', pants: 'chest', belt: 'helm', bracers: 'gloves', offhand: 'amulet' };
@@ -170,7 +170,7 @@ const KIT = { warden: ['slam', 'stomp', 'quake'], ranger: ['multi', 'arrows', 'v
 function skillTiers(cls) { return []; }
 function skillTiersOld(cls) { const s = CLASSES[cls].skills.filter(id => !SKILLS[id].basic).sort((a, b) => SKILLS[a].lv - SKILLS[b].lv), out = []; for (let i = 0; i + 1 < s.length && out.length < TIER_LV.length; i += 2) out.push([s[i], s[i + 1]]); return out; }
 const CLASS_IDS = Object.keys(CLASSES);
-const NEWS = ['Balance pass: skills evened out between classes, resources matter more, a damage meter in your bag, and monsters grow tougher deeper down. New build, so every hero starts again at level 1', 'Pick your hero by clicking them in the lineup, their name tag or their card; arrow keys work too'];
+const NEWS = ['Your hero now carries over to new builds: no more resets', 'Space is now a dodge roll on PC (E or F to use and pick up)', 'Grow Emberwatch: spend gold and shards at the Town Planner in the plaza on six projects, each with three levels and a lasting bonus'];
 // achievements (build 0020): badges that show next to your name in chat. They reset with each build, like heroes.
 const ACH = [
   ['blood', '⚔', 'First Blood', 'Defeat your first monster', h => h.kills >= 1],
@@ -225,6 +225,16 @@ const ARCH = {
   brute: { hp: 1.4, dmg: 1.9, spd: 3.2, r: 1, sc: 1.55, rec: 1.1, wind: .95, xp: 2.5, reach: 2.8, w: 1 },
   bomber: { hp: .78, dmg: 2.1, spd: 6.2, r: .5, sc: .8, rec: 0, wind: .7, xp: .8, reach: 1.9, w: 1 }
 };
+// build 0028: the town grows with your gold and shards. Each project has 3 levels and a bonus that stays with this hero.
+const TOWN_UP = {
+  forge: { n: "Doran's Forge", d: 'Forging new items costs 15% less per level', ic: '⚒' },
+  garden: { n: "Healer's Garden", d: 'Potions heal 15% more per level', ic: '❀' },
+  guild: { n: 'Merchant Guild', d: '15% more gold from every pile per level', ic: '◈' },
+  tower: { n: 'Watchtower', d: 'Your Sellsword hits 15% harder per level', ic: '♜' },
+  yard: { n: 'Salvage Yard', d: '25% more shards when you salvage, per level', ic: '⚙' },
+  plaza: { n: "Hero's Plaza", d: 'A statue in your honour, banners and lanterns: the whole town celebrates you', ic: '★' }
+};
+const TOWN_COST = [[4000, 40], [15000, 150], [45000, 450]];
 const EMODS = {
   hasted: { n: 'Hasted', d: 'Moves and attacks faster' }, armored: { n: 'Armored', d: 'Takes 40% less damage' }, volatile: { n: 'Volatile', d: 'Explodes on death' },
   storm: { n: 'Stormbound', d: 'Calls lightning down on you' }, molten: { n: 'Molten', d: 'Leaves burning ground' }, regen: { n: 'Regenerating', d: 'Heals over time' }, blink: { n: 'Blinking', d: 'Teleports to your side' }

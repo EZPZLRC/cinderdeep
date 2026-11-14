@@ -74,7 +74,8 @@ setInterval(() => {
 
 
 // ---- leaderboard: highest level and deepest floor this build (it starts fresh with every build, like the heroes) ----
-const LB_FILE = path.join(process.env.LB_DIR || require('os').tmpdir(), 'cinderdeep-lb-' + BUILD + '.json');
+const SEASON = (/const SEASON = '([^']+)'/.exec(fs.readFileSync(path.join(PUB, 'js/data.js'), 'utf8')) || [])[1] || BUILD; /* heroes carry over between builds, so the leaderboard follows the season, not the build */
+const LB_FILE = path.join(process.env.LB_DIR || require('os').tmpdir(), 'cinderdeep-lb-' + SEASON + '.json');
 let LB = { lvl: [], deep: [] }; try { const j = JSON.parse(fs.readFileSync(LB_FILE, 'utf8')); if (Array.isArray(j.lvl) && Array.isArray(j.deep)) LB = j; } catch (e) { }
 let lbDirty = false; setInterval(() => { if (!lbDirty) return; lbDirty = false; fs.writeFile(LB_FILE, JSON.stringify(LB), () => { }); }, 15000);
 function lbPut(list, e, score) { const k = e.n + '|' + e.c, i = list.findIndex(q => q.n + '|' + q.c === k); if (i >= 0) { if (list[i].s >= score) { if (e.x && !list[i].x) { list[i].x = 1; lbDirty = true; } return; } list.splice(i, 1); } else if (list.length >= 10 && list[list.length - 1].s >= score) return; list.push(Object.assign({}, e, { s: score })); list.sort((a, b) => b.s - a.s); list.length = Math.min(list.length, 10); lbDirty = true; }
