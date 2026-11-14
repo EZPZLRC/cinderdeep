@@ -205,6 +205,14 @@ function calcStats(eq) {
   s.tough = Math.round(s.maxLife / Math.max(.05, taken)); s.recov = Math.round(s.lifeRegenT + s.lifeOnHit * aps);
   return s;
 }
+/* 0032: what unique effects (and the affixes that share them) are worth, so the upgrade arrows and tooltips count them. Returned as extra fractions of damage (d) and toughness (t), weighted by the skills on your bar */
+function effectWorth(s) { const h = G.hero, bar = ((h && h.bar) || []).map((id, i) => [SKILLS[id], i]).filter(x => x[0]); let W = 0, pj = 0, ar = 0, cd = 0;
+  for (const [k, i] of bar) { const w = i === 0 ? 2 : 1; W += w; if (k.type === 'proj' || k.type === 'barrage') pj += w; if (/nova|rain|spin|melee/.test(k.type)) ar += w; if (k.cd) cd += w; }
+  W = W || 1; pj /= W; ar /= W; cd /= W; const g = k => s[k] || 0; let d = 0, t = 0;
+  d += g('projExtra') * .25 * pj; d += g('echo') / 100 * .8; d += g('procLight') / 100 * .75; d += g('lowLife') / 100 * .3; d += (g('boomFire') ? .12 : 0) + (g('boomCold') ? .12 : 0);
+  d += g('area') / 100 * .45 * ar; d += 1 / (1 - Math.min(50, g('cull')) / 100) - 1; d += (s.cdrT || 0) / 100 * .5 * cd; d += Math.min(80, g('ms')) / 100 * .15;
+  t += g('leech') * .03 + (g('cheat') ? .35 : 0); return { d, t }; }
+function gearValue(s) { const w = effectWorth(s); return { dps: s.dps * (1 + w.d), tough: s.tough * (1 + w.t) }; }
 function computeStats() { const s = calcStats(G.hero.eq); P.gear = gearDecode(P.gc = gearCode(G.hero.eq)); P.stats = s; P.hp = Math.min(P.hp, s.maxLife); P.mana = Math.min(P.mana, s.maxMana); return s; }
 function paragonFree() { const h = G.hero, pg = h.pg || {}; let used = 0; for (const k in pg) used += pg[k]; return (h.plvl || 0) - used; }
 function spendParagon(k) { const h = G.hero; if (!PARAGON[k] || paragonFree() < 1) return false; h.pg = h.pg || {}; if (PARAGON[k][2] && (h.pg[k] || 0) >= PARAGON[k][2]) { hint(PARAGON[k][0] + ' is at its limit.'); return false; } h.pg[k] = (h.pg[k] || 0) + 1; computeStats(); SFX.play('pickup'); saveGame(); return true; }
