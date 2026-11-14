@@ -23,6 +23,7 @@ const NET = (() => {
       case 'note': hint(txt(m.m, 160)); break;
       case 'scale': { const r = +m.r; if (!(r > 0 && r < 20)) break; for (const e of G.ents) { if (!e.alive) continue; e.maxHp = Math.max(1, Math.round(e.maxHp * r)); e.hp = Math.min(e.maxHp, Math.round(e.hp * r)); } break; } // party size changed (build 0022)
       case 'zone': if (N.retry > 0) { if (N.back && N.back.seed === m.seed) { m.sync = 1; m.pos = [N.back.x, N.back.z]; } N.retry = 0; N.back = null; UI.reconnecting(0); if (G.inTown) { G.away = null; } } if (m.sync && G.away && G.away.seed === m.seed) m.pos = [G.away.x, G.away.z]; enterZone(m); if (m.cleared && m.bossAt) { G.zone.cleared = true; G.zone.objs.push({ kind: 'portal', x: m.bossAt[0], z: m.bossAt[1], name: 'Next floor', used: false }); } UI.netZone(); break;
+      case 'gone': { const e = find(m.id); if (e && e.alive) { e.alive = false; e.deadT = .45; goblinGone(e); } break; } /* build 0027: the goblin got away */
       case 's': {
         for (const a of m.e) { const e = find(a[0]); if (!e || !e.alive) continue; const nt = performance.now() / 1000; if (e.sT1 && nt - e.sT1 < .5) { e.sx0 = e.sx1; e.sz0 = e.sz1; e.sT0 = e.sT1; } else { e.sx0 = e.x; e.sz0 = e.z; e.sT0 = nt - .1; } e.sx1 = a[1]; e.sz1 = a[2]; e.sT1 = nt; /* build 0024: glide between server updates */ e.tx = a[1]; e.tz = a[2]; e.trot = a[3]; e.hp = a[4] > e.hp + e.maxHp * .04 ? a[4] : Math.min(e.hp, a[4]); e.st = STN[a[5]] || 'chase'; if (!e.awake) e.awake = true; /* the boss intro card is the one announcement */ }
         const seen = {};

@@ -1,5 +1,5 @@
 'use strict';
-const BUILD = '0026';
+const BUILD = '0027';
 // Fresh start: every hero and the stash are wiped whenever this number changes. It follows the build, so each new build is a new season.
 const SEASON = BUILD;
 const SLOTS = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring1'];
@@ -168,7 +168,7 @@ const KIT = { warden: ['slam', 'stomp', 'quake'], ranger: ['multi', 'arrows', 'v
 function skillTiers(cls) { return []; }
 function skillTiersOld(cls) { const s = CLASSES[cls].skills.filter(id => !SKILLS[id].basic).sort((a, b) => SKILLS[a].lv - SKILLS[b].lv), out = []; for (let i = 0; i + 1 < s.length && out.length < TIER_LV.length; i += 2) out.push([s[i], s[i + 1]]); return out; }
 const CLASS_IDS = Object.keys(CLASSES);
-const NEWS = ['Fix: pressing Town with monsters nearby no longer ticks off Visit town or refills your potions'];
+const NEWS = ['Townsfolk quests are gone: Emberwatch is in full festival, and First Steps still guides new heroes', 'Treasure Goblins: catch one before it escapes and its sack is yours', 'Wishing Wells shower you with gold and gear', 'Treasure Vaults full of golden chests', 'Champions drop more, and some now blink to your side', 'Legendary and mythic drops land with a fanfare'];
 // achievements (build 0020): badges that show next to your name in chat. They reset with each build, like heroes.
 const ACH = [
   ['blood', '⚔', 'First Blood', 'Defeat your first monster', h => h.kills >= 1],
@@ -218,13 +218,14 @@ const LOOK = {
 const ARCH = {
   grunt: { hp: 1, dmg: 1, spd: 4.3, r: .6, sc: 1, rec: .7, wind: .45, xp: 1, reach: 1.7, w: 4 },
   swarm: { hp: .75, dmg: .55, spd: 6.4, r: .45, sc: .7, rec: .5, wind: .3, xp: .5, reach: 1.4, w: 3 },
+  goblin: { hp: 2.6, dmg: 0, spd: 6.4, r: .5, sc: .95, rec: 1, wind: 1, xp: 3, reach: 0, w: 0 },
   caster: { hp: .7, dmg: .9, spd: 3.7, r: .6, sc: 1, rec: 1.3, wind: .55, xp: 1.2, reach: 11, w: 2 },
   brute: { hp: 1.4, dmg: 1.9, spd: 3.2, r: 1, sc: 1.55, rec: 1.1, wind: .95, xp: 2.5, reach: 2.8, w: 1 },
   bomber: { hp: .78, dmg: 2.1, spd: 6.2, r: .5, sc: .8, rec: 0, wind: .7, xp: .8, reach: 1.9, w: 1 }
 };
 const EMODS = {
   hasted: { n: 'Hasted', d: 'Moves and attacks faster' }, armored: { n: 'Armored', d: 'Takes 40% less damage' }, volatile: { n: 'Volatile', d: 'Explodes on death' },
-  storm: { n: 'Stormbound', d: 'Calls lightning down on you' }, molten: { n: 'Molten', d: 'Leaves burning ground' }, regen: { n: 'Regenerating', d: 'Heals over time' }
+  storm: { n: 'Stormbound', d: 'Calls lightning down on you' }, molten: { n: 'Molten', d: 'Leaves burning ground' }, regen: { n: 'Regenerating', d: 'Heals over time' }, blink: { n: 'Blinking', d: 'Teleports to your side' }
 };
 const THEMES = {
   town: { amb: 'fly', wet: 0.45, mist: 0.2, ground: 0x4e5632, gdet: .4, wall: 'tree', wc: [0x4a382a, 0x24402a, 0x2f4f2c], sunC: [1.2, 1.0, .74], sky: [.16, .2, .26], gnd: [.07, .08, .06], fog: 0x0a1012, torch: 0xffb070, lightR: 46, lamp: 0xffa040 },

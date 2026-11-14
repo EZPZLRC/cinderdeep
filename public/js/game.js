@@ -141,12 +141,13 @@ function rollRarity(bonus) {
   const mf = luck() / 100; const w = [62, 30 * (1 + mf), 7.5 * (1 + mf * 1.2) * (1 + bonus), .5 * (1 + mf * 1.5) * (1 + bonus * 2)];
   let r = Math.random() * (w[0] + w[1] + w[2] + w[3]); for (let i = 0; i < 4; i++) { if (r < w[i]) return i === 3 && Math.random() < MYTHIC_CHANCE ? 4 : i; r -= w[i]; } return 0;
 }
-function dropItem(x, z, it) { const a = rnd(6.28), d = rnd(.6, 1.8); let dx = x + Math.cos(a) * d, dz = z + Math.sin(a) * d; if (blocked(dx, dz, .3)) { dx = x; dz = z; } G.drops.push({ x: dx, z: dz, item: it, t: 0 }); if (it.rar > 0) SFX.play('drop' + it.rar); }
+function dropItem(x, z, it) { const a = rnd(6.28), d = rnd(.6, 1.8); let dx = x + Math.cos(a) * d, dz = z + Math.sin(a) * d; if (blocked(dx, dz, .3)) { dx = x; dz = z; } G.drops.push({ x: dx, z: dz, item: it, t: 0 }); if (it.rar >= 3) jackpot(it); else if (it.rar > 0) SFX.play('drop' + it.rar); }
 function dropGold(x, z, amt) { const a = rnd(6.28), d = rnd(.4, 1.5); let dx = x + Math.cos(a) * d, dz = z + Math.sin(a) * d; if (blocked(dx, dz, .3)) { dx = x; dz = z; } G.drops.push({ x: dx, z: dz, gold: Math.max(1, Math.round(amt * (1 + (P.stats.gf || 0) / 100))), t: 0 }); }
+const DROP_MOB = .09; /* build 0027 tuning: plain monsters drop a little less, so events, champions and guardians carry the good loot */
 function dropLoot(e) {
   const lv = Math.max(e.lvl, G.hero.level), x = e.x, z = e.z; let n = 0, bonus = 0, minR = 0;
-  if (e.boss) { n = 5; bonus = 3; minR = 2; } else if (e.elite === 2) { n = 2; bonus = 1.5; } else if (e.elite === 1) { n = 1 + (Math.random() < .5 ? 1 : 0); bonus = .8; } else if (Math.random() < .12 || (G.dry || 0) >= 14) n = 1; /* Lee, Nov 13: never more than 14 plain kills in a row without an item */ G.dry = n ? 0 : (G.dry || 0) + 1;
-  for (let i = 0; i < n; i++) { let r = rollRarity(bonus); if (i === 0 && r < minR) r = minR; dropItem(x, z, makeItem(lv, null, r)); }
+  if (e.boss) { n = 5; bonus = 3; minR = 2; } else if (e.elite === 2) { n = 2; bonus = 1.5; minR = 2; } else if (e.elite === 1) { n = 1 + (Math.random() < .5 ? 1 : 0); bonus = .8; minR = 2; } /* build 0027: a champion's first item is always rare or better */ else if (e.arch === 'goblin') { n = 4; bonus = 2; minR = 2; for (let i = 0; i < 8; i++) dropGold(x, z, (15 + lv * 7) * rnd(.8, 1.3)); if (Math.random() < .35) dropItem(x, z, makeItem(lv, null, 3)); if (typeof UI !== 'undefined') UI.zoneBanner('Treasure Goblin caught!', 'Its whole sack spills out for you'); } else if (Math.random() < DROP_MOB || (G.dry || 0) >= 14) n = 1; /* Lee, Nov 13: never more than 14 plain kills in a row without an item */ G.dry = n ? 0 : (G.dry || 0) + 1;
+  for (let i = 0; i < n; i++) { let r = rollRarity(bonus); if ((i === 0 || e.arch === 'goblin') && r < minR) r = minR; dropItem(x, z, makeItem(lv, null, r)); }
   if (e.boss || e.elite || Math.random() < .4) dropGold(x, z, (4 + lv * 2.2) * rnd(.6, 1.4) * (e.boss ? 12 : e.elite ? 4 : 1));
 }
 // Bag: a 10 x 6 grid. Belts, rings and amulets take one cell; everything else is two cells tall.
@@ -279,6 +280,7 @@ function genZone(def) {
   const rest = cand.filter(k => !packs.includes(k));
   for (let i = 0; i < 4 && i < rest.length; i++) { const p = W(rest[i]); Z.objs.push({ kind: 'chest', x: p[0], z: p[1], name: 'Chest', used: false }); }
   for (let i = 4; i < 6 && i < rest.length; i++) { const p = W(rest[i]); const sh = SHRINES[Math.floor(sr() * SHRINES.length)]; Z.objs.push({ kind: 'shrine', x: p[0], z: p[1], name: sh.n, sh, used: false }); }
+  { const ev = sr(); if (Z.def.type === 'zone' && rest.length > 40) { const far = rest.slice(22).filter(k => Z.dist && Z.dist[k] > 12); const k = far[(sr() * far.length) | 0]; if (k !== undefined) { const p = W(k); if (ev < .33) Z.objs.push({ kind: 'well', x: p[0], z: p[1], name: 'Wishing Well', used: false }); else if (ev < .58) { Z.vault = { x: p[0], z: p[1] }; for (const [ox, oz] of [[-.85, -.85], [.85, -.85], [-.85, .85], [.85, .85]]) Z.objs.push({ kind: 'gchest', x: p[0] + ox, z: p[1] + oz, name: 'Golden Chest', used: false }); } } } } /* build 0027: a happy surprise on most floors */
   for (let i = 6; i < 22 && i < rest.length; i++) { const p = W(rest[i]); Z.lamps.push({ x: p[0] + (sr() - .5), z: p[1] + (sr() - .5) }); }
   Z.lamps.push({ x: Z.start[0] + 2.5, z: Z.start[1] - 2, big: 1 });
   return Z;
@@ -385,7 +387,7 @@ function buildStatic(Z) { Z.torches = [];
       for (let k = 0; k < 44; k++) { const a = k / 44 * 6.2832; if (Math.abs(a - 1.5708) < .22) continue; const px = cx + Math.cos(a) * 20.6, pz = cz + Math.sin(a) * 20.6; GLX.obj('stat', 'taper', px, 1.1, pz, a, .34, 2.2 + (k % 3) * .25, .34, wood, 0, 1, 3); GLX.obj('stat', 'box', px, 1.2, pz, -a, .12, .16, 3, shade(wood, .8), 0, 1, 3); }
       // ---- Emberwatch homes (build 0020): every building is different, and the town grows livelier as you help its people ----
       const gold = col(0xc9a030), steelC = col(0x8e97a8), bladeC = col(0xc8ced8);
-      const done = (G.hero && G.hero.tqd) || [], has = id => done.includes(id), slate = col(0x3a4a5a), stoneW = col(0x7a746a), stoneD = col(0x5a5650), dark = shade(wood, .6), glass = col(0xffc870), flowerC = [0xe84a6a, 0xffd04a, 0xb070e0, 0xff8a3a, 0xf0f0f0];
+      const done = (G.hero && G.hero.tqd) || [], has = id => !TOWN_QUESTS || done.includes(id), slate = col(0x3a4a5a), stoneW = col(0x7a746a), stoneD = col(0x5a5650), dark = shade(wood, .6), glass = col(0xffc870), flowerC = [0xe84a6a, 0xffd04a, 0xb070e0, 0xff8a3a, 0xf0f0f0];
       const W = (hx, hz, ry) => { const c = Math.cos(ry), sn = Math.sin(ry); return (lx, lz) => [hx + c * lx + sn * lz, hz - sn * lx + c * lz]; };
       const Bx = (g, F, ry, lx, ly, lz, sx, sy, sz, c, e2, rx, rz, em) => { const w = F(lx, lz); GLX.part('stat', g, IDM, w[0], ly, w[1], rx || 0, ry, rz || 0, 0, 0, 0, sx, sy, sz, c, em || 0, 1, e2 || 0); };
       Z.solid = []; Z.smoke = []; const solid = (x, z, hw, hd, ry) => Z.solid.push([x, z, hw, hd, ry]);
@@ -475,6 +477,7 @@ function spawnAll(Z) {
     if (elite) { place(main.a === 'swarm' || main.a === 'bomber' ? th.mon[0] : main, elite); n = Math.max(3, n - 2); }
     for (let i = 0; i < n; i++) place(Math.random() < .75 ? main : pm(), 0);
   });
+  if (Z.def.type === 'zone' && Math.random() < .33) for (let t = 0; t < 60; t++) { const k = (Math.random() * GW * GW) | 0; if (Z.cell[k] || !Z.dist || Z.dist[k] < 14) continue; const x = (k % GW + .5) * CS, z = ((k / GW | 0) + .5) * CS; if (blocked(x, z, .6)) continue; mkEnemy({ a: 'goblin', n: 'Treasure Goblin', c: 0x4a7a34, c2: 0xc89a3a, e: 0xffd84a }, x, z, lv, 0, -1); break; } /* build 0027 */
   const bd = bossFor(Z.def.theme, Z.def.depth), hit = refHit(lv + 1);
   const b = { id: ++G.eid, md: { a: 'boss', n: bd.n, c: bd.c, c2: bd.c2, e: bd.e }, a: { r: 1.7, sc: bd.sc || 2.3, rec: .9, wind: .8, reach: 3.6, xp: 40, spd: 4 }, arch: 'boss', boss: true, bd, x: Z.bossAt[0], z: Z.bossAt[1], rot: 0, lvl: lv + 1, elite: 3, pack: -1, r: 1.7, sc: bd.sc || 2.3, maxHp: Math.round(2.8 * hit * 40), dmg: 5 * Math.pow(1.095, lv + 1) * 1.6, spd: 4, st: 'chase', t: 0, cd: 1, walk: 0, awake: false, flash: 0, chill: 0, shock: 0, frozen: 0, burn: 0, burnT: 0, atk: 0, alive: true, deadT: 0, pt: 2.5, pi: 0, name: bd.n, mods: [] };
   b.hp = b.maxHp; G.ents.push(b); G.boss = b; Z.ent0 = G.ents.filter(e => !e.boss).length; Z.repT = 30;
@@ -562,6 +565,8 @@ function deathFx(e) { if (!G.zone || G.fx.length > 600) return; const T = G.zone
   for (let i = 0; i < n; i++) { const a = rnd(6.28), s = rnd(1.5, 4.5) * sc; G.fx.push({ chunk: 1, x: e.x + Math.cos(a) * .3, y: rnd(.6, 1.6) * sc, z: e.z + Math.sin(a) * .3, vx: Math.cos(a) * s, vy: rnd(2, 5.5), vz: Math.sin(a) * s, life: rnd(1.1, 1.7), max: 1.7, size: rnd(.1, .2) * sc * (e.boss ? 1.8 : 1), ar: kit[1] === 'cyl' ? rnd(2.5, 4) : rnd(.8, 1.6), spin: rnd(4, 9), g: kit[1], c: GLX.col(kit[0][i % 3]), em: kit[2], mat: 0 }); }
   if (T === 'lava' || T === 'void' || T === 'forest') for (let i = 0; i < 6 * big; i++) G.fx.push({ smoke: 1, x: e.x + rnd(-.5, .5), y: rnd(.4, 1.4), z: e.z + rnd(-.5, .5), vx: rnd(-.6, .6), vy: rnd(.5, 1.5), vz: rnd(-.6, .6), life: rnd(.8, 1.4), max: 1.4, size: rnd(.05, .1), c: GLX.col(kit[3]), mote: 1 });
   else if (T === 'crypt') for (let i = 0; i < 5; i++) G.fx.push({ smoke: 1, x: e.x + rnd(-.6, .6), y: .3, z: e.z + rnd(-.6, .6), vx: rnd(-.8, .8), vy: rnd(.3, .9), vz: rnd(-.8, .8), life: rnd(.7, 1.1), max: 1.1, size: rnd(.4, .7), c: GLX.col(0x8a8a90), dust: 1 }); }
+function goblinGone(e) { if (typeof UI === 'undefined') return; ring(e.x, e.z, 0, 4, .6, 0xb48cff); burst(e.x, 1.2, e.z, 0xb48cff, 30, 6); SFX.play('shrine'); hint('The Treasure Goblin escaped through a portal! Catch the next one faster.'); }
+function jackpot(it) { if (typeof UI === 'undefined' || !it || it.rar < 3) return; G.slowT = .9; G.shake = Math.max(G.shake || 0, .35); UI.zoneBanner(it.rar >= 4 ? 'MYTHIC!' : 'LEGENDARY!', it.name || RAR[it.rar].n + ' ' + it.slot); SFX.play('drop4'); }
 function burst(x, y, z, c, n, sp) { for (let i = 0; i < n; i++) { const a = rnd(6.28), u = rnd(-.2, 1), s = rnd(.3, 1) * sp; G.fx.push({ x, y, z, vx: Math.cos(a) * s, vy: u * s, vz: Math.sin(a) * s, life: rnd(.25, .6), max: .6, size: rnd(.1, .24), c: GLX.col(c) }); } if (G.fx.length > 700) G.fx.splice(0, G.fx.length - 700); }
 // spell impact (build 0018): white-hot core flash, expanding shockwave, ground scorch, flying sparks and a burst of light
 function impact(x, z, r, c, heavy) { if (typeof document === 'undefined') return; const C = GLX.col(c); G.fx.push({ shock: 1, x, z, r, life: heavy ? .55 : .4, max: heavy ? .55 : .4, c: C, h: heavy ? 1 : 0 }); G.fx.push({ scorch: 1, x, z, r: r * .8, life: heavy ? 2.4 : 1.4, max: heavy ? 2.4 : 1.4, c: C });
@@ -577,7 +582,7 @@ function wake(e) { if (e.awake) return; if (e.boss) { e.awake = true; return; } 
 // fighting side by side pays: +10% damage per ally within reach, up to +30%
 function partyBonus() { if (!G.online || G.inTown) return 0; let n = 0; for (const id in NET.peers) { const q = NET.peers[id]; if (!q.dead && Math.hypot(q.x - P.x, q.z - P.z) < 22) n++; } return Math.min(3, n) * 10; }
 function rollDmg(sk, mult) { const s = P.stats; const base = rnd(s.wmin, s.wmax) + s.addPhys + s.addFire + s.addCold + s.addLight; let inc = s.dmg + (s[sk.el] || 0) + (sk.el !== 'phys' ? s.ele : 0); if (s.lowLife && P.hp < s.maxLife * .5) inc += s.lowLife; let v = base * sk.m * (mult || 1) * (1 + inc / 100) * (1 + partyBonus() / 100); const crit = Math.random() * 100 < s.critT; if (crit) v *= s.critM; return { v, crit }; }
-function hitEnemy(e, sk, mult, noProc) {
+function hitEnemy(e, sk, mult, noProc) { if (e && e.alive && e.arch === 'goblin' && typeof UI !== 'undefined' && Math.random() < .55) dropGold(e.x, e.z, (4 + (G.hero ? G.hero.level : 1) * 2) * rnd(.8, 1.3)); /* build 0027: coins fly out with every hit */
   if (!e.alive) return; const s = P.stats, d = rollDmg(sk, mult); let v = d.v; if (e.armored) v *= .6; if (e.shock > 0) v *= 1.15; if (!e.boss && !e.elite && e.hp > e.maxHp * .95) v = Math.min(v, e.maxHp * .65); v = Math.max(1, Math.round(v)); // house rule: ordinary monsters always take at least 2 hits
   e.hp -= v; e.flash = .13; wake(e); P.lastHit = G.time; if (sk.gen) P.mana = Math.min(s.maxMana, P.mana + sk.gen);
   floatText(e.x, 1.6 * e.sc + .6, e.z, (d.crit ? '✦' : '') + v, d.crit ? '#ffe14a' : EL_CSS[sk.el], d.crit ? 1.1 : .8, d.crit ? 21 : 15);
@@ -684,7 +689,7 @@ function fireSkill(a) {
 const GPS = { t: 0, pts: [], goal: null, text: '' };
 function questTarget() {
   const Z = G.zone; if (!Z) return null; const h = G.hero, cq = tqCur ? tqCur() : null;
-  if (G.inTown) { /* build 0025: the path leads to whoever is waiting for you first */ const who = cq ? (h.tq.n >= cq.goal.n ? cq.by : null) : tqNext().by, npc = who && Z.objs.find(o => o.kind === 'npc' && o.id === who);
+  if (G.inTown) { /* build 0025: the path leads to whoever is waiting for you first */ const who = cq ? (h.tq.n >= cq.goal.n ? cq.by : null) : (tqNext() ? tqNext().by : null), npc = who && Z.objs.find(o => o.kind === 'npc' && o.id === who);
     if (npc) { const at = npc.st || npc; return { x: at.x, z: at.z, text: (cq ? 'Collect your reward from ' : 'Talk to ') + FOLK[who].n + (cq ? '' : ': they have a job for you') }; }
     const o = Z.objs.find(o => o.kind === 'tportal'); return { x: o.x, z: o.z, text: cq ? 'Take the portal back out to work on ' + cq.t : 'Take the portal back to the Hollow' }; }
   if (cq && cq.goal.k === 'rescue' && h.tq.n < cq.goal.n) { const pip = Z.objs.find(o => o.kind === 'lost' && !o.used); if (pip) return { x: pip.x, z: pip.z, text: 'Find Pip: follow the path, he is hiding on this floor' }; }
@@ -862,7 +867,7 @@ const FOLKGEAR = { bram: { chest: [2, 0], pants: [1, 0], boots: [1, 0], belt: [1
 const TOWNIES = [{ cls: 'vil6', hair: 0x5a3a20, path: [[-6, -4], [-2, -8], [4, -7], [7, -2], [5, 4], [-1, 6], [-6, 3]] }, { cls: 'vil1', hair: 0x6a4a2a, path: [[-11.5, 7.6], [-8.2, -1.4], [-5, 2.5]] }, { cls: 'vil5', hair: 0x2a1a10, path: [[5, 9], [10.5, -7.5], [3, -6.5], [1, 4]] }].map(t => Object.assign({ x: 0, z: 0, y: 0, rot: 0, walk: 0, mv: 0, hurt: 0, act: null, swing: 0, spin: null, dash: false, buffs: null, flaskT: 0, wp: 0, wait: 0, gear: { chest: [2, 0], pants: [1, 0], boots: [1, 0] } }, t));
 const PIPK = { cls: 'kid', sc: .68, hair: 0xc08040, x: 0, z: 0, y: 0, rot: 0, walk: 0, mv: 1, hurt: 0, act: null, swing: 0, spin: null, dash: false, buffs: null, flaskT: 0, gear: { chest: [2, 0], pants: [1, 0] } };
 function drawTownLife() {
-  const Z = G.zone, col = GLX.col, t = G.time, cx = Z.bossAt[0], cz = Z.bossAt[1], done = G.hero.tqd || [], has = id => done.includes(id), dt = Math.min(.1, t - (Z.lifeT === undefined ? t : Z.lifeT)); Z.lifeT = t;
+  const Z = G.zone, col = GLX.col, t = G.time, cx = Z.bossAt[0], cz = Z.bossAt[1], done = G.hero.tqd || [], has = id => !TOWN_QUESTS || done.includes(id), dt = Math.min(.1, t - (Z.lifeT === undefined ? t : Z.lifeT)); Z.lifeT = t;
   if (Z.mill) { const [mx, my, mz] = Z.mill, a0 = has('grain') ? t * .9 : .35; for (let k = 0; k < 4; k++) { const a = a0 + k * 1.5708, broken = !has('grain') && k === 2; GLX.part('dyn', 'box', IDM, mx, my, mz + .2, 0, 0, a, 0, broken ? 1.2 : 2.3, 0, .16, broken ? 2.4 : 4.6, .12, col(0x5a4028), 0, 1, 3); if (!broken) GLX.part('dyn', 'box', IDM, mx, my, mz + .26, 0, 0, a, .42, 2.6, 0, .8, 3.6, .04, col(0xe8e0c8), 0, 1, 0); } GLX.obj('dyn', 'sphere', mx, my, mz + .3, 0, .5, .5, .5, col(0x3a2a1a)); }
   if (Z.smoke) for (const [sx, sy, sz] of Z.smoke) for (let k = 0; k < 5; k++) { const ph = (t * .22 + k / 5 + sx * .07) % 1, r = .35 + ph * 1.1; GLX.obj('glow', 'sphere', sx + ph * 1.6 + Math.sin(t + k) * .2, sy + ph * 4.5, sz - ph * .6, 0, r, r, r, col(0x9a948c), .2, (1 - ph) * .1); }
   if (Z.forge) { const [fx, fz] = Z.forge, hot = has('steel') ? 1.5 : 1, fl = .8 + Math.sin(t * 13) * .1 + Math.sin(t * 7.3) * .1; GLX.obj('glow', 'sphere', fx, 1.5, fz, 0, .9 * hot, .35, .7 * hot, col(0xff7a2a), 2, .8 * fl); GLX.halo(fx, 1.7, fz, 2.4 * hot, col(0xff6a1a), .6 * fl); GLX.light(fx, 2, fz, 7 * hot, col(0xff7a2a), 1.6 * fl * hot, 8);
@@ -919,9 +924,10 @@ function achLoad() { try { return JSON.parse(localStorage.getItem(SAVE_KEY + '_a
 function achCheck() { if (!G.hero || typeof document === 'undefined') return; const got = G.ach || (G.ach = achLoad()); let nw = false; for (const a of ACH) if (!got[a[0]] && a[4](G.hero)) { got[a[0]] = Date.now(); nw = true; UI.achToast && UI.achToast(a); } if (nw) { try { localStorage.setItem(SAVE_KEY + '_ach', JSON.stringify(got)); } catch (e) { } } }
 function achBadge() { const got = G.ach || (G.ach = achLoad()); let b = ''; for (const a of ACH) if (got[a[0]]) b = a[1]; return b; } // your rarest badge, shown in chat
 // ---- townsfolk quests (build 0020): take a job in Emberwatch, do it out in the world, come home for the reward ----
-function tqCur() { const h = G.hero; if (!h || !h.tq) return null; return h.tq.id === 'bounty' ? BOUNTY : QUESTS.find(q => q.id === h.tq.id) || null; }
-function tqNext() { const d = (G.hero && G.hero.tqd) || []; return QUESTS.find(q => !d.includes(q.id)) || BOUNTY; }
-function tqMark(id) { const h = G.hero, q = tqCur(); if (q) return q.by !== id ? '' : h.tq.n >= q.goal.n ? '?' : '.'; return tqNext().by === id ? '!' : ''; }
+const TOWN_QUESTS = false; /* Lee, Nov 14: townsfolk quests removed; First Steps stays */
+function tqCur() { const h = G.hero; if (!TOWN_QUESTS || !h || !h.tq) return null; return h.tq.id === 'bounty' ? BOUNTY : QUESTS.find(q => q.id === h.tq.id) || null; }
+function tqNext() { if (!TOWN_QUESTS) return null; const d = (G.hero && G.hero.tqd) || []; return QUESTS.find(q => !d.includes(q.id)) || BOUNTY; }
+function tqMark(id) { if (!TOWN_QUESTS) return ''; const h = G.hero, q = tqCur(); if (q) return q.by !== id ? '' : h.tq.n >= q.goal.n ? '?' : '.'; return tqNext().by === id ? '!' : ''; }
 function tqStep(q) { const g = q.goal, h = G.hero, fl = G.inTown ? 0 : (G.zone.def.depth || 1), left = g.n - h.tq.n;
   if (h.tq.n >= g.n) return { t: G.inTown ? 'Done! Follow the gold path to ' + FOLK[q.by].n.split(' ')[0] + ' for your reward' : 'Done! Go to town (Town button) and see ' + FOLK[q.by].n.split(' ')[0] + ' for your reward', ok: 1 };
   if (G.inTown) return { t: g.k === 'rescue' ? 'Leave town: Pip is out on the next floor' : 'Take the portal out to the wilds to do this' };
@@ -932,7 +938,7 @@ function tqReward(q) { const lv = G.hero.level; return { gold: Math.round((60 + 
 function tqAdd(kind, amt) { const h = G.hero, q = tqCur(); if (!q || q.goal.k !== kind || h.tq.n >= q.goal.n) return; h.tq.n = Math.min(q.goal.n, h.tq.n + (amt || 1));
   if (h.tq.n >= q.goal.n) { hint('Quest done: ' + q.t + '! Go back to ' + FOLK[q.by].n + ' in Emberwatch (press T) for your reward.'); SFX.play('shrine'); UI.zoneBanner && UI.zoneBanner('Quest complete: ' + q.t, 'Go to town and see ' + FOLK[q.by].n + ' for your reward'); if (typeof GPS !== 'undefined') GPS.t = 0; }
   else if (kind !== 'kills' || h.tq.n % 10 === 0) hint(q.goal.item + ': ' + h.tq.n + ' / ' + q.goal.n); saveGame(); }
-function tqAccept() { const h = G.hero, q = tqNext(); h.tq = { id: q.id, n: 0 }; saveGame(); SFX.play('pickup'); hint('New quest: ' + q.t + '. ' + tqHow(q)); UI.zoneBanner && UI.zoneBanner('New quest: ' + q.t, tqStep(q).t); if (typeof GPS !== 'undefined') GPS.t = 0; }
+function tqAccept() { const h = G.hero, q = tqNext(); if (!q) return; h.tq = { id: q.id, n: 0 }; saveGame(); SFX.play('pickup'); hint('New quest: ' + q.t + '. ' + tqHow(q)); UI.zoneBanner && UI.zoneBanner('New quest: ' + q.t, tqStep(q).t); if (typeof GPS !== 'undefined') GPS.t = 0; }
 function tqClaim() { const h = G.hero, q = tqCur(); if (!q || h.tq.n < q.goal.n) return null; const r = tqReward(q); h.gold += r.gold; h.shards = (h.shards || 0) + r.shards; const it = makeItem(h.level, null, r.rar); if (!addItem(it)) dropItem(P.x, P.z, it);
   h.tqd = h.tqd || []; if (!q.repeat && !h.tqd.includes(q.id)) h.tqd.push(q.id); h.tq = null; saveGame(); UI.invDirty = true; SFX.play('level'); ring(P.x, P.z, 0, 8, .8, 0xffd84a); burst(P.x, 1.5, P.z, 0xffd84a, 30, 7); if (G.inTown) buildStatic(G.zone); return { r, it, q }; }
 function questZone(Z) { // the rescue quest puts Pip somewhere far out on the next floor you visit
@@ -969,7 +975,9 @@ function riftDone(ms, tier) { G.riftDone = 1; const s2 = Math.round(ms / 1000), 
 function pickupNear() { for (const d of G.drops.slice()) if (d.item && Math.hypot(d.x - P.x, d.z - P.z) < 5 && d.item.rar >= G.hero.filter) pickup(d); }
 function interact(o) {
   if (o.used) return;
-  if (o.kind === 'chest') { o.used = true; const lv = G.hero.level; for (let i = 0; i < 3; i++) dropItem(o.x, o.z, makeItem(lv, null, rollRarity(1))); dropGold(o.x, o.z, (10 + lv * 5) * rnd(.8, 1.5)); burst(o.x, 1, o.z, 0xffd84a, 20, 6); SFX.play('pickup'); }
+  if (o.kind === 'chest') { o.used = true; const lv = G.hero.level; for (let i = 0; i < 2; i++) dropItem(o.x, o.z, makeItem(lv, null, rollRarity(1))); dropGold(o.x, o.z, (10 + lv * 5) * rnd(.8, 1.5)); burst(o.x, 1, o.z, 0xffd84a, 20, 6); SFX.play('pickup'); }
+  else if (o.kind === 'gchest') { o.used = true; const lv = G.hero.level; for (let i = 0; i < 2; i++) dropItem(o.x, o.z, makeItem(lv, null, Math.max(2, rollRarity(2)))); dropGold(o.x, o.z, (20 + lv * 9) * rnd(.9, 1.4)); burst(o.x, 1, o.z, 0xffd84a, 30, 7); SFX.play('drop2'); if (G.zone.objs.filter(q => q.kind === 'gchest' && !q.used).length === 0) UI.zoneBanner('Treasure Vault emptied!', 'Every chest was yours'); }
+  else if (o.kind === 'well') { o.used = true; const lv = G.hero.level; for (let i = 0; i < 3; i++) dropItem(o.x, o.z, makeItem(lv, null, i === 0 && Math.random() < .25 ? 3 : Math.max(2, rollRarity(2)))); for (let i = 0; i < 6; i++) dropGold(o.x, o.z, (12 + lv * 6) * rnd(.8, 1.3)); for (let i = 0; i < 3; i++) ring(o.x, o.z, 0, 4 + i * 3, .6 + i * .2, 0xffd84a); burst(o.x, 2, o.z, 0xffd84a, 60, 9); burst(o.x, 2, o.z, 0x9ad0ff, 30, 7); SFX.play('drop4'); UI.zoneBanner('Your wish is granted!', 'The Wishing Well showers you with treasure'); }
   else if (o.kind === 'shrine') { o.used = true; P.buffs.push({ s: o.sh.s, t: 45, n: o.sh.n }); computeStats(); ring(o.x, o.z, 0, 8, .7, o.sh.c); SFX.play('shrine'); hint(o.sh.n + ' empowers you for 45 seconds.'); }
   else if (o.kind === 'stash' || o.kind === 'vendor' || o.kind === 'altar') UI.openTown(o.kind);
   else if (o.kind === 'tportal') leaveTown();
@@ -998,6 +1006,9 @@ function updEnemy(e, dt) {
   if (!e.awake) { if (d < (e.boss ? 17 : 14) && !P.dead) wake(e); else return; }
   if (P.dead) return; if (e.frozen > 0) { e.frozen -= dt; return; }
   const slow = e.chill > 0 ? .6 : 1, sp = e.spd * slow, a = e.a; e.cd -= dt * slow; e.t -= dt * slow;
+  if (e.arch === 'goblin') { e.escT = (e.escT || 0) + dt; if (e.escT > 30) { e.alive = false; e.deadT = .45; e.escaped = 1; if (typeof __emit === 'function') __emit(null, { t: 'gone', id: e.id }); else goblinGone(e); return; }
+    const st = sp * dt; if (d < 20) { if (!moveEnt(e, -dx / d * st, -dz / d * st, e.r * .8)) { const sd = (e.id & 1) ? 1 : -1; moveEnt(e, -dz / d * st * sd, dx / d * st * sd, e.r * .8); } e.walk += st * 1.8; let da = Math.atan2(-dx, -dz) - e.rot; while (da > Math.PI) da -= 6.2832; while (da < -Math.PI) da += 6.2832; e.rot += da * Math.min(1, dt * 10); } return; }
+  if (e.blink) { e.bT = (e.bT === undefined ? 3 : e.bT) - dt; if (e.bT <= 0 && d > 4 && d < 15) { e.bT = 5; for (let t = 0; t < 6; t++) { const an = Math.random() * 6.28, nx = P.x + Math.cos(an) * 2.6, nz = P.z + Math.sin(an) * 2.6; if (!blocked(nx, nz, e.r)) { if (typeof __emit !== 'function') { burst(e.x, 1.2, e.z, 0xb48cff, 16, 5); burst(nx, 1.2, nz, 0xb48cff, 16, 5); } e.x = nx; e.z = nz; break; } } } }
   if (e.regen) e.hp = Math.min(e.maxHp, e.hp + e.maxHp * .02 * dt);
   if (e.storm) { e.modT -= dt; if (e.modT <= 0) { e.modT = 3.2; addArea({ x: P.x, z: P.z, r: 2.4, delay: .9, owner: 'e', dmg: e.dmg * 1.2, el: 'light', c: 0xfff07a, src: e }); } }
   const face = () => { let da = Math.atan2(dx, dz) - e.rot; while (da > Math.PI) da -= 6.2832; while (da < -Math.PI) da += 6.2832; e.rot += da * Math.min(1, dt * 10); };
@@ -1058,7 +1069,7 @@ function update(dt) {
     if (a.t >= a.delay + .05) G.areas.splice(i, 1);
   }
   // drops
-  if (G.zone && !G.inTown && !P.dead) for (const o of G.zone.objs) if ((o.kind === 'chest' || o.kind === 'shrine') && !o.used && Math.hypot(o.x - P.x, o.z - P.z) < (o.kind === 'shrine' ? 2.2 : 1.9)) interact(o); // walk over chests and shrines to open or touch them
+  if (G.zone && !G.inTown && !P.dead) for (const o of G.zone.objs) if ((o.kind === 'chest' || o.kind === 'shrine' || o.kind === 'gchest' || o.kind === 'well') && !o.used && Math.hypot(o.x - P.x, o.z - P.z) < (o.kind === 'shrine' || o.kind === 'well' ? 2.2 : 1.6)) interact(o); // walk over chests and shrines to open or touch them
   if (G.zone && !G.inTown && !P.dead) for (const o of G.zone.objs) { if (o.kind !== 'portal' && o.kind !== 'pback') continue; const dd = Math.hypot(o.x - P.x, o.z - P.z), R = o.kind === 'portal' ? 1.9 : 1.4; if (dd > R + 1.5) o.arm = true; else if (dd < R && o.arm && !o.gone) { o.arm = false; if (typeof UI !== 'undefined' && UI.askGate) UI.askGate(o); else { o.gone = true; interact(o); } return; } } // step into a gate to travel
   for (const d of G.drops.slice()) { d.t += dt; if (d.item && d.t > .5 && G.set.autoLoot !== false && !P.dead && d.item.rar >= G.hero.filter && Math.hypot(d.x - P.x, d.z - P.z) < 1.8 && G.time - (d.tryT || -9) > 2.5) { d.tryT = G.time; pickup(d); continue; } // walk over loot to collect it
     if (d.globe) { if (Math.hypot(d.x - P.x, d.z - P.z) < 1.8 && P.hp < P.stats.maxLife) pickup(d); } else if ((d.gold || d.q) && d.t > .3) { const dd = Math.hypot(d.x - P.x, d.z - P.z); if (dd < 4.5) { d.x += (P.x - d.x) / dd * 14 * dt; d.z += (P.z - d.z) / dd * 14 * dt; if (dd < .9) pickup(d); } } }
@@ -1245,7 +1256,12 @@ function drawEnemy(e) {
   const fdt = Math.min(.1, G.time - (e.wkT === undefined ? G.time : e.wkT)); e.wkT = G.time; e.wk = (e.wk || 0) + ((e.st === 'wind' ? 1 : 0) - (e.wk || 0)) * Math.min(1, fdt * 9); /* wind-ups blend in and out instead of snapping */ const em = e.flash > 0 ? 1.4 : 0, w = e.walk, sw = Math.sin(w), at = Math.max(0, e.atk), wind = e.wk;
   GLX.base(BM, e.x, y, e.z, e.rot, sc); const p = (g, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, cc, mat, ee) => GLX.part('dyn', g, BM, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, cc, ee === undefined ? em : ee, 1, mat || 0);
   const eyes = (ex, ey, ez, r) => { p('sphere', ex, ey, ez, 0, 0, 0, 0, 0, 0, r, r, r, ec, 0, 3); p('sphere', -ex, ey, ez, 0, 0, 0, 0, 0, 0, r, r, r, ec, 0, 3); };
-  if (e.arch === 'grunt') {
+  if (e.arch === 'goblin') { const gd = col(0xd8a838), sk2 = col(0x5a8a3a), t = G.time, hop = Math.abs(Math.sin(w * 1.4)) * .14;
+    if (e.awake && e.alive && !e.ann && typeof UI !== 'undefined') { e.ann = 1; UI.zoneBanner('Treasure Goblin!', 'Catch it before it escapes: 30 seconds'); SFX.play('drop3'); }
+    for (const sd of [1, -1]) p('cap', .16 * sd, .4 + hop, 0, sd * sw * .9, 0, 0, 0, -.2, 0, .14, .36, .14, sk2);
+    p('sphere', 0, .82 + hop, .05, .5, 0, 0, 0, 0, 0, .5, .5, .45, c, 0); p('sphere', 0, 1.18 + hop, .38, .2, 0, 0, 0, 0, 0, .34, .3, .32, sk2, 0); for (const sd of [1, -1]) p('cone', .3 * sd, 1.28 + hop, .34, 0, 0, sd * 1.2, 0, 0, 0, .08, .34, .08, sk2); eyes(.1, 1.24 + hop, .62, .05); p('sphere', 0, 1.12 + hop, .66, 0, 0, 0, 0, 0, 0, .1, .08, .12, sk2);
+    p('sphere', 0, 1.2 + hop, -.32, .1, 0, 0, 0, 0, 0, .62, .66, .58, c2, 0, .25); p('cap', 0, 1.62 + hop, -.32, 0, 0, 0, 0, 0, 0, .2, .14, .2, col(0x6a4a24)); for (let k = 0; k < 4; k++) { const an = k * 1.57 + t * 2; GLX.obj('glow', 'gem', e.x + Math.cos(an) * .7 * sc, (1.3 + Math.sin(t * 3 + k) * .3) * sc, e.z + Math.sin(an) * .7 * sc, t * 4, .07, .12, .07, gd, 2, .9); } GLX.halo(e.x, 1.1 * sc, e.z, 2.2, gd, .4); }
+  else if (e.arch === 'grunt') {
     for (const sd of [1, -1]) { p('cap', .16 * sd, .82, 0, sd * sw * .7, 0, 0, 0, -.2, 0, .2, .42, .22, c2); p('cap', .16 * sd, .82, 0, sd * sw * .9, 0, 0, 0, -.6, .03, .16, .42, .17, c); }
     p('taper', 0, 1.18, .04, .35, 0, 0, 0, 0, 0, .56, -.72, .36, c, 3); p('sphere', 0, 1.0, 0, .3, 0, 0, 0, 0, 0, .5, .36, .36, c2); p('sphere', 0, 1.66, .2, .3, 0, 0, 0, 0, 0, .36, .4, .38, c, 3); p('rbox', 0, 1.52, .36, .5, 0, 0, 0, 0, 0, .2, .1, .12, c2);
     const arm = -1.3 - wind * 1.2 + at * 1.6; for (const sd of [1, -1]) { p('cap', .35 * sd, 1.42, .08, arm + sd * sw * .15, 0, 0, 0, -.2, 0, .14, .4, .14, c2); p('cap', .35 * sd, 1.42, .08, arm + sd * sw * .15 - .3, 0, 0, 0, -.55, 0, .11, .4, .11, c); }
@@ -1390,6 +1406,11 @@ function drawWorld() {
       for (let k = 0; k < 10; k++) { const a = t * .8 + k * .628, y = (t * 1.6 + k * .7) % 6; GLX.obj('glow', 'sphere', o.x + Math.cos(a) * (2.4 - y * .3), 1.6 + y, o.z + Math.sin(a) * (2.4 - y * .3), 0, .1, .1, .1, c2, 2.4 * (1 - y / 6), .9); }
       GLX.halo(o.x, 3, o.z, 7 + hov * 2, c, .55 + hov * .3); GLX.light(o.x, 3, o.z, 20, c, 1.8, 5); if (hov) GLX.obj('glow', 'ring', o.x, .07, o.z, G.time, 7.4, 1, 7.4, c2, 1, .6, -1); continue; }
     if (o.kind === 'tportal') { const c = col(0x7ad0ff); for (let i = 0; i < 3; i++) GLX.obj('glow', 'ring', o.x, .1 + i * .9 + Math.sin(G.time * 2 + i) * .2, o.z, G.time * (1 + i), 3 - i * .5, 1, 3 - i * .5, c, 1, .9, -1); GLX.halo(o.x, 1.6, o.z, 5, c, .6); GLX.light(o.x, 2, o.z, 12, c, 1.4, 4); continue; }
+    if (o.kind === 'gchest') { const gd = col(0xd8a838), dk = col(0x5a3416), t = G.time, ly = o.used ? 1.02 : .8; GLX.obj('dyn', 'box', o.x, .36, o.z, .3, 1.1, .72, .76, dk, hov, 1, 3); GLX.obj('dyn', 'box', o.x, .36, o.z, .3, 1.14, .14, .8, gd, hov + .15, 1, 4); GLX.obj('dyn', 'box', o.x, ly, o.z - (o.used ? .28 : 0), .3, 1.16, .26, .8, gd, hov + .2, 1, 4); GLX.obj('dyn', 'sphere', o.x + .05, .58, o.z + .4, .3, .12, .14, .06, col(0xff4a4a), .8);
+      if (!o.used) { GLX.halo(o.x, 1, o.z, 2.6, gd, .45 + Math.sin(t * 3 + o.x) * .12); GLX.obj('glow', 'cyl', o.x, 4, o.z, t, .5, 8, .5, gd, 1, .12); for (let k = 0; k < 3; k++) { const ph = (t * .6 + k / 3 + o.x) % 1; GLX.obj('glow', 'gem', o.x + Math.cos(k * 2.1 + t) * .5, .8 + ph * 2.5, o.z + Math.sin(k * 2.1 + t) * .5, t * 3, .07, .12, .07, gd, 2, 1 - ph); } } continue; }
+    if (o.kind === 'well') { const st = col(0x6a6660), st2 = col(0x8a857c), wd = col(0x5a3a22), t = G.time, wc = o.used ? col(0x2a4a5a) : col(0xffd25a); GLX.obj('dyn', 'cyl', o.x, .45, o.z, 0, 2.6, .9, 2.6, st, hov, 1, 3); GLX.obj('dyn', 'cyl', o.x, .93, o.z, 0, 2.8, .14, 2.8, st2, hov, 1, 3); GLX.obj('glow', 'cyl', o.x, .82, o.z, t, 2.1, .04, 2.1, wc, o.used ? .3 : 1.6, o.used ? .5 : .9);
+      for (const sd of [1, -1]) GLX.obj('dyn', 'box', o.x + sd * 1.2, 1.9, o.z, 0, .18, 2.2, .18, wd, hov, 1, 3); GLX.obj('dyn', 'taper', o.x, 3.25, o.z, .785, 2.4, .9, 1.6, col(0x6a2a1a), hov, 1, 3); GLX.obj('dyn', 'cyl', o.x, 2.6, o.z, 1.5708, .14, 2.3, .14, wd, hov, 1, 3);
+      if (!o.used) { GLX.halo(o.x, 1.4, o.z, 4.2, wc, .5 + Math.sin(t * 2.4) * .12); GLX.light(o.x, 1.6, o.z, 9, wc, 1.1, 3); for (let k = 0; k < 8; k++) { const ph = (t * .45 + k / 8) % 1, an = k * .785 + t * .7; GLX.obj('glow', 'gem', o.x + Math.cos(an) * .8 * (1 - ph * .3), 1 + ph * 3.2, o.z + Math.sin(an) * .8 * (1 - ph * .3), t * 4 + k, .08, .14, .08, k & 1 ? col(0x9ad0ff) : wc, 2, 1 - ph); } } continue; }
     if (o.kind === 'chest') { const wd = col(0x6a4426), wd2 = col(0x4e3018), ir = col(0x3a3c44), gd = col(0xc9a030), ry = .4, cs = Math.cos(ry), sn = Math.sin(ry), at = (lx, lz) => [o.x + lx * cs + lz * sn, o.z - lx * sn + lz * cs];
       GLX.obj('dyn', 'box', o.x, .42, o.z, ry, 1.5, .84, .95, wd, hov, 1, 3); for (const lx of [-.5, 0, .5]) { const q = at(lx, 0); GLX.obj('dyn', 'box', q[0], .42, q[1], ry, .03, .86, .97, wd2, hov, 1, 3); }
       const ly = o.used ? 1.2 : .98; GLX.obj('dyn', 'box', o.x, ly, o.z - (o.used ? .35 : 0), ry, 1.56, .3, 1, wd, hov, 1, 3); GLX.obj('dyn', 'box', o.x, ly + .17, o.z - (o.used ? .35 : 0), ry, 1.4, .08, .84, wd2, hov, 1, 3);
