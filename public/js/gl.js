@@ -124,7 +124,7 @@ float h(vec2 p){uvec2 q=uvec2(ivec2(p))*uvec2(1597334673U,3812015801U);uint n=(q
 float ns(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
 ${N3}
 void main(){if(uOut>0.){o=vec4(.016,.012,.009,1.);return;}float mat=vE.y;
- if(uRim==0.&&mat>1.5&&mat<3.5&&vW.y>2.3){float hd=length(vec2(vW.x,vW.z-(vW.y-1.)*.72)-uPl.xz);if(hd<4.6){float th=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))));if(th>smoothstep(2.4,4.6,hd)*.97)discard;}} // whatever stands between the camera and the hero thins out so you can always see the fight
+ if(uRim==0.&&mat>1.5&&mat<3.5&&vW.y>2.3){float hd=length(vec2(vW.x,vW.z-(vW.y-1.)*.72)-uPl.xz);if(hd<4.2){float th=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))));if(th>smoothstep(3.55,4.15,hd))discard;}} // whatever stands between the camera and the hero thins out so you can always see the fight
  vec3 n=normalize(vN);vec3 a=vC.rgb;float spec=.12,shin=20.,wrap=0.,ao=1.,wet=0.;
  if(mat>0.&&mat<1.5){
   float f1=ns(vW.xz*.11)*.6+ns(vW.xz*.31)*.4,f2=ns(vW.xz*1.1),f3=ns(vW.xz*7.);

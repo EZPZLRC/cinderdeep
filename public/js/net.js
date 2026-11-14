@@ -24,12 +24,12 @@ const NET = (() => {
       case 'scale': { const r = +m.r; if (!(r > 0 && r < 20)) break; for (const e of G.ents) { if (!e.alive) continue; e.maxHp = Math.max(1, Math.round(e.maxHp * r)); e.hp = Math.min(e.maxHp, Math.round(e.hp * r)); } break; } // party size changed (build 0022)
       case 'zone': if (N.retry > 0) { if (N.back && N.back.seed === m.seed) { m.sync = 1; m.pos = [N.back.x, N.back.z]; } N.retry = 0; N.back = null; UI.reconnecting(0); if (G.inTown) { G.away = null; } } if (m.sync && G.away && G.away.seed === m.seed) m.pos = [G.away.x, G.away.z]; enterZone(m); if (m.cleared && m.bossAt) { G.zone.cleared = true; G.zone.objs.push({ kind: 'portal', x: m.bossAt[0], z: m.bossAt[1], name: 'Next floor', used: false }); } UI.netZone(); break;
       case 's': {
-        for (const a of m.e) { const e = find(a[0]); if (!e || !e.alive) continue; e.tx = a[1]; e.tz = a[2]; e.trot = a[3]; e.hp = a[4] > e.hp + e.maxHp * .04 ? a[4] : Math.min(e.hp, a[4]); e.st = STN[a[5]] || 'chase'; if (!e.awake) e.awake = true; /* the boss intro card is the one announcement */ }
+        for (const a of m.e) { const e = find(a[0]); if (!e || !e.alive) continue; const nt = performance.now() / 1000; if (e.sT1 && nt - e.sT1 < .5) { e.sx0 = e.sx1; e.sz0 = e.sz1; e.sT0 = e.sT1; } else { e.sx0 = e.x; e.sz0 = e.z; e.sT0 = nt - .1; } e.sx1 = a[1]; e.sz1 = a[2]; e.sT1 = nt; /* build 0024: glide between server updates */ e.tx = a[1]; e.tz = a[2]; e.trot = a[3]; e.hp = a[4] > e.hp + e.maxHp * .04 ? a[4] : Math.min(e.hp, a[4]); e.st = STN[a[5]] || 'chase'; if (!e.awake) e.awake = true; /* the boss intro card is the one announcement */ }
         const seen = {};
         for (const a of m.p) {
           if (!a || a[0] === N.id) continue; seen[a[0]] = 1; let p = N.peers[a[0]];
           if (!p) p = N.peers[a[0]] = { id: a[0], x: a[1], z: a[2], y: 0, rot: a[3], walk: 0, mv: 0, hurt: 0, act: null, swing: 0, spin: null, dash: false, buffs: null, flaskT: 0, a: 0, name: N.names[a[0]] || 'Hero', cls: N.cls[a[0]] || 'warden' };
-          p.tx = a[1]; p.tz = a[2]; p.trot = a[3]; p.tmv = a[4]; if (Math.hypot(p.tx - p.x, p.tz - p.z) > 18) { p.x = p.tx; p.z = p.tz; } p.hp = a[6]; p.lvl = a[7]; p.dead = !!a[8]; if (a[9] !== p.gc) { p.gc = a[9]; p.gear = gearDecode(a[9]); }
+          { const nt = performance.now() / 1000; if (p.sT1 && nt - p.sT1 < .5) { p.sx0 = p.sx1; p.sz0 = p.sz1; p.sT0 = p.sT1; } else { p.sx0 = p.x; p.sz0 = p.z; p.sT0 = nt - .1; } p.sx1 = a[1]; p.sz1 = a[2]; p.sT1 = nt; } p.tx = a[1]; p.tz = a[2]; p.trot = a[3]; p.tmv = a[4]; if (Math.hypot(p.tx - p.x, p.tz - p.z) > 18) { p.x = p.tx; p.z = p.tz; } if (Math.hypot(p.tx - p.x, p.tz - p.z) > 18) p.sx0 = p.sx1, p.sz0 = p.sz1; p.hp = a[6]; p.lvl = a[7]; p.dead = !!a[8]; if (a[9] !== p.gc) { p.gc = a[9]; p.gear = gearDecode(a[9]); }
           if (a[5] !== p.a) { p.a = a[5]; p.swing = 0; p.act = a[5] === 1 ? { sk: { type: 'melee' } } : a[5] === 2 ? { sk: { type: 'nova' } } : null; p.spin = a[5] === 3 ? { sk: SKILLS.whirl } : null; if (!CLASSES[p.cls]) p.cls = 'warden'; p.dash = a[5] === 4; }
         }
         for (const id in N.peers) if (!seen[id]) delete N.peers[id];
@@ -63,10 +63,11 @@ const NET = (() => {
   };
   N.tick = dt => {
     for (const id in N.peers) {
-      const p = N.peers[id], k = Math.min(1, dt * 10), ox = p.x, oz = p.z; p.x += (p.tx - p.x) * k; p.z += (p.tz - p.z) * k; let da = p.trot - p.rot; while (da > Math.PI) da -= 6.2832; while (da < -Math.PI) da += 6.2832; p.rot += da * k;
+      const p = N.peers[id], k = Math.min(1, dt * 10), ox = p.x, oz = p.z; if (p.sT1 && p.sT1 > p.sT0) { const u = Math.min(1.2, Math.max(0, (performance.now() / 1000 - .1 - p.sT0) / (p.sT1 - p.sT0))), kk = Math.min(1, dt * 20); p.x += (p.sx0 + (p.sx1 - p.sx0) * u - p.x) * kk; p.z += (p.sz0 + (p.sz1 - p.sz0) * u - p.z) * kk; } else { p.x += (p.tx - p.x) * k; p.z += (p.tz - p.z) * k; } /* build 0024: other heroes glide too */ let da = p.trot - p.rot; while (da > Math.PI) da -= 6.2832; while (da < -Math.PI) da += 6.2832; p.rot += da * k;
       p.walk += Math.hypot(p.x - ox, p.z - oz) * 1.5; p.mv += ((p.tmv ? 1 : 0) - p.mv) * Math.min(1, dt * 12); p.y = p.dash ? 1.6 : 0; if (p.act) { p.swing += dt / .4; if (p.swing >= 1) p.swing = 0; }
     }
     acc += dt; if (acc >= .1) { acc = 0; N.send({ t: 'p', x: r2(P.x), z: r2(P.z), r: r2(P.rot), mv: P.moving ? 1 : 0, a: P.spin ? 3 : P.dash ? 4 : P.act ? (P.act.sk.type === 'nova' ? 2 : 1) : 0, hp: Math.round(clamp(P.hp / P.stats.maxLife, 0, 1) * 100), lvl: G.hero.level, pl: G.hero.plvl || 0, dp: (G.hero.depth || 0) + 1, hc: G.hero.hc ? 1 : 0, fc: G.hero.maxClear || 0, dead: P.dead || G.inTown ? 1 : 0, g: P.gc || '' }); }
   };
+  N._handle = handle; /* used by the test kit */
   return N;
 })();
