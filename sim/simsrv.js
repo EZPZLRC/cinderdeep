@@ -14,6 +14,7 @@ function srvNewZone(lvl, nPlayers, next) {
   for (const e of G.ents) { e.maxHp = Math.round(e.maxHp * k); e.hp = e.maxHp; known.add(e.id); }
   return { t: 'zone', seed: def.seed, lvl: def.lvl, d: depth, theme: def.theme, rift: rift ? Date.now() - rift.t0 : undefined, ents: G.ents.map(entInfo) };
 }
+// TODO (Sprint 1, server side): switch to partyHpK(n) from data.js, about 1.7x monster life for a full group. Not changed in build 0028.
 function partyK(n) { return 1 + .5 * Math.max(0, n - 1); }
 // someone joined or left: scale the life of every monster on the floor to the new party size, keeping how hurt it is (build 0022)
 function srvScale(n) { if (!G.zone || n < 1) return 0; const k = partyK(n), r = k / curK; if (Math.abs(r - 1) < .001) return 0; curK = k; for (const e of G.ents) { if (!e.alive) continue; e.maxHp = Math.max(1, Math.round(e.maxHp * r)); e.hp = Math.min(e.maxHp, Math.max(1, Math.round(e.hp * r))); } return Math.round(r * 10000) / 10000; }

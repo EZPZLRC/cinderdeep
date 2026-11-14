@@ -1,5 +1,5 @@
 'use strict';
-const BUILD = '0027';
+const BUILD = '0028';
 // Fresh start: every hero and the stash are wiped whenever this number changes. It follows the build, so each new build is a new season.
 const SEASON = BUILD;
 const SLOTS = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring1'];
@@ -82,15 +82,15 @@ const POWERS = {
 
 const SLOT_LV = [1, 1, 2, 4, 7, 12], SLOT_KEY = ['LMB', 'RMB', 'Q', 'W', 'E', 'R'];
 const SKILLS = {
-  cleave: { n: 'Cleave', lv: 1, i: '⚔', type: 'melee', el: 'phys', m: 1.0, range: 3.4, arc: 2.0, basic: 1, gen: 8, d: 'Sweep your weapon in a wide arc, striking every enemy in front of you.' },
-  bash: { n: 'Bash', i: '⚒', type: 'melee', el: 'phys', m: 1.6, range: 3.3, arc: .9, basic: 1, gen: 12, lv: 2, d: 'A heavy blow on one target in front of you. Builds Fury quickly.' },
+  cleave: { n: 'Cleave', lv: 1, i: '⚔', type: 'melee', el: 'phys', m: 1.0, range: 3.4, arc: 2.0, basic: 1, gen: 5, d: 'Sweep your weapon in a wide arc, striking every enemy in front of you.' },
+  bash: { n: 'Bash', i: '⚒', type: 'melee', el: 'phys', m: 1.6, range: 3.3, arc: .9, basic: 1, gen: 9, lv: 2, d: 'A heavy blow on one target in front of you. Builds Fury quickly.' },
   stomp: { n: 'Frost Stomp', i: '❄', type: 'nova', el: 'cold', m: 1.2, cost: 10, cd: 8, r: 6, freeze: 2, ct: .3, lv: 8, d: 'Stomp the ground with frost, damaging nearby enemies and freezing them for 2 seconds.' },
-  charge: { n: 'Furious Charge', i: '➤', type: 'dash', el: 'phys', m: 2.2, cd: 7, range: 14, land: 3.2, gen: 10, flat: 1, lv: 10, d: 'Rush forward in a straight line and smash into enemies where you stop.' },
+  charge: { n: 'Furious Charge', i: '➤', type: 'dash', el: 'phys', m: 2.2, cd: 10, range: 14, land: 3.2, gen: 10, flat: 1, lv: 10, d: 'Rush forward in a straight line and smash into enemies where you stop.' },
   slam: { n: 'Ground Slam', lv: 1, i: '✹', type: 'nova', el: 'phys', m: 1.9, cost: 20, r: 5.2, ct: .45, d: 'Smash the ground, damaging all enemies around you.' },
   leap: { n: 'Leap', lv: 3, i: '⤴', type: 'dash', el: 'phys', m: 1.7, cd: 5, range: 12, land: 3.8, gen: 5, d: 'Leap to the target location and crash down on enemies there.' },
   warcry: { n: 'War Cry', lv: 6, i: '♛', type: 'buff', cd: 16, dur: 7, s: { dmg: 35, aspd: 20, ms: 15 }, gen: 0, d: 'Bellow a war cry: +35% damage, +20% attack speed and +15% movement speed for 7 seconds.' },
   whirl: { n: 'Whirlwind', lv: 5, i: '✪', type: 'spin', el: 'phys', m: .7, cost: 25, cd: 6, dur: 3, r: 3.8, tick: .2, d: 'Spin for 3 seconds, striking everything nearby. You can move while spinning.' },
-  quake: { n: 'Earthshatter', lv: 12, i: '☄', type: 'rain', el: 'fire', m: 3.2, cd: 14, cost: 45, cnt: 9, spread: 7.5, r: 3.4, delay: .5, stagger: .1, d: 'Tear open the earth: nine molten eruptions burst around the target.' },
+  quake: { n: 'Earthshatter', lv: 12, i: '☄', type: 'rain', el: 'fire', m: 2.2, cd: 16, cost: 55, cnt: 9, spread: 7.5, r: 3.4, delay: .5, stagger: .1, d: 'Tear open the earth: nine molten eruptions burst around the target.' },
   firebolt: { n: 'Firebolt', i: '✦', type: 'proj', el: 'fire', m: 1.05, basic: 1, spd: 26, pr: .5, range: 16, d: 'Hurl a bolt of fire that ignites enemies.' },
   chain: { n: 'Chain Lightning', i: '⚡', type: 'chain', el: 'light', m: 1.35, cost: 12, jumps: 5, range: 15, ct: .38, d: 'A bolt of lightning that arcs between up to 6 enemies, shocking them.' },
   blink: { n: 'Blink', i: '✧', type: 'dash', blink: 1, cd: 4, range: 12, cost: 6, d: 'Teleport instantly to the target location.' },
@@ -108,13 +108,13 @@ Object.assign(SKILLS, {
   // Ranger
   shot: { n: 'Quick Shot', lv: 1, i: '➶', type: 'proj', el: 'phys', m: 1.0, basic: 1, gen: 5, spd: 36, pr: .4, pierce: 1, range: 16, arrow: 1, d: 'Loose a fast arrow that pierces one enemy.' },
   power: { n: 'Power Shot', lv: 2, i: '➹', type: 'proj', el: 'phys', m: 1.75, as: .62, basic: 1, gen: 10, spd: 42, pr: .5, pierce: 2, range: 17, arrow: 1, d: 'A slow, heavy shot that punches through several enemies.' },
-  multi: { n: 'Multishot', lv: 1, i: '⋔', type: 'proj', el: 'phys', m: .85, cost: 18, cnt: 5, spread: .7, spd: 34, pr: .4, range: 15, ct: .32, arrow: 1, d: 'Fire a fan of five arrows.' },
+  multi: { n: 'Multishot', lv: 1, i: '⋔', type: 'proj', el: 'phys', m: .85, cost: 24, cnt: 5, spread: .7, spd: 34, pr: .4, range: 15, ct: .32, arrow: 1, d: 'Fire a fan of five arrows.' },
   roll: { n: 'Vault', lv: 3, i: '↯', type: 'dash', el: 'phys', m: 0, cd: 4, range: 9.5, flat: 1, d: 'Tumble a short distance, avoiding all damage.' },
-  arrows: { n: 'Rain of Arrows', lv: 5, i: '⇊', type: 'rain', el: 'phys', m: .9, cost: 25, cd: 5, cnt: 14, spread: 4.6, r: 1.9, delay: .35, stagger: .07, d: 'Blanket an area with fourteen falling arrows.' },
+  arrows: { n: 'Rain of Arrows', lv: 5, i: '⇊', type: 'rain', el: 'phys', m: 0.62, cost: 25, cd: 7, cnt: 14, spread: 4.6, r: 1.9, delay: .35, stagger: .07, d: 'Blanket an area with fourteen falling arrows.' },
   mark: { n: "Hunter's Mark", lv: 6, i: '◎', type: 'buff', cd: 18, dur: 8, s: { crit: 20, critDmg: 40, aspd: 15 }, d: '+20% critical chance, +40% critical damage and +15% attack speed for 8 seconds.' },
   trap: { n: 'Frost Trap', lv: 8, i: '❄', type: 'nova', el: 'cold', m: 1.2, cost: 10, cd: 9, r: 5.5, freeze: 3, ct: .25, d: 'Spring a trap at your feet that freezes nearby enemies for 3 seconds.' },
-  pierce: { n: 'Storm Bolt', lv: 10, i: '⚡', type: 'proj', el: 'light', m: 2.7, cost: 22, cd: 3, spd: 44, pierce: 99, pr: .9, range: 18, ct: .4, d: 'A charged bolt that pierces every enemy in its path.' },
-  volley: { n: 'Shadow Volley', lv: 12, i: '✺', type: 'barrage', el: 'cold', m: 1.1, cost: 40, cd: 20, cnt: 18, waves: 3, spd: 26, pr: .45, range: 13, d: 'Three rings of freezing arrows burst outward from you.' },
+  pierce: { n: 'Storm Bolt', lv: 10, i: '⚡', type: 'proj', el: 'light', m: 2.2, cost: 22, cd: 4, spd: 44, pierce: 99, pr: .9, range: 18, ct: .4, d: 'A charged bolt that pierces every enemy in its path.' },
+  volley: { n: 'Shadow Volley', lv: 12, i: '✺', type: 'barrage', el: 'cold', m: 0.70, cost: 55, cd: 24, cnt: 18, waves: 3, spd: 26, pr: .45, range: 13, d: 'Three rings of freezing arrows burst outward from you.' },
   // Arcanist
   abolt: { n: 'Arcane Bolt', lv: 1, i: '✦', type: 'proj', el: 'arc', m: 1.0, basic: 1, gen: 4, spd: 28, pr: .5, range: 15, d: 'Hurl a bolt of raw arcane energy.' },
   shards: { n: 'Prism Shards', lv: 2, i: '⁂', type: 'proj', el: 'arc', m: .5, basic: 1, cnt: 3, spread: .4, spd: 30, pr: .4, range: 13, d: 'Three shards in a tight fan. Strong against packs.' },
@@ -123,7 +123,7 @@ Object.assign(SKILLS, {
   anova: { n: 'Arcane Nova', lv: 5, i: '✹', type: 'nova', el: 'arc', m: 1.7, cost: 28, r: 6.5, ct: .3, d: 'A burst of arcane force around you.' },
   prism: { n: 'Prismatic Ward', lv: 6, i: '⬡', type: 'buff', cd: 18, dur: 8, s: { dr: 25, resAll: 20, area: 20 }, d: '25% damage reduction, +20% all resistances and +20% area for 8 seconds.' },
   ray: { n: 'Disintegrate', lv: 8, i: '⟶', type: 'proj', el: 'arc', m: 2.3, cost: 22, cd: 2, spd: 60, pierce: 99, pr: .7, range: 20, ct: .3, d: 'A searing beam that pierces everything in a line.' },
-  torrent: { n: 'Arcane Torrent', lv: 10, i: '✺', type: 'barrage', el: 'arc', m: .9, cost: 35, cd: 9, cnt: 14, waves: 2, spd: 24, pr: .45, range: 12, d: 'Two rings of arcane missiles burst outward from you.' },
+  torrent: { n: 'Arcane Torrent', lv: 10, i: '✺', type: 'barrage', el: 'arc', m: 0.60, cost: 35, cd: 11, cnt: 14, waves: 2, spd: 24, pr: .45, range: 12, d: 'Two rings of arcane missiles burst outward from you.' },
   hole: { n: 'Singularity', lv: 12, i: '●', type: 'rain', el: 'arc', m: 5, cost: 50, cd: 16, cnt: 1, spread: 0, r: 6, delay: 1, freeze: 2, d: 'Tear a hole in space at the target. After a moment it collapses for massive damage.' },
   // Brawler
   punch: { n: 'Punch', lv: 1, i: '✊', type: 'melee', el: 'phys', m: 1, as: 1, range: 2.6, arc: 1.3, basic: 1, gen: 4, d: 'Bare fists. What you fall back on with no weapon in hand.' },
@@ -135,28 +135,30 @@ Object.assign(SKILLS, {
   iron: { n: 'Iron Skin', lv: 6, i: '⬢', type: 'buff', cd: 14, dur: 6, s: { dr: 30, armorPct: 40, lifeRegen: 6 }, d: '30% damage reduction, +40% armor and faster healing for 6 seconds.' },
   palm: { n: 'Burning Palm', lv: 8, i: '✋', type: 'melee', el: 'fire', m: 2.6, cost: 20, cd: 4, range: 3.4, arc: 1.5, d: 'A flaming palm strike that sets enemies alight.' },
   wave: { n: 'Wave of Force', lv: 10, i: '≋', type: 'proj', el: 'phys', m: 2.2, cost: 30, cd: 6, spd: 22, pierce: 99, pr: 1.4, range: 10, ct: .35, d: 'A wide shockwave that rolls through everything in front of you.' },
-  seven: { n: 'Seven-Sided Strike', lv: 12, i: '✵', type: 'rain', el: 'phys', m: 2.0, cost: 45, cd: 16, cnt: 7, spread: 3.5, r: 2.4, delay: .15, stagger: .12, d: 'Seven blinding strikes land around the target.' },
+  seven: { n: 'Seven-Sided Strike', lv: 12, i: '✵', type: 'rain', el: 'phys', m: 2.6, cost: 45, cd: 13, cnt: 7, spread: 3.5, r: 2.4, delay: .15, stagger: .12, d: 'Seven blinding strikes land around the target.' },
   // Elementalist
   firebolt: { n: 'Firebolt', lv: 1, i: '✦', type: 'proj', el: 'fire', m: 1.05, basic: 1, gen: 4, spd: 27, pr: .5, range: 15, d: 'Hurl a bolt of fire that sets enemies alight.' },
   spark: { n: 'Shock Pulse', lv: 2, i: '⚡', type: 'proj', el: 'light', m: .5, basic: 1, cnt: 3, spread: .5, spd: 24, pr: .4, range: 10, d: 'Three crackling sparks at short range.' },
   frost: { n: 'Frost Nova', lv: 1, i: '❄', type: 'nova', el: 'cold', m: 1.4, cost: 22, cd: 5, r: 6.5, freeze: 1.8, ct: .3, d: 'A ring of frost that damages and freezes nearby enemies.' },
   fdash: { n: 'Flame Dash', lv: 3, i: '➤', type: 'dash', el: 'fire', m: 1.2, cd: 4, range: 11, land: 3, cost: 8, flat: 1, d: 'Streak forward in a burst of flame, burning enemies where you stop.' },
   chain: { n: 'Chain Lightning', lv: 5, i: '⚡', type: 'chain', el: 'light', m: 1.35, cost: 18, jumps: 5, range: 15, ct: .35, d: 'Lightning that arcs between up to six enemies.' },
-  mshield: { n: 'Molten Shield', lv: 6, i: '♨', type: 'buff', cd: 16, dur: 8, s: { dr: 15, fire: 30, thorns: 12 }, d: '15% damage reduction, +30% fire damage and burning thorns for 8 seconds.' },
+  mshield: { n: 'Molten Shield', lv: 6, i: '♨', type: 'buff', cd: 12, dur: 8, s: { dr: 25, fire: 30, thorns: 12 }, d: '25% damage reduction, +30% fire damage and burning thorns for 8 seconds.' },
   meteor: { n: 'Meteor', lv: 8, i: '☄', type: 'rain', el: 'fire', m: 4.4, cost: 40, cd: 5, cnt: 1, spread: 0, r: 4.8, delay: .8, fall: 1, d: 'Call down a meteor for massive fire damage.' },
-  blizz: { n: 'Blizzard', lv: 10, i: '❅', type: 'rain', el: 'cold', m: .9, cost: 35, cd: 8, cnt: 16, spread: 6, r: 2.4, delay: .3, stagger: .12, d: 'Sixteen shards of ice hammer an area, chilling everything.' },
-  inferno: { n: 'Firestorm', lv: 12, i: '♨', type: 'rain', el: 'fire', m: 1.8, cost: 60, cd: 22, cnt: 22, spread: 10, r: 3, delay: .35, stagger: .11, fall: 1, d: 'Rain two dozen fireballs across a huge area.' }
+  blizz: { n: 'Blizzard', lv: 10, i: '❅', type: 'rain', el: 'cold', m: 0.75, cost: 35, cd: 8, cnt: 16, spread: 6, r: 2.4, delay: .3, stagger: .12, d: 'Sixteen shards of ice hammer an area, chilling everything.' },
+  inferno: { n: 'Firestorm', lv: 12, i: '♨', type: 'rain', el: 'fire', m: 1.4, cost: 60, cd: 26, cnt: 22, spread: 10, r: 3, delay: .35, stagger: .11, fall: 1, d: 'Rain two dozen fireballs across a huge area.' }
 });
 const CLASSES = {
-  warden: { n: 'Warden', tag: 'Melee', d: 'Sword and shield. Wades into the horde and builds Fury with every swing.', life: 130, lifeLv: 17, armor: 4, ms: 8.6, regen: 1.6, res: { n: 'Fury', max: 100, decay: 5, c: 'radial-gradient(circle at 35% 30%,#ffd070,#e07a14 55%,#7a3204)' }, wts: ['sword', 'axe', 'maul'], w: 'Sword', skills: ['cleave', 'bash', 'slam', 'leap', 'whirl', 'warcry', 'stomp', 'charge', 'quake'] },
+  warden: { n: 'Warden', tag: 'Melee', d: 'Sword and shield. Wades into the horde and builds Fury with every swing.', life: 130, lifeLv: 17, armor: 4, ms: 8.6, regen: 1.6, res: { n: 'Fury', max: 100, decay: 9, c: 'radial-gradient(circle at 35% 30%,#ffd070,#e07a14 55%,#7a3204)' }, wts: ['sword', 'axe', 'maul'], w: 'Sword', skills: ['cleave', 'bash', 'slam', 'leap', 'whirl', 'warcry', 'stomp', 'charge', 'quake'] },
   ranger: { n: 'Ranger', tag: 'Bow', d: 'A swift archer who kites and shreds enemies from range.', life: 100, lifeLv: 13, armor: 2.5, ms: 9.4, regen: 1.1, res: { n: 'Focus', max: 100, regen: 5, c: 'radial-gradient(circle at 35% 30%,#b8ff9a,#3aa02a 55%,#12480e)' }, wts: ['bow'], w: 'Longbow', skills: ['shot', 'power', 'multi', 'roll', 'arrows', 'mark', 'trap', 'pierce', 'volley'] },
-  arcanist: { n: 'Arcanist', tag: 'Arcane', d: 'Bends raw arcane power: orbs, beams and teleports. Power refills fast.', life: 85, lifeLv: 11, armor: 1.5, ms: 8.6, regen: .8, res: { n: 'Arcane Power', max: 100, regen: 11, c: 'radial-gradient(circle at 35% 30%,#e0b8ff,#8a3ae0 55%,#34106a)' }, wts: ['staff'], w: 'Wand', skills: ['abolt', 'shards', 'orb', 'tele', 'anova', 'prism', 'ray', 'torrent', 'hole'] },
-  brawler: { n: 'Brawler', tag: 'Physical', d: 'Bare-knuckle martial artist. Very fast strikes, dashes and kicks; builds Spirit.', life: 115, lifeLv: 15, armor: 3, ms: 9.6, regen: 1.8, res: { n: 'Spirit', max: 100, decay: 2, c: 'radial-gradient(circle at 35% 30%,#fff4b0,#d0b020 55%,#6a5606)' }, wts: ['fist'], w: 'Cestus', skills: ['jab', 'hook', 'sweep', 'dstrike', 'cyclone', 'iron', 'palm', 'wave', 'seven'] },
-  elementalist: { n: 'Elementalist', tag: 'Spell caster', d: 'Commands fire, frost and lightning. Fragile, but erases whole packs.', life: 85, lifeLv: 11, armor: 1.5, ms: 8.6, regen: .8, res: { n: 'Mana', max: 120, regen: 6, c: 'radial-gradient(circle at 35% 30%,#9ac8ff,#2a5ae0 55%,#0c1e6a)' }, wts: ['staff'], w: 'Staff', skills: ['firebolt', 'spark', 'frost', 'fdash', 'chain', 'mshield', 'meteor', 'blizz', 'inferno'] }
+  arcanist: { n: 'Arcanist', tag: 'Arcane', d: 'Bends raw arcane power: orbs, beams and teleports. Power refills fast.', life: 85, lifeLv: 11, armor: 1.5, ms: 8.6, regen: .8, res: { n: 'Arcane Power', max: 100, regen: 7, c: 'radial-gradient(circle at 35% 30%,#e0b8ff,#8a3ae0 55%,#34106a)' }, wts: ['staff'], w: 'Wand', skills: ['abolt', 'shards', 'orb', 'tele', 'anova', 'prism', 'ray', 'torrent', 'hole'] },
+  brawler: { n: 'Brawler', tag: 'Physical', d: 'Bare-knuckle martial artist. Very fast strikes, dashes and kicks; builds Spirit.', life: 115, lifeLv: 15, armor: 3, ms: 9.6, regen: 1.8, res: { n: 'Spirit', max: 100, decay: 4, c: 'radial-gradient(circle at 35% 30%,#fff4b0,#d0b020 55%,#6a5606)' }, wts: ['fist'], w: 'Cestus', skills: ['jab', 'hook', 'sweep', 'dstrike', 'cyclone', 'iron', 'palm', 'wave', 'seven'] },
+  elementalist: { n: 'Elementalist', tag: 'Spell caster', d: 'Commands fire, frost and lightning. Fragile, but erases whole packs.', life: 100, lifeLv: 13, armor: 2.2, ms: 9.2, regen: 1.2, res: { n: 'Mana', max: 120, regen: 6, c: 'radial-gradient(circle at 35% 30%,#9ac8ff,#2a5ae0 55%,#0c1e6a)' }, wts: ['staff'], w: 'Staff', skills: ['firebolt', 'spark', 'frost', 'fdash', 'chain', 'mshield', 'meteor', 'blizz', 'inferno'] }
 };
 // Owner settings: paste your Ko-fi page link and a feedback address here and the buttons appear in the menu.
 const TIP_URL = 'https://ko-fi.com/ezpzlrc', FEEDBACK_EMAIL = 'lee.campbell1@gmail.com', FEEDBACK_URL = 'mailto:' + FEEDBACK_EMAIL + '?subject=' + encodeURIComponent('Cinderdeep feedback');
 const MAX_UP = 5;
+// Sprint 1: monster life for a party of n heroes; climbs to about 1.7x at four or more (a full group). The server still uses partyK (TODO server side).
+function partyHpK(n) { return 1 + .7 * Math.min(3, Math.max(0, (n | 0) - 1)) / 3; }
 // The world changes as you go down: a new region every two floors.
 function zoneFor(depth) { return ZONES[Math.floor(Math.max(0, depth | 0) / 2) % ZONES.length]; }
 // First steps: a short checklist that teaches the game by doing.
@@ -168,7 +170,7 @@ const KIT = { warden: ['slam', 'stomp', 'quake'], ranger: ['multi', 'arrows', 'v
 function skillTiers(cls) { return []; }
 function skillTiersOld(cls) { const s = CLASSES[cls].skills.filter(id => !SKILLS[id].basic).sort((a, b) => SKILLS[a].lv - SKILLS[b].lv), out = []; for (let i = 0; i + 1 < s.length && out.length < TIER_LV.length; i += 2) out.push([s[i], s[i + 1]]); return out; }
 const CLASS_IDS = Object.keys(CLASSES);
-const NEWS = ['Townsfolk quests are gone: Emberwatch is in full festival, and First Steps still guides new heroes', 'Treasure Goblins: catch one before it escapes and its sack is yours', 'Wishing Wells shower you with gold and gear', 'Treasure Vaults full of golden chests', 'Champions drop more, and some now blink to your side', 'Legendary and mythic drops land with a fanfare'];
+const NEWS = ['Balance pass: skills evened out between classes, resources matter more, a damage meter in your bag, and monsters grow tougher deeper down. New build, so every hero starts again at level 1', 'Pick your hero by clicking them in the lineup, their name tag or their card; arrow keys work too'];
 // achievements (build 0020): badges that show next to your name in chat. They reset with each build, like heroes.
 const ACH = [
   ['blood', '⚔', 'First Blood', 'Defeat your first monster', h => h.kills >= 1],

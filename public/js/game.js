@@ -461,7 +461,9 @@ function buildStatic(Z) { Z.torches = [];
   GLX.statEnd();
 }
 // Reference basic-attack hit: expected for the level, kept close to the hero's real hit so normal enemies always die in 2-5 swings.
-function refHit(lvl) { const s = P.stats, exp = 7.5 * Math.pow(1.11, lvl) * (1 + .04 * lvl); if (!s || !s.wmin) return exp; const act = ((s.wmin + s.wmax) / 2 + s.addPhys + s.addFire + s.addCold + s.addLight) * (1 + (s.dmg + s.phys) / 100); return clamp(exp, act * .7, act * 1.08); }
+// Sprint 1: how far monster life may drift from the hero's real hit. Floors 1-4: 0.70-1.08; widens evenly to 0.55-1.35 by floor 12, then holds.
+function refBand() { const f = ((G.hero && G.hero.depth) || 0) + 1, k = clamp((f - 4) / 8, 0, 1); return [.7 + (.55 - .7) * k, 1.08 + (1.35 - 1.08) * k]; }
+function refHit(lvl) { const s = P.stats, exp = 7.5 * Math.pow(1.11, lvl) * (1 + .04 * lvl); if (!s || !s.wmin) return exp; const act = ((s.wmin + s.wmax) / 2 + s.addPhys + s.addFire + s.addCold + s.addLight) * (1 + (s.dmg + s.phys) / 100), b = refBand(); return clamp(exp, act * b[0], act * b[1]); }
 function mkEnemy(md, x, z, lvl, elite, pack) {
   const a = ARCH[md.a], hit = refHit(lvl);
   const e = { id: ++G.eid, md, a, arch: md.a, x, z, rot: rnd(6.28), lvl, elite, pack, r: a.r * (elite ? 1.2 : 1), sc: a.sc * (elite === 1 ? 1.2 : elite === 2 ? 1.38 : 1), maxHp: Math.round(2.8 * hit * a.hp * (elite === 1 ? 2.2 : elite === 2 ? 3.5 : 1)), dmg: 5 * Math.pow(1.095, lvl) * a.dmg * (elite ? 1.3 : 1), spd: a.spd, st: 'chase', t: 0, cd: rnd(.2, 1), walk: rnd(6), awake: false, flash: 0, chill: 0, shock: 0, frozen: 0, burn: 0, burnT: 0, atk: 0, alive: true, deadT: 0, modT: 2, name: md.n, mods: [] };
@@ -515,7 +517,7 @@ function genTown() {
 function setEnv(Z) { const e = GLX.env, th = Z.th, n = Math.hypot(.55, .66, .42); e.sun = [.55 / n, .66 / n, .42 / n]; e.sunC = th.sunC; e.sky = th.sky; e.gnd = th.gnd; e.fog = GLX.col(th.fog); e.lightR = th.lightR; if (th !== THEMES.forest && th !== THEMES.town && th !== THEMES.ice) { e.lightR *= 1.3; e.sky = e.sky.map(v => v * 1.45); e.gnd = e.gnd.map(v => v * 1.3);  } /* deeper regions were too dark to read */ e.wet = th.wet === undefined ? .4 : th.wet; e.mist = th.mist === undefined ? .35 : th.mist; SFX.ambient(Object.keys(THEMES).find(k => THEMES[k] === th)); }
 function enterTown() {
   if (G.inTown || P.dead || G.state !== 'play') return; for (const e of G.ents) if (e.alive && e.awake && Math.hypot(e.x - P.x, e.z - P.z) < 16) { hint('You cannot leave while enemies are near. Finish the fight or step away first.'); return; }
-  goalDone('town'); P.fl = FLASK_MAX; P.flaskCd = 0; /* build 0026: only a real trip to town counts (and refills potions) */
+  goalDone('town'); P.fl = FLASK_MAX; P.flaskCd = 0; /* build 0026: only a real trip to town counts (and refills potions) */ if (P.meter) P.meter.peak = 0; /* Sprint 1: peak hit resets in town */
   G.away = { zone: G.zone, ents: G.ents, drops: G.drops, boss: G.boss, x: P.x, z: P.z, seed: G.zone.def.seed }; G.ents = []; G.drops = []; G.projs = []; G.pp = []; G.areas = []; G.fx = []; G.texts = []; G.timers = []; G.boss = null; G.streak = 0;
   G.zone = genTown(); G.inTown = true; buildStatic(G.zone); setEnv(G.zone); P.x = G.zone.start[0]; P.z = G.zone.start[1]; P.y = 0; P.rot = Math.PI; P.act = P.spin = P.dash = P.move = P.atk = P.inter = P.pick = null; BOT.path = null; P.hp = P.stats.maxLife;
   const h = G.hero; if (!h.stock || Math.abs(h.kills - (h.stockK || 0)) >= 25 || h.stockL !== h.level) { h.stock = []; for (let i = 0; i < 10; i++) h.stock.push(makeItem(h.level, null, Math.random() < .12 ? 3 : Math.random() < .5 ? 2 : 1)); h.stockK = h.kills; h.stockL = h.level; }
@@ -579,11 +581,20 @@ function addArea(o) { o.t = 0; G.areas.push(o); return o; }
 
 // ---------- combat ----------
 function wake(e) { if (e.awake) return; if (e.boss) { e.awake = true; return; } /* the boss intro card in ui.js announces it */ for (const o of G.ents) if (o.pack === e.pack && !o.awake) { o.awake = true; o.cd = rnd(.2, .9); } }
-// fighting side by side pays: +10% damage per ally within reach, up to +30%
-function partyBonus() { if (!G.online || G.inTown) return 0; let n = 0; for (const id in NET.peers) { const q = NET.peers[id]; if (!q.dead && Math.hypot(q.x - P.x, q.z - P.z) < 22) n++; } return Math.min(3, n) * 10; }
+// fighting side by side pays: +15% damage per ally within reach, up to +45% (Sprint 1)
+function partyBonus() { if (!G.online || G.inTown) return 0; let n = 0; for (const id in NET.peers) { const q = NET.peers[id]; if (!q.dead && Math.hypot(q.x - P.x, q.z - P.z) < 22) n++; } return Math.min(3, n) * 15; }
+// Sprint 1 resource rules, read live (not buffs): Warden's Fury guard, Brawler's Spirit speed
+function furyDR() { return G.hero && G.hero.cls === 'warden' && P.mana >= 30 ? 15 : 0; }
+function aspdK() { return G.hero && G.hero.cls === 'brawler' && P.mana > 60 ? 1.1 : 1; }
+// Sprint 1 damage meter: every hit you land, for DPS over the last 10 seconds and the biggest single hit
+// Sprint 1: the hero's expected basic-attack hit, the same sum mkEnemy and rollDmg use (average weapon roll instead of the low roll, no crit)
+function expHit() { const s = P.stats; if (!s || !s.wmin || !G.hero) return 0; const bs = (!G.hero.eq.weapon ? SKILLS.punch : SKILLS[G.hero.bar[0]]) || SKILLS.punch; return ((s.wmin + s.wmax) / 2 + s.addPhys + s.addFire + s.addCold + s.addLight) * (1 + (s.dmg + (s[bs.el] || 0) + (bs.el !== 'phys' ? s.ele : 0)) / 100) * (bs.m || 1) * (1 + partyBonus() / 100); }
+function meterHit(v) { const m = P.meter || (P.meter = { log: [], peak: 0 }); m.log.push([G.time, v]); if (v > m.peak) m.peak = v; while (m.log.length && m.log[0][0] < G.time - 10) m.log.shift(); }
+function meterDps() { const m = P.meter; if (!m) return 0; let t = 0; for (const q of m.log) if (q[0] >= G.time - 10) t += q[1]; return Math.round(t / 10); }
 function rollDmg(sk, mult) { const s = P.stats; const base = rnd(s.wmin, s.wmax) + s.addPhys + s.addFire + s.addCold + s.addLight; let inc = s.dmg + (s[sk.el] || 0) + (sk.el !== 'phys' ? s.ele : 0); if (s.lowLife && P.hp < s.maxLife * .5) inc += s.lowLife; let v = base * sk.m * (mult || 1) * (1 + inc / 100) * (1 + partyBonus() / 100); const crit = Math.random() * 100 < s.critT; if (crit) v *= s.critM; return { v, crit }; }
 function hitEnemy(e, sk, mult, noProc) { if (e && e.alive && e.arch === 'goblin' && typeof UI !== 'undefined' && Math.random() < .55) dropGold(e.x, e.z, (4 + (G.hero ? G.hero.level : 1) * 2) * rnd(.8, 1.3)); /* build 0027: coins fly out with every hit */
   if (!e.alive) return; const s = P.stats, d = rollDmg(sk, mult); let v = d.v; if (e.armored) v *= .6; if (e.shock > 0) v *= 1.15; if (!e.boss && !e.elite && e.hp > e.maxHp * .95) v = Math.min(v, e.maxHp * .65); v = Math.max(1, Math.round(v)); // house rule: ordinary monsters always take at least 2 hits
+  const over = v > 3 * Math.max(1, e.hp); /* Sprint 1: overkill, more than three times the life it had left */ meterHit(v);
   e.hp -= v; e.flash = .13; wake(e); P.lastHit = G.time; if (sk.gen) P.mana = Math.min(s.maxMana, P.mana + sk.gen);
   floatText(e.x, 1.6 * e.sc + .6, e.z, (d.crit ? '✦' : '') + v, d.crit ? '#ffe14a' : EL_CSS[sk.el], d.crit ? 1.1 : .8, d.crit ? 21 : 15);
   if (sk.freeze && !e.boss) e.frozen = sk.freeze;
@@ -592,13 +603,14 @@ function hitEnemy(e, sk, mult, noProc) { if (e && e.alive && e.arch === 'goblin'
   if (!G.online && !e.boss && e.arch !== 'brute') { const dx = e.x - P.x, dz = e.z - P.z, l = Math.hypot(dx, dz) || 1; moveEnt(e, dx / l * .4, dz / l * .4, e.r); }
   burst(e.x, 1.1 * e.sc, e.z, d.crit ? 0xffe14a : EL_COL[sk.el], d.crit ? 12 : 6, d.crit ? 7 : 5);
   { const heavy = sk.type === 'melee' || !!sk.land || sk.type === 'nova'; G.fx.push({ flash: 1, x: e.x, y: 1.1 * e.sc, z: e.z, r: d.crit ? 3.2 : heavy ? 2.2 : 1.4, life: .12, max: .12, c: GLX.col(d.crit ? 0xfff2b0 : EL_COL[sk.el]) }); if (heavy && !G.auto) G.hitStop = Math.max(G.hitStop || 0, d.crit ? .085 : .04); if (d.crit) G.shake = Math.min(.5, G.shake + .12); }
+  if (over) { burst(e.x, 1.1 * e.sc, e.z, e.md.c2, 30, 10); burst(e.x, .4, e.z, 0x7a1010, 18, 6); ring(e.x, e.z, 0, 3.4 * e.sc, .35, 0xffd0a0); G.fx.push({ scorch: 1, x: e.x, z: e.z, r: 1.6 * e.sc, life: 2, max: 2, c: GLX.col(0x5a0c0c) }); if (!G.auto) G.hitStop = Math.max(G.hitStop || 0, .14); G.shake = Math.min(.6, G.shake + .2); }
   if (G.time - G.hitSfx > .05) { G.hitSfx = G.time; SFX.play(d.crit ? 'crit' : 'hit'); }
   if (!noProc && s.procLight && Math.random() * 100 < s.procLight) addArea({ x: e.x, z: e.z, r: 2.6, delay: .15, owner: 'p', sk: { el: 'light', m: 1.5 }, c: 0xfff07a, proc: 1 });
   if (G.online) { const cl = !e.boss && s.cull && e.hp < e.maxHp * s.cull / 100; NET.send({ t: 'hit', id: e.id, v: cl ? e.maxHp * 2 : v, el: sk.el, fz: sk.freeze || 0 }); if (e.hp < 0) e.hp = 0; return; }
   if (e.hp <= 0 || (!e.boss && s.cull && e.hp < e.maxHp * s.cull / 100)) killEnemy(e);
 }
 function killEnemy(e) {
-  if (!e.alive) return; e.alive = false; e.deadT = .45; const h = G.hero, s = P.stats; h.kills++; if (h.goals && !h.goals.kill) { h.goals.k = (h.goals.k || 0) + 1; if (h.goals.k >= 5) goalDone('kill'); } if (e.boss) goalDone('boss');
+  if (!e.alive) return; e.alive = false; e.deadT = .45; const h = G.hero, s = P.stats; h.kills++; if (h.cls === 'arcanist') P.arcT = G.time + 2; /* Sprint 1: +40% Arcane Power regen for 2 s after a kill (refreshes, never stacks) */ if (h.goals && !h.goals.kill) { h.goals.k = (h.goals.k || 0) + 1; if (h.goals.k >= 5) goalDone('kill'); } if (e.boss) goalDone('boss');
   let xp = 22 * Math.pow(1.13, e.lvl) * (e.a.xp || 1) * (e.elite === 1 ? 3 : e.elite === 2 ? 6 : 1); const diff = h.level - e.lvl, pf = diff > 4 ? Math.max(.1, 1 - (diff - 4) * .15) : 1; xp *= pf; if (e.boss) { xp = Math.max(xp, xpNeed(h.level) * .65 * pf); G.bossXp = Math.round(xp); } /* one announcement only: the Guardian slain banner shows the XP */ /* Lee, Nov 13: guardians give a lot of XP, about two thirds of a level */ if (G.set.nums !== false && h.level < MAX_LEVEL) floatText(e.x, 2.4 * e.sc, e.z, '+' + Math.max(1, Math.round(xp)) + ' xp', '#cfc4ff', 1, 12); gainXp(xp);
   G.streak++; G.streakT = 4; if (G.streak > G.bestStreak) G.bestStreak = G.streak; if (G.streak > (h.best || 0)) h.best = G.streak;
   { const MS = { 10: ['Rampage!', 0xffb03a], 25: ['Massacre!', 0xff6a3a], 50: ['Unstoppable!', 0xff3a6a], 100: ['Godlike!', 0xc070ff] }, m = MS[G.streak]; if (m) { const bonus = Math.round((8 + h.level * 4) * (G.streak / 10)); h.gold += bonus; UI.streakPop && UI.streakPop('x' + G.streak + ' ' + m[0], '+' + bonus + ' gold', m[1]); impact(P.x, P.z, 2.2, m[1], true); SFX.play('level'); } } // kill streak milestones with a small gold bonus
@@ -622,7 +634,7 @@ const blessed = () => { const h = G.hero; return !!h && !h.runs && h.level < 4; 
 function dmgPlayer(v, el, src) {
   if (P.dead || P.iframes > 0) return; const s = P.stats; if (blessed()) v *= .6; if (src && src.name) P.killer = src.name; else if (!src) P.killer = '';
   if (Math.random() * 100 < s.dodgeT) { floatText(P.x, 2.6, P.z, 'Dodge', '#9fe', .7); return; }
-  if (el === 'phys') v *= 1 - Math.min(.8, s.armorT / (s.armorT + 60 + v * 6)); else v *= 1 - (s['r' + el] || 0) / 100; v *= 1 - Math.min(50, s.dr) / 100; v = Math.max(1, Math.round(v));
+  if (el === 'phys') v *= 1 - Math.min(.8, s.armorT / (s.armorT + 60 + v * 6)); else v *= 1 - (s['r' + el] || 0) / 100; v *= 1 - Math.min(50, s.dr + furyDR()) / 100; v = Math.max(1, Math.round(v));
   P.hp -= v; P.hurt = .25; P.lastHit = G.time; P.mana = Math.min(s.maxMana, P.mana + 2); G.shake = Math.min(.7, G.shake + .12 + v / s.maxLife); floatText(P.x, 2.6, P.z, '-' + v, '#ff5a4a', .9, 17); SFX.play('hurt'); burst(P.x, 1.4, P.z, 0xffc070, 7, 5); { const hf = typeof document !== 'undefined' && document.getElementById('hurtFx'); if (hf && hf.animate) hf.animate([{ opacity: Math.min(.75, .3 + v / s.maxLife * 2) }, { opacity: 0 }], { duration: 450, easing: 'ease-out' }); }
   if (src && src.alive && s.thorns > 0) { src.flash = .1; if (G.online) NET.send({ t: 'hit', id: src.id, v: s.thorns, el: 'phys' }); else { src.hp -= s.thorns; if (src.hp <= 0) killEnemy(src); } }
   if (P.hp <= 0) { if (s.cheat && P.cheatCd <= 0) { P.hp = s.maxLife; P.cheatCd = 60; ring(P.x, P.z, 0, 10, .8, 0xff8a2a); hint('Emberheart saves you from death!'); } else { P.hp = 0; P.dead = true; P.act = P.spin = P.dash = null; G.streak = 0; SFX.play('die'); UI.showDeath(); } }
@@ -635,7 +647,7 @@ function tryCast(slot, tx, tz) {
   if (P.mana < (sk.cost || 0)) { if (G.time - P.oomT > 1.5) { P.oomT = G.time; hint('Not enough ' + CLASSES[h.cls].res.n + '.'); } return false; }
   if (tx === undefined) { tx = IN.gx; tz = IN.gz; }
   P.mana -= sk.cost || 0; if (sk.cd) P.cds[id] = sk.cd * (1 - s.cdrT / 100);
-  const sp = 1 + s.aspd / 100;
+  const sp = (1 + s.aspd / 100) * aspdK();
   if (sk.type === 'spin') { P.spin = { t: sk.dur, tk: 0, sk }; return true; }
   if (slot > 0) goalDone('skill');
   if (sk.type === 'buff') { P.buffs = P.buffs.filter(b => b.n !== sk.n); P.buffs.push({ s: sk.s, t: sk.dur, n: sk.n }); computeStats(); ring(P.x, P.z, 0, 7, .5, 0xffb03a); SFX.play('shrine'); P.mana = Math.min(s.maxMana, P.mana + 20); return true; }
@@ -776,7 +788,7 @@ function botStep(dt) {
 // ---------- update ----------
 function updPlayer(dt) {
   const s = P.stats, h = G.hero; if (P.dead) return;
-  if (!G.menuHold) P.hp = Math.min(s.maxLife, P.hp + s.lifeRegenT * dt); { const rs = CLASSES[h.cls].res; if (rs.regen) P.mana = Math.min(s.maxMana, P.mana + rs.regen * dt); else if (G.time - P.lastHit > 4) P.mana = Math.max(0, P.mana - rs.decay * dt); } if (P.fl === undefined) P.fl = FLASK_MAX; if (P.fl < FLASK_MAX) { P.flaskCd = P.flaskCd > 0 ? P.flaskCd - dt : FLASK_CD; if (P.flaskCd <= 0) { P.fl++; P.flaskCd = P.fl < FLASK_MAX ? FLASK_CD : 0; } } else P.flaskCd = 0;
+  if (!G.menuHold) P.hp = Math.min(s.maxLife, P.hp + s.lifeRegenT * dt); { const rs = CLASSES[h.cls].res; if (rs.regen) P.mana = Math.min(s.maxMana, P.mana + rs.regen * (h.cls === 'arcanist' && G.time < (P.arcT || 0) ? 1.4 : 1) * dt); else if (G.time - P.lastHit > 4) P.mana = Math.max(0, P.mana - rs.decay * dt); } if (P.fl === undefined) P.fl = FLASK_MAX; if (P.fl < FLASK_MAX) { P.flaskCd = P.flaskCd > 0 ? P.flaskCd - dt : FLASK_CD; if (P.flaskCd <= 0) { P.fl++; P.flaskCd = P.fl < FLASK_MAX ? FLASK_CD : 0; } } else P.flaskCd = 0;
   for (const k in P.cds) if (P.cds[k] > 0) P.cds[k] -= dt;
   if (P.iframes > 0) P.iframes -= dt; if (P.hurt > 0) P.hurt -= dt; if (P.cheatCd > 0) P.cheatCd -= dt;
   if (P.buffs.length) { let ex = false; for (const b of P.buffs) { b.t -= dt; if (b.t <= 0) ex = true; } if (ex) { P.buffs = P.buffs.filter(b => b.t > 0); computeStats(); } }
@@ -788,7 +800,7 @@ function updPlayer(dt) {
     if (k >= 1) { P.y = 0; P.dash = null; if (d.sk.land) { const r = d.sk.land * (1 + s.area / 100); areaHit(P.x, P.z, r, d.sk); ring(P.x, P.z, .5, r, .35, 0xffc890); if (G.online) NET.send({ t: 'fx', k: 'r', x: P.x, z: P.z, r, c: 0xffc890 }); burst(P.x, .4, P.z, 0xc8b89a, 22, 9); G.shake = .5; SFX.play('slam'); } }
     return;
   }
-  if (P.spin) { const sp = P.spin; sp.t -= dt; sp.tk -= dt; if (sp.tk <= 0) { sp.tk = sp.sk.tick / (1 + s.aspd / 100); areaHit(P.x, P.z, sp.sk.r * (1 + s.area / 100), sp.sk); SFX.play('whirl'); } if (sp.t <= 0) P.spin = null; }
+  if (P.spin) { const sp = P.spin; sp.t -= dt; sp.tk -= dt; if (sp.tk <= 0) { sp.tk = sp.sk.tick / ((1 + s.aspd / 100) * aspdK()); areaHit(P.x, P.z, sp.sk.r * (1 + s.area / 100), sp.sk); SFX.play('whirl'); } if (sp.t <= 0) P.spin = null; }
   if (P.act) { const a = P.act; a.t += dt; P.swing = a.t / a.dur; if (!a.fired && a.t >= a.fireAt) { a.fired = true; fireSkill(a); } if (a.t >= a.dur) P.act = null; else return; }
   if (G.auto && botStep(dt)) return;
   if (IN.rmb && tryCast(1)) return; if (IN.keys.q && tryCast(2)) return; if (IN.keys.w && tryCast(3)) return;
