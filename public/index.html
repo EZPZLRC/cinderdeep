@@ -76,8 +76,8 @@ input{font:inherit;color:#f3ead6;background:#14110c;border:1px solid #8a6a3a;bor
 #doll{display:grid;grid-template-columns:repeat(3,calc(var(--d) + 8px));grid-auto-rows:var(--d);gap:4px;align-content:start}
 #grid,#sgrid{display:grid;grid-template-columns:repeat(10,var(--c));grid-auto-rows:var(--c);gap:2px}#sgrid{margin-top:8px}
 .bc,.ds.empty{border:1px solid #2e281e;background:#12100c;border-radius:3px}.ds.empty{display:flex;align-items:center;justify-content:center;color:#3a3226}.ds.empty svg{width:60%;max-height:70%}
-.it{position:relative;border:1px solid;border-radius:3px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:1;min-width:var(--c);min-height:var(--c)}.it svg{width:70%;max-height:76%;filter:drop-shadow(0 1px 2px #000)}#doll .it{min-width:0;min-height:0}
-.it.r0{background:linear-gradient(#34322e,#191816);border-color:#6a665e;color:#cfcbc2}.it.r1{background:linear-gradient(#22386e,#0e1830);border-color:#5878d8;color:#a8c0ff}.it.r2{background:linear-gradient(#6a5412,#2a2106);border-color:#d8b030;color:#ffe890}.it.r3{background:linear-gradient(#7a3a10,#2c1204);border-color:#ff8a2a;color:#ffc890}
+.it{position:relative;border:1px solid;border-radius:3px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:1;min-width:var(--c);min-height:var(--c)}.it svg{width:72%;max-height:78%;filter:drop-shadow(0 2px 2px rgba(0,0,0,.85)) drop-shadow(0 4px 6px rgba(0,0,0,.5))}#doll .it{min-width:0;min-height:0}
+.it.r0{background:radial-gradient(circle at 50% 38%,#3a3733 0,#1c1a18 62%,#0c0b0a 100%);border-color:#5a5650;color:#cfcbc2;box-shadow:inset 0 0 0 1px #0008,inset 0 1px 0 #ffffff12}.it.r1{background:radial-gradient(circle at 50% 38%,#2a3448 0,#151a24 62%,#0a0c10 100%);border-color:#5878d8;color:#a8c0ff;box-shadow:inset 0 0 10px #4a6ad855,inset 0 1px 0 #ffffff12}.it.r2{background:radial-gradient(circle at 50% 38%,#3e3626 0,#1e1a12 62%,#0e0c08 100%);border-color:#d8b030;color:#ffe890;box-shadow:inset 0 0 10px #d8b03050,inset 0 1px 0 #ffffff12}.it.r3{background:radial-gradient(circle at 50% 38%,#43301f 0,#21160e 62%,#0f0a06 100%);border-color:#ff8a2a;color:#ffc890;box-shadow:inset 0 0 12px #ff8a2a55,inset 0 1px 0 #ffffff12}
 .it .lv{position:absolute;right:2px;bottom:0;font-size:9px;color:#e8e2d4;text-shadow:0 1px 2px #000}.it.up::after{content:"▲";position:absolute;left:2px;top:0;font-size:9px;color:#5aff7a}.it:hover{filter:brightness(1.25)}
 .ghost{position:fixed;width:40px;height:40px;pointer-events:none;z-index:60;opacity:.9}
 .ifoot{display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap;font-size:13px}.gold{color:#ffd84a}.shards{color:#9ad0ff}#scrapBox{margin-left:auto;border:1px dashed #8a6a3a;border-radius:4px;padding:6px 10px;color:#b9b09a;font-size:12px}.ifoot button{padding:6px 10px;font-size:12px}
@@ -122,7 +122,7 @@ input{background:#0c0a07;border:1px solid #5a4a2e;border-radius:3px;box-shadow:i
 .ccard{background:linear-gradient(180deg,rgba(30,25,18,.92),rgba(14,12,9,.92));border-color:#4a3d28;border-radius:4px;transition:border-color .15s,transform .15s}.ccard:hover{transform:translateY(-2px)}
 #tip{padding:10px 12px}#tip .tn{font-size:15px;letter-spacing:.02em;border-bottom:1px solid var(--edge);padding-bottom:4px;margin-bottom:4px}#tip .tl{color:#a99c80;font-style:italic;margin-top:6px;font-size:11.5px;line-height:1.45}
 #tbtns button{background:radial-gradient(circle at 50% 35%,#3b3022,#14100b);border:1px solid #8a7246;box-shadow:0 0 0 2px #000,0 3px 10px #000;font-weight:600;letter-spacing:.04em}
-.it.r4{background:linear-gradient(#5a1e8a,#200838);border-color:#c070ff;color:#e6c4ff;box-shadow:0 0 8px #a050ff88,inset 0 0 8px #c070ff55}
+.it.r4{background:radial-gradient(circle at 50% 38%,#382a48 0,#1a1324 62%,#0c0912 100%);border-color:#c070ff;color:#e6c4ff;box-shadow:0 0 8px #a050ff88,inset 0 0 12px #c070ff60}
 #chatlog .cmy{color:#e0b0ff;border-left:2px solid #c070ff;background:rgba(60,10,90,.55)}#chatlog .clg{color:#ffc890;border-left:2px solid #ff8a2a;background:rgba(80,30,0,.5)}
 #menuOn{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#a99c80;margin-top:-6px}#menuOn.live{color:#9effa8}#menuOn.off{color:#d08a6a}#menuOn i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#4fe06a;margin-right:8px;box-shadow:0 0 8px #4fe06a;animation:pulse 1.6s infinite}
 @keyframes pulse{50%{opacity:.35}}
@@ -418,10 +418,10 @@ body.tj #xp{height:16px!important}body.tj #xp #xpT{line-height:14px;font-size:10
   <div id="news"></div>
   <div id="mfoot"><button id="mInvite" class="hide">Share the game</button><button id="mTip" class="hide">♥ Support the game</button><button id="mFeed" class="hide">Send feedback</button></div>
 </div>
-<script src="js/gl.js?v=0029"></script>
-<script src="js/data.js?v=0029"></script>
-<script src="js/game.js?v=0029"></script>
-<script src="js/net.js?v=0029"></script>
-<script src="js/ui.js?v=0029"></script>
+<script src="js/gl.js?v=0030"></script>
+<script src="js/data.js?v=0030"></script>
+<script src="js/game.js?v=0030"></script>
+<script src="js/net.js?v=0030"></script>
+<script src="js/ui.js?v=0030"></script>
 <div id="mtags"></div></body>
 </html>

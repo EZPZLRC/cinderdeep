@@ -1370,30 +1370,33 @@ function drawEnemy(e) {
   if (e.alive && (e.st === 'wind' || e.st === 'cwind')) { const pr = clamp(1 - e.t / ((e.st === 'cwind' ? .7 : e.a.wind) || .5), 0, 1), cast = e.arch === 'caster', wc = col(cast ? 0xffe14a : 0xff3a2a), R = cast ? 1.6 : ((e.a.reach || 2) + e.r) * 2; GLX.obj('glow', 'ring', e.x, .09, e.z, 0, R * (.35 + pr * .65), 1, R * (.35 + pr * .65), wc, 1.4, .35 + pr * .55, -1); if (!cast) GLX.obj('glow', 'disc', e.x + Math.sin(e.rot) * (e.a.reach || 2) * .6, .08, e.z + Math.cos(e.rot) * (e.a.reach || 2) * .6, 0, R * .55, 1, R * .55, wc, 1, .12 + pr * .3, 1); GLX.halo(e.x, 2 * sc, e.z, 1 + pr * 1.4, wc, .25 + pr * .5); }
 }
 function drawItemModel(d, hop) {
-  const it = d.item, col = GLX.col, rc = col(RC[it.rar]), steel = col(0xaab2c0), wood = col(0x6a4a2a), leather = col(0x5c4230), gold = col(0xc9a030), cloth = col(0x6a5a8a), em = it.rar ? .1 : 0;
+  const it = d.item, col = GLX.col; let L = null; try { L = d.look || (d.look = itemLook(it)); } catch (e) { }
+  /* 0030: dropped items wear their real materials (the same metal, wood, leather, cloth and gem as their icon); rarity stays in the beam and ring */
+  const hx = h => parseInt(h.slice(1), 16), mk = L && L.kind, mc = L ? col(hx(L.mat[1])) : null, rc = L ? col(hx(L.acc)) : col(0x8a7a5a), gm = L ? col(hx(L.gem[1])) : col(RC[it.rar]),
+    steel = mk === 'metal' ? mc : col(0xaab2c0), wood = mk === 'wood' ? mc : col(0x6a4a2a), leather = mk === 'leather' ? mc : col(0x5c4230), gold = mk === 'jewel' ? mc : col(0xc9a030), cloth = mk === 'cloth' ? mc : col(0x6a5a8a), em = 0;
   GLX.base(BM, d.x, .1 + hop, d.z, G.time * .7 + d.x * 3, 1.25);
   const p = (g, px, py, pz, rx, ry, rz, sx, sy, sz, c, mat, e) => GLX.part('dyn', g, BM, px, py, pz, rx, ry, rz, 0, 0, 0, sx, sy, sz, c, e === undefined ? em : e, 1, mat || 0), H = 1.5708;
   const sl = it.slot, wt = it.wt, b = it.base || '';
   if (sl === 'weapon') {
-    if (wt === 'sword') { p('box', 0, .06, .28, 0, 0, 0, .12, .04, 1.15, steel, 4); p('box', 0, .06, -.32, 0, 0, 0, .42, .07, .08, rc, 4); p('cyl', 0, .06, -.5, H, 0, 0, .08, .3, .08, leather); p('sphere', 0, .06, -.68, 0, 0, 0, .13, .13, .13, rc, 4); }
+    if (wt === 'sword') { p('box', 0, .06, .28, 0, 0, 0, .12, .04, 1.15, steel, 4); p('box', 0, .06, -.32, 0, 0, 0, .42, .07, .08, rc, 4); p('cyl', 0, .06, -.5, H, 0, 0, .08, .3, .08, leather); p('sphere', 0, .06, -.68, 0, 0, 0, .13, .13, .13, gm, 0, .8); }
     else if (wt === 'axe') { p('cyl', 0, .07, 0, H, 0, 0, .08, 1.3, .08, wood, 3); p('box', .2, .07, .42, 0, 0, 0, .42, .05, .4, steel, 4); p('box', .42, .07, .42, 0, 0, 0, .06, .04, .56, rc, 4); }
     else if (wt === 'maul') { p('cyl', 0, .1, -.1, H, 0, 0, .09, 1.3, .09, wood, 3); p('box', 0, .16, .5, 0, 0, 0, .56, .32, .36, steel, 4); p('box', 0, .16, .5, 0, 0, 0, .6, .1, .4, rc, 4); }
     else if (wt === 'bow') { p('box', .1, .06, .36, 0, .32, 0, .06, .06, .78, wood, 3); p('box', .1, .06, -.36, 0, -.32, 0, .06, .06, .78, wood, 3); p('box', -.02, .06, 0, 0, 0, 0, .015, .015, 1.4, col(0xe8e0d0)); p('box', .21, .06, 0, 0, 0, 0, .09, .08, .26, rc, 4); }
     else if (wt === 'fist') { for (const sd of [1, -1]) { p('box', .2 * sd, .1, 0, 0, 0, 0, .26, .18, .34, leather); p('box', .2 * sd, .14, .16, 0, 0, 0, .28, .08, .08, steel, 4); for (let k = 0; k < 3; k++) p('cone', .2 * sd + (k - 1) * .08, .16, .24, H, 0, 0, .06, .14, .06, rc, 4); } }
-    else { p('cyl', 0, .07, 0, H, 0, 0, .07, b === 'Wand' ? .8 : 1.7, .07, wood, 3); const z = b === 'Wand' ? .46 : .92; p('gem', 0, .12, z, 0, G.time * 2, 0, .26, .3, .26, rc, 0, 1.6); p('cyl', 0, .07, z - .16, H, 0, 0, .12, .1, .12, gold, 4); }
+    else { p('cyl', 0, .07, 0, H, 0, 0, .07, b === 'Wand' ? .8 : 1.7, .07, wood, 3); const z = b === 'Wand' ? .46 : .92; p('gem', 0, .12, z, 0, G.time * 2, 0, .26, .3, .26, gm, 0, 1.6); p('cyl', 0, .07, z - .16, H, 0, 0, .12, .1, .12, gold, 4); }
   } else if (sl === 'offhand') {
     if (b === 'Shield') { p('cyl', 0, .1, 0, 0, 0, 0, .9, .1, .9, wood, 3); p('cyl', 0, .14, 0, 0, 0, 0, .96, .04, .96, steel, 4); p('sphere', 0, .18, 0, 0, 0, 0, .3, .16, .3, rc, 4); }
     else if (b === 'Quiver') { p('cyl', 0, .14, 0, H, 0, 0, .26, .8, .26, leather); for (let k = 0; k < 3; k++) p('box', (k - 1) * .07, .16, .56, 0, 0, 0, .03, .03, .4, k === 1 ? rc : wood); }
-    else if (b === 'Orb') { p('sphere', 0, .32, 0, 0, 0, 0, .5, .5, .5, rc, 0, 1.2); p('cyl', 0, .06, 0, 0, 0, 0, .4, .1, .4, gold, 4); }
+    else if (b === 'Orb') { p('sphere', 0, .32, 0, 0, 0, 0, .5, .5, .5, gm, 0, 1.2); p('cyl', 0, .06, 0, 0, 0, 0, .4, .1, .4, gold, 4); }
     else if (b === 'Tome') { p('box', 0, .1, 0, 0, 0, 0, .56, .16, .74, leather); p('box', 0, .1, 0, 0, 0, 0, .5, .12, .78, col(0xe8e0c8)); p('box', 0, .19, 0, 0, 0, 0, .2, .02, .2, rc, 4); }
-    else { p('gem', 0, .3, 0, 0, G.time, 0, .4, .56, .4, rc, 0, 1.2); p('ring', 0, .04, 0, 0, 0, 0, .7, 1, .7, gold, 4); }
+    else { p('gem', 0, .3, 0, 0, G.time, 0, .4, .56, .4, gm, 0, 1.2); p('ring', 0, .04, 0, 0, 0, 0, .7, 1, .7, gold, 4); }
   } else if (sl === 'shoulders') { for (const sd of [1, -1]) { p('sphere', .24 * sd, .16, 0, 0, 0, 0, .44, .3, .5, b === 'Pauldrons' ? steel : leather, b === 'Pauldrons' ? 4 : 0); p('box', .24 * sd, .08, 0, 0, 0, 0, .46, .06, .52, rc, 4); } }
   else if (sl === 'bracers') { for (const sd of [1, -1]) { p('cyl', .18 * sd, .12, 0, H, 0, 0, .24, .5, .2, b === 'Vambraces' ? steel : leather, b === 'Vambraces' ? 4 : 0); p('cyl', .18 * sd, .12, .22, H, 0, 0, .27, .07, .23, rc, 4); } }
   else if (sl === 'belt') { p('cyl', 0, .08, 0, 0, 0, 0, .8, .14, .56, b === 'War Belt' ? leather : cloth); p('box', 0, .1, .28, 0, 0, 0, .22, .18, .06, rc, 4); }
   else if (sl === 'pants') { const m = b === 'Plate Tassets' ? steel : leather, mt = b === 'Plate Tassets' ? 4 : 0; p('box', 0, .1, -.3, 0, 0, 0, .54, .14, .2, m, mt); for (const sd of [1, -1]) p('box', .14 * sd, .1, .12, 0, sd * .08, 0, .24, .13, .7, m, mt); p('box', 0, .12, -.3, 0, 0, 0, .58, .06, .1, rc, 4); }
   else if (sl === 'helm') {
     const m = b === 'Iron Helm' ? steel : b === 'Circlet' ? gold : leather, mt = b === 'Leather Hood' ? 0 : 4;
-    if (b === 'Circlet') { p('cyl', 0, .14, 0, 0, 0, 0, .5, .12, .5, gold, 4); p('gem', 0, .2, .26, 0, 0, 0, .14, .16, .1, rc, 0, 1.4); }
+    if (b === 'Circlet') { p('cyl', 0, .14, 0, 0, 0, 0, .5, .12, .5, gold, 4); p('gem', 0, .2, .26, 0, 0, 0, .14, .16, .1, gm, 0, 1.4); }
     else { p('sphere', 0, .24, 0, 0, 0, 0, .56, .5, .58, m, mt); p('cyl', 0, .08, 0, 0, 0, 0, .6, .12, .62, m, mt); p('box', 0, .16, .29, 0, 0, 0, .07, .26, .06, rc, 4); p('cone', 0, .56, -.06, -.4, 0, 0, .1, .34, .16, rc); }
   } else if (sl === 'chest') {
     const m = b === 'Chainmail' ? steel : b === 'Silk Robe' ? cloth : leather, mt = b === 'Chainmail' ? 4 : 0;
@@ -1405,8 +1408,8 @@ function drawItemModel(d, hop) {
     const m = b === 'Greaves' ? steel : leather, mt = b === 'Greaves' ? 4 : 0;
     for (const sd of [1, -1]) { p('box', .18 * sd, .08, .1, 0, 0, 0, .2, .15, .46, m, mt); p('cyl', .18 * sd, .28, -.06, 0, 0, 0, .22, .44, .22, m, mt); p('cyl', .18 * sd, .5, -.06, 0, 0, 0, .25, .07, .25, rc, 4); }
   } else if (sl === 'amulet') {
-    p('ring', 0, .04, -.05, 0, 0, 0, .62, 1, .7, gold, 4); p('ring', 0, .05, -.05, 0, 0, 0, .56, 1, .64, gold, 4); p('gem', 0, .1, .32, 0, G.time * 2, 0, .2, .24, .2, rc, 0, 1.6); p('cyl', 0, .05, .32, 0, 0, 0, .26, .05, .26, gold, 4);
-  } else { for (let i = 0; i < 10; i++) { const a = i / 10 * 6.2832; p('sphere', Math.cos(a) * .17, .07, Math.sin(a) * .17, 0, 0, 0, .09, .1, .09, gold, 4); } p('gem', 0, .16, .19, 0, G.time * 2, 0, .15, .18, .15, rc, 0, 1.6); }
+    p('ring', 0, .04, -.05, 0, 0, 0, .62, 1, .7, gold, 4); p('ring', 0, .05, -.05, 0, 0, 0, .56, 1, .64, gold, 4); p('gem', 0, .1, .32, 0, G.time * 2, 0, .2, .24, .2, gm, 0, 1.6); p('cyl', 0, .05, .32, 0, 0, 0, .26, .05, .26, gold, 4);
+  } else { for (let i = 0; i < 10; i++) { const a = i / 10 * 6.2832; p('sphere', Math.cos(a) * .17, .07, Math.sin(a) * .17, 0, 0, 0, .09, .1, .09, gold, 4); } p('gem', 0, .16, .19, 0, G.time * 2, 0, .15, .18, .15, gm, 0, 1.6); }
 }
 const BEAM = [0, 3.2, 6.5, 12, 18], RC = [0xc9c9c9, 0x5a8cff, 0xffd84a, 0xff8a2a, 0xb060ff];
 function drawWorld() {
