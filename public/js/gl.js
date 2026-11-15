@@ -7,7 +7,7 @@ const GLX = (() => {
   const view = new Float32Array(16), proj = new Float32Array(16), vp = new Float32Array(16), ivp = new Float32Array(16),
     lvp = new Float32Array(16), t1 = new Float32Array(16), t2 = new Float32Array(16), M = new Float32Array(16);
   const cam = { eye: [0, 0, 0], right: [1, 0, 0], up: [0, 1, 0], back: [0, 0, 1] };
-  const env = { sun: [.4, .8, .45], sunC: [1, 1, 1], sky: [.3, .3, .4], gnd: [.1, .1, .1], fog: [0, 0, 0], fogN: 45, fogF: 85, player: [0, 0, 0], lightR: 26, t: 0, q: 2, wet: .5, mist: .3, dof: .8, ao: .9, scale: 1, shadows: true };
+  const env = { sun: [.4, .8, .45], sunC: [1, 1, 1], sky: [.3, .3, .4], gnd: [.1, .1, .1], fog: [0, 0, 0], fogN: 45, fogF: 85, player: [0, 0, 0], lightR: 26, t: 0, q: 2, wet: .5, mist: .3, gr: [.45, .2, .05, 0], ge: [1, .4, .1], dof: .8, ao: .9, scale: 1, shadows: true };
   const lights = [];
   const ccache = new Map();
   function col(h) { let c = ccache.get(h); if (!c) { c = [Math.pow((h >> 16 & 255) / 255, 2.2), Math.pow((h >> 8 & 255) / 255, 2.2), Math.pow((h & 255) / 255, 2.2)]; ccache.set(h, c); } return c; }
@@ -143,7 +143,7 @@ void main(){vec4 w=wpos(iM,aP,aN,iE.y);vW=w.xyz;vL=aP;mat3 m=mat3(iM);vec3 sc=ve
   const FS = `#version 300 es
 precision highp float; precision highp sampler2DShadow;
 in vec3 vW,vN,vL,vO; in vec4 vC; in vec2 vE; in vec4 vS;
-uniform sampler2DShadow uSh; uniform vec3 uSun,uSunC,uSky,uGnd,uFog,uEye,uPl; uniform vec2 uFogR; uniform float uLR,uQ,uT,uWet,uMist,uRim,uOut; uniform vec4 uLP[8]; uniform vec3 uLC[8]; out vec4 o;
+uniform sampler2DShadow uSh; uniform vec3 uSun,uSunC,uSky,uGnd,uFog,uEye,uPl; uniform vec2 uFogR; uniform float uLR,uQ,uT,uWet,uMist,uRim,uOut; uniform vec4 uGr; uniform vec3 uGe; uniform vec4 uLP[8]; uniform vec3 uLC[8]; out vec4 o;
 float h(vec2 p){uvec2 q=uvec2(ivec2(p))*uvec2(1597334673U,3812015801U);uint n=(q.x^q.y)*1597334673U;n^=n>>15;n*=2246822519U;n^=n>>13;return float(n>>8)*(1./16777216.);}
 float ns(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
 ${N3}
@@ -151,11 +151,18 @@ void main(){if(uOut>0.){o=vec4(.016,.012,.009,1.);return;}float mat=vE.y;
  if(uRim==0.&&mat>1.5&&mat<3.5&&vW.y>2.3){float hd=length(vec2(vW.x,vW.z-(vW.y-1.)*.72)-uPl.xz);if(hd<4.2){float th=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))));if(th>smoothstep(3.55,4.15,hd))discard;}} // whatever stands between the camera and the hero thins out so you can always see the fight
  vec3 n=normalize(vN);vec3 a=vC.rgb;float spec=.12,shin=20.,wrap=0.,ao=1.,wet=0.;vec3 ex=vec3(0.);
  if(mat>0.&&mat<1.5){
-  float f1=ns(vW.xz*.11)*.6+ns(vW.xz*.31)*.4,f2=ns(vW.xz*1.1),f3=ns(vW.xz*7.);
-  vec3 dirt=vec3(dot(a,vec3(.45)))*vec3(1.5,1.12,.72);
-  a=mix(a*(.6+.7*f2),dirt*(.7+.4*f3),smoothstep(.5,.68,f1+(f2-.5)*.25));
-  a*=.8+.4*f3;if(uQ>.5){float f4=ns(vW.xz*19.),f5=ns(vW.xz*vec2(31.,5.)+f2*4.);a*=.82+.36*f4;a=mix(a,a*vec3(1.25,1.2,.8),smoothstep(.72,.9,f5)*.5);a*=1.-.35*smoothstep(.78,.95,ns(vW.xz*3.3+20.));n=normalize(n+vec3(ns(vW.xz*2.3+3.)-.5,0.,ns(vW.xz*2.3+9.)-.5)*.55+vec3(f4-.5,0.,ns(vW.xz*19.+7.)-.5)*.35);}spec=.03;
-  if(uQ>.5&&uWet>0.&&vN.y>.9){wet=smoothstep(.6,.68,ns(vW.xz*.17+31.)*.68+ns(vW.xz*.49+7.)*.32)*uWet;a*=mix(1.,.42,wet);spec=mix(spec,.9,wet);shin=mix(shin,110.,wet);n=normalize(mix(n,vec3(sin(vW.x*7.+uT*1.3)*.02,1.,cos(vW.z*7.-uT*1.1)*.02),wet));}
+  /* build 0044: floors. Grass, earth, stone and ash meet in soft height blends; warped, rotated noise means no pattern ever repeats */
+  vec2 p=vW.xz,pw=p;const mat2 R=mat2(.8,.6,-.6,.8);if(uQ>.5)pw+=(vec2(ns(p*.07+3.),ns(p*.07+17.))-.5)*7.;
+  float big=ns(pw*.045)*.55+ns(R*pw*.11+5.)*.3+ns(R*R*pw*.27+9.)*.15,fine=ns(R*pw*1.15+2.),micro=ns(pw*5.3+7.),lum=dot(a,vec3(.3,.5,.2));
+  vec3 cG=a*(.74+.5*fine)*(.86+.28*ns(R*pw*.5+4.)),cD=vec3(lum)*vec3(1.5,1.16,.84)*(.72+.5*fine),cS=(mix(vec3(lum*1.3),a,.22)+.01)*(.86+.28*micro),cA=vec3(.04,.036,.033)*(.6+.8*micro)+lum*.22;
+  float hG=.5+(fine-.5)*.3,hD=uGr.x*(big*1.7-.38)+(fine-.5)*.28,hS=uGr.y*(ns(R*pw*.055+40.)*1.8-.5)+(micro-.5)*.14,hA=uGr.z*(ns(R*pw*.08+60.)*1.7-.35)+(fine-.5)*.22,mx=max(max(hG,hD),max(hS,hA))-.11;
+  vec4 w=max(vec4(hG,hD,hS,hA)-mx,0.);w/=w.x+w.y+w.z+w.w;
+  if(uQ>.5&&w.z>.01){vec2 sp=pw*.8,ip=floor(sp),fp=fract(sp),id=ip;float d1=8.,d2=8.;for(int j=-1;j<=1;j++)for(int i=-1;i<=1;i++){vec2 g=vec2(i,j),r=g+.15+.7*vec2(h(ip+g),h(ip+g+57.))-fp;float d=dot(r,r);if(d<d1){d2=d1;d1=d;id=ip+g;}else if(d<d2)d2=d;}
+   float mort=1.-smoothstep(.05,.16,sqrt(d2)-sqrt(d1));cS*=(.74+.46*h(id+3.))*(1.-.6*mort);cS=mix(cS,cG*.7,mort*.3*(1.-uGr.z));n=normalize(n+vec3(h(id+5.)-.5,0.,h(id+9.)-.5)*.3*(1.-mort)*w.z);}
+  a=cG*w.x+cD*w.y+cS*w.z+cA*w.w;a*=1.-.22*smoothstep(.8,.95,ns(R*R*R*pw*2.7+20.))*(w.x+w.y);
+  if(uQ>.5){float f4=ns(pw*19.),f5=ns(pw*vec2(31.,5.)+fine*4.);a*=.86+.28*f4;a=mix(a,a*vec3(1.25,1.2,.8),smoothstep(.72,.9,f5)*.45*w.x);n=normalize(n+(vec3(ns(pw*2.3+3.)-.5,0.,ns(pw*2.3+9.)-.5)*.5+vec3(f4-.5,0.,ns(pw*19.+7.)-.5)*.3)*(1.-w.z*.7));}
+  spec=.03+.07*w.z;if(uGr.w>0.&&w.w>.2)ex+=uGe*uGr.w*w.w*(1.-smoothstep(0.,.035,abs(ns(R*pw*.6+80.)-.5)))*smoothstep(.45,.7,ns(pw*.3+90.))*(.6+.4*sin(uT*1.3+big*25.))*2.;
+  if(uQ>.5&&uWet>0.&&vN.y>.9){wet=smoothstep(.6,.68,ns(p*.17+31.)*.68+ns(p*.49+7.)*.32)*uWet*(1.-w.w);a*=mix(1.,.42,wet);spec=mix(spec,.9,wet);shin=mix(shin,110.,wet);n=normalize(mix(n,vec3(sin(vW.x*7.+uT*1.3)*.02,1.,cos(vW.z*7.-uT*1.1)*.02),wet));}
  }else{
   ao=mix(.42,1.,smoothstep(0.,1.6,vW.y));
   if(mat>1.5&&mat<2.5){a*=.55+.9*n3(vW*2.4);wrap=.5;spec=.05;if(uQ>.5){float lf=n3(vW*8.5),l2=n3(vW*17.+3.);a*=mix(.5,1.3,smoothstep(.28,.72,lf));a=mix(a,a*vec3(1.35,1.25,.7),smoothstep(.6,.9,l2)*max(dot(n,uSun),0.)*.8);a*=.62+.38*clamp(n.y*.6+.6,0.,1.);n=normalize(n+(vec3(n3(vW*3.1),n3(vW*3.1+5.),n3(vW*3.1+9.))-.5)*1.1+(vec3(lf,l2,n3(vW*8.5+4.))-.5)*.9);}}
@@ -259,9 +266,9 @@ mat3x4 skm(){return bone(aJ.x)*aW.x+bone(aJ.y)*aW.y+bone(aJ.z)*aW.z+bone(aJ.w)*a
     if (!gl) return false;
     addGeo('box', gBox()); addGeo('cap', gCap(14, 10)); addGeo('rbox', gRBox(16, 12, .32)); addGeo('sphere', gSphere(20, 13)); addGeo('gem', gSphere(4, 2)); addGeo('cyl', gCyl(16, 1)); addGeo('cone', gCyl(14, 0)); addGeo('blade', gCyl(3, 0)); addGeo('tuft', gTuft(7));
     addGeo('taper', gCyl(14, .6)); for (const k in BODY) addGeo(k, gLoft(BODY[k], 20, 4)); addGeo('blob', gSphere(10, 7)); addGeo('fol', gCyl(9, 0)); addGeo('trunk', gCyl(7, .6)); addGeo('disc', gDisc(28, 0)); addGeo('ring', gDisc(36, .86));
-    pMain = prog(VS, FS, ['uVP', 'uLVP', 'uSh', 'uSun', 'uSunC', 'uSky', 'uGnd', 'uFog', 'uEye', 'uPl', 'uFogR', 'uLR', 'uLP[0]', 'uLC[0]', 'uT', 'uQ', 'uWet', 'uMist', 'uRim', 'uOut']);
+    pMain = prog(VS, FS, ['uVP', 'uLVP', 'uSh', 'uSun', 'uSunC', 'uSky', 'uGnd', 'uFog', 'uEye', 'uPl', 'uFogR', 'uLR', 'uLP[0]', 'uLC[0]', 'uT', 'uQ', 'uWet', 'uMist', 'uRim', 'uOut', 'uGr', 'uGe']);
     pGlow = prog(VS, FSG, ['uVP', 'uLVP', 'uPl', 'uLR', 'uT']);
-    pDepth = prog(VSD, FSD, ['uLVP', 'uT']); try { pMainS = prog(VSS, FS, ['uVP', 'uLVP', 'uSh', 'uSun', 'uSunC', 'uSky', 'uGnd', 'uFog', 'uEye', 'uPl', 'uFogR', 'uLR', 'uLP[0]', 'uLC[0]', 'uT', 'uQ', 'uWet', 'uMist', 'uRim', 'uOut', 'uBones', 'uBR']); pDepthS = prog(VSDS, FSD, ['uLVP', 'uT', 'uBones', 'uBR']); } catch (e) { pMainS = pDepthS = null; MI.state = 'off'; MI.why = 'the graphics card would not build the model shader: ' + String(e && e.message || e).split('\n')[0].slice(0, 120); console.warn('skinned models off', e); } pPost = prog(VSQ, FSQ, ['uA', 'uB', 'uC', 'uD', 'uMode', 'uDir', 'uT', 'uPI', 'uFx']);
+    pDepth = prog(VSD, FSD, ['uLVP', 'uT']); try { pMainS = prog(VSS, FS, ['uVP', 'uLVP', 'uSh', 'uSun', 'uSunC', 'uSky', 'uGnd', 'uFog', 'uEye', 'uPl', 'uFogR', 'uLR', 'uLP[0]', 'uLC[0]', 'uT', 'uQ', 'uWet', 'uMist', 'uRim', 'uOut', 'uGr', 'uGe', 'uBones', 'uBR']); pDepthS = prog(VSDS, FSD, ['uLVP', 'uT', 'uBones', 'uBR']); } catch (e) { pMainS = pDepthS = null; MI.state = 'off'; MI.why = 'the graphics card would not build the model shader: ' + String(e && e.message || e).split('\n')[0].slice(0, 120); console.warn('skinned models off', e); } pPost = prog(VSQ, FSQ, ['uA', 'uB', 'uC', 'uD', 'uMode', 'uDir', 'uT', 'uPI', 'uFx']);
     shTex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, shTex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24, SH, SH, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
@@ -375,7 +382,7 @@ mat3x4 skm(){return bone(aJ.x)*aW.x+bone(aJ.y)*aW.y+bone(aJ.z)*aW.z+bone(aJ.w)*a
     lights.sort((a, b) => (b.pri - a.pri) || ((a.x - p[0]) ** 2 + (a.z - p[2]) ** 2) - ((b.x - p[0]) ** 2 + (b.z - p[2]) ** 2));
     for (let i = 0; i < 8; i++) { const L = lights[i]; if (L) { LP[i * 4] = L.x; LP[i * 4 + 1] = L.y; LP[i * 4 + 2] = L.z; LP[i * 4 + 3] = Math.max(.01, L.r); LC[i * 3] = L.c[0] * L.k; LC[i * 3 + 1] = L.c[1] * L.k; LC[i * 3 + 2] = L.c[2] * L.k; } else { LP[i * 4] = LP[i * 4 + 1] = LP[i * 4 + 2] = 0; LP[i * 4 + 3] = 1; LC[i * 3] = LC[i * 3 + 1] = LC[i * 3 + 2] = 0; } }
     let u = pMain.u; gl.useProgram(pMain.p);
-    gl.uniformMatrix4fv(u.uVP, false, vp); gl.uniformMatrix4fv(u.uLVP, false, lvp); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, shTex); gl.uniform1i(u.uSh, 0); gl.uniform1f(u.uT, env.t); gl.uniform1f(u.uQ, env.q); gl.uniform1f(u.uWet, env.wet); gl.uniform1f(u.uMist, env.mist);
+    gl.uniformMatrix4fv(u.uVP, false, vp); gl.uniformMatrix4fv(u.uLVP, false, lvp); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, shTex); gl.uniform1i(u.uSh, 0); gl.uniform1f(u.uT, env.t); gl.uniform1f(u.uQ, env.q); gl.uniform1f(u.uWet, env.wet); gl.uniform1f(u.uMist, env.mist); gl.uniform4fv(u.uGr, env.gr); gl.uniform3fv(u.uGe, env.ge);
     gl.uniform3fv(u.uSun, env.sun); gl.uniform3fv(u.uSunC, env.sunC); gl.uniform3fv(u.uSky, env.sky); gl.uniform3fv(u.uGnd, env.gnd); gl.uniform3fv(u.uFog, env.fog);
     gl.uniform3fv(u.uEye, cam.eye); gl.uniform3fv(u.uPl, env.player); gl.uniform2f(u.uFogR, env.fogN, env.fogF); gl.uniform1f(u.uLR, env.lightR);
     gl.uniform4fv(u['uLP[0]'], LP); gl.uniform3fv(u['uLC[0]'], LC);
@@ -384,7 +391,7 @@ mat3x4 skm(){return bone(aJ.x)*aW.x+bone(aJ.y)*aW.y+bone(aJ.z)*aW.z+bone(aJ.w)*a
     { let n = 0; for (const g in sets.xr) n += sets.xr[g].n; if (n) { const gu = pGlow.u; gl.useProgram(pGlow.p); gl.uniformMatrix4fv(gu.uVP, false, vp); gl.uniformMatrix4fv(gu.uLVP, false, lvp); gl.uniform3fv(gu.uPl, env.player); gl.uniform1f(gu.uLR, env.lightR); gl.uniform1f(gu.uT, env.t); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.depthMask(false); gl.depthFunc(gl.GREATER); drawSet('xr'); gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.disable(gl.BLEND); gl.useProgram(pMain.p); } }
     if (env.q > 0 && env.outline !== false) { gl.uniform1f(pMain.u.uOut, .026); drawSet('dyn'); gl.uniform1f(pMain.u.uOut, 0); } // a thin ink outline so heroes and monsters stand out from the ground
     gl.uniform1f(pMain.u.uRim, env.q > 0 ? .8 : .4); drawSet('dyn'); gl.uniform1f(pMain.u.uRim, 0);
-    if (SKD.length) { const U = { uVP: vp, uLVP: lvp, uT: [env.t], uQ: [env.q], uWet: [env.wet], uMist: [env.mist], uSun: env.sun, uSunC: env.sunC, uSky: env.sky, uGnd: env.gnd, uFog: env.fog, uEye: cam.eye, uPl: env.player, uFogR: [env.fogN, env.fogF], uLR: [env.lightR], 'uLP[0]': LP, 'uLC[0]': LC };
+    if (SKD.length) { const U = { uVP: vp, uLVP: lvp, uT: [env.t], uQ: [env.q], uWet: [env.wet], uMist: [env.mist], uGr: env.gr, uGe: env.ge, uSun: env.sun, uSunC: env.sunC, uSky: env.sky, uGnd: env.gnd, uFog: env.fog, uEye: cam.eye, uPl: env.player, uFogR: [env.fogN, env.fogF], uLR: [env.lightR], 'uLP[0]': LP, 'uLC[0]': LC };
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, shTex); syncS(pMainS, 0, U); const su = pMainS.u;
       if (env.q > 0 && env.outline !== false) { gl.uniform1f(su.uRim, 0); gl.uniform1f(su.uOut, .026); drawSkinned(pMainS); }
       gl.uniform1f(su.uOut, 0); gl.uniform1f(su.uRim, env.q > 0 ? .8 : .4); drawSkinned(pMainS); gl.useProgram(pMain.p); }
@@ -432,6 +439,6 @@ mat3x4 skm(){return bone(aJ.x)*aW.x+bone(aJ.y)*aW.y+bone(aJ.z)*aW.z+bone(aJ.w)*a
   }
   function upBones() { if (!boneRows) return; gl.bindTexture(gl.TEXTURE_2D, boneTex); gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, boneW, boneRows, gl.RGBA, gl.FLOAT, boneData.subarray(0, boneW * 4 * boneRows)); }
   // shared uniforms for the skinned copy of a program, copied from the plain program's current values
-  function syncS(P, keys, vals) { gl.useProgram(P.p); for (const k in vals) { const v = vals[k], u = P.u[k]; if (!u) continue; if (v.length === 16) gl.uniformMatrix4fv(u, false, v); else if (v.length === 32) gl.uniform4fv(u, v); else if (v.length === 24) gl.uniform3fv(u, v); else if (v.length === 3) gl.uniform3fv(u, v); else if (v.length === 2) gl.uniform2fv(u, v); else gl.uniform1f(u, v[0]); } if (P.u.uSh) gl.uniform1i(P.u.uSh, 0); }
+  function syncS(P, keys, vals) { gl.useProgram(P.p); for (const k in vals) { const v = vals[k], u = P.u[k]; if (!u) continue; if (v.length === 16) gl.uniformMatrix4fv(u, false, v); else if (v.length === 32) gl.uniform4fv(u, v); else if (v.length === 24) gl.uniform3fv(u, v); else if (v.length === 3) gl.uniform3fv(u, v); else if (v.length === 4) gl.uniform4fv(u, v); else if (v.length === 2) gl.uniform2fv(u, v); else gl.uniform1f(u, v[0]); } if (P.u.uSh) gl.uniform1i(P.u.uSh, 0); }
   return { init, resize, col, base, obj, part, halo, light, setCamera, toScreen, groundAt, begin, statBegin, statChunk, statEnd, render, env, cam, model, drawModel, modelInfo: () => MI, attach: (m, name, o) => m && m.ready ? CDM.attach(m, name, o) : null };
 })();
