@@ -25,10 +25,12 @@
  .a .left{align-self:end;text-align:center;padding:30vh 0 8px;margin:0 auto}
  .a .logo{margin:0 auto;width:min(360px,92%)}
  .a .pitch{font-size:15px;margin:14px auto 20px}
- .a .eyebrow{justify-content:center}
+ .a .eyebrow{justify-content:center}.a .eyebrow::after{content:"";width:36px;height:1px;background:var(--crim2)}
+ .a .txtlinks a:last-child{display:none}
+ .a .left{padding-top:34vh}
  .a .ctarow{flex-direction:column;gap:10px;margin:16px 0 18px}
  .a .txtlinks{justify-content:center;flex-wrap:wrap;gap:16px}
- .a .tiles{display:flex;overflow-x:auto;gap:10px;scroll-snap-type:x mandatory;margin:0 calc(-1*var(--pad));padding:0 var(--pad) 6px}
+ .a .tiles{display:flex;overflow-x:auto;gap:10px;scroll-snap-type:x mandatory;padding:0 0 6px}
  .a .tile{flex:0 0 34%;aspect-ratio:3/4;scroll-snap-align:start}
  .a .rail h4 em{display:none}
 }
