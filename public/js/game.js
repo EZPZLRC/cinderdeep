@@ -212,6 +212,20 @@ function makeItem(ilvl, slot, rar, baseName) {
   else it.name = I_WEAR[r() * I_WEAR.length | 0] + ' ' + L.mat[0] + ' ' + it.base;
   return it;
 }
+// build 0074 (security): could this item have come out of the game? The highest roll at its item level, rarity and upgrades,
+// with a little room for rounding. Used on items passed between players; it never touches a hero's own saved gear.
+function itemLegit(it, maxIlvl) {
+  if (!it || typeof it !== 'object' || !DROP_SLOTS.includes(it.slot) || !Array.isArray(it.aff)) return false;
+  const rar = it.rar, il = it.ilvl, up = it.up || 0; if (![0, 1, 2, 3, 4].includes(rar) || !(il >= 1 && il <= Math.min(80, maxIlvl || 80) && il === Math.round(il)) || !(up >= 0 && up <= MAX_UP && up === Math.round(up))) return false;
+  const nMax = [0, 2, 5, 5, 6][rar], uk = Math.pow(1.08, up), tol = v => v * 1.02 + up + 1; if (it.aff.length > nMax) return false;
+  const as = AFF_ALIAS[it.slot] || it.slot, seen = new Set();
+  for (const f of it.aff) { if (!f || typeof f.k !== 'string' || seen.has(f.k)) return false; seen.add(f.k); const a = AFFIX.find(x => x[0] === f.k); if (!a || !a[4].split(' ').includes(as) || !(f.v >= 1) || !isFinite(f.v)) return false;
+    let mx = a[2]; if (a[3] === 'f') mx *= Math.pow(1.085, il); else if (a[3] === 'p') mx *= 1 + Math.min(il, 60) * .02; mx = Math.round(mx) * (rar === 4 ? 1.25 : 1) * Math.pow(1.06, up); if (f.v > tol(mx) + 1) return false; }
+  if (it.slot === 'weapon') { if (!Array.isArray(it.dmg) || it.dmg.length !== 2 || !it.dmg.every(v => isFinite(v) && v >= 1)) return false; const k = Math.pow(1.11, il) * (1 + rar * .1) * uk, hi = Math.max(...WEAPONS.map(w => w.d[1])) * k, lo = Math.max(...WEAPONS.map(w => w.d[0])) * k; if (it.dmg[1] > tol(hi) + 1 || it.dmg[0] > tol(lo) + 1 || it.dmg[0] > it.dmg[1]) return false; if (!(it.spd >= .5 && it.spd <= 2.5)) return false; }
+  if (it.armor !== undefined) { const bases = it.slot === 'offhand' ? Object.values(OFFHAND).map(b => b.a || 0) : (ARMOR[it.slot] || []).map(b => b.a), mx = Math.max(0, ...bases) * Math.pow(1.085, il) * (1 + rar * .08) * uk; if (!(it.armor >= 0) || it.armor > tol(mx) + 1) return false; }
+  if (it.power !== undefined && (rar < 3 || !POWERS[it.power])) return false;
+  return true;
+}
 // what an item is made of and where it came from, all from its seed, so no two are alike
 function itemKind(it) { const b = it.base || ''; return it.slot === 'amulet' || it.slot === 'ring' || /Circlet|Charm|Orb/.test(b) ? 'jewel' : /Leather|Hood|Quiver|Belt/.test(b) ? 'leather' : /Silk|Sash|Robe|Tome/.test(b) ? 'cloth' : it.wt === 'bow' || it.wt === 'staff' ? 'wood' : 'metal'; }
 function itemLook(it) {
@@ -619,13 +633,13 @@ function spawnAll(Z) {
     for (let i = 0; i < n; i++) place(Math.random() < .75 ? main : pm(), 0);
   });
   if (Z.def.type === 'zone' && Math.random() < .33) for (let t = 0; t < 60; t++) { const k = (Math.random() * GW * GW) | 0; if (Z.cell[k] || !Z.dist || Z.dist[k] < 14) continue; const x = (k % GW + .5) * CS, z = ((k / GW | 0) + .5) * CS; if (blocked(x, z, .6)) continue; mkEnemy({ a: 'goblin', n: 'Treasure Goblin', c: 0x4a7a34, c2: 0xc89a3a, e: 0xffd84a }, x, z, lv, 0, -1); break; } /* build 0027 */
-  const bd = bossFor(Z.def.theme, Z.def.depth), hit = refHit(lv + 1);
-  const b = { id: ++G.eid, md: { a: 'boss', n: bd.n, c: bd.c, c2: bd.c2, e: bd.e }, a: { r: 1.7, sc: bd.sc || 2.3, rec: .9, wind: .8, reach: 3.6, xp: 40, spd: 4 }, arch: 'boss', boss: true, bd, x: Z.bossAt[0], z: Z.bossAt[1], rot: 0, lvl: lv + 1, elite: 3, pack: -1, r: 1.7, sc: bd.sc || 2.3, maxHp: Math.round(2.8 * hit * 40 * 1.6), dmg: 5 * Math.pow(1.095, lv + 1) * 3, /* build 0062 (playtest): guardians last longer and hit much harder */ spd: 4, st: 'chase', t: 0, cd: 1, walk: 0, awake: false, flash: 0, chill: 0, shock: 0, frozen: 0, burn: 0, burnT: 0, atk: 0, alive: true, deadT: 0, pt: 2.5, pi: 0, name: bd.n, mods: [] };
+  const bd = bossFor(Z.def.theme, Z.def.depth, Z.def.rift), hit = refHit(lv + 1);
+  const b = { id: ++G.eid, md: { a: 'boss', n: bd.n, c: bd.c, c2: bd.c2, e: bd.e }, a: { r: 1.7, sc: bd.sc || 2.3, rec: .9, wind: .8, reach: 3.6, xp: 40, spd: 4 }, arch: 'boss', boss: true, bd, x: Z.bossAt[0], z: Z.bossAt[1], rot: 0, lvl: lv + 1, elite: 3, pack: -1, r: 1.7, sc: bd.sc || 2.3, maxHp: Math.round(2.8 * hit * 40 * 1.6 * (bd.hpM || 1)), dmg: 5 * Math.pow(1.095, lv + 1) * 3, /* build 0062 (playtest): guardians last longer and hit much harder */ spd: 4, st: 'chase', t: 0, cd: 1, walk: 0, awake: false, flash: 0, chill: 0, shock: 0, frozen: 0, burn: 0, burnT: 0, atk: 0, alive: true, deadT: 0, pt: 2.5, pi: 0, name: bd.n, mods: [] };
   b.hp = b.maxHp; G.ents.push(b); G.boss = b; Z.ent0 = G.ents.filter(e => !e.boss).length; Z.repT = 30;
 }
 function addReplica(i) {
   if (G.ents.some(e => e.id === i.id)) return; const e = Object.assign({}, i, { a: i.boss ? { r: 1.7, sc: 2.3, rec: .9, wind: .8, reach: 3.6, xp: 40, spd: 4 } : ARCH[i.arch], tx: i.x, tz: i.z, trot: i.rot || 0, rot: i.rot || 0, st: 'chase', t: 0, cd: 1, modT: 2, walk: Math.random() * 6, flash: 0, chill: 0, shock: 0, frozen: 0, burn: 0, burnT: 0, atk: 0, alive: true, deadT: 0 });
-  if (!e.a || !e.md) return; for (const k of e.mods || []) e[k] = true; if (e.boss) { e.bd = bossFor(G.zone.def.theme, G.zone.def.depth); G.boss = e; } G.ents.push(e);
+  if (!e.a || !e.md) return; for (const k of e.mods || []) e[k] = true; if (e.boss) { e.bd = bossFor(G.zone.def.theme, G.zone.def.depth, G.zone.def.rift); G.boss = e; } G.ents.push(e);
 }
 function repEnemy(e, dt) {
   if (e.flash > 0) e.flash -= dt; if (e.atk > 0) e.atk -= dt * 3; if (e.burnT > 0) e.burnT -= dt; if (e.shock > 0) e.shock -= dt; const ox = e.x, oz = e.z, k = Math.min(1, dt * 12); if (e.sT1 && e.sT1 > e.sT0) { /* play back 100 ms behind the server and slide evenly between its last two updates */ const u = Math.min(1.2, Math.max(0, (performance.now() / 1000 - .1 - e.sT0) / (e.sT1 - e.sT0))), gx = e.sx0 + (e.sx1 - e.sx0) * u, gz = e.sz0 + (e.sz1 - e.sz0) * u, kk = Math.min(1, dt * 20); e.x += (gx - e.x) * kk; e.z += (gz - e.z) * kk; } else { e.x += (e.tx - e.x) * k; e.z += (e.tz - e.z) * k; }
@@ -680,7 +694,7 @@ function leaveTown() {
 function toStash(i) { const h = G.hero, it = h.inv[i]; if (!it) return; if (!bagPut(G.stash, it)) { hint('The stash is full.'); return; } h.inv[i] = null; SFX.play('pickup'); saveGame(); }
 function fromStash(j) { const it = G.stash[j]; if (!it) return; if (!addItem(it)) { hint('Inventory is full.'); return; } G.stash[j] = null; SFX.play('pickup'); saveGame(); }
 function sellItem(i) { const h = G.hero, it = h.inv[i]; if (!it) return; h.gold += itemValue(it); h.inv[i] = null; SFX.play('gold'); saveGame(); }
-function buyPrice(it) { return itemValue(it) * 5; }
+function buyPrice(it) { const l = G.hero ? G.hero.level : 10; return Math.max(1, Math.round(itemValue(it) * 5 * (l >= 10 ? 1 : .4 + .06 * l))); } /* build 0072 (Lee's playtest): the Trader is cheaper while you are new, about half price at level 1, full price from level 10 */
 function buyItem(k) { const h = G.hero, it = h.stock && h.stock[k]; if (!it) return; const pr = buyPrice(it); if (h.gold < pr) { hint('Not enough gold.'); return; } if (!addItem(it)) { hint('Inventory is full.'); return; } h.gold -= pr; h.stock[k] = null; SFX.play('gold'); saveGame(); }
 // Altar: reroll ONE line of an item. Once a line is chosen, only that line can be rerolled again.
 function affixRange(a, ilvl) { const k = a[3] === 'f' ? Math.pow(1.085, ilvl) : a[3] === 'p' ? 1 + Math.min(ilvl, 60) * .02 : 1, r = v => Math.max(1, Math.round(v)); return [r(a[1] * k), r(a[2] * k)]; }
@@ -961,7 +975,7 @@ function questTarget() {
   if (cq && cq.goal.k === 'rescue' && h.tq.n < cq.goal.n) { const pip = Z.objs.find(o => o.kind === 'lost' && !o.used); if (pip) return { x: pip.x, z: pip.z, text: 'Find Pip: follow the path, he is hiding on this floor' }; }
   { const sc = stCur(), cap = sc && sc.k === 'rescue' && Z.objs.find(o => o.kind === 'captive' && !o.used); if (cap) return { x: cap.x, z: cap.z, text: 'Find ' + cap.name + ': follow the path' }; }
   const po = Z.objs.find(o => o.kind === 'portal' && !o.used); if (po) return { x: po.x, z: po.z, text: 'Take the portal deeper' };
-  const b = G.boss; return { x: b ? b.x : Z.bossAt[0], z: b ? b.z : Z.bossAt[1], text: 'Find and slay ' + (b ? b.name : bossFor(Z.def.theme, Z.def.depth).n) };
+  const b = G.boss; return { x: b ? b.x : Z.bossAt[0], z: b ? b.z : Z.bossAt[1], text: 'Find and slay ' + (b ? b.name : bossFor(Z.def.theme, Z.def.depth, Z.def.rift).n) };
 }
 function updGps(dt) {
   GPS.t -= dt; if (GPS.t > 0) return; GPS.t = .4; const q = questTarget(); GPS.goal = q; GPS.text = q ? q.text : ''; GPS.pts = []; if (!q || !G.set.gps) return;
@@ -1008,6 +1022,11 @@ function tankHit(A, e) { A.hurt = .25; burst(A.x, 1.3, A.z, 0xc8c0b0, 5, 4); if 
 function aiMend(A, dt) { A.healT -= dt; const s = P.stats, f = P.hp / s.maxLife; if (A.healT > 0 || P.dead || f > .7) return false; if (Math.hypot(A.x - P.x, A.z - P.z) > 11) return false;
   const big = f < .4, v = Math.round(s.maxLife * (big ? .22 : .14)); P.hp = Math.min(s.maxLife, P.hp + v); A.healT = big ? 6 : 4.5; A.rot = Math.atan2(P.x - A.x, P.z - A.z); A.swing = 1; A.act = { t: 0, d: .5, sk: { type: 'ally' } }; A.mv = 0;
   G.fx.push({ bolt: 1, x1: A.x, z1: A.z, x2: P.x, z2: P.z, life: .3, max: .3, c: GLX.col(0x9affb0) }); ring(P.x, P.z, 0, 2.4, .5, 0x7aff9a); burst(P.x, 1.4, P.z, 0x9affb0, 16, 4); floatText(P.x, 2.9, P.z, '+' + v, '#8aff9a', .9, 16); SFX.play('mend'); return true; }
+// build 0072 (Lee's playtest): the tank goes after the monsters that shoot at you, one after another, and leaps to them
+function aiTankPick(A) { let best = null, bs = 1e9; for (const e of G.ents) { if (!e.alive || !e.awake || e.dummy || e.boss || e.arch === 'goblin') continue; if (!(e.arch === 'caster' || (e.a && e.a.reach >= 6))) continue; const dp = Math.hypot(e.x - P.x, e.z - P.z); if (dp > 15) continue;
+    const fresh = (e.tkT || 0) < G.time, sc = Math.hypot(e.x - A.x, e.z - A.z) + (fresh ? 0 : 30); if (sc < bs) { bs = sc; best = e; } }
+  if (best && A.tkOn !== best) { A.tkOn = best; A.tkHits = 0; A.tkSince = G.time; } if (best && (A.tkHits >= 2 || G.time - A.tkSince > 3.5)) { best.tkT = G.time + 6; A.tkOn = null; if (!G.online) best.tnt = { a: A, t: 4.5 }; } return best; }
+function aiBlink(A, x, z, r, i, leap) { const o0 = { x: A.x, z: A.z }; for (let k = 0; k < 12; k++) { const a = Math.atan2(A.x - x, A.z - z) + (k >> 1) * (k & 1 ? .55 : -.55), px = x + Math.sin(a) * r, pz = z + Math.cos(a) * r; if (!blocked(px, pz, .5)) { if (typeof burst === 'function') burst(A.x, 1, A.z, leap ? 0xffa040 : 0xc8d8ff, 8, 3); A.x = px; A.z = pz; A.rot = Math.atan2(x - px, z - pz); if (leap) { ring(px, pz, 0, 2.2, .35, 0xffa040); if (Math.random() < .5) floatText(px, 2.8, pz, 'Charge', '#ffb060', .7, 12); } else burst(px, 1, pz, 0xc8d8ff, 8, 3); A.stk = 0; return true; } } A.x = o0.x; A.z = o0.z; return false; }
 function updAlly(dt) {
   const want = aiWant();
   if (ALLIES.length !== want) {
@@ -1021,15 +1040,16 @@ function updAlly(dt) {
   }
   for (let i = 0; i < ALLIES.length; i++) {
     const A = ALLIES[i], R = AI_ROSTER[A.cls], melee = R.range < 4, range = R.range;
-    if (Math.hypot(A.x - P.x, A.z - P.z) > 26) { A.x = P.x - 1.5 + i; A.z = P.z + 1.5 - i * .6; } // they keep up with you across the floor
+    if (Math.hypot(A.x - P.x, A.z - P.z) > 18) aiBlink(A, P.x, P.z, 1.6, i); // they keep up with you across the floor (build 0072: sooner, at 18 instead of 26)
     A.sk.m = aiEach() * (A.role === 'heal' ? .55 : A.role === 'tank' ? .8 : 1); if (A.role === 'tank') aiTaunt(A, dt); else if (A.role === 'heal' && aiMend(A, dt)) continue;
     let tg = null, bd = 13; for (const e of G.ents) { if (!e.alive || !e.awake) continue; const d = Math.hypot(e.x - A.x, e.z - A.z); if (d < bd && Math.hypot(e.x - P.x, e.z - P.z) < 16) { bd = d; tg = e; } }
+    if (A.role === 'tank') { const rt = aiTankPick(A); if (rt) { tg = rt; bd = Math.hypot(rt.x - A.x, rt.z - A.z); if (bd > 5 && (A.leapT || 0) <= G.time) { A.leapT = G.time + 2.2; aiBlink(A, rt.x, rt.z, rt.r + 1.1, i, 1); bd = Math.hypot(rt.x - A.x, rt.z - A.z); } } }
     A.cd -= dt; A.spT -= dt; if (A.swing > 0) A.swing -= dt * 3; let tx = null, tz = null;
-    if (tg) { A.rot = Math.atan2(tg.x - A.x, tg.z - A.z); if (bd > range + tg.r) { tx = tg.x; tz = tg.z; } else if (A.spT <= 0) { A.spT = rnd(6, 8.5); A.swing = 1; A.act = { t: 0, d: .45, sk: { type: melee ? 'nova' : 'ally' } }; aiSpecial(A, tg); } else if (A.cd <= 0) { A.cd = rnd(1.05, 1.3); A.swing = 1; A.act = { t: 0, d: .35, sk: A.sk }; if (!melee) G.fx.push({ bolt: 1, x1: A.x, z1: A.z, x2: tg.x, z2: tg.z, life: .12, max: .12, c: GLX.col(R.c) }); hitEnemy(tg, A.sk, 1, true); } }
+    if (tg) { A.rot = Math.atan2(tg.x - A.x, tg.z - A.z); if (bd > range + tg.r) { tx = tg.x; tz = tg.z; } else if (A.spT <= 0) { A.spT = rnd(6, 8.5); A.swing = 1; A.act = { t: 0, d: .45, sk: { type: melee ? 'nova' : 'ally' } }; aiSpecial(A, tg); } else if (A.cd <= 0) { A.cd = rnd(1.05, 1.3); A.swing = 1; A.act = { t: 0, d: .35, sk: A.sk }; if (!melee) G.fx.push({ bolt: 1, x1: A.x, z1: A.z, x2: tg.x, z2: tg.z, life: .12, max: .12, c: GLX.col(R.c) }); hitEnemy(tg, A.sk, 1, true); if (A.tkOn === tg) A.tkHits = (A.tkHits || 0) + 1; } }
     else { // fall in around you: each teammate keeps its own spot
       const ang = P.rot + Math.PI + (i - (ALLIES.length - 1) / 2) * .9, fx = P.x + Math.sin(ang) * 2.6, fz = P.z + Math.cos(ang) * 2.6; if (Math.hypot(fx - A.x, fz - A.z) > 1.2) { tx = fx; tz = fz; } }
     if (A.act) { A.act.t += dt; if (A.act.t >= A.act.d) A.act = null; }
-    if (tx !== null) { const dx = tx - A.x, dz = tz - A.z, d = Math.hypot(dx, dz) || 1, st = Math.min(d, P.stats.msT * 1.08 * dt), o = { x: A.x, z: A.z }; moveEnt(o, dx / d * st, dz / d * st, .5); if (Math.hypot(o.x - A.x, o.z - A.z) < st * .2 && Math.hypot(P.x - A.x, P.z - A.z) > 9) { o.x = P.x - 1; o.z = P.z + 1; } A.x = o.x; A.z = o.z; A.rot = tg ? A.rot : Math.atan2(dx, dz); A.walk += st * 1.6; A.mv = 1; } else A.mv = 0;
+    if (tx !== null) { const dx = tx - A.x, dz = tz - A.z, d = Math.hypot(dx, dz) || 1, st = Math.min(d, P.stats.msT * 1.08 * dt), o = { x: A.x, z: A.z }; moveEnt(o, dx / d * st, dz / d * st, .5); if (Math.hypot(o.x - A.x, o.z - A.z) < st * .25) A.stk = (A.stk || 0) + dt; else A.stk = Math.max(0, (A.stk || 0) - dt * 2); A.x = o.x; A.z = o.z; if (A.stk > .6) { A.stk = 0; if (tg) aiBlink(A, tg.x, tg.z, tg.r + (melee ? 1.1 : Math.min(range - 1, 5)), i); else aiBlink(A, P.x, P.z, 1.6, i); } /* build 0072: a teammate caught on a wall or a tree steps through instead of standing there */ A.rot = tg ? A.rot : Math.atan2(dx, dz); A.walk += st * 1.6; A.mv = 1; } else A.mv = 0;
     for (let j = 0; j < i; j++) { const B = ALLIES[j], dx = A.x - B.x, dz = A.z - B.z, d = Math.hypot(dx, dz); if (d < .9 && d > .001) { const o = { x: A.x, z: A.z }; moveEnt(o, dx / d * (.9 - d) * .5, dz / d * (.9 - d) * .5, .5); A.x = o.x; A.z = o.z; } } // no stacking on one spot
   }
   // the party host's AI teammates, seen by everyone else in the party (positions ride on the host's updates)
@@ -1117,7 +1137,7 @@ function updPlayer(dt) {
   if (P.iframes > 0) P.iframes -= dt; if (P.dodgeCd > 0) P.dodgeCd -= dt; if (P.hurt > 0) P.hurt -= dt; if (P.cheatCd > 0) P.cheatCd -= dt;
   if (P.buffs.length) { let ex = false; for (const b of P.buffs) { b.t -= dt; if (b.t <= 0) ex = true; } if (ex) { P.buffs = P.buffs.filter(b => b.t > 0); computeStats(); } }
   if (!P.dead && P.hp < s.maxLife * .3 && !G.inTown) { P.lowT = (P.lowT || 0) - dt; if (P.lowT <= 0) { P.lowT = 1.1; const hf = typeof document !== 'undefined' && document.getElementById('hurtFx'); if (hf && hf.animate) hf.animate([{ opacity: 0 }, { opacity: .45 }, { opacity: 0 }], { duration: 900, easing: 'ease-in-out' }); if (!G.lowHint) { G.lowHint = 1; hint('Low health! Drink a potion (1 on PC, the potion button on phone) or dodge away.'); } } } // build 0035: the screen edge pulses red when you are close to death
-  if (P.flaskT > 0) { P.flaskT -= dt; P.hp = Math.min(s.maxLife, P.hp + s.maxLife * .5 * (1 + .15 * townLv('garden')) * dt); }
+  if (P.flaskT > 0) P.flaskT -= dt; /* build 0072: the potion heals at once (see useFlask); this only keeps the red glow */
   if (G.streakT > 0) { G.streakT -= dt; if (G.streakT <= 0) G.streak = 0; }
   P.moving = false;
   if (P.dash) {
@@ -1184,7 +1204,7 @@ function giveItem(i) {
   if (!b) { hint('No party member close enough to give this to.'); return false; } if (it.cls && NET.cls && NET.cls[b.id] && NET.cls[b.id] !== it.cls) { hint('That is a ' + CLASSES[it.cls].n + ' item, and ' + b.name + ' is a ' + CLASSES[NET.cls[b.id]].n + '.'); return false; } NET.send({ t: 'give', to: b.id, item: it }); h.inv[i] = null; hint('Gave ' + it.name + ' to ' + b.name + '.'); saveGame(); return true;
 }
 const FLASK_MAX = 5, FLASK_CD = 15; // up to five potions saved; one refills every 15 seconds
-function useFlask() { if (P.dead) return; if (P.fl === undefined) P.fl = FLASK_MAX; if (P.hp >= P.stats.maxLife) { if (G.time - (P.flHint || -9) > 2) { P.flHint = G.time; hint('You are at full health. The potion is saved.'); } return; } if (P.fl <= 0) { if (G.time - (P.flHint || -9) > 2) { P.flHint = G.time; hint('No potions left. The next one is ready in ' + Math.ceil(P.flaskCd) + ' seconds.'); } return; } if (P.flaskT > 0) return; P.fl--; if (!(P.flaskCd > 0)) P.flaskCd = FLASK_CD; P.flaskT = 1.2; SFX.play('flask'); burst(P.x, 1.4, P.z, 0xff4a4a, 14, 4); }
+function useFlask() { if (P.dead) return; if (P.fl === undefined) P.fl = FLASK_MAX; if (P.hp >= P.stats.maxLife) { if (G.time - (P.flHint || -9) > 2) { P.flHint = G.time; hint('You are at full health. The potion is saved.'); } return; } if (P.fl <= 0) { if (G.time - (P.flHint || -9) > 2) { P.flHint = G.time; hint('No potions left. The next one is ready in ' + Math.ceil(P.flaskCd) + ' seconds.'); } return; } if (P.flaskT > 0) return; P.fl--; if (!(P.flaskCd > 0)) P.flaskCd = FLASK_CD; P.flaskT = .45; { const v = Math.round(Math.min(P.stats.maxLife - P.hp, P.stats.maxLife * .6 * (1 + .15 * townLv('garden')))); P.hp = Math.min(P.stats.maxLife, P.hp + v); floatText(P.x, 3, P.z, '+' + v, '#ff8a8a', 1, 18); } /* build 0072 (Lee's playtest): the same 60% heal, all at once, with the amount shown */ SFX.play('flask'); burst(P.x, 1.4, P.z, 0xff4a4a, 14, 4); }
 function pickup(d) {
   const i = G.drops.indexOf(d); if (i < 0) return;
   if (d.globe) { P.hp = Math.min(P.stats.maxLife, P.hp + P.stats.maxLife * .25); floatText(d.x, 1.4, d.z, '+life', '#ff6a6a', .8, 14); SFX.play('flask'); G.drops.splice(i, 1); return; }
@@ -1193,6 +1213,7 @@ function pickup(d) {
   if (d.q) { tqAdd('collect'); floatText(d.x, 1.4, d.z, d.q, '#8affc0', 1, 13); SFX.play('pickup'); burst(d.x, 1, d.z, d.qc || 0x8affc0, 10, 4); G.drops.splice(i, 1); return; }
   if (!addItem(d.item)) { if (G.time - P.oomT > 1.5) { P.oomT = G.time; hint('Inventory is full. Open it (I) and scrap or drop something.'); } return; }
   G.drops.splice(i, 1); SFX.play('pickup'); floatText(d.x, 1.4, d.z, d.item.name, RAR[d.item.rar].c, 1.1, 13); UI.invDirty = true;
+  if (!G.hero.got1) { G.hero.got1 = 1; if (G.hero.level <= 2) hint('You picked up your first item. Press I to see it, and equip it if it is better.'); } /* build 0072 */
   if (d.item.rar >= 3) G.hero['f' + Math.min(4, d.item.rar)] = 1;
   if (d.item.rar >= 3 && !d.item.fd) { d.item.fd = 1; if (G.online) NET.send({ t: 'found', item: d.item.name, r: d.item.rar }); else hint('You found a ' + RAR[d.item.rar].n + ' item: ' + d.item.name); }
 }
@@ -1297,7 +1318,7 @@ function stInit(h) { h.story = { a: 0, s: 0, open: 0 }; const dm = stDepth(h), r
 function stNext() { const st = stState(); if (!st) return; const A = STORY[st.a]; st.s++; if (A && st.s >= A.steps.length) { st.a++; st.s = 0; st.open = 0; } }
 function stPast(c, dm) { /* a boss step at or above your depth is done; a rescue is done once a later guardian of the act has fallen */ if (!c) return false; if (c.k === 'boss') return c.d <= dm; if (c.k !== 'rescue') return false; const st = stState(), A = STORY[st.a]; return A.steps.slice(st.s + 1).some(x => x.k === 'boss' && x.d <= dm); }
 function stCatch() { const h = G.hero, out = []; let c; while ((c = stCur()) && stPast(c, stDepth(h))) { if (c.recap) out.push(['', c.recap]); stNext(); } return out; }
-function stGoalBanner() { const A = stAct(), c = stCur(); if (!UI.zoneBanner) return; if (!A) UI.zoneBanner(STORY[STORY.length - 1].n + ' complete', 'The story continues in the next update'); else if (c) UI.zoneBanner(A.n + ' · ' + A.t, c.goal); }
+function stGoalBanner() { const A = stAct(), c = stCur(); if (!UI.zoneBanner) return; if (!A) UI.zoneBanner('The story is complete', 'The Rifts are open at the Rift Stone in Emberwatch'); else if (c) UI.zoneBanner(A.n + ' · ' + A.t, c.goal); }
 function stAfter(lines) { const st = stState(); lines = (lines || []).concat(st.open ? stCatch() : []); saveGame(); if (typeof GPS !== 'undefined') GPS.t = 0;
   const fin = () => { if (STORY[st.a] && !st.open) stOpen(); else stGoalBanner(); }; if (lines.length && UI.scene) UI.scene(lines, fin); else fin(); }
 function stOpen() { const st = stState(), A = st && STORY[st.a]; if (!A || st.open) return; st.open = 1; const c = A.steps[st.s], lines = ((c && c.open) || []).concat(stCatch()); saveGame(); if (typeof setTimeout !== 'function') return; /* after the floor's own name has had its moment; heroes already past part of the act get those parts as a recap */
@@ -1374,7 +1395,7 @@ function interact(o) {
 }
 function eShoot(e, ang, spd, dmgM, el) { G.projs.push({ x: e.x + Math.sin(ang) * e.r, z: e.z + Math.cos(ang) * e.r, vx: Math.sin(ang) * spd, vz: Math.cos(ang) * spd, life: 3, r: .45, dmg: e.dmg * (dmgM || 1), el: el || 'phys', src: e, c: GLX.col(e.md.e) }); }
 function bossPattern(e) {
-  const pat = e.bd.pat[e.pi++ % e.bd.pat.length], el = G.zone.th.elem;
+  const pl = e.bd.phases ? e.bd.phases[e.ph || 0] : e.bd.pat, pat = pl[e.pi++ % pl.length], el = G.zone.th.elem;
   if (pat === 'ring') { const n = 18; for (let i = 0; i < n; i++) eShoot(e, i / n * 6.2832 + e.pi, 9, .8, el); }
   else if (pat === 'slam') addArea({ x: P.x, z: P.z, r: 5, delay: 1.1, owner: 'e', dmg: e.dmg * 2, el: 'phys', c: 0xff4a2a, src: e, hvy: heavyK(1.3) });
   else if (pat === 'summon') { const md = G.zone.th.mon.find(m => m.a === 'swarm') || G.zone.th.mon[0]; for (let i = 0; i < 5; i++) { const a = i / 5 * 6.28, x = e.x + Math.cos(a) * 3.5, z = e.z + Math.sin(a) * 3.5; if (!blocked(x, z, .6)) { const m = mkEnemy(md, x, z, e.lvl - 1, 0, -2); m.awake = true; m.noLoot = true; ring(x, z, 0, 2, .4, e.md.e); } } }
@@ -1418,7 +1439,8 @@ function updEnemy(e, dt) {
   if (e.boss) {
     const q = Math.ceil(e.hp / e.maxHp * 4); if (e.q && q < e.q) for (let i = 0; i < 2; i++) G.drops.push({ x: e.x + rnd(-4, 4), z: e.z + rnd(-4, 4), globe: 1, t: 0 }); e.q = q;
     if (e.spiral > 0) { e.spiral -= dt; e.spT = (e.spT || 0) - dt; if (e.spT <= 0) { e.spT = .09; e.spA = (e.spA || 0) + .5; eShoot(e, e.spA, 10, .7, G.zone.th.elem); eShoot(e, e.spA + Math.PI, 10, .7, G.zone.th.elem); } return; }
-    e.pt -= dt; if (e.pt <= 0) { e.pt = e.hp < e.maxHp * .4 ? 2.3 : 3.3; bossPattern(e); return; }
+    if (e.bd.phases) { const ph = e.hp > e.maxHp * .66 ? 0 : e.hp > e.maxHp * .33 ? 1 : 2; if (ph > (e.ph || 0)) { e.ph = ph; e.pi = 0; e.pt = .6; e.spiral = 0; } } /* build 0074: Vaeloth changes his whole fight at two thirds and one third of his life */
+    e.pt -= dt; if (e.pt <= 0) { e.pt = (e.hp < e.maxHp * .4 ? 2.3 : 3.3) * (e.ph === 2 ? .8 : 1); bossPattern(e); return; }
     e.tt = (e.tt === undefined ? 1.4 : e.tt) - dt; if (e.tt <= 0 && d < 16) { e.tt = e.hp < e.maxHp * .4 ? 4.6 : 6; bossTele(e); return; }
   }
   if (e.arch === 'caster') { if (d > 11) go(1); else if (d < 6) go(-1, .8); else { const sd = Math.sin(G.time * .5 + e.id) > 0 ? 1 : -1, st = sp * dt * .55; moveEnt(e, dz / d * st * sd, -dx / d * st * sd, e.r * .8); e.walk += st * 1.6; } // keeps moving sideways so it is harder to line up
@@ -1453,7 +1475,7 @@ function drawTele(a, c, k, fl) { const cw = GLX.col(0xffd0a0), L = areaLines(a);
 function update(dt) {
   if (typeof UI !== 'undefined' && UI.panelOpen && UI.panelOpen()) { if (!G.online) return; G.menuHold = true; P.iframes = Math.max(P.iframes || 0, .4); P.move = P.atk = null; } else G.menuHold = false; // menus pause the game; online, where the world cannot stop, they shield you instead
   if (G.cine) { const c = G.cine; c.t += dt; if (c.t >= c.dur) G.cine = null; else if (!G.online) dt *= c.kind === 'intro' ? .3 : .15 + .85 * Math.pow(c.t / c.dur, 2); } /* build 0053: boss moments slow the world (solo only, so online play stays in step) */
-  if (G.boss && G.boss.alive && G.boss.awake && !G.inTown && !G.cine) { const bk = G.zone && G.zone.def ? G.zone.def.seed + ':' + (G.zone.def.depth || 0) : ''; if (G.cineKey !== bk) { G.cineKey = bk; const b = G.boss; G.cine = { kind: 'intro', t: 0, dur: 2.6, x: b.x, z: b.z, e: b }; P.iframes = Math.max(P.iframes || 0, 4); /* build 0072 (Lee's playtest): nothing can hurt you while the camera shows the guardian, and for a moment after */ if (stBrand(b) && UI.zoneBanner) UI.zoneBanner(b.name, 'Bound to ' + STORY_VILLAIN); ring(b.x, b.z, .5, 9, .9, (b.md && b.md.e) || 0xff5a2a); burst(b.x, 1.5, b.z, (b.md && b.md.c2) || 0x6a4a2a, 24, 8); G.shake = Math.min(.7, (G.shake || 0) + .4); } }
+  if (G.boss && G.boss.alive && G.boss.awake && !G.inTown && !G.cine) { const bk = G.zone && G.zone.def ? G.zone.def.seed + ':' + (G.zone.def.depth || 0) : ''; if (G.cineKey !== bk) { G.cineKey = bk; const b = G.boss; G.cine = { kind: 'intro', t: 0, dur: 2.6, x: b.x, z: b.z, e: b }; P.iframes = Math.max(P.iframes || 0, 4); /* build 0072 (Lee's playtest): nothing can hurt you while the camera shows the guardian, and for a moment after */ if (stBrand(b) && UI.zoneBanner) UI.zoneBanner(b.name, b.bd && b.bd.phases ? 'The Prophet himself, at the Heart of Cinders' : 'Bound to ' + STORY_VILLAIN); ring(b.x, b.z, .5, 9, .9, (b.md && b.md.e) || 0xff5a2a); burst(b.x, 1.5, b.z, (b.md && b.md.c2) || 0x6a4a2a, 24, 8); G.shake = Math.min(.7, (G.shake || 0) + .4); } }
   if (G.hitStop > 0) { G.hitStop -= dt; dt *= .12; } // a heavy blow lands: the world holds its breath for a few frames
   if (G.auto && G.hero && G.hero.picks) { const i = pendingPick(G.hero); if (i >= 0) pickSkill(i, skillTiers(G.hero.cls)[i][Math.random() * 2 | 0]); }
   SFX.ambTick(dt); SFX.fight(fightHeat(dt), dt); updAlly(dt); G.time += dt; if (G.shake > 0) G.shake = Math.max(0, G.shake - dt * 1.8);
@@ -1488,7 +1510,8 @@ function update(dt) {
   // drops
   if (G.zone && !G.inTown && !P.dead) for (const o of G.zone.objs) if ((o.kind === 'chest' || o.kind === 'shrine' || o.kind === 'gchest' || o.kind === 'well') && !o.used && Math.hypot(o.x - P.x, o.z - P.z) < (o.kind === 'shrine' || o.kind === 'well' ? 2.2 : 1.6)) interact(o); // walk over chests and shrines to open or touch them
   if (G.zone && !G.inTown && !P.dead) for (const o of G.zone.objs) { if (o.kind !== 'portal' && o.kind !== 'pback') continue; const dd = Math.hypot(o.x - P.x, o.z - P.z), R = o.kind === 'portal' ? 1.9 : 1.4; if (dd < 13 && G.time - (o.humT || -9) > 3.4) { o.humT = G.time; SFX.play('hum'); } if (dd < R && P.gateGo === o && P.inter === o && !o.gone) { interact(o); return; } if (dd > R + 1.5) o.arm = true; else if (dd < R && o.arm && !o.gone) { o.arm = false; if (typeof UI !== 'undefined' && UI.askGate) UI.askGate(o); else { o.gone = true; interact(o); } return; } } // step into a gate to travel
-  for (const d of G.drops.slice()) { d.t += dt; if (d.item && d.t > .5 && G.set.autoLoot !== false && !P.dead && d.item.rar >= G.hero.filter && Math.hypot(d.x - P.x, d.z - P.z) < 1.8 && G.time - (d.tryT || -9) > 2.5) { d.tryT = G.time; pickup(d); continue; } // walk over loot to collect it
+  for (const d of G.drops.slice()) { d.t += dt; if (d.item && !G.hero.got1 && G.hero.level <= 2 && !G.inTown && !P.dead && d.t > .4) { /* build 0072 (Lee's playtest): the very first item is hard to miss: it says so, and it comes to you */ const dd = Math.hypot(d.x - P.x, d.z - P.z); if (!G.firstHint && dd < 20) { G.firstHint = 1; hint('Loot! Walk over the glowing item to pick it up.'); floatText(d.x, 1.8, d.z, 'Loot!', '#ffe08a', 1.6, 18); } if (dd < 10 && dd > .3) { const st = Math.min(dd, 9 * dt); if (!blocked(d.x + (P.x - d.x) / dd * st, d.z + (P.z - d.z) / dd * st, .2)) { d.x += (P.x - d.x) / dd * st; d.z += (P.z - d.z) / dd * st; } } }
+    if (d.item && d.t > .5 && G.set.autoLoot !== false && !P.dead && d.item.rar >= G.hero.filter && Math.hypot(d.x - P.x, d.z - P.z) < 1.8 && G.time - (d.tryT || -9) > 2.5) { d.tryT = G.time; pickup(d); continue; } // walk over loot to collect it
     if (d.globe) { if (Math.hypot(d.x - P.x, d.z - P.z) < 1.8 && P.hp < P.stats.maxLife) pickup(d); } else if ((d.gold || d.q) && d.t > .3) { const dd = Math.hypot(d.x - P.x, d.z - P.z); if (dd < 4.5) { d.x += (P.x - d.x) / dd * 14 * dt; d.z += (P.z - d.z) / dd * 14 * dt; if (dd < .9) pickup(d); } } }
   for (let i = G.fx.length - 1; i >= 0; i--) { const f = G.fx[i]; f.life -= dt; if (f.life <= 0) { G.fx.splice(i, 1); continue; } if (!f.ring && !f.slash && !f.bolt && !f.flash && !f.pillar && !f.shock && !f.scorch && !f.shard && !f.flame && !f.xfl && !f.rem && !f.wisp) { if (f.ember) { f.vx *= .95; f.vz *= .95; f.vy += 15.2 * dt; } else if (f.smoke) { f.vx *= .96; f.vz *= .96; f.vy += 13 * dt; } f.x += f.vx * dt; f.y += f.vy * dt; f.z += f.vz * dt; f.vy -= 14 * dt; if (f.y < .05) { f.y = .05; f.vy *= -.3; if (f.chunk) { f.vx *= .8; f.vz *= .8; f.spin *= .7; } } } }
   for (let i = G.texts.length - 1; i >= 0; i--) { const t = G.texts[i]; t.life -= dt; t.y += dt * 1.6; if (t.life <= 0) G.texts.splice(i, 1); }

@@ -1,4 +1,9 @@
 'use strict';
+const STARTED = Date.now(); // build 0073 (Lee): the build label says how long ago this build went live
+// A fresh deploy starts the server within minutes of the push, so its start time is when the build went live. If the server only
+// started much later (it slept and woke up), fall back to the push time plus a typical deploy, so the label never resets to "just now".
+const BUILT_AT = +((/const BUILT_AT = (\d+)/.exec(require('fs').readFileSync(require('path').join(__dirname, 'public', 'js', 'data.js'), 'utf8')) || [])[1] || 0);
+const LIVE_AT = BUILT_AT && STARTED - BUILT_AT > 20 * 60000 ? BUILT_AT + 4 * 60000 : STARTED;
 // Cinderdeep dedicated server. No dependencies: plain Node 18+.
 // Serves the game from ./public and runs one shared world per party over WebSockets at /ws.
 const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto'), vm = require('vm');
@@ -29,8 +34,10 @@ function rescale(room, except) { const r = room.ctx.srvScale(room.players.size);
 // build 0034: up to three AI teammates ride on the party host's position update: [class, x, z, rot, moving, gear tier, attacking]
 function cleanAi(a) { if (!Array.isArray(a)) return []; const out = []; for (const t of a.slice(0, 3)) { if (!Array.isArray(t)) continue; const n = t.slice(0, 7).map(v => +v || 0); if (!n.every(isFinite)) continue; out.push([Math.max(0, Math.min(4, n[0] | 0)), Math.round(n[1] * 100) / 100, Math.round(n[2] * 100) / 100, Math.round(n[3] * 100) / 100, n[4] ? 1 : 0, Math.max(1, Math.min(4, n[5] | 0)), n[6] ? 1 : 0]); } return out; }
 function clean(s, n) { return String(s == null ? '' : s).replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, n); }
+// build 0074 (security): every connection gets a message budget. A normal client sends well under it; a flood is dropped, and a big one closes the connection.
+function budget(p) { const now = Date.now(); if (p.bT === undefined) { p.bT = now; p.b = 240; } p.b = Math.min(240, p.b + (now - p.bT) * .15); p.bT = now; p.b--; if (p.b < -400) { p.conn.close(); return false; } return p.b >= 0; }
 function onMessage(p, m) {
-  if (!m || typeof m.t !== 'string') return;
+  if (!m || typeof m.t !== 'string') return; if (!budget(p)) return;
   if (m.t === 'join') {
     if (p.room) return; p.name = clean(m.name, 16) || 'Warden'; let code = (clean(m.room, 12) || 'public').toLowerCase(); p.lvl = Math.max(1, Math.min(60, m.lvl | 0)); p.cls = clean(m.cls, 14) || 'warden';
     // auto-party (build 0020): a blank party code puts you with other players of a similar level, up to 6 per party
@@ -52,7 +59,7 @@ function onMessage(p, m) {
   }
   const room = p.room; if (!room) return;
   switch (m.t) {
-    case 'p': { const x = +m.x, z = +m.z; if (!isFinite(x) || !isFinite(z)) return; const sp = room.ctx.SP[p.id]; sp.x = x; sp.z = z; sp.dead = !!m.dead; sp.lvl = p.lvl = Math.max(1, Math.min(60, m.lvl | 0)); p.st = [p.id, x, z, +m.r || 0, m.mv ? 1 : 0, m.a | 0, Math.max(0, Math.min(100, m.hp | 0)), p.lvl, m.dead ? 1 : 0, clean(m.g, 24), cleanAi(m.ai)]; p.hc = !!m.hc; if (m.dead && p.hc) p.hcDead = true; lbNote(p, m.pl, m.dp, room, m.fc); break; }
+    case 'p': { const x = +m.x, z = +m.z; if (!isFinite(x) || !isFinite(z)) return; const sp = room.ctx.SP[p.id]; sp.x = x; sp.z = z; sp.dead = !!m.dead; { const want = Math.max(1, Math.min(60, m.lvl | 0)), now = Date.now(); if (want > p.lvl) { if (now - (p.lvlT || 0) > 10000) { p.lvlT = now; p.lvlUp = 0; } const room0 = Math.max(0, 3 - (p.lvlUp || 0)), step = Math.min(want - p.lvl, room0); p.lvlUp = (p.lvlUp || 0) + step; p.lvl += step; } else p.lvl = want; sp.lvl = p.lvl; } /* build 0074: a level can only climb a few steps at a time, so a hero cannot jump to 60 mid-game */ p.st = [p.id, x, z, +m.r || 0, m.mv ? 1 : 0, m.a | 0, Math.max(0, Math.min(100, m.hp | 0)), p.lvl, m.dead ? 1 : 0, clean(m.g, 24), cleanAi(m.ai)]; p.hc = !!m.hc; if (m.dead && p.hc) p.hcDead = true; lbNote(p, m.pl, m.dp, room, m.fc); break; }
     case 'hit': room.ctx.srvHit(p.id, m); break;
     case 'fx': cast(room, { t: 'fx', k: clean(m.k, 2), x: +m.x || 0, z: +m.z || 0, rot: +m.rot || 0, r: Math.min(80, +m.r || 0), arc: +m.arc || 0, c: m.c | 0 }, p.id); break;
     case 'found': { const s = clean(m.item, 60), now = Date.now(); if (!s || (m.r !== 3 && m.r !== 4) || now - (p.lastFound || 0) < 4000) break; p.lastFound = now; const raw = JSON.stringify({ t: 'found', n: p.name, item: s, r: m.r }); for (const r of rooms.values()) for (const q of r.players.values()) q.conn.sendRaw(raw); break; }
@@ -65,7 +72,7 @@ function onMessage(p, m) {
       { const busy = [...room.players.values()].filter(q => q.id !== p.id && room.ctx.SP[q.id] && !room.ctx.SP[q.id].dead).map(q => q.name); if (busy.length) { p.conn.send({ t: 'note', m: (busy.length === 1 ? busy[0] + ' is' : busy.length + ' party members are') + ' still fighting on the floor. The rift opens when everyone is back in town.' }); break; } }
       room.riftT = now; let lv = 1; for (const q of room.players.values()) lv = Math.max(lv, q.lvl); cast(room, room.ctx.srvNewZone(lv, room.players.size, 'rift')); break; } // open a timed rift for the whole party
     case 'next': if (room.ctx.srvCleared()) { let lv = 1; for (const q of room.players.values()) lv = Math.max(lv, q.lvl); cast(room, room.ctx.srvNewZone(lv, room.players.size, true)); } break;
-    case 'give': { const q = room.players.get(m.to | 0); if (q && m.item && typeof m.item === 'object' && JSON.stringify(m.item).length < 2000) q.conn.send({ t: 'give', from: p.id, n: p.name, item: m.item, back: !!m.back }); break; }
+    case 'give': { const q = room.players.get(m.to | 0), now = Date.now(); if (!q || !m.item || typeof m.item !== 'object' || JSON.stringify(m.item).length >= 2000) break; if (now - (p.giveT || 0) < 400 || !room.ctx.itemLegit(m.item, p.lvl + 5)) { if (!m.back) p.conn.send({ t: 'give', from: p.id, n: 'The server', item: m.item, back: true }); break; } p.giveT = now; q.conn.send({ t: 'give', from: p.id, n: p.name, item: m.item, back: !!m.back }); break; } /* build 0074: only an item that could really drop at the giver's level can be given */
   }
 }
 // build 0072 (Lee's playtest): a steady players-online count. A hero who drops and comes back (a reconnect, a
@@ -93,14 +100,15 @@ function lbPut(list, e, score) { const k = e.n + '|' + e.c, i = list.findIndex(q
 function lbRift(room, msg) { LB.rift = LB.rift || []; for (const q of room.players.values()) { if (!q.name) continue; lbPut(LB.rift, { n: q.name, c: q.cls, l: q.lvl | 0, d: msg.tier, ms: msg.ms }, 1e9 - msg.ms); } } // fastest rift clears
 function lbToday() { const d = new Date(); return String(d.getUTCFullYear()).slice(2) + String(d.getUTCMonth() + 1).padStart(2, '0') + String(d.getUTCDate()).padStart(2, '0'); }
 function lbNote(p, pl, dp, room, fc) {
-  if (!p.name) return; const lvl = p.lvl | 0, par = Math.max(0, Math.min(99999, pl | 0)), d = Math.max(1, Math.min(9999, dp | 0)), cl = Math.max(0, Math.min(9999, fc | 0)), e = { n: p.name, c: p.cls, l: lvl, p: par, d: cl, h: p.hc ? 1 : 0, x: p.hcDead ? 1 : 0 }; /* the floors board counts floors completed (Lee, Nov 13) */
+  if (!p.name) return; const fl = room && room.ctx.srvFloor ? room.ctx.srvFloor() | 0 : 0; if (room && room.ctx.srvCleared && room.ctx.srvCleared() && !(room.ctx.srvIsRift && room.ctx.srvIsRift())) p.best = Math.max(p.best || 0, fl); /* build 0074: the boards only count floors this server saw you clear */
+  const lvl = p.lvl | 0, par = Math.max(0, Math.min(99999, pl | 0)), d = Math.max(1, Math.min(9999, dp | 0, fl || 9999)), cl = Math.max(0, Math.min(9999, fc | 0, p.best || 0)), e = { n: p.name, c: p.cls, l: lvl, p: par, d: cl, h: p.hc ? 1 : 0, x: p.hcDead ? 1 : 0 }; /* the floors board counts floors completed (Lee, Nov 13) */
   lbPut(LB.lvl, e, lvl * 100000 + (lvl >= 60 ? par : 0)); if (cl > 0) lbPut(LB.deep, e, cl);
   if (room && room.daily) { const td = lbToday(); if (room.daily === td) { if (LB.dlyDate !== td) { LB.dlyDate = td; LB.dly = []; } if (d > 1) lbPut(LB.dly, Object.assign({}, e, { d: d - 1 }), d - 1); } }
 }
 // ---- http + websocket ----
 const server = http.createServer((req, res) => {
   let u = decodeURIComponent(req.url.split('?')[0]);
-  if (u === '/cinderdeep-server') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ cinderdeep: 1, build: BUILD, players: onlineCount() })); return; }
+  if (u === '/cinderdeep-server') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ cinderdeep: 1, build: BUILD, players: onlineCount(), upAgo: Date.now() - LIVE_AT })); /* build 0073: how long this build has been live, by the server's own clock */ return; }
   if (u === '/parties') { const list = []; for (const [code, r] of rooms) { if (!r.players.size || /^solo/.test(code)) continue; const pl = [...r.players.values()].map(q => ({ n: q.name, c: q.cls, l: q.lvl | 0 })); list.push({ code, players: pl, floor: r.ctx.srvFloor ? r.ctx.srvFloor() : 1, daily: !!r.daily }); } list.sort((a, b) => b.players.length - a.players.length); res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ parties: list.slice(0, 40), max: PARTY_MAX })); return; } // party browser (build 0021)
   if (u === '/leaderboard') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ build: BUILD, lvl: LB.lvl, deep: LB.deep, rift: LB.rift || [], daily: LB.dlyDate === lbToday() ? LB.dly || [] : [], today: lbToday() })); return; }
   if (u === '/favicon.ico') { res.writeHead(204); res.end(); return; }
@@ -126,7 +134,7 @@ class Conn {
       if (len > 65536 || !masked) return this.close(); if (b.length < off + 4 + len) return;
       const mask = b.subarray(off, off + 4), data = Buffer.from(b.subarray(off + 4, off + 4 + len)); for (let i = 0; i < len; i++) data[i] ^= mask[i & 3]; this.buf = b.subarray(off + 4 + len);
       if (op === 8) return this.close(); if (op === 9) { this.ctl(10, data.subarray(0, 125)); continue; } if (op === 10) { this.alive = true; continue; }
-      if (op === 1 || op === 0) { this.frag.push(data); if (fin) { const s = Buffer.concat(this.frag).toString('utf8'); this.frag = []; let m = null; try { m = JSON.parse(s); } catch (e) { } if (m && this.onmsg) this.onmsg(m); } }
+      if (op === 1 || op === 0) { this.fragN = (this.fragN || 0) + data.length; if (this.fragN > 65536) return this.close(); this.frag.push(data); if (fin) this.fragN = 0; if (fin) { const s = Buffer.concat(this.frag).toString('utf8'); this.frag = []; let m = null; try { m = JSON.parse(s); } catch (e) { } if (m && this.onmsg) this.onmsg(m); } }
     }
   }
 }

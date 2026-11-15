@@ -277,7 +277,7 @@ const UI = (() => {
     el.onclick = e => { if (!e.target.closest('[data-f]')) return; i++; if (i < lines.length) { show(); SFX.play('pickup'); } else { el.classList.add('hide'); el.onclick = null; if (done) done(); } }; }
   U.scene = scene;
   // build 0068: the story goal in the quest box
-  function storyHud() { if (typeof stCur !== 'function' || G.zone && G.zone.def && G.zone.def.rift) return ''; const c = stCur(), A = stAct(); if (!A) return typeof STORY !== 'undefined' && G.hero && G.hero.story ? '<div class="tqH">' + STORY[STORY.length - 1].n + ' complete. The story continues in the next update.</div>' : ''; if (!c) return '';
+  function storyHud() { if (typeof stCur !== 'function' || G.zone && G.zone.def && G.zone.def.rift) return ''; const c = stCur(), A = stAct(); if (!A) return typeof STORY !== 'undefined' && G.hero && G.hero.story ? '<div class="tqH">' + 'The story is complete. Push deeper, or test yourself in the Rifts at the Rift Stone in Emberwatch.</div>' : ''; if (!c) return '';
     return '<div class="tqT"><em>' + A.n + ' · ' + A.t + '</em></div><div class="tqH' + (c.k === 'talk' ? ' new' : '') + '">' + (c.k === 'talk' && !G.inTown ? 'Go to town: ' : '') + c.goal + (c.k === 'rescue' && !G.inTown && G.zone && G.zone.def && (G.zone.def.depth || 1) < c.d ? ' (floor ' + c.d + ')' : '') + '</div>'; }
   // build 0028: the Town Planner, spend gold and shards to grow Emberwatch
   function openPlanner() {
@@ -324,7 +324,13 @@ const UI = (() => {
   $('bInvite').onclick = () => invite(true); $('mInvite').onclick = () => invite(false);
   U.iconSvg = it => iconSvg(it);
   U.buildBar = () => { buildBar(); if (sklOpen) renderSkl(); };
+  // build 0073 (Lee's screenshot): the right-hand column stacks itself, so a long quest never covers the online count, the party list or the kill streak
+  let stackT = 0; function stackRight(dt) { stackT -= dt; if (stackT > 0) return; stackT = .2; let y = 0; const qb = $('questBox'), mi = $('mini'); if (mi) y = mi.getBoundingClientRect().bottom; if (qb && !qb.classList.contains('hide')) { const r = qb.getBoundingClientRect(); if (r.height) y = Math.max(y, r.bottom); }
+    for (const id of ['onl', 'party']) { const el = $(id); if (!el) continue; if (el.classList.contains('hide')) continue; const cs = getComputedStyle(el); if (cs.right === 'auto' || cs.position !== 'fixed') continue; el.style.top = Math.round(y + 4) + 'px'; const r = el.getBoundingClientRect(); if (r.height) y = r.bottom; }
+    const sk = $('streak'); if (sk) { const cs = getComputedStyle(sk); sk.style.top = ''; if (cs.right !== 'auto' && parseFloat(getComputedStyle(sk).top) < y + 8 && sk.getBoundingClientRect().left > innerWidth * .6) sk.style.top = Math.round(y + 8) + 'px'; } }
   function hud(dt) {
+    stackRight(dt); placeMute(dt);
+    { const b = G.boss; if (b && b.alive && b.bd && b.bd.phaseLines) { const ph = b.hp > b.maxHp * .66 ? 0 : b.hp > b.maxHp * .33 ? 1 : 2; if (ph > (b.phShown || 0)) { b.phShown = ph; const L = b.bd.phaseLines[ph]; if (L) { U.zoneBanner(L[0], L[1]); SFX.play('boss'); } } } } /* build 0074: Vaeloth's phases are announced */
     const h = G.hero, s = P.stats, cls = CLASSES[h.cls];
     $('gLife').firstElementChild.style.height = clamp(P.hp / s.maxLife * 100, 0, 100) + '%'; $('gLife').lastElementChild.textContent = Math.ceil(P.hp) + ' / ' + s.maxLife;
     $('gFury').firstElementChild.style.height = clamp(P.mana / s.maxMana * 100, 0, 100) + '%'; $('gFury').lastElementChild.textContent = Math.floor(P.mana) + ' ' + cls.res.n;
@@ -510,7 +516,7 @@ const UI = (() => {
     if (k === 'enter' && P.dead && !$('death').classList.contains('hide') && $('revive').offsetParent !== null) { e.preventDefault(); $('revive').onclick(); return; } /* build 0072 (Lee's playtest): Enter rises again */
     if (k === '1') useFlask(); else if (k === 'i' || k === 'c' || k === 'b') toggleInv(); else if (k === 's' || k === 'k') toggleSkl(); else if (k === ' ') { e.preventDefault(); dodge(IN.gx, IN.gz); } /* Lee, Nov 14: Space is a dodge on PC */ else if (k === 'f' || k === 'e') { e.preventDefault(); useNear(); }
     else if (k === 'z') { G.hero.filter = (G.hero.filter + 1) % 4; hint(['Showing all loot.', 'Skipping Common loot.', 'Skipping Common and Magic loot.', 'Only Legendary and Mythic loot.'][G.hero.filter]); }
-    else if (k === 'm') { G.set.vol = G.set.vol > 0 ? 0 : 70; applySet(); hint(G.set.vol ? 'Sound on.' : 'Sound off.'); } else if (k === 'o') toggleSet(); else if (k === 'g') { G.set.gps = !G.set.gps; GPS.t = 0; applySet(); hint(G.set.gps ? 'Quest path on.' : 'Quest path off.'); } else if (k === '\u0000') toggleAuto(); else if (k === '\u0001') cycleSpeed(); else if (k === 'enter' && G.online) { e.preventDefault(); openChat(); } else if (k === 't') { if (G.inTown) leaveTown(); else enterTown(); } else if (k === 'escape') { if (tip.classList.contains('pin')) unpin(); else if (!$('folk').classList.contains('hide')) $('folk').classList.add('hide'); else if (!$('lb').classList.contains('hide')) $('lb').classList.add('hide'); else if (!$('set').classList.contains('hide')) toggleSet(false); else if (townMode) closeTown(); else if (invOpen) toggleInv(false); else toggleSkl(false); }
+    else if (k === 'm') { toggleMute(); hint(G.set.mute ? 'Sound off.' : 'Sound on.'); } else if (k === 'o') toggleSet(); else if (k === 'g') { G.set.gps = !G.set.gps; GPS.t = 0; applySet(); hint(G.set.gps ? 'Quest path on.' : 'Quest path off.'); } else if (k === '\u0000') toggleAuto(); else if (k === '\u0001') cycleSpeed(); else if (k === 'enter' && G.online) { e.preventDefault(); openChat(); } else if (k === 't') { if (G.inTown) leaveTown(); else enterTown(); } else if (k === 'escape') { if (tip.classList.contains('pin')) unpin(); else if (!$('folk').classList.contains('hide')) $('folk').classList.add('hide'); else if (!$('lb').classList.contains('hide')) $('lb').classList.add('hide'); else if (!$('set').classList.contains('hide')) toggleSet(false); else if (townMode) closeTown(); else if (invOpen) toggleInv(false); else toggleSkl(false); }
   });
   window.addEventListener('keyup', e => { IN.shift = e.shiftKey; IN.keys[String(e.key || '').toLowerCase()] = false; }); /* some browsers send key events with no key (autofill, password managers): never crash on those */
   function toggleAuto() { G.auto = !G.auto; BOT.path = null; P.move = P.atk = null; hint(G.auto ? 'Auto-play on. The hero now plays by itself; you can still step in.' : 'Auto-play off.'); }
@@ -525,8 +531,14 @@ const UI = (() => {
   };
   $('chatCh').onclick = () => { setCh(!chatGlobal); $('chat').focus(); }; setCh(true);
   // ---- settings ----
+  /* build 0073 (Lee, Nov 15): one-tap mute, same top-right corner on the menu and in game, remembered between visits, M key */
+  function muteIcon() { const b = $('mute'); if (!b) return; const m = !!G.set.mute || !(G.set.vol > 0); b.classList.toggle('off', m); b.setAttribute('aria-pressed', m ? 'true' : 'false'); b.title = m ? 'Sound off (M to turn on)' : 'Sound on (M to mute)'; b.setAttribute('aria-label', m ? 'Turn sound on' : 'Mute sound'); }
+  function toggleMute() { const st = G.set; if (st.mute || !(st.vol > 0)) { st.mute = false; if (!(st.vol > 0)) st.vol = 70; } else st.mute = true; applySet(); SFX.unlock(); if (!st.mute) SFX.play('pickup'); const v = $('volN'); if (v) v.textContent = st.vol + '%'; }
+  U.toggleMute = toggleMute;
+  { const b = $('mute'); if (b) { b.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); toggleMute(); b.blur(); }); b.addEventListener('pointerdown', e => e.stopPropagation()); } }
+  let muteT = 0; function placeMute(dt) { muteT -= dt; if (muteT > 0) return; muteT = .25; const b = $('mute'), mi = $('mini'); if (!b) return; if (G.state === 'play' && mi && !mi.classList.contains('hide')) { const r = mi.getBoundingClientRect(); if (r.width) { b.style.top = Math.round(r.top + 4) + 'px'; b.style.right = Math.round(innerWidth - r.right + 4) + 'px'; return; } } b.style.top = b.style.right = ''; }
   function loadSet() { try { const o = JSON.parse(localStorage.getItem('cinderdeep_settings')); if (o && typeof o === 'object') Object.assign(G.set, o); } catch (e) { } applySet(); }
-  function applySet() { const st = G.set; SFX.vol(clamp(st.vol, 0, 100) / 100); SFX.music(clamp(st.mus === undefined ? 40 : st.mus, 0, 100) / 100); if (st.gfx !== 'auto') GLX.env.q = clamp(+st.gfx | 0, 0, 2); $('mini').classList.toggle('hide', !st.map); GLX.env.shadows = st.shadows !== false; if (GLX.env.scale !== (+st.scale || 100) / 100) { GLX.env.scale = (+st.scale || 100) / 100; try { GLX.resize(); } catch (_) { } } $('chatlog').style.display = st.chat === false ? 'none' : ''; $('fps').classList.toggle('hide', !st.fps); G.tj = !!st.joy && !!window.matchMedia && matchMedia('(pointer:coarse)').matches; document.body.classList.toggle('tj', G.tj); { const z = st.isz === undefined ? 1 : clamp(+st.isz | 0, 0, 2); document.body.classList.toggle('isz1', z === 1); document.body.classList.toggle('isz2', z === 2); } /* build 0035: item size */ if (!G.tj) { IN.joy.on = false; IN.joy.x = IN.joy.z = 0; } try { localStorage.setItem('cinderdeep_settings', JSON.stringify(st)); } catch (e) { } }
+  function applySet() { const st = G.set; SFX.vol(st.mute ? 0 : clamp(st.vol, 0, 100) / 100); muteIcon(); SFX.music(clamp(st.mus === undefined ? 40 : st.mus, 0, 100) / 100); if (st.gfx !== 'auto') GLX.env.q = clamp(+st.gfx | 0, 0, 2); $('mini').classList.toggle('hide', !st.map); GLX.env.shadows = st.shadows !== false; if (GLX.env.scale !== (+st.scale || 100) / 100) { GLX.env.scale = (+st.scale || 100) / 100; try { GLX.resize(); } catch (_) { } } $('chatlog').style.display = st.chat === false ? 'none' : ''; $('fps').classList.toggle('hide', !st.fps); G.tj = !!st.joy && !!window.matchMedia && matchMedia('(pointer:coarse)').matches; document.body.classList.toggle('tj', G.tj); { const z = st.isz === undefined ? 1 : clamp(+st.isz | 0, 0, 2); document.body.classList.toggle('isz1', z === 1); document.body.classList.toggle('isz2', z === 2); } /* build 0035: item size */ if (!G.tj) { IN.joy.on = false; IN.joy.x = IN.joy.z = 0; } try { localStorage.setItem('cinderdeep_settings', JSON.stringify(st)); } catch (e) { } }
   function renderSet() {
     const st = G.set, sel = (id, cur, opts) => `<select data-set="${id}">${opts.map(o => `<option value="${o[0]}"${String(cur) === String(o[0]) ? ' selected' : ''}>${o[1]}</option>`).join('')}</select>`, chk = (id, on) => `<input type="checkbox" data-set="${id}"${on ? ' checked' : ''}>`;
     $('set').innerHTML = `<div class="ph"><h3>Settings</h3><button class="xb" data-x="set" aria-label="Close">×</button></div>
@@ -547,11 +559,16 @@ const UI = (() => {
   $('set').addEventListener('input', e => {
     const k = e.target.dataset && e.target.dataset.set; if (!k) return; const st = G.set;
     if (k === 'mus') { st.mus = +e.target.value; $('musN').textContent = st.mus + '%'; applySet(); SFX.unlock(); return; }
-    if (k === 'vol') { st.vol = +e.target.value; $('volN').textContent = st.vol + '%'; applySet(); SFX.unlock(); SFX.play('pickup'); return; }
+    if (k === 'vol') { st.vol = +e.target.value; st.mute = false; $('volN').textContent = st.vol + '%'; applySet(); SFX.unlock(); SFX.play('pickup'); return; }
     if (k === 'gfx') { st.gfx = e.target.value === 'auto' ? 'auto' : +e.target.value; if (st.gfx === 'auto') GLX.env.q = 2; } else if (k === 'filter') { if (G.hero) G.hero.filter = +e.target.value; } else if (k === 'petKind') st.petKind = e.target.value; else if (k === 'scale') st.scale = +e.target.value || 100; else if (k === 'isz') st.isz = clamp(+e.target.value | 0, 0, 2); else st[k] = e.target.checked;
     applySet();
   });
   $('build').textContent = 'Build ' + BUILD; document.title = 'Cinderdeep · build ' + BUILD;
+  // build 0073 (Lee): "Build 0073 · updated 12 min ago", timed by the server, so it is right on every device, and it ticks up while the page is open
+  { let upAt = null; const ago = ms => { const m = Math.floor(ms / 60000); if (m < 1) return 'just now'; if (m < 60) return m + ' min ago'; const h = Math.floor(m / 60); if (h < 48) return h + (h === 1 ? ' hour ago' : ' hours ago'); const d = Math.floor(h / 24); return d + ' days ago'; };
+    const show = () => { if (upAt === null) return; $('build').textContent = 'Build ' + BUILD + ' · updated ' + ago(performance.now() - upAt); };
+    const ask = () => NET.status().then(j => { if (j && j.build === BUILD && j.upAgo >= 0) { upAt = performance.now() - j.upAgo; show(); } });
+    ask(); setInterval(show, 15000); setInterval(ask, 600000); }
   $('bSet').onclick = () => toggleSet(); $('mSet').onclick = () => toggleSet(); loadSet();
   // leaderboard: highest level and deepest floor on the server for this build
   function openLb() {
@@ -594,7 +611,7 @@ const UI = (() => {
     else { $('oRoom').value = code; $('btnNew').click(); } };
   $('mParty').onclick = openParties; $('bParty').onclick = openParties;
   { const xt = $('xpT'), xb = $('xp'); if (xt && xb && xt.parentNode !== xb) xb.appendChild(xt); } // the XP numbers sit on the XP bar itself
-  function toMenu() { $('pick').classList.add('hide'); if (G.state !== 'play') return; menuBuilt = false; saveGame(); NET.close(); G.state = 'menu'; G.auto = false; G.speed = 1; G.inTown = false; G.away = null; closeTown(); toggleInv(false); toggleSkl(false); toggleSet(false); closeChat(); $('chatlog').classList.add('hide'); $('onl').classList.add('hide'); unpin(); $('game').classList.add('hide'); $('death').classList.add('hide'); $('menu').classList.remove('hide'); $('menuMsg').textContent = 'Pick a hero, carve through the Blighted Hollow, slay its guardian, and take the portal deeper.'; renderClasses(); }
+  function toMenu() { $('pick').classList.add('hide'); if (G.state !== 'play') return; menuBuilt = false; saveGame(); NET.close(); G.state = 'menu'; G.auto = false; G.speed = 1; G.inTown = false; G.away = null; closeTown(); toggleInv(false); toggleSkl(false); toggleSet(false); closeChat(); $('chatlog').classList.add('hide'); $('onl').classList.add('hide'); unpin(); $('game').classList.add('hide'); $('death').classList.add('hide'); $('menu').classList.remove('hide'), $('mute').style.top = $('mute').style.right = ''; $('menuMsg').textContent = 'Pick a hero, carve through the Blighted Hollow, slay its guardian, and take the portal deeper.'; renderClasses(); }
   $('bMenu').onclick = toMenu; $('deathMenu').onclick = toMenu; $('bTown').onclick = $('tTown').onclick = () => { if (G.inTown) leaveTown(); else enterTown(); }; $('chatX').onclick = closeChat;
   document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });   // so Space, Enter and letter keys never re-press the last button
   $('bInv').onclick = () => { toggleSkl(false); toggleInv(); }; $('bSkl').onclick = () => { toggleInv(false); toggleSkl(); };
@@ -608,7 +625,7 @@ const UI = (() => {
     setTimeout(() => { if (G.state !== 'menu' && G.hero && pendingPick(G.hero) >= 0) openPick(); }, 700);
   }
   U.netZone = () => { closeTown(); $('menu').classList.add('hide'); $('game').classList.remove('hide'); $('death').classList.add('hide'); buildBar(); };
-  U.netFail = msg => { $('menu').classList.remove('hide'); $('menuMsg').textContent = msg; };
+  U.netFail = msg => { $('menu').classList.remove('hide'), $('mute').style.top = $('mute').style.right = ''; $('menuMsg').textContent = msg; };
   U.lost = msg => { $('recon').classList.add('hide'); toMenu(); $('menuMsg').textContent = msg; };
   // build 0070: the box shows how long it has been trying, and always offers solo play so nobody is stuck on it
   U.reconnecting = (n, quiet, secs, bye) => { const R = $('recon'); R.classList.toggle('hide', !n); if (!n) { if (!quiet) hint('Reconnected. You are right where you were.'); return; }
@@ -674,7 +691,7 @@ const UI = (() => {
   { const mn = $('menu'), skip = e => e.target.closest('button, input, a, label, select, .ccard, #news, .ph, #classes, #lb, #parties, #folk, textarea');
     mn.addEventListener('pointermove', e => { if (skip(e)) { if (menuHover) { menuHover = null; mn.style.cursor = ''; } return; } const id = menuHit(e.clientX, e.clientY); if (id !== menuHover) { menuHover = id; mn.style.cursor = id ? 'pointer' : ''; } });
     mn.addEventListener('click', e => { const tg = e.target.closest('.mtag'); if (tg) { pickClass(tg.dataset.c); return; } if (skip(e)) return; const id = menuHit(e.clientX, e.clientY); if (id) pickClass(id); });
-    addEventListener('keydown', e => { if ($('menu').classList.contains('hide') || (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName))) return; const k = String(e.key || ''), i = CLASS_IDS.indexOf(selCls); if (k === 'ArrowLeft' || k === 'ArrowRight') { e.preventDefault(); pickClass(CLASS_IDS[(i + (k === 'ArrowLeft' ? CLASS_IDS.length - 1 : 1)) % CLASS_IDS.length]); } else if (k === 'Enter' && !$('btnNew').disabled) { e.preventDefault(); $('btnNew').click(); } }); }
+    addEventListener('keydown', e => { if ($('menu').classList.contains('hide') || (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName))) return; const k = String(e.key || ''), i = CLASS_IDS.indexOf(selCls); if (k === 'ArrowLeft' || k === 'ArrowRight') { e.preventDefault(); pickClass(CLASS_IDS[(i + (k === 'ArrowLeft' ? CLASS_IDS.length - 1 : 1)) % CLASS_IDS.length]); } else if (k === 'Enter' && !$('btnNew').disabled) { e.preventDefault(); $('btnNew').click(); } else if ((k === 'm' || k === 'M') && !e.repeat && !e.ctrlKey && !e.metaKey) toggleMute(); }); }
   function menuTags() { const box = $('mtags'); if (!box) return; const show = !$('menu').classList.contains('hide'); box.style.display = show ? '' : 'none'; if (!show) return;
     if (!box.__made) { box.__made = 1; box.innerHTML = CLASS_IDS.map(id => `<div class="mtag" data-c="${id}" style="--cc:#${(CLASS_COL[id] || 0xd8b060).toString(16).padStart(6, '0')}">${CLASSES[id].n}</div>`).join(''); box.addEventListener('click', e => { const tg = e.target.closest('.mtag'); if (tg) pickClass(tg.dataset.c); }); }
     for (const el of box.children) { const id = el.dataset.c, r = menuSpots[id]; if (!r || (innerWidth < 560 && id !== selCls)) { el.style.display = 'none'; continue; } el.style.display = ''; const hw = (el.offsetWidth || 80) / 2 + 4; el.style.left = Math.round(Math.max(hw, Math.min(innerWidth - hw, r[0]))) + 'px'; el.style.top = Math.round(r[1]) + 8 + 'px'; el.classList.toggle('on', id === selCls); } }

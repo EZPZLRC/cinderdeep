@@ -5,7 +5,7 @@ const NET = (() => {
   const STN = ['chase', 'wind', 'rec', 'charge'], WT = ['sword', 'axe', 'maul', 'staff', 'bow', 'fist'], ISL = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring'];
   const txt = (v, n) => String(v == null ? '' : v).replace(/[<>&"'`]/g, '').slice(0, n);
   function cleanItem(i) {
-    if (!i || typeof i !== 'object' || !ISL.includes(i.slot) || !Array.isArray(i.aff)) return null;
+    if (!i || typeof i !== 'object' || !ISL.includes(i.slot) || !Array.isArray(i.aff) || (typeof itemLegit === 'function' && !itemLegit(i))) return null; /* build 0074: a gift has to be an item the game could really make */
     const o = { id: itemId++, slot: i.slot, rar: clamp(i.rar | 0, 0, 4), ilvl: clamp(i.ilvl | 0, 1, 99), aff: [], name: txt(i.name, 64) || 'Item', base: txt(i.base, 24) };
     for (const a of i.aff.slice(0, 6)) if (a && STATS[a.k] && isFinite(+a.v)) o.aff.push({ k: a.k, v: +a.v });
     if (i.slot === 'weapon') { if (!Array.isArray(i.dmg) || !isFinite(+i.dmg[0]) || !isFinite(+i.dmg[1])) return null; o.dmg = [Math.max(1, +i.dmg[0]), Math.max(1, +i.dmg[1])]; o.spd = clamp(+i.spd || 1, .5, 2.5); o.wt = WT.includes(i.wt) ? i.wt : 'sword'; }
