@@ -242,6 +242,21 @@ body.tj .sk:nth-child(5){right:172px;bottom:100px}
 html,body,#game,#hud,button,.sk{touch-action:manipulation}#gl{touch-action:none}
 body{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-text-size-adjust:100%}input,textarea{-webkit-user-select:text;user-select:text}
 .tabs button[data-b]{opacity:1;text-transform:none;letter-spacing:.02em}.tabs button.warn{border-color:#ff6a5a;color:#ffb0a0}
+#wbar{margin-top:5px;padding-top:4px;border-top:1px solid #4a3d28;color:#d9b8ff;font-size:.92em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#wbar .wbB{height:4px;background:#2a2218;border-radius:2px;margin-top:3px;overflow:hidden}#wbar .wbB i{display:block;height:100%;width:0;background:linear-gradient(90deg,#7a3ac0,#c070ff);transition:width .5s}#wbar.up{color:#f3dcff;font-weight:700}#wbar.up .wbB i{background:linear-gradient(90deg,#c070ff,#fff)}
+#party button.wbgo{border-color:#c070ff;color:#f3dcff;background:linear-gradient(#3a1c56,#24103a);font-weight:700;box-shadow:0 0 12px rgba(192,112,255,.55)}
+#bossbar.wb .bf{background:linear-gradient(90deg,#7a3ac0,#c070ff)!important}#bossbar.wb .bn{color:#e6c8ff!important}
+#gateCd{position:fixed;left:50%;top:26%;transform:translateX(-50%);z-index:27;pointer-events:none;text-align:center;padding:10px 22px;border-radius:6px;background:rgba(10,8,16,.82);border:1px solid #b48cff;box-shadow:0 0 22px rgba(122,208,255,.45);max-width:88vw}#gateCd b{display:block;font-size:24px;letter-spacing:.06em;color:#eaf6ff;font-weight:700}#gateCd span{display:block;margin-top:2px;font-size:12.5px;color:#b9c8e0}
+@media (max-width:760px),(max-height:500px){#gateCd{padding:7px 14px}#gateCd b{font-size:18px}#gateCd span{font-size:11px}}
+#quest{font-weight:700;color:#ffe9a8;text-shadow:0 1px 2px #000}#questBox{border-color:#c9a45a;border-left:3px solid #ffd84a;background:rgba(5,8,6,.82)}#tq .tqH{font-weight:600;color:#f0e4c8}#tq .tqH.new{font-weight:700;color:#ffe14a}
+@media (orientation:portrait) and (max-width:760px){#questBox{max-height:150px!important}}@media (orientation:landscape) and (max-height:500px){#questBox{max-height:150px!important}#wbar{margin-top:3px;padding-top:2px}}
+#town.alt1{background:#14110c!important;left:6px!important;right:6px!important;width:auto!important;top:calc(46px + env(safe-area-inset-top))!important;bottom:auto!important;max-height:calc(100vh - 110px)!important;z-index:27!important;padding:10px!important}
+#town.alt1 .ahd{margin:10px 0 4px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold2)}
+#town.alt1 .arow{display:flex;align-items:center;gap:10px;padding:7px 4px;border-bottom:1px solid #2e2619}#town.alt1 .arow .it{width:38px;height:38px;flex:none}#town.alt1 .arow .it.tall{height:54px}
+#town.alt1 .arow .ai{flex:1 1 auto;min-width:0;font-size:13px;line-height:1.25}#town.alt1 .arow .ai b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#town.alt1 .arow .pips{margin:2px 0 0;font-size:14px;letter-spacing:.14em}
+#town.alt1 .arow button{flex:none;min-width:118px;padding:8px 10px;font-size:14px;line-height:1.2}#town.alt1 .arow button small{display:block;font-size:10.5px;font-weight:400;opacity:.85;margin-top:2px}#town.alt1 .arow .amax{flex:none;min-width:118px;text-align:center;color:#ffd84a;font-size:12px}
+@media (orientation:landscape) and (max-height:500px){#town.alt1{left:calc(8px + env(safe-area-inset-left))!important;right:calc(8px + env(safe-area-inset-right))!important;top:6px!important;max-height:calc(100vh - 12px)!important}}
+.pfoot{margin-top:6px}#petBox{border:1px dashed #c98a3a;border-radius:4px;padding:6px 10px;color:#ffcf8a;font-size:12px;flex:1 1 auto}.pfoot button.big{padding:6px 12px;font-size:12.5px}
+@media (min-width:761px) and (min-height:501px){#streak{right:204px}}
 #gateAsk{position:fixed;inset:0;z-index:28;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45)}#gateAsk .box{background:var(--panel);border:1px solid #6b5533;border-radius:4px;padding:18px 22px;text-align:center;box-shadow:0 10px 40px #000;max-width:90vw}#gateAsk h3{margin:0 0 6px;font-size:18px;letter-spacing:.08em;color:var(--gold2)}#gateAsk .row{display:flex;gap:10px;justify-content:center;margin-top:14px}#gateAsk button{min-width:110px;padding:10px 16px}
 .allywrap{display:flex;gap:14px;align-items:flex-start;margin-top:6px}#adoll{display:grid;grid-template-columns:repeat(3,calc(var(--d) + 8px));grid-auto-rows:var(--d);gap:4px;flex:none;--d:30px}#adoll .it{min-width:0;min-height:0}#adoll .it,#adoll .ds{width:100%;height:100%}.allyhelp{line-height:1.45}
 
@@ -414,11 +429,11 @@ body.isz1 .it .ar{width:18px;height:18px;font-size:11px}body.isz2 .it .ar{width:
   <div id="top"><canvas id="port" width="112" height="112"></canvas><div class="n" id="tName"></div><div class="g" id="tGold"></div><div class="z" id="tZone"></div><div id="pbonus" style="font-size:12px;color:#9fd8ff"></div></div>
   <canvas id="mini" width="170" height="170"></canvas>
   <div id="tutTip" class="hide"></div>
-<div id="questBox" class="hide"><div id="riftT" class="hide"></div><span>Quest</span><div id="quest"></div><div id="tq" class="hide"></div></div>
+<div id="questBox" class="hide"><div id="riftT" class="hide"></div><span>Quest</span><div id="quest"></div><div id="tq" class="hide"></div><div id="wbar" class="hide"><div id="wbT"></div><div class="wbB"><i id="wbF"></i></div></div></div>
 <div id="folk" class="hide"></div>
   <div id="goals" class="hide"></div>
   <div id="recon" class="hide"></div>
-  <div id="gateAsk" class="hide"></div>
+  <div id="gateAsk" class="hide"></div><div id="gateCd" class="hide"><b id="gcN"></b><span id="gcT"></span></div>
   <div id="fps" class="hide"></div>
   <div id="spop" class="hide"><div class="sp1" id="sp1"></div><div class="sp2" id="sp2"></div></div>
   <div id="bossIntro" class="hide"><div class="bi1" id="biName"></div><div class="bi2"></div><div class="bi3" id="biSub"></div></div>
@@ -485,12 +500,12 @@ body.isz1 .it .ar{width:18px;height:18px;font-size:11px}body.isz2 .it .ar{width:
   <div id="news"></div>
   <div id="mfoot"><button id="mInvite" class="hide">Share the game</button><button id="mTip" class="hide">♥ Support the game</button><button id="mFeed" class="hide">Send feedback</button></div>
 </div>
-<script src="js/models.js?v=0069"></script>
-<script src="js/gl.js?v=0069"></script>
-<script src="js/data.js?v=0069"></script>
-<script src="js/icons.js?v=0069"></script>
-<script src="js/game.js?v=0069"></script>
-<script src="js/net.js?v=0069"></script>
-<script src="js/ui.js?v=0069"></script>
+<script src="js/models.js?v=0070"></script>
+<script src="js/gl.js?v=0070"></script>
+<script src="js/data.js?v=0070"></script>
+<script src="js/icons.js?v=0070"></script>
+<script src="js/game.js?v=0070"></script>
+<script src="js/net.js?v=0070"></script>
+<script src="js/ui.js?v=0070"></script>
 <div id="mtags"></div></body>
 </html>
