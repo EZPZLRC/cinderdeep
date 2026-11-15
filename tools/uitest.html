@@ -1,0 +1,23 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>OathByte UI test</title>
+<!-- Build 0098 tooling: loads the real public/index.html and scripts, but swaps the WebGL renderer for a stub,
+     so the HUD, menus and panels can be checked in a browser without WebGL (the world stays black).
+     Open as tools/uitest.html?tj=1 for the touch layout. Not served by the game server. -->
+<script>
+(async () => {
+  const q = new URLSearchParams(location.search), base = new URL('../public/', location.href).href;
+  let html = await (await fetch(base + 'index.html', { cache: 'no-store' })).text();
+  const stub = `<script>(() => {
+    const mk = () => { const f = function () { return S; }; const S = new Proxy(f, { get(t, k) { if (k === Symbol.toPrimitive) return () => 0; if (k === 'then') return undefined; if (k === 'length') return 0; if (k === Symbol.iterator) return function* () {}; if (k in t.__p) return t.__p[k]; return S; }, set(t, k, v) { t.__p[k] = v; return true; }, apply() { return S; }, construct() { return S; } }); f.__p = {}; return S; };
+    for (const k of Object.keys(GLX)) if (typeof GLX[k] === 'function' && k !== 'col') GLX[k] = () => mk();
+    GLX.init = () => true; GLX.resize = () => {}; GLX.render = () => {}; GLX.model = () => null; GLX.modelInfo = () => ({}); GLX.envInfo = () => ({}); GLX.groundAt = () => 0; GLX.drawModel = () => {}; GLX.attach = () => null;
+    GLX.toScreen = (x, y, z) => { if (typeof P === 'undefined') return null; const w = innerWidth, h = innerHeight; return [w / 2 + (x - P.x) * 22, h / 2 + (z - P.z) * 16 - (y || 0) * 18]; };
+    window.__glxStub = 1;
+    window.addEventListener('error', e => { const d = document.createElement('div'); d.style.cssText = 'position:fixed;left:0;top:0;z-index:9999;background:#900;color:#fff;font:12px monospace;padding:2px 6px;max-width:100vw'; d.textContent = 'ERR ' + e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno; (document.body || document.documentElement).appendChild(d); });
+  })();<\/script>`;
+  html = html.replace('<head>', '<head><base href="' + base + '">').replace(/(<script src="js\/gl\.js[^"]*"><\/script>)/, '$1' + stub);
+  if (q.get('tj')) html = html.replace('<body', '<body class="tj"');
+  document.open(); document.write(html); document.close();
+})();
+</script>
