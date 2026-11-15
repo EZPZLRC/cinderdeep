@@ -67,7 +67,8 @@ const UI = (() => {
     else if (k === 'o_Tome') { tilt = -8; s = P('M5 3h14v18H5z', M) + R(5, 3, 2.4, 18, '#000') .replace('fill="#000"', DK) + P('M19 4.500h1.200v15H19z', '#e8e2d4') + [P('M5 3h3.500L5 6.500zM19 3h-3.500L19 6.500zM5 21h3.500L5 17.500zM19 21h-3.500L19 17.500z', A), R(9, 5.5, 8, 13, 'none') .replace('fill="none"', `fill="none" stroke="${A}" stroke-width="1"`), P('M8.500 7h8M8.500 17h8', 'none', `stroke="${A}" stroke-width="1.300"`), R(15.5, 10, 4.5, 3.6, A, .6)][a] + [gem(13, 12, 2.2, c), P('M13 8.500l1 2.500 2.600.300-2 1.800.600 2.600-2.200-1.400-2.200 1.400.600-2.600-2-1.800 2.600-.300z', G), C(13, 12, 2.8, 'none', `stroke="${G}" stroke-width="1.200"`) + C(13, 12, .9, G)][b]; }
     else if (k === 'o_Charm') { s = P('M12 1v3', 'none', `stroke="${A}" stroke-width="1.400"`) + C(12, 3.4, 1.6, 'none', `stroke="${A}" stroke-width="1.100"`) + [P('M12 4.500l6 7-6 11-6-11z', M), P('M12 5c5 0 7 4 7 7.500S16 22 12 22s-7-6-7-9.500S7 5 12 5z', M), P('M12 5l2.200 5 5.300.600-4 3.600 1.200 5.300L12 16.800l-4.700 2.700 1.200-5.300-4-3.600 5.300-.600z', M), P('M7 6h10v8c0 4-2.500 6.500-5 8-2.500-1.500-5-4-5-8z', M)][a] + gem(12, 12.5, 2.6, c) + (b ? P('M12 16.500v4', 'none', `stroke="${A}" stroke-width="1"`) : ''); }
     else s = IC.ring;
-    return `<svg viewBox="-1 -1 26 26" stroke="#000" stroke-opacity=".38" stroke-width=".4" stroke-linejoin="round"><g transform="rotate(${tilt} 12 12)"><g filter="url(#ix-${L.kind === 'jewel' ? 'metal' : L.kind})">${s}</g><g fill="url(#ix-sheen)" stroke="none" opacity=".9">${s.replace(/fill="(?!none)[^"]*"/g, '').replace(/stroke="[^"]*"/g, '')}</g></g></svg>`;
+    ixDefs(); /* 3D item icons: every item stands out in 3D: a solid edge for thickness, light on its bevels from the top left and a shadow under it (one shared filter, ix-3d) */
+    return `<svg viewBox="-1 -1 26 26" stroke="#000" stroke-opacity=".38" stroke-width=".4" stroke-linejoin="round"><g filter="url(#ix-3d)"><g transform="rotate(${tilt} 12 12)"><g filter="url(#ix-${L.kind === 'jewel' ? 'metal' : L.kind})">${s}</g><g fill="url(#ix-sheen)" stroke="none" opacity=".9">${s.replace(/fill="(?!none)[^"]*"/g, '').replace(/stroke="[^"]*"/g, '')}</g></g></g></svg>`;
   }
   /* 0030 realistic item look: every material gets lit shading (gradients) and a surface texture (brushed metal, wood grain, leather and cloth weave), all shared defs made once */
   const IX = { n: 0, ids: {} };
@@ -82,6 +83,20 @@ const UI = (() => {
     return `url(#${addGrad('g' + hex, `<radialGradient id="ID" cx=".38" cy=".32" r=".75">${S(0, 1.6)}${S(.25, 1.1)}${S(.6, .72)}${S(1, .32)}</radialGradient>`)})`; }
   const IX_TEX = (id, fx, fy, oct, amt) => `<filter id="${id}" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="${fx} ${fy}" numOctaves="${oct}" seed="7" result="n"/><feColorMatrix in="n" type="matrix" values="1 0 0 0 0  1 0 0 0 0  1 0 0 0 0  0 0 0 0 1" result="g"/><feComposite in="SourceGraphic" in2="g" operator="arithmetic" k1="0" k2="1" k3="${amt}" k4="${-amt / 2}" result="t"/><feComposite in="t" in2="SourceGraphic" operator="in"/></filter>`;
   const IX_FILTERS = IX_TEX('ix-metal', 2.2, .09, 2, .2) + IX_TEX('ix-wood', .16, 1.6, 3, .32) + IX_TEX('ix-leather', .55, .5, 2, .15) + IX_TEX('ix-cloth', 2.8, 2.8, 1, .1)
+    /* 3D look for item icons. Side: the icon darkened and stacked down-right for thickness. Top: lit by a light at the top left (diffuse shading plus a specular glint on the bevels). Shadow: a soft drop under it. */
+    + '<filter id="ix-3d" x="-12%" y="-12%" width="130%" height="135%" color-interpolation-filters="sRGB">'
+    + '<feColorMatrix in="SourceGraphic" type="matrix" values=".38 0 0 0 0  0 .38 0 0 0  0 0 .42 0 0  0 0 0 1 0" result="dk"/>'
+    + [1, 2, 3, 4, 5].map(i => `<feOffset in="dk" dx="${(i * .22).toFixed(2)}" dy="${(i * .3).toFixed(2)}" result="e${i}"/>`).join('')
+    + '<feMerge result="side"><feMergeNode in="e5"/><feMergeNode in="e4"/><feMergeNode in="e3"/><feMergeNode in="e2"/><feMergeNode in="e1"/></feMerge>'
+    + '<feGaussianBlur in="SourceAlpha" stdDeviation=".55" result="bump"/>'
+    + '<feDiffuseLighting in="bump" surfaceScale="2.2" diffuseConstant="1.38" lighting-color="#fff" result="dif"><feDistantLight azimuth="225" elevation="46"/></feDiffuseLighting>'
+    + '<feComposite in="SourceGraphic" in2="dif" operator="arithmetic" k1="1" k2="0" k3="0" k4="0" result="lit"/>'
+    + '<feSpecularLighting in="bump" surfaceScale="2.2" specularConstant=".85" specularExponent="16" lighting-color="#fff8ec" result="spc"><feDistantLight azimuth="225" elevation="40"/></feSpecularLighting>'
+    + '<feComposite in="spc" in2="SourceAlpha" operator="in" result="spi"/>'
+    + '<feComposite in="lit" in2="spi" operator="arithmetic" k1="0" k2="1" k3=".55" k4="0" result="top"/>'
+    + '<feComposite in="top" in2="SourceAlpha" operator="in" result="topc"/>'
+    + '<feOffset in="SourceAlpha" dx="1.3" dy="1.9" result="so"/><feGaussianBlur in="so" stdDeviation="1.1" result="sb"/><feColorMatrix in="sb" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .6 0" result="sh"/>'
+    + '<feMerge><feMergeNode in="sh"/><feMergeNode in="side"/><feMergeNode in="topc"/></feMerge></filter>'
     + '<linearGradient id="ix-sheen" x1="0" y1="0" x2=".7" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset=".4" stop-color="#fff" stop-opacity="0"/><stop offset=".7" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".32"/></linearGradient>';
   function slotSvg(sl) { const k = sl === 'weapon' ? 'sword' : sl === 'offhand' ? 'o_' + OFFHAND[G.hero.cls].n : sl.replace(/\d/, ''); return '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="0">' + (IC[k] || IC.ring) + '</svg>'; }
   function allyBest() { // one click: the Sellsword takes the best weapon and armour from your bag, leaving your own upgrades alone
