@@ -83,6 +83,7 @@
 <div class="small"><span>Build 0076 · © 2026 EZPZLRC</span><span>Made for the browser. Best with a keyboard or a controller.</span></div>
 </div></footer>
 <script>
+const nv=document.querySelector('.nav');const sc=()=>nv.classList.toggle('solid',scrollY>40);addEventListener('scroll',sc);sc();
 document.querySelectorAll('.ib[title="Mute sound"]').forEach(b=>b.onclick=()=>b.classList.toggle('muted'));
 </script><script>
 const mob=matchMedia('(max-width:760px)').matches,a1=art1,a2=art2;let front=a1;
