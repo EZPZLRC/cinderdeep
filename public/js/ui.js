@@ -34,7 +34,7 @@ const UI = (() => {
     o_Charm: '<path d="M12 2l6 8-6 12-6-12z"/>'
   };
   // Every item draws its own picture: shape, material, trim and gem all come from the item's seed.
-  function iconSvg(it) {
+  function iconSvg(it, flat) {
     const L = itemLook(it), M0 = L.mat[1], A0 = L.acc === M0 ? '#3a3440' : L.acc, M = matFill(L.kind, M0), A = matFill('metal', A0), G = gemFill(L.gem[1]), v = L.v, n = (x, k) => Math.min(k - 1, x * k | 0), W = matFill('wood', '#6a4a2c'), HI = 'fill="#fff" fill-opacity=".14" stroke="none"', DK = 'fill="#000" fill-opacity=".3" stroke="none"', LN = `fill="none" stroke="#000" stroke-opacity=".45" stroke-width=".9"`;
     const P = (d, c, x) => `<path d="${d}" fill="${c}" ${x || ''}/>`, R = (x, y, w, h, c, rx) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx || 0}" fill="${c}"/>`, C = (x, y, r, c, e) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}" ${e || ''}/>`, gem = (x, y, r, k) => [C(x, y, r, G), P(`M${x} ${y - r * 1.3}l${r} ${r * 1.3}-${r} ${r * 1.3}-${r}-${r * 1.3}z`, G), R(x - r, y - r, r * 2, r * 2, G, .3), P(`M${x - r} ${y - r * .3}h${r * 2}l-${r} ${r * 1.5}z`, G)][k % 4] + C(x - r * .3, y - r * .3, r * .3, '#fff', 'fill-opacity=".6" stroke="none"');
     let s = '', tilt = 0; const k = it.slot === 'weapon' ? (it.base === 'Wand' ? 'wand' : it.wt) : it.slot === 'offhand' ? 'o_' + it.base : it.slot, a = n(v[0], 4), b = n(v[1], 3), c = n(v[2], 4), d = n(v[3], 2);
@@ -68,8 +68,10 @@ const UI = (() => {
     else if (k === 'o_Charm') { s = P('M12 1v3', 'none', `stroke="${A}" stroke-width="1.400"`) + C(12, 3.4, 1.6, 'none', `stroke="${A}" stroke-width="1.100"`) + [P('M12 4.500l6 7-6 11-6-11z', M), P('M12 5c5 0 7 4 7 7.500S16 22 12 22s-7-6-7-9.500S7 5 12 5z', M), P('M12 5l2.200 5 5.300.600-4 3.600 1.200 5.300L12 16.800l-4.700 2.700 1.200-5.300-4-3.600 5.300-.600z', M), P('M7 6h10v8c0 4-2.500 6.500-5 8-2.500-1.500-5-4-5-8z', M)][a] + gem(12, 12.5, 2.6, c) + (b ? P('M12 16.500v4', 'none', `stroke="${A}" stroke-width="1"`) : ''); }
     else s = IC.ring;
     ixDefs(); /* 3D item icons: every item stands out in 3D: a solid edge for thickness, light on its bevels from the top left and a shadow under it (one shared filter, ix-3d) */
-    return `<svg viewBox="-1 -1 26 26" stroke="#000" stroke-opacity=".38" stroke-width=".4" stroke-linejoin="round"><g filter="url(#ix-3d)"><g transform="rotate(${tilt} 12 12)"><g filter="url(#ix-${L.kind === 'jewel' ? 'metal' : L.kind})">${s}</g><g fill="url(#ix-sheen)" stroke="none" opacity=".9">${s.replace(/fill="(?!none)[^"]*"/g, '').replace(/stroke="[^"]*"/g, '')}</g></g></g></svg>`;
+    return `<svg viewBox="-1 -1 26 26" stroke="#000" stroke-opacity=".38" stroke-width=".4" stroke-linejoin="round"><g${flat ? '' : ' filter="url(#ix-3d)"'}><g transform="rotate(${tilt} 12 12)"><g filter="url(#ix-${L.kind === 'jewel' ? 'metal' : L.kind})">${s}</g><g fill="url(#ix-sheen)" stroke="none" opacity=".9">${s.replace(/fill="(?!none)[^"]*"/g, '').replace(/stroke="[^"]*"/g, '')}</g></g></g></svg>`;
   }
+  /* 3D item icons: the real 3D render from icon3d.js once it is ready, the shaded flat icon until then (and on devices without WebGL2) */
+  function iconHtml(it) { const sv = iconSvg(it); if (typeof ICON3D === 'undefined' || !ICON3D.ok) return sv; let k = 'metal'; try { k = itemLook(it).kind; } catch (e) { } return ICON3D.html(iconSvg(it, 1), sv, k); }
   /* 0030 realistic item look: every material gets lit shading (gradients) and a surface texture (brushed metal, wood grain, leather and cloth weave), all shared defs made once */
   const IX = { n: 0, ids: {} };
   function ixDefs() { let d = document.getElementById('ixdefs'); if (d) return d.firstChild; document.body.insertAdjacentHTML('beforeend', '<svg id="ixdefs" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true"><defs>' + IX_FILTERS + '</defs></svg>'); return document.getElementById('ixdefs').firstChild; }
@@ -104,7 +106,7 @@ const UI = (() => {
     for (const sl of ['weapon', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots']) { let bi = -1, bs = sc((h.allyEq || {})[sl]); h.inv.forEach((it, i) => { if (it && it.slot === sl && !(verdict(it) > 0) && sc(it) > bs) { bs = sc(it); bi = i; } }); if (bi >= 0) { const nm = h.inv[bi].name; if (allyGive(bi)) { n++; names.push(nm); } } }
     hint(n ? 'The Sellsword put on ' + n + ' piece' + (n > 1 ? 's' : '') + '. Its hits are now worth ' + Math.round(allyPower() * 100) + '% of yours.' : 'Nothing in your bag beats what the Sellsword already wears.'); refresh(); }
   function verdict(it) { try { if (!G.hero || !canUse(it) || !P.stats) return 0; const v = itemCmp(it).v; return v > .004 ? 1 : v < -.004 ? -1 : 0; /* build 0062 (playtest): compare like with like and weigh gains and losses evenly. Build 0090: itemCmp counts every stat */ } catch (e) { return 0; } }
-  function itemEl(it, attr, cls, style, cmp) { const show = cmp || /data-[is]=/.test(attr || ''), v = show ? (canUse(it) ? verdict(it) : -1) : 0; /* build 0034: simple and always there: green = better overall, red = not better */ return `<div class="it r${it.rar} ${cls || ''}" ${attr} style="${style || ''}">${iconSvg(it)}<span class="lv">${it.ilvl}</span>${it.lock ? '<svg class="lk" viewBox="0 0 10 12"><path d="M2.5 5V3.5a2.5 2.5 0 0 1 5 0V5" fill="none" stroke="#e8e2d4" stroke-width="1.4"/><rect x="1" y="5" width="8" height="6.4" rx="1.2" fill="#e8e2d4"/></svg>' : ''}${show ? `<span class="ar ${v > 0 ? 'up' : 'dn'}" title="${v > 0 ? 'Better than what you wear' : 'Not better than what you wear'}">${v > 0 ? '▲' : '▼'}</span>` : ''}</div>`; }
+  function itemEl(it, attr, cls, style, cmp) { const show = cmp || /data-[is]=/.test(attr || ''), v = show ? (canUse(it) ? verdict(it) : -1) : 0; /* build 0034: simple and always there: green = better overall, red = not better */ return `<div class="it r${it.rar} ${cls || ''}" ${attr} style="${style || ''}">${iconHtml(it)}<span class="lv">${it.ilvl}</span>${it.lock ? '<svg class="lk" viewBox="0 0 10 12"><path d="M2.5 5V3.5a2.5 2.5 0 0 1 5 0V5" fill="none" stroke="#e8e2d4" stroke-width="1.4"/><rect x="1" y="5" width="8" height="6.4" rx="1.2" fill="#e8e2d4"/></svg>' : ''}${show ? `<span class="ar ${v > 0 ? 'up' : 'dn'}" title="${v > 0 ? 'Better than what you wear' : 'Not better than what you wear'}">${v > 0 ? '▲' : '▼'}</span>` : ''}</div>`; }
   function gridHtml(inv, key, mark) {
     let h = ''; for (let i = 0; i < inv.length; i++) h += `<div class="bc" data-${key}c="${i}" style="grid-column:${i % 10 + 1};grid-row:${(i / 10 | 0) + 1}"></div>`;
     inv.forEach((it, i) => { if (it) h += itemEl(it, `data-${key}="${i}"`, (mark && mark(it, i) ? 'up ' : '') + (itemH(it) === 2 ? 'tall' : ''), `grid-column:${i % 10 + 1};grid-row:${(i / 10 | 0) + 1} / span ${itemH(it)}`); }); return h;
@@ -184,7 +186,7 @@ const UI = (() => {
   $('inv').addEventListener('mouseleave', hideTip);
   $('inv').addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse' || e.button !== 0) return; const el = e.target.closest('.it[data-i]'); if (el) drag = { i: +el.dataset.i, x: e.clientX, y: e.clientY, on: false, g: null }; });
   window.addEventListener('pointermove', e => {
-    if (!drag) return; if (!drag.on) { if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 7) return; const it = G.hero.inv[drag.i]; if (!it) { drag = null; return; } drag.on = true; hideTip(); const g = document.createElement('div'); g.className = 'ghost it r' + it.rar; g.innerHTML = iconSvg(it); document.body.appendChild(g); drag.g = g; }
+    if (!drag) return; if (!drag.on) { if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 7) return; const it = G.hero.inv[drag.i]; if (!it) { drag = null; return; } drag.on = true; hideTip(); const g = document.createElement('div'); g.className = 'ghost it r' + it.rar; g.innerHTML = iconHtml(it); document.body.appendChild(g); drag.g = g; }
     drag.g.style.left = e.clientX - 20 + 'px'; drag.g.style.top = e.clientY - 20 + 'px';
   });
   window.addEventListener('pointerup', e => {
@@ -371,7 +373,7 @@ const UI = (() => {
   $('bLeave').onclick = () => { if (!G.online) return; const nm = NET.me || 'Hero'; NET.close(); G.state = 'play'; hint('You left the party and are now on your own.'); NET.connect(nm, 'solo' + Math.random().toString(36).slice(2, 8)); };
   if (TIP_URL) { $('mTip').classList.remove('hide'); $('mTip').onclick = () => window.open(TIP_URL, '_blank', 'noopener'); } if (FEEDBACK_URL) { $('mFeed').classList.remove('hide'); $('mFeed').onclick = () => { location.href = FEEDBACK_URL; }; }
   $('bInvite').onclick = () => invite(true); $('mInvite').onclick = () => invite(false);
-  U.iconSvg = it => iconSvg(it);
+  U.iconSvg = (it, flat) => iconSvg(it, flat);
   U.buildBar = () => { buildBar(); if (sklOpen) renderSkl(); };
   // build 0073 (Lee's screenshot): the right-hand column stacks itself, so a long quest never covers the online count, the party list or the kill streak
   let stackT = 0; function stackRight(dt) { stackT -= dt; if (stackT > 0) return; stackT = .2; let y = 0; const qb = $('questBox'), mi = $('mini'); if (mi) y = mi.getBoundingClientRect().bottom; if (qb && !qb.classList.contains('hide')) { const r = qb.getBoundingClientRect(); if (r.height) y = Math.max(y, r.bottom); }
