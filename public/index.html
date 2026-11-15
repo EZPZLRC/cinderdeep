@@ -424,6 +424,19 @@ body.isz1 .it .ar{width:18px;height:18px;font-size:11px}body.isz2 .it .ar{width:
 #tbtns button:active::before{background:linear-gradient(180deg,#fff,#ffcf70 50%,#e0782a)}
 @media (max-width:760px),(max-height:480px){#tbtns button::before{width:20px;height:20px}#ctl button::before{width:13px;height:13px;margin-right:4px}}
 #folk .tier .tierb{display:flex;flex-direction:column;align-items:flex-start;width:100%;text-align:left;margin:4px 0;padding:8px 10px;gap:2px}#folk .tier .tierb span{font-size:12px;opacity:.8}#folk .tier .tierb.on{outline:2px solid #e0a040}
+/* build 0098: the dock (bottom-right) and its Menu */
+#dock{position:fixed;right:14px;bottom:30px;z-index:30;display:flex;flex-direction:column;gap:5px}
+#dock button,#more button{display:flex;align-items:center;gap:8px;min-width:112px;padding:7px 12px;font:600 12px Inter,system-ui,sans-serif;text-transform:uppercase;letter-spacing:.08em;color:#dfe2e8;text-align:left;background:linear-gradient(180deg,#2a2c33 0,#16171b 60%,#0d0d10 100%);border:1px solid #4a4f5b;border-radius:4px;box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 2px 8px #000;cursor:pointer}
+#dock button:hover,#more button:hover,#dock button.open{border-color:#8a909c;background:linear-gradient(180deg,rgba(255,90,42,.22),rgba(140,20,10,.18)),#16171b;color:#fff}
+#dock button::before,#more button::before{content:"";flex:none;width:15px;height:15px;background:linear-gradient(180deg,#fff,#b9bec8 60%,#5a5e68);-webkit-mask:var(--gi) center/contain no-repeat;mask:var(--gi) center/contain no-repeat}
+#dock #bMore::before{content:"\2630";-webkit-mask:none;mask:none;background:none;color:#dfe2e8;font-size:15px;line-height:15px;text-align:center}
+#more{position:fixed;right:136px;bottom:30px;z-index:31;display:flex;flex-direction:column;gap:4px;padding:6px;background:rgba(10,10,13,.94);border:1px solid #4a4f5b;border-radius:5px;box-shadow:0 6px 22px #000}
+#more button{min-width:170px;box-shadow:none}#more #bInvite{color:#9effa8}#more #bLeave{color:#ff9a8a}#more #bMenu{margin-top:4px;border-color:#5a3a34}
+#more #bAuto,#more #bSpd{display:none!important}
+@media (pointer:coarse){#dock #bInv,#dock #bSkl,#dock #bTown{display:none}}
+body.tj #dock #bInv,body.tj #dock #bSkl,body.tj #dock #bTown{display:none}
+@media (pointer:coarse){#dock{right:auto;bottom:auto;left:calc(8px + env(safe-area-inset-left));top:calc(46px + env(safe-area-inset-top))}#dock #bMore{min-width:0;width:40px;height:40px;padding:0;border-radius:50%;font-size:0;justify-content:center}#dock #bMore::before{font-size:18px;width:auto;height:auto}#more{right:auto;bottom:auto;left:calc(8px + env(safe-area-inset-left));top:calc(92px + env(safe-area-inset-top));max-height:calc(100vh - 110px);overflow:auto}#more button{padding:10px 12px;font-size:13px}}
+body.tj #dock{right:auto;bottom:auto;left:calc(8px + env(safe-area-inset-left));top:calc(46px + env(safe-area-inset-top))}body.tj #dock #bMore{min-width:0;width:40px;height:40px;padding:0;border-radius:50%;font-size:0;justify-content:center}body.tj #dock #bMore::before{font-size:18px;width:auto;height:auto}body.tj #more{right:auto;bottom:auto;left:calc(8px + env(safe-area-inset-left));top:calc(92px + env(safe-area-inset-top));max-height:calc(100vh - 110px);overflow:auto}
 </style>
 <link rel="stylesheet" href="css/oathbyte.css?v=0097">
 <link rel="stylesheet" href="css/keyart.css?v=0097">
@@ -453,7 +466,9 @@ body.isz1 .it .ar{width:18px;height:18px;font-size:11px}body.isz2 .it .ar{width:
     <div id="mid"><div id="bar"></div><div id="xpT"></div><div id="xp"><div></div></div></div>
     <div class="globe" id="gFury"><div class="fill"></div><div class="txt"></div></div>
   </div>
-  <div id="ctl"><button id="bMenu" class="giv-exit">Exit</button><button id="bSet" class="giv-set">Settings</button><button id="bLb" class="giv-lb">Leaders</button><button id="bAch" class="giv-ach">Badges</button><button id="bParty" class="giv-party">Parties</button><button id="bInvite" class="giv-invite">Invite</button><button id="bLeave" class="hide giv-leave">Leave party</button><button id="bInv" class="giv-inv">Inventory</button><button id="bSkl" class="giv-skl">Skills</button><button id="bTown" class="giv-town">Town</button><button id="bAuto" class="giv-auto">Auto-play: off</button><button id="bSpd" class="giv-spd">Speed 1×</button></div>
+  <!-- build 0098 (playtest: the menu bar sat where you click to walk): the four buttons you use most sit in the bottom-right corner; the rest live under Menu -->
+  <div id="dock"><button id="bInv" class="giv-inv" title="Bag (I)">Bag</button><button id="bSkl" class="giv-skl" title="Skills (S)">Skills</button><button id="bTown" class="giv-town" title="Town (T)">Town</button><button id="bMore" title="Menu (Esc)">Menu</button></div>
+  <div id="more" class="hide"><button id="bSet" class="giv-set">Settings</button><button id="bParty" class="giv-party">Parties</button><button id="bInvite" class="giv-invite">Invite a friend</button><button id="bLeave" class="hide giv-leave">Leave party</button><button id="bLb" class="giv-lb">Leaderboard</button><button id="bAch" class="giv-ach">Badges</button><button id="bAuto" class="giv-auto">Auto-play: off</button><button id="bSpd" class="giv-spd">Speed 1×</button><button id="bMenu" class="giv-exit">Exit to title</button></div>
   <div id="party" class="hide"></div><div id="onl" class="hide"></div><div id="chatlog" class="hide"></div>
   <div id="chatRow" class="hide"><button id="chatCh">Global</button><input id="chat" maxlength="140"><button id="chatX" class="xb" aria-label="Close chat">×</button></div>
   <div id="tbtns"><button id="tChat" class="hide giv-chat">Chat</button><button id="tTown" class="giv-town">Town</button><button id="tLoot" class="giv-loot">Loot</button><button id="tSkl" class="giv-skl">Skills</button><button id="tBag" class="giv-inv">Bag</button></div>

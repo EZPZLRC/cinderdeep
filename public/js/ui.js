@@ -661,6 +661,12 @@ const UI = (() => {
   $('mParty').onclick = openParties; $('bParty').onclick = openParties;
   { const xt = $('xpT'), xb = $('xp'); if (xt && xb && xt.parentNode !== xb) xb.appendChild(xt); } // the XP numbers sit on the XP bar itself
   function toMenu() { $('pick').classList.add('hide'); if (G.state !== 'play') return; menuBuilt = false; saveGame(); NET.close(); G.state = 'menu'; $('mute').style.display = ''; G.auto = false; G.speed = 1; G.inTown = false; G.away = null; closeTown(); toggleInv(false); toggleSkl(false); toggleSet(false); closeChat(); $('chatlog').classList.add('hide'); $('onl').classList.add('hide'); unpin(); $('game').classList.add('hide'); $('death').classList.add('hide'); $('menu').classList.remove('hide'), $('mute').style.top = $('mute').style.right = ''; $('menuMsg').textContent = MENU_PITCH; renderClasses(); }
+  /* build 0098: the Menu button opens the less-used buttons; picking one, clicking elsewhere or Esc closes it */
+  { const mo = $('more'), mb = $('bMore'), shut = () => { mo.classList.add('hide'); mb.classList.remove('open'); }; U.closeMore = shut;
+    mb.onclick = e => { e.stopPropagation(); const op = mo.classList.contains('hide'); mo.classList.toggle('hide', !op); mb.classList.toggle('open', op); };
+    mo.addEventListener('click', e => { if (e.target.closest('button')) setTimeout(shut, 0); });
+    document.addEventListener('pointerdown', e => { if (!mo.classList.contains('hide') && !mo.contains(e.target) && !mb.contains(e.target)) shut(); }, true);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !mo.classList.contains('hide')) shut(); }); }
   $('bMenu').onclick = toMenu; $('deathMenu').onclick = toMenu; $('bTown').onclick = $('tTown').onclick = () => { if (G.inTown) leaveTown(); else enterTown(); }; $('chatX').onclick = closeChat;
   document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });   // so Space, Enter and letter keys never re-press the last button
   $('bInv').onclick = () => { toggleSkl(false); toggleInv(); }; $('bSkl').onclick = () => { toggleInv(false); toggleSkl(); };
