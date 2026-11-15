@@ -664,7 +664,7 @@ function leaveTown() {
   if (!G.inTown) return; const a = G.away; UI.closeTown();
   if (G.online) { NET.send({ t: 'sync' }); hint('Returning to your party…'); return; }
   if (!a) { enterZone(); return; }
-  G.inTown = false; G.away = null; G.zone = a.zone; G.ents = a.ents; G.drops = a.drops; G.boss = a.boss; G.projs = []; G.pp = []; G.areas = []; G.fx = []; G.texts = []; G.timers = []; buildStatic(G.zone); setEnv(G.zone); P.x = a.x; P.z = a.z; P.move = P.atk = P.inter = P.pick = null; BOT.path = null; questZone(G.zone);
+  G.inTown = false; G.away = null; G.zone = a.zone; G.ents = a.ents; G.drops = a.drops; G.boss = a.boss; G.projs = []; G.pp = []; G.areas = []; G.fx = []; G.texts = []; G.timers = []; buildStatic(G.zone); setEnv(G.zone); stPlace(G.zone); P.x = a.x; P.z = a.z; P.move = P.atk = P.inter = P.pick = null; BOT.path = null; questZone(G.zone);
   SFX.play('shrine'); UI.zoneBanner(G.zone.def.name, 'Monster level ' + G.zone.def.lvl);
 }
 function toStash(i) { const h = G.hero, it = h.inv[i]; if (!it) return; if (!bagPut(G.stash, it)) { hint('The stash is full.'); return; } h.inv[i] = null; SFX.play('pickup'); saveGame(); }
@@ -944,6 +944,7 @@ function questTarget() {
     if (npc) { const at = npc.st || npc; return { x: at.x, z: at.z, text: (cq ? 'Collect your reward from ' : 'Talk to ') + FOLK[who].n + (cq ? '' : ': they have a job for you') }; }
     const o = Z.objs.find(o => o.kind === 'tportal'); return { x: o.x, z: o.z, text: cq ? 'Take the portal back out to work on ' + cq.t : 'Take the portal back to ' + (G.away && G.away.zone ? G.away.zone.def.name : 'the floor') }; }
   if (cq && cq.goal.k === 'rescue' && h.tq.n < cq.goal.n) { const pip = Z.objs.find(o => o.kind === 'lost' && !o.used); if (pip) return { x: pip.x, z: pip.z, text: 'Find Pip: follow the path, he is hiding on this floor' }; }
+  { const sc = stCur(), cap = sc && sc.k === 'rescue' && Z.objs.find(o => o.kind === 'captive' && !o.used); if (cap) return { x: cap.x, z: cap.z, text: 'Find ' + cap.name + ': follow the path' }; }
   const po = Z.objs.find(o => o.kind === 'portal' && !o.used); if (po) return { x: po.x, z: po.z, text: 'Take the portal deeper' };
   const b = G.boss; return { x: b ? b.x : Z.bossAt[0], z: b ? b.z : Z.bossAt[1], text: 'Find and slay ' + (b ? b.name : bossFor(Z.def.theme, Z.def.depth).n) };
 }
@@ -1194,6 +1195,12 @@ function drawTownLife() {
 }
 function drawQuestBits() { // Pip, lost out in the world
   if (!G.zone || !G.zone.objs) return; const col = GLX.col, t = G.time;
+  for (const o of G.zone.objs) { if (o.kind !== 'captive') continue; /* build 0069: a captive in a cage of ice, then walking home free */
+    const k = o.st || (o.st = { cls: 'vil2', hair: 0x4a3a2a, beard: 1, x: o.x, z: o.z, y: 0, rot: 0, walk: 0, mv: 0, hurt: 0, act: null, swing: 0, spin: null, dash: false, buffs: null, flaskT: 0, gear: { chest: [2, 0], boots: [1, 0], belt: [1, 0] } });
+    if (o.used) { const u = (t - o.runT) / 4; if (u > 1) continue; const a = Math.atan2(G.zone.start[0] - o.x, G.zone.start[1] - o.z); k.x = o.x + Math.sin(a) * u * 10; k.z = o.z + Math.cos(a) * u * 10; k.rot = a; k.mv = .8; k.walk = t * 8; drawHero(k, false); continue; }
+    k.mv = 0; k.rot = Math.atan2(P.x - o.x, P.z - o.z); k.hurt = 0; drawHero(k, false); const ic = col(0xbfe6ff), c = col(0x9ad8ff);
+    for (let i = 0; i < 6; i++) { const a = i / 6 * 6.2832 + .3, r = .85 + (i % 2) * .15; GLX.obj('glow', 'gem', o.x + Math.sin(a) * r, .7 + (i % 3) * .35, o.z + Math.cos(a) * r, a, .22, 1.3 + (i % 2) * .5, .22, ic, .9, .55); }
+    GLX.obj('glow', 'ring', o.x, .07, o.z, t * .4, 1.6, 1, 1.6, c, 1, .45, -1); const y = 2.7 + Math.sin(t * 3) * .12; GLX.obj('glow', 'box', o.x, y + .22, o.z, 0, .14, .48, .14, c, 2, 1); GLX.obj('glow', 'sphere', o.x, y - .2, o.z, 0, .16, .16, .16, c, 2, 1); GLX.halo(o.x, 1.2, o.z, 2.8, c, .4); GLX.light(o.x, 2, o.z, 7, c, .8, 6); }
   for (const o of G.zone.objs) { if (o.kind !== 'lost') continue; const k = o.st || (o.st = Object.assign({}, PIPK, { x: o.x, z: o.z, rot: 0, mv: 0 }));
     if (o.used) { const u = (t - o.runT) / 3; if (u > 1) continue; const a = Math.atan2(G.zone.start[0] - o.x, G.zone.start[1] - o.z); k.x = o.x + Math.sin(a) * u * 9; k.z = o.z + Math.cos(a) * u * 9; k.rot = a; k.mv = 1; k.walk = t * 9; drawHero(k, false); continue; }
     k.mv = 0; k.rot = Math.atan2(P.x - o.x, P.z - o.z); k.y = Math.abs(Math.sin(t * 6)) * .05; drawHero(k, false); const c = col(0xff9ad0), y = 2.4 + Math.sin(t * 3) * .12; GLX.obj('glow', 'box', o.x, y + .22, o.z, 0, .14, .48, .14, c, 2, 1); GLX.obj('glow', 'sphere', o.x, y - .2, o.z, 0, .16, .16, .16, c, 2, 1); GLX.halo(o.x, 1.2, o.z, 2.6, c, .45); GLX.light(o.x, 2, o.z, 6, c, .8, 6); }
@@ -1250,19 +1257,25 @@ function stState() { const h = G.hero; if (!h || typeof STORY === 'undefined') r
 function stAct() { const st = stState(); return st ? STORY[st.a] || null : null; }
 function stCur() { const A = stAct(); return A ? A.steps[G.hero.story.s] || null : null; }
 function stDepth(h) { return Math.max(h.depthMax || 0, h.maxClear || 0); }
-function stInit(h) { h.story = { a: 0, s: 0, open: 0 }; const A = STORY[0], dm = stDepth(h); let last = -1; A.steps.forEach((x, i) => { if (x.k === 'boss' && x.d <= dm) last = i; }); /* heroes already past a guardian get the story so far instead */
-  if (last >= 0) { h.story.s = last + 1; h.story.open = 1; h.story.recap = A.steps.slice(0, last + 1).map(x => x.recap).filter(Boolean); } }
+function stInit(h) { h.story = { a: 0, s: 0, open: 0 }; const dm = stDepth(h), rec = []; /* heroes already past a guardian get the story so far instead */
+  for (let ai = 0; ai < STORY.length; ai++) { const A = STORY[ai]; let last = -1; A.steps.forEach((x, i) => { if (x.k === 'boss' && x.d <= dm) last = i; }); if (last < 0) break; for (const x of A.steps.slice(0, last + 1)) if (x.recap) rec.push(x.recap); h.story.a = ai; h.story.s = last + 1; h.story.open = 1; if (last + 1 < A.steps.length) break; h.story.a = ai + 1; h.story.s = 0; h.story.open = 0; }
+  if (rec.length) h.story.recap = rec; }
 function stNext() { const st = stState(); if (!st) return; const A = STORY[st.a]; st.s++; if (A && st.s >= A.steps.length) { st.a++; st.s = 0; st.open = 0; } }
-function stCatch() { const h = G.hero, out = []; let c; while ((c = stCur()) && c.k === 'boss' && c.d <= stDepth(h)) { if (c.recap) out.push(['', c.recap]); stNext(); } return out; }
+function stPast(c, dm) { /* a boss step at or above your depth is done; a rescue is done once a later guardian of the act has fallen */ if (!c) return false; if (c.k === 'boss') return c.d <= dm; if (c.k !== 'rescue') return false; const st = stState(), A = STORY[st.a]; return A.steps.slice(st.s + 1).some(x => x.k === 'boss' && x.d <= dm); }
+function stCatch() { const h = G.hero, out = []; let c; while ((c = stCur()) && stPast(c, stDepth(h))) { if (c.recap) out.push(['', c.recap]); stNext(); } return out; }
 function stGoalBanner() { const A = stAct(), c = stCur(); if (!UI.zoneBanner) return; if (!A) UI.zoneBanner(STORY[STORY.length - 1].n + ' complete', 'The story continues in the next update'); else if (c) UI.zoneBanner(A.n + ' · ' + A.t, c.goal); }
-function stAfter(lines) { lines = (lines || []).concat(stCatch()); const st = stState(); saveGame(); if (typeof GPS !== 'undefined') GPS.t = 0;
+function stAfter(lines) { const st = stState(); lines = (lines || []).concat(st.open ? stCatch() : []); saveGame(); if (typeof GPS !== 'undefined') GPS.t = 0;
   const fin = () => { if (STORY[st.a] && !st.open) stOpen(); else stGoalBanner(); }; if (lines.length && UI.scene) UI.scene(lines, fin); else fin(); }
-function stOpen() { const st = stState(), A = st && STORY[st.a]; if (!A || st.open) return; st.open = 1; saveGame(); const c = A.steps[st.s]; if (typeof setTimeout !== 'function') return; /* after the floor's own name has had its moment */
-  setTimeout(() => { if (UI.zoneBanner) UI.zoneBanner(A.n + ' · ' + A.t, A.sub); SFX.play('shrine'); }, 2600); setTimeout(() => { if (c && c.open && UI.scene) UI.scene(c.open, stGoalBanner); else stGoalBanner(); }, 5600); }
+function stOpen() { const st = stState(), A = st && STORY[st.a]; if (!A || st.open) return; st.open = 1; const c = A.steps[st.s], lines = ((c && c.open) || []).concat(stCatch()); saveGame(); if (typeof setTimeout !== 'function') return; /* after the floor's own name has had its moment; heroes already past part of the act get those parts as a recap */
+  setTimeout(() => { if (UI.zoneBanner) UI.zoneBanner(A.n + ' · ' + A.t, A.sub); SFX.play('shrine'); }, 2600); setTimeout(() => { if (lines.length && UI.scene) UI.scene(lines, stGoalBanner); else stGoalBanner(); }, 5600); }
 function stZone(Z) { const h = G.hero; if (!h || !Z || !Z.def || Z.def.rift || typeof document === 'undefined' || typeof setTimeout !== 'function') return; const st = stState(); if (!st) return;
   if (st.recap && st.recap.length) { const r = st.recap; delete st.recap; saveGame(); setTimeout(() => UI.scene && UI.scene([['', 'The story so far.']].concat(r.map(t => ['', t])), stGoalBanner), 2200); return; }
-  if (Z.def.type !== 'town' && !st.open && STORY[st.a]) stOpen(); }
-function stBoss(depth) { const c = stCur(); if (!c || c.k !== 'boss' || depth < c.d) return; const lines = depth === c.d ? (c.done || []) : (c.recap ? [['', c.recap]] : []); stNext(); saveGame(); if (typeof setTimeout === 'function') setTimeout(() => stAfter(lines), 2200); }
+  if (Z.def.type !== 'town' && !st.open && STORY[st.a]) stOpen(); stPlace(Z); }
+function stPlace(Z) { /* build 0069: a captive waits far out on the floor, frozen in place, until you reach them */ const c = stCur(); if (!c || c.k !== 'rescue' || !Z || !Z.def || Z.def.type === 'town' || Z.def.rift || (Z.def.depth || 1) < c.d || !Z.cell || Z.objs.some(o => o.kind === 'captive')) return;
+  let best = null; for (let i = 0; i < GW * GW; i++) { if (Z.cell[i]) continue; const dd = Z.dist ? Z.dist[i] : -1; if (dd < 10) continue; const sc = Math.abs(dd - 26) + Math.random() * 4; if (!best || sc < best[1]) best = [i, sc]; } if (!best) return;
+  Z.objs.push({ kind: 'captive', x: (best[0] % GW + .5) * CS, z: ((best[0] / GW | 0) + .5) * CS, name: c.who, used: false }); if (typeof GPS !== 'undefined') GPS.t = 0; if (typeof setTimeout === 'function') setTimeout(() => hint(c.who + ' is held somewhere on this floor. Follow the path, or look for the blue star on your map.'), 2400); }
+function stRescue(o) { const c = stCur(); o.used = true; o.runT = G.time; SFX.play('shrine'); burst(o.x, 1.2, o.z, 0x9ad8ff, 30, 6); ring(o.x, o.z, 0, 5, .7, 0x9ad8ff); if (!c || c.k !== 'rescue') return; stNext(); saveGame(); if (UI.scene) UI.scene(c.lines, () => stAfter([])); else stAfter([]); }
+function stBoss(depth) { let c = stCur(), pre = []; while (c && c.k === 'rescue' && stPast(c, depth)) { if (c.recap) pre.push(['', c.recap]); stNext(); c = stCur(); } if (!c || c.k !== 'boss' || depth < c.d) return; const lines = pre.concat(depth === c.d ? (c.done || []) : (c.recap ? [['', c.recap]] : [])); stNext(); saveGame(); if (typeof setTimeout === 'function') setTimeout(() => stAfter(lines), 2200); }
 function stTalk(id) { const c = stCur(); if (!c || c.k !== 'talk' || c.by !== id || !UI.scene) return false; UI.scene(c.lines, () => { stNext(); stAfter([]); }); return true; }
 function stMark(id) { const c = stCur(); return c && c.k === 'talk' && c.by === id ? '!' : ''; }
 function stBrand(e) { const Z = G.zone; if (!e || !e.boss || !Z || !Z.def || Z.def.rift || Z.def.type === 'town' || typeof STORY === 'undefined') return false; const d = Z.def.depth || 1; return STORY.some(A => A.steps.some(x => x.k === 'boss' && x.d === d)); }
@@ -1317,6 +1330,7 @@ function interact(o) {
   else if (o.kind === 'stash' || o.kind === 'vendor' || o.kind === 'altar') UI.openTown(o.kind);
   else if (o.kind === 'tportal') leaveTown();
   else if (o.kind === 'npc') UI.openFolk && UI.openFolk(o.id);
+  else if (o.kind === 'captive') stRescue(o);
   else if (o.kind === 'lost') { o.used = true; o.runT = G.time; tqAdd('rescue'); SFX.play('shrine'); burst(o.x, 1.2, o.z, 0xff9ad0, 24, 5); hint('Pip: "You found me! I will run straight home to Mum!"'); }
   else if ((o.kind === 'portal' || o.kind === 'pback') && !o.gone && P.gateGo === o && P.inter === o) { P.gateGo = null; P.inter = null; o.gone = true; SFX.play('warp'); G.shake = Math.max(G.shake || 0, .25); interact(o); return; } /* build 0046: clicked or tapped, so go */
   else if ((o.kind === 'portal' || o.kind === 'pback') && !o.gone && typeof UI !== 'undefined' && UI.askGate) { UI.askGate(o); return; } /* click, E or the phone Use button: ask before leaving the floor, like walking in */
@@ -1410,7 +1424,7 @@ function update(dt) {
   if (G.auto && G.hero && G.hero.picks) { const i = pendingPick(G.hero); if (i >= 0) pickSkill(i, skillTiers(G.hero.cls)[i][Math.random() * 2 | 0]); }
   SFX.ambTick(dt); SFX.fight(fightHeat(dt), dt); updAlly(dt); G.time += dt; if (G.shake > 0) G.shake = Math.max(0, G.shake - dt * 1.8);
   P.mv += ((P.moving ? 1 : 0) - P.mv) * Math.min(1, dt * 12);
-  updPlayer(dt); if (G.online) NET.tick(dt); updGps(dt); updPet(dt); if (!G.online && !G.inTown) repop(dt, [P]); if (G.zone && !G.inTown && !P.dead) for (const o of G.zone.objs) if (o.kind === 'lost' && !o.used && Math.hypot(o.x - P.x, o.z - P.z) < 2.4) interact(o); G.achT = (G.achT || 0) - dt; if (G.achT <= 0) { G.achT = 1; achCheck(); }
+  updPlayer(dt); if (G.online) NET.tick(dt); updGps(dt); updPet(dt); if (!G.online && !G.inTown) repop(dt, [P]); if (G.zone && !G.inTown && !P.dead) for (const o of G.zone.objs) if ((o.kind === 'lost' || o.kind === 'captive') && !o.used && Math.hypot(o.x - P.x, o.z - P.z) < 2.4) interact(o); G.achT = (G.achT || 0) - dt; if (G.achT <= 0) { G.achT = 1; achCheck(); }
   if (G.auto && P.dead) { BOT.rv += dt; if (BOT.rv > 2.5) { BOT.rv = 0; UI.revive(); } }
   // enemies
   const act = [];

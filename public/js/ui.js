@@ -278,7 +278,7 @@ const UI = (() => {
   U.scene = scene;
   // build 0068: the story goal in the quest box
   function storyHud() { if (typeof stCur !== 'function' || G.zone && G.zone.def && G.zone.def.rift) return ''; const c = stCur(), A = stAct(); if (!A) return typeof STORY !== 'undefined' && G.hero && G.hero.story ? '<div class="tqH">' + STORY[STORY.length - 1].n + ' complete. The story continues in the next update.</div>' : ''; if (!c) return '';
-    return '<div class="tqT"><em>' + A.n + ' · ' + A.t + '</em></div><div class="tqH' + (c.k === 'talk' ? ' new' : '') + '">' + (c.k === 'talk' && !G.inTown ? 'Go to town: ' : '') + c.goal + '</div>'; }
+    return '<div class="tqT"><em>' + A.n + ' · ' + A.t + '</em></div><div class="tqH' + (c.k === 'talk' ? ' new' : '') + '">' + (c.k === 'talk' && !G.inTown ? 'Go to town: ' : '') + c.goal + (c.k === 'rescue' && !G.inTown && G.zone && G.zone.def && (G.zone.def.depth || 1) < c.d ? ' (floor ' + c.d + ')' : '') + '</div>'; }
   // build 0028: the Town Planner, spend gold and shards to grow Emberwatch
   function openPlanner() {
     const h = G.hero, el = $('folk');
@@ -435,7 +435,7 @@ const UI = (() => {
     mctx.stroke();
     const dot = (wx, wz, c, r) => { const x = X(wx / CS), y = Y(wz / CS); if (x < 0 || y < 0 || x > S || y > S) return; mctx.fillStyle = c; mctx.beginPath(); mctx.arc(x, y, r, 0, 6.3); mctx.fill(); };
     for (const o of Z.objs) { if (o.used || !Z.seen[Math.floor(o.z / CS) * GW + Math.floor(o.x / CS)]) continue; dot(o.x, o.z, o.kind === 'chest' || o.kind === 'gchest' || o.kind === 'well' || o.kind === 'stash' || o.kind === 'vendor' ? '#ffd84a' : o.kind === 'shrine' ? '#7affc0' : o.kind === 'altar' ? '#ff8a2a' : '#7ad0ff', o.kind === 'portal' || o.kind === 'tportal' || o.kind === 'shrine' || o.kind === 'altar' || o.kind === 'well' || o.kind === 'gchest' ? 5.5 : o.kind === 'pback' ? 4 : 3.2); }
-    for (const o of Z.objs) { if (o.kind === 'lost' && !o.used) { const px = clamp(X(o.x / CS), 8, S - 8), py = clamp(Y(o.z / CS), 8, S - 8); mctx.fillStyle = '#ff9ad0'; mctx.font = '700 14px system-ui'; mctx.textAlign = 'center'; mctx.textBaseline = 'middle'; mctx.fillText('★', px, py); } else if (o.kind === 'npc') { const mk = tqMark(o.id); dot(o.x, o.z, mk === '!' ? '#ffd84a' : mk === '?' ? '#8affc0' : '#c8c0b0', mk ? 4 : 2.6); } }
+    for (const o of Z.objs) { if ((o.kind === 'lost' || o.kind === 'captive') && !o.used) { const px = clamp(X(o.x / CS), 8, S - 8), py = clamp(Y(o.z / CS), 8, S - 8); mctx.fillStyle = o.kind === 'captive' ? '#9ad8ff' : '#ff9ad0'; mctx.font = '700 14px system-ui'; mctx.textAlign = 'center'; mctx.textBaseline = 'middle'; mctx.fillText('★', px, py); } else if (o.kind === 'npc') { const mk = tqMark(o.id); dot(o.x, o.z, mk === '!' ? '#ffd84a' : mk === '?' ? '#8affc0' : '#c8c0b0', mk ? 4 : 2.6); } }
     for (const d of G.drops) if (d.q) dot(d.x, d.z, '#8affc0', 3);
     for (const e of G.ents) if (e.alive && e.awake) dot(e.x, e.z, e.boss ? '#ff3a2a' : e.elite ? '#ffb03a' : '#e0482a', e.boss ? 5 : e.elite ? 3 : 1.8);
     for (const d of G.drops) if (d.item && d.item.rar >= 2) dot(d.x, d.z, RAR[d.item.rar].c, 2.5);
