@@ -215,3 +215,14 @@ body:has(#menu.ka:not(.hide)) #build{display:none}
 @keyframes kaShineQ{0%{background-position:160% 0}100%{background-position:-60% 0}}
 @keyframes kaName{0%,100%{text-shadow:0 0 10px var(--cc),0 1px 3px #000}50%{text-shadow:0 0 22px var(--cc),0 0 6px var(--cc),0 1px 3px #000}}
 @media (prefers-reduced-motion:reduce){#menu.ka .ccard,#menu.ka .ccard .cn,#menu.ka .ccard .caura{animation:none!important}#menu.ka .ccard{rotate:none!important}}
+
+/* build 0092 (Lee): who is online, under the player count. Hover on a computer, tap on a phone */
+#menu.ka #menuOn{position:relative}
+#menu.ka #menuOn.live{cursor:pointer}
+#menu.ka #menuOn .onPop{display:none;position:absolute;top:calc(100% + 8px);right:0;z-index:30;min-width:190px;max-width:min(280px,80vw);max-height:min(60vh,360px);overflow:auto;padding:10px 12px;border:1px solid var(--ka-line2);border-radius:8px;background:rgba(9,8,12,.96);box-shadow:0 10px 30px rgba(0,0,0,.55);text-align:left;white-space:nowrap;cursor:default}
+#menu.ka #menuOn .onPop b{display:block;margin-bottom:6px;font-weight:600;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ka-tx2)}
+#menu.ka #menuOn .onPop span{display:flex;justify-content:space-between;gap:14px;padding:3px 0;font-size:13px;color:#ece6da;overflow:hidden;text-overflow:ellipsis}
+#menu.ka #menuOn .onPop em{font-style:normal;font-size:11px;color:var(--ka-tx2)}
+#menu.ka #menuOn .onPop .onMore{color:var(--ka-tx2);font-size:12px}
+#menu.ka #menuOn.open .onPop{display:block}
+@media (hover:hover){#menu.ka #menuOn.live:hover .onPop,#menu.ka #menuOn.live:focus-visible .onPop{display:block}}
