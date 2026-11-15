@@ -738,7 +738,10 @@ function hitEnemy(e, sk, mult, noProc) { if (e && e.alive && e.arch === 'goblin'
   if (sk.freeze && !e.boss) e.frozen = sk.freeze;
   if (sk.el === 'fire') { e.burn = Math.max(e.burn, v * .15); e.burnT = 3; } else if (sk.el === 'cold') e.chill = 2.5; else if (sk.el === 'light') e.shock = 3;
   if (s.lifeOnHit) P.hp = Math.min(s.maxLife, P.hp + s.lifeOnHit); if (s.leech) P.hp = Math.min(s.maxLife, P.hp + v * s.leech / 100);
-  if (!G.online && !e.boss && !e.dummy && e.arch !== 'brute') { const dx = e.x - P.x, dz = e.z - P.z, l = Math.hypot(dx, dz) || 1; moveEnt(e, dx / l * .4, dz / l * .4, e.r); }
+  { const heavy = sk.type === 'melee' || !!sk.land || sk.type === 'nova', dx = e.x - P.x, dz = e.z - P.z, l = Math.hypot(dx, dz) || 1, wt = e.boss ? .15 : e.arch === 'brute' || e.elite ? .45 : e.arch === 'swarm' ? 1.3 : 1, pw = (heavy ? 1 : .45) * (d.crit ? 1.5 : 1) * wt; // build 0048: hits have weight. Every hit makes the monster flinch and lean back, heavy hits and crits shove it, and a heavy blow breaks a wind-up
+    e.hdx = dx / l; e.hdz = dz / l; e.hf = .22; e.hp0 = pw; e.lheavy = heavy || d.crit;
+    if (!G.online && !e.dummy && !e.boss) { const kb = 7 * pw; e.kvx = (e.kvx || 0) + e.hdx * kb; e.kvz = (e.kvz || 0) + e.hdz * kb; }
+    if (!G.online && !e.boss && !e.dummy && (heavy || d.crit) && (!e.elite || d.crit) && (e.st === 'wind' || e.st === 'hwind' || e.st === 'cwind') && e.arch !== 'bomber') { e.st = 'rec'; e.t = .45; e.atk = 0; for (const a of G.areas) if (a.src === e && !a.done && a.owner === 'e') { a.done = true; a.t = a.delay; } floatText(e.x, 2.2 * e.sc + .4, e.z, 'Staggered', '#ffd27a', .7, 13); } }
   burst(e.x, 1.1 * e.sc, e.z, d.crit ? 0xffe14a : EL_COL[sk.el], d.crit ? 12 : 6, d.crit ? 7 : 5);
   { const heavy = sk.type === 'melee' || !!sk.land || sk.type === 'nova'; G.fx.push({ flash: 1, x: e.x, y: 1.1 * e.sc, z: e.z, r: d.crit ? 3.2 : heavy ? 2.2 : 1.4, life: .12, max: .12, c: GLX.col(d.crit ? 0xfff2b0 : EL_COL[sk.el]) }); if (heavy && !G.auto) G.hitStop = Math.max(G.hitStop || 0, d.crit ? .085 : .04); if (d.crit) G.shake = Math.min(.5, G.shake + .12); }
   if (over) { burst(e.x, 1.1 * e.sc, e.z, e.md.c2, 30, 10); burst(e.x, .4, e.z, 0x7a1010, 18, 6); ring(e.x, e.z, 0, 3.4 * e.sc, .35, 0xffd0a0); G.fx.push({ scorch: 1, x: e.x, z: e.z, r: 1.6 * e.sc, life: 2, max: 2, c: GLX.col(0x5a0c0c) }); if (!G.auto) G.hitStop = Math.max(G.hitStop || 0, .14); G.shake = Math.min(.6, G.shake + .2); }
@@ -748,8 +751,11 @@ function hitEnemy(e, sk, mult, noProc) { if (e && e.alive && e.arch === 'goblin'
   if (G.online) { const cl = !e.boss && s.cull && e.hp < e.maxHp * s.cull / 100; NET.send({ t: 'hit', id: e.id, v: cl ? e.maxHp * 2 : v, el: sk.el, fz: sk.freeze || 0 }); if (e.hp < 0) e.hp = 0; return; }
   if (e.hp <= 0 || (!e.boss && s.cull && e.hp < e.maxHp * s.cull / 100)) killEnemy(e);
 }
+function flingCorpse(e) { /* build 0048: kills go flying, away from the hero; heavy hits and crits throw them further. Bosses fall where they stand */ if (e.boss || e.dummy || typeof document === 'undefined') return; let dx = e.hdx, dz = e.hdz; if (dx === undefined) { const x = e.x - P.x, z = e.z - P.z, l = Math.hypot(x, z) || 1; dx = x / l; dz = z / l; }
+  const w = e.arch === 'brute' || e.elite ? .55 : e.arch === 'swarm' ? 1.3 : 1, sp = (e.lheavy ? 9 : 5.5) * w * rnd(.85, 1.15); e.fly = { vx: dx * sp, vz: dz * sp, vy: (e.lheavy ? 5.5 : 3.5) * Math.min(1.2, w), y: 0, tilt: 0, tv: -(e.lheavy ? 9 : 6), side: rnd(-.6, .6) }; e.deadT = .95; e.dmax = .95; }
+function flyStep(e, dt) { const f = e.fly; if (!f) return; if (!moveEnt(e, f.vx * dt, f.vz * dt, .3)) { f.vx *= -.25; f.vz *= -.25; } f.vy -= 22 * dt; f.y += f.vy * dt; if (f.y <= 0) { if (f.vy < -4 && !f.thud) { f.thud = 1; burst(e.x, .2, e.z, 0x8a7a60, 6, 3); } f.y = 0; f.vy = Math.abs(f.vy) * .25; f.vx *= .55; f.vz *= .55; if (f.vy < 1) f.vy = 0; } f.tilt = Math.max(-1.5, f.tilt + f.tv * dt); if (f.tilt <= -1.5) f.tv = 0; }
 function killEnemy(e) {
-  if (!e.alive) return; e.alive = false; e.deadT = .45; const h = G.hero, s = P.stats; h.kills++; if (h.cls === 'arcanist') P.arcT = G.time + 2; /* Sprint 1: +40% Arcane Power regen for 2 s after a kill (refreshes, never stacks) */ if (h.goals && !h.goals.kill) { h.goals.k = (h.goals.k || 0) + 1; if (h.goals.k >= 5) goalDone('kill'); } if (e.boss) goalDone('boss');
+  if (!e.alive) return; e.alive = false; e.deadT = .45; flingCorpse(e); const h = G.hero, s = P.stats; h.kills++; if (h.cls === 'arcanist') P.arcT = G.time + 2; /* Sprint 1: +40% Arcane Power regen for 2 s after a kill (refreshes, never stacks) */ if (h.goals && !h.goals.kill) { h.goals.k = (h.goals.k || 0) + 1; if (h.goals.k >= 5) goalDone('kill'); } if (e.boss) goalDone('boss');
   let xp = 22 * Math.pow(1.13, e.lvl) * (e.a.xp || 1) * (e.elite === 1 ? 3 : e.elite === 2 ? 6 : 1); const diff = h.level - e.lvl, pf = diff > 4 ? Math.max(.1, 1 - (diff - 4) * .15) : 1; xp *= pf; if (e.boss) { xp = Math.max(xp, xpNeed(h.level) * .65 * pf); G.bossXp = Math.round(xp); } /* one announcement only: the Guardian slain banner shows the XP */ /* Lee, Nov 13: guardians give a lot of XP, about two thirds of a level */ if (G.set.nums !== false && h.level < MAX_LEVEL) floatText(e.x, 2.4 * e.sc, e.z, '+' + Math.max(1, Math.round(xp)) + ' xp', '#cfc4ff', 1, 12); gainXp(xp);
   G.streak++; G.streakT = 4; if (G.streak > G.bestStreak) G.bestStreak = G.streak; if (G.streak > (h.best || 0)) h.best = G.streak;
   { const MS = { 10: ['Rampage!', 0xffb03a], 25: ['Massacre!', 0xff6a3a], 50: ['Unstoppable!', 0xff3a6a], 100: ['Godlike!', 0xc070ff] }, m = MS[G.streak]; if (m) { const bonus = Math.round((8 + h.level * 4) * (G.streak / 10)); h.gold += bonus; UI.streakPop && UI.streakPop('x' + G.streak + ' ' + m[0], '+' + bonus + ' gold', m[1]); impact(P.x, P.z, 2.2, m[1], true); SFX.play('level'); } } // kill streak milestones with a small gold bonus
@@ -1204,6 +1210,7 @@ function bossTele(e) { // build 0048: between its usual attacks a guardian marks
 function updEnemy(e, dt) {
   if (e.dummy) { if (e.flash > 0) e.flash -= dt; e.wob = Math.max(0, (e.wob || 0) - dt * 1.6); if (e.burnT > 0) { e.burnT -= dt; dummyHit(e, e.burn * dt); } e.chill = e.shock = e.frozen = 0; e.awake = true; return; }
   if (e.flash > 0) e.flash -= dt; if (e.atk > 0) e.atk -= dt * 3; if (e.chill > 0) e.chill -= dt; if (e.shock > 0) e.shock -= dt;
+  if (e.kvx || e.kvz) { if (!moveEnt(e, e.kvx * dt, e.kvz * dt, e.r * .8)) e.kvx = e.kvz = 0; const f = Math.max(0, 1 - dt * 9); e.kvx *= f; e.kvz *= f; if (Math.abs(e.kvx) + Math.abs(e.kvz) < .2) e.kvx = e.kvz = 0; } // build 0048: the shove slides out instead of snapping
   if (e.burnT > 0) { e.burnT -= dt; e.hp -= e.burn * dt; if (e.hp <= 0) { killEnemy(e); return; } }
   const dx = P.x - e.x, dz = P.z - e.z, d = Math.hypot(dx, dz) || .001;
   if (!e.awake) { if (d < (e.boss ? 17 : 14) && !P.dead) wake(e); else return; }
@@ -1255,7 +1262,7 @@ function teleLine(x0, z0, ang, len, w, c, k, fl, cw) { const sn = Math.sin(ang),
 function drawTele(a, c, k, fl) { const cw = GLX.col(0xffd0a0), L = areaLines(a);
   if (L) { for (const l of L) teleLine(l[0], l[1], l[2], a.len, a.w, c, k, fl, cw); return; }
   const n = Math.max(1, Math.round(2 * a.arc / .1745)), st = 2 * a.arc / n, d = a.r * 2; // a cone is a fan of 10 degree slices
-  for (let i = 0; i < n; i++) { const q = a.ang - a.arc + st * (i + .5); GLX.obj('glow', 'sect', a.x, .07, a.z, q, d, 1, d, c, 1, .14 + fl * .2, 0); if (k > 0) GLX.obj('glow', 'sect', a.x, .08, a.z, q, d * k, 1, d * k, c, 1, .32, 0);
+  for (let i = 0; i < n; i++) { const q = a.ang - a.arc + st * (i + .5); const f = Math.tan(st / 2) / Math.tan(.0873); GLX.obj('glow', 'sect', a.x, .07, a.z, q, d * f, 1, d, c, 1, .14 + fl * .2, 0); if (k > 0) GLX.obj('glow', 'sect', a.x, .08, a.z, q, d * k * f, 1, d * k, c, 1, .32, 0);
     const m = a.r * Math.cos(st / 2), ch = 2 * a.r * Math.sin(st / 2); GLX.obj('glow', 'box', a.x + Math.sin(q) * m, .09, a.z + Math.cos(q) * m, q, ch, .02, .12, c, 1 + fl, .9, 0); GLX.obj('glow', 'box', a.x + Math.sin(q) * m * k, .1, a.z + Math.cos(q) * m * k, q, ch * k, .02, .16, cw, 1.4, .8, 0); }
   for (const sd of [-1, 1]) { const q = a.ang + a.arc * sd; GLX.obj('glow', 'box', a.x + Math.sin(q) * a.r / 2, .09, a.z + Math.cos(q) * a.r / 2, q, .12, .02, a.r, c, 1 + fl, .9, 0); } }
 function update(dt) {
@@ -1268,7 +1275,7 @@ function update(dt) {
   if (G.auto && P.dead) { BOT.rv += dt; if (BOT.rv > 2.5) { BOT.rv = 0; UI.revive(); } }
   // enemies
   const act = [];
-  for (const e of G.ents) { if (!e.alive) { e.deadT -= dt; continue; } if (G.online && !e.dummy) repEnemy(e, dt); else updEnemy(e, dt); /* the Training Dummy lives only on your own screen, so it never takes the online path */ if (e.alive && e.awake && !e.dummy) act.push(e); }
+  for (const e of G.ents) { if (!e.alive) { e.deadT -= dt; if (e.fly) flyStep(e, dt); continue; } if (G.online && !e.dummy) repEnemy(e, dt); else updEnemy(e, dt); /* the Training Dummy lives only on your own screen, so it never takes the online path */ if (e.alive && e.awake && !e.dummy) act.push(e); }
   if (!G.online) for (let i = 0; i < act.length; i++) { const a = act[i]; for (let j = i + 1; j < act.length; j++) { const b = act[j], dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz), m = a.r + b.r; if (d < m && d > .001) { const p = (m - d) * .5, nx = dx / d * p, nz = dz / d * p; if (!a.boss) moveEnt(a, -nx, -nz, a.r * .8); if (!b.boss) moveEnt(b, nx, nz, b.r * .8); } }
     const dx = a.x - P.x, dz = a.z - P.z, d = Math.hypot(dx, dz), m = a.r + .5; if (d < m && d > .001 && !a.boss && !P.dash) moveEnt(a, dx / d * (m - d), dz / d * (m - d), a.r * .8); }
   if (G.ents.length && G.ents.some(e => !e.alive && e.deadT <= 0)) G.ents = G.ents.filter(e => e.alive || e.deadT > 0);
@@ -1585,6 +1592,7 @@ function drawHero(o, self) {
   if (o.buffs && o.buffs.length) GLX.obj('glow', 'ring', o.x, .08, o.z, G.time, 2.4, 1, 2.4, col(0xffd84a), 1, .5, -1);
   if (o.flaskT > 0) GLX.halo(o.x, 1.4, o.z, 3.5, col(0xff3a3a), .5);
 }
+function tiltBase(o, ry, s, t) { /* build 0048: lean the whole body back by t radians around its own side axis */ const c = Math.cos(ry), sn = Math.sin(ry), ct = Math.cos(t), st = Math.sin(t); o[4] = st * sn * s; o[5] = ct * s; o[6] = st * c * s; o[8] = ct * sn * s; o[9] = -st * s; o[10] = ct * c * s; }
 function drawEnemy(e) {
   if (e.dummy) { const col = GLX.col, wood = col(0x5a4028), straw = col(0xc8a868), sack = col(0xb89a72), rope = col(0x8a6a3a), red = col(0xb03a2a), wht = col(0xe8e0cc), fl = e.flash > 0 ? .6 : 0, w = (e.wob || 0), tx = Math.sin(G.time * 22) * w * .22, tz = Math.cos(G.time * 17) * w * .12;
     GLX.base(BM, e.x, 0, e.z, Math.PI, 1); const q = (g, ox, oy, oz, sx, sy, sz, c, m, em) => GLX.part('dyn', g, BM, 0, .2, 0, tx, 0, tz, ox, oy, oz, sx, sy, sz, c, (em || 0) + fl * .5, 1, m || 0);
@@ -1595,9 +1603,10 @@ function drawEnemy(e) {
     q('cap', 0, 1.4, .27, .44, .02, .44, wht); q('cap', 0, 1.4, .285, .3, .02, .3, red); q('cap', 0, 1.4, .3, .15, .02, .15, wht); q('cap', 0, 1.4, .31, .06, .02, .06, red, 0, .3);
     return; }
   const col = GLX.col, md = e.md, c = col(md.c), c2 = col(md.c2), ec = col(md.e); let sc = e.sc, y = 0;
-  if (!e.alive) { const k = Math.max(0, e.deadT / .45); sc *= .3 + .7 * k; y = -(1 - k) * .8; }
+  let tilt = 0, ox = 0, oz = 0; if (!e.alive) { if (e.fly) { const k = Math.min(1, Math.max(0, e.deadT / .3)); sc *= .35 + .65 * k; y = e.fly.y - (1 - k) * .6; tilt = e.fly.tilt; } else { const k = Math.max(0, e.deadT / .45); sc *= .3 + .7 * k; y = -(1 - k) * .8; } }
   const fdt = Math.min(.1, G.time - (e.wkT === undefined ? G.time : e.wkT)); e.wkT = G.time; e.wk = (e.wk || 0) + ((e.st === 'wind' ? 1 : 0) - (e.wk || 0)) * Math.min(1, fdt * 9); /* wind-ups blend in and out instead of snapping */ const em = e.flash > 0 ? 1.4 : 0, w = e.walk, sw = Math.sin(w), at = Math.max(0, e.atk), wind = e.wk;
-  GLX.base(BM, e.x, y, e.z, e.rot, sc); const p = (g, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, cc, mat, ee) => GLX.part('dyn', g, BM, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, cc, ee === undefined ? em : ee, 1, mat || 0);
+  if (e.alive && e.hf > 0) { e.hf -= fdt; const k = Math.max(0, e.hf / .22), q = Math.sin(k * Math.PI) * Math.min(1.4, e.hp0 || 1); tilt = -.32 * q; ox = (e.hdx || 0) * .28 * q; oz = (e.hdz || 0) * .28 * q; } // the flinch: a quick lean back and a small step away from the blow
+  GLX.base(BM, e.x + ox, y, e.z + oz, e.rot, sc); if (tilt) tiltBase(BM, e.rot, sc, tilt); const p = (g, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, cc, mat, ee) => GLX.part('dyn', g, BM, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, cc, ee === undefined ? em : ee, 1, mat || 0);
   const eyes = (ex, ey, ez, r) => { p('sphere', ex, ey, ez, 0, 0, 0, 0, 0, 0, r, r, r, ec, 0, 3); p('sphere', -ex, ey, ez, 0, 0, 0, 0, 0, 0, r, r, r, ec, 0, 3); };
   if (e.arch === 'goblin') { const gd = col(0xd8a838), sk2 = col(0x5a8a3a), t = G.time, hop = Math.abs(Math.sin(w * 1.4)) * .14;
     if (e.awake && e.alive && !e.ann && typeof UI !== 'undefined') { e.ann = 1; UI.zoneBanner('Treasure Goblin!', 'Catch it before it escapes: 30 seconds'); SFX.play('drop3'); }
