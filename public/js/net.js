@@ -1,5 +1,5 @@
 'use strict';
-// Online play: talks to the Oathbyte dedicated server when the game is served by it.
+// Online play: talks to the OathByte dedicated server when the game is served by it.
 const NET = (() => {
   let ws = null, acc = 0; const N = { on: false, id: 0, peers: {}, names: {}, cls: {}, room: '' }, r2 = v => Math.round(v * 100) / 100;
   const STN = ['chase', 'wind', 'rec', 'charge'], WT = ['sword', 'axe', 'maul', 'staff', 'bow', 'fist'], ISL = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring'];

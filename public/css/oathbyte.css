@@ -1,4 +1,4 @@
-/* ==== Oathbyte UI (Sworn Blade brand) ====
+/* ==== OathByte UI (Sworn Blade brand) ====
    One theme layer loaded after the inline styles. It changes the look only (colours, frames, fonts, the title logo and its
    motion). It moves nothing in the game: every control stays where it was. Talent-card screens and other new panels can reuse
    the .obPanel, .obCard, .obBtn and .obTitle classes at the bottom of this file.

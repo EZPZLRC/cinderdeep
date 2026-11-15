@@ -746,7 +746,7 @@ function wbEvent(m) {
   if (typeof UI === 'undefined' || !m) return; const nm = WORLD_BOSS.n;
   if (m.ev === 'soon') UI.chat('', nm + ' stirs. ' + (m.left | 0) + ' more kills, by anyone on the server, will wake it.', 'm');
   else if (m.ev === 'up') { G.wbHit = 0; UI.zoneBanner('World boss: ' + nm, 'It has risen on every floor. Land a hit to earn a Mythic'); UI.chat('', 'World boss! ' + nm + ' has risen. Tap World boss to go to it.', 'm'); SFX.play('boss'); }
-  else if (m.ev === 'dead') { const by = Array.isArray(m.by) ? m.by.map(n => String(n).replace(/[<>&"'`]/g, '').slice(0, 16)).filter(Boolean) : [], more = Math.max(0, (m.c | 0) - by.length), who = by.length ? by.join(', ') + (more ? ' and ' + more + ' more' : '') : 'the heroes of Oathbyte';
+  else if (m.ev === 'dead') { const by = Array.isArray(m.by) ? m.by.map(n => String(n).replace(/[<>&"'`]/g, '').slice(0, 16)).filter(Boolean) : [], more = Math.max(0, (m.c | 0) - by.length), who = by.length ? by.join(', ') + (more ? ' and ' + more + ' more' : '') : 'the heroes of OathByte';
     UI.zoneBanner('World boss slain', 'Brought down by ' + who); UI.chat('', nm + ' was slain by ' + who + '. The kill count starts again.', 'm'); if (G.wbHit) wbReward(); }
 }
 function leaveTown() {
