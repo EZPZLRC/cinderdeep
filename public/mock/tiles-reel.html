@@ -10,14 +10,14 @@ html,body{margin:0;background:#07060a;overflow:hidden}
 </style></head><body><div id="menu" class="ka"></div>
 <script>
 const C={warden:['Warden','Melee','d8a040'],ranger:['Ranger','Bow','4aa850'],arcanist:['Arcanist','Arcane','9a5aff'],brawler:['Brawler','Physical','e0503a'],elementalist:['Elementalist','Spell caster','ff7a2a']};
-const FPS=12,PICK=2.5,q=new URLSearchParams(location.search),f0=+(q.get('f')||0),N=8,menu=document.getElementById('menu');
-const row=sel=>Object.keys(C).map(id=>`<div class="ccard${id===sel?' on':''}" data-c="${id}" style="--cc:#${C[id][2]}"><i class="cpic" style="background-image:url(../brand/ka/cls-${id}.webp)"></i><i class="cfx"></i><div class="cl">New</div><div class="cn">${C[id][0]}</div><div class="ct">${C[id][1]}</div></div>`).join('');
+const FPS=12,PICK=3,q=new URLSearchParams(location.search),f0=+(q.get('f')||0),N=8,menu=document.getElementById('menu');
+const row=sel=>Object.keys(C).map(id=>`<div class="ccard${id===sel?' on':''}" data-c="${id}" style="--cc:#${C[id][2]}"><i class="cpic" style="background-image:url(../brand/ka/cls-${id}.webp)"></i><i class="cfx"></i><i class="caura"></i><div class="cl">New</div><div class="cn">${C[id][0]}</div><div class="ct">${C[id][1]}</div></div>`).join('');
 const cells=[];for(let k=0;k<N;k++){const d=document.createElement('div');d.className='cell';d.style.left=(20+(k%2)*940)+'px';d.style.top=(20+Math.floor(k/2)*240)+'px';d.innerHTML='<h4>Choose your hero</h4><div id="classes">'+row('warden')+'</div>';menu.appendChild(d);cells.push(d);}
 const imgs=Object.keys(C).map(id=>new Promise(r=>{const i=new Image();i.onload=i.onerror=r;i.src='../brand/ka/cls-'+id+'.webp';})).concat([new Promise(r=>{const i=new Image();i.onload=i.onerror=r;i.src='../brand/ka/key-wide.webp';})]);
 Promise.all([document.fonts.ready,...imgs]).then(()=>{
   cells.forEach((d,k)=>{const t=(f0+k)/FPS;const g=d.querySelector('#classes');getComputedStyle(g.lastChild).transform;
     if(t>=PICK){g.querySelector('[data-c=warden]').classList.remove('on');g.querySelector('[data-c=ranger]').classList.add('on');g.querySelectorAll('.ccard').forEach(c=>getComputedStyle(c).transform);}
-    d.getAnimations({subtree:true}).forEach(a=>{a.pause();const fresh=(a instanceof CSSTransition)||(t>=PICK&&(a.animationName==='kaPulse'||a.animationName==='kaShine'));a.currentTime=(fresh?t-PICK:t)*1000;});
+    d.getAnimations({subtree:true}).forEach(a=>{a.pause();const fresh=(a instanceof CSSTransition)||(t>=PICK&&['kaPulse','kaRing','kaBurst','kaName'].includes(a.animationName));a.currentTime=(fresh?t-PICK:t)*1000;});
   });
   requestAnimationFrame(()=>requestAnimationFrame(()=>{document.title='ready '+f0;}));
 });
