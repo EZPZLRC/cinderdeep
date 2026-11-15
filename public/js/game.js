@@ -1708,6 +1708,45 @@ function monModel(e, sc, y, tilt, ox, oz, em, wind, at) {
   }
   return true;
 }
+// ---- build 0058: guardians on real models. The armoured champions (Warden of Bones, the Ashen Tyrant) wear the knight's plate, dyed
+// to their floor, with a horned helm and a greatsword; the shrouded ones (Hollow Choir, Pale Matriarch, Null) are hooded robes that
+// float above a tattered shroud. Other guardian shapes stay code-built ----
+const BOSS_MDL = { knight: 'warden', wraith: 'cultist' }, MBH = new Float32Array(16);
+function lumHex(h) { return ((h >> 16) & 255) * .3 + ((h >> 8) & 255) * .5 + (h & 255) * .2; }
+function bossModel(e, sc, y, tilt, ox, oz, em, wind, at) {
+  const S = e.bd && e.bd.shape, nm = BOSS_MDL[S]; if (!nm || !MODELS_ON || !GLX.model || G.realModels === false || G.monModels === false) return false;
+  const M = GLX.model(nm, 'models/' + nm + '.cdm?v=' + BUILD); if (!M || !M.anims || !M.anims.idle) return false;
+  const col = GLX.col, A = M.anims, t = G.time, md = e.md, kn = S === 'knight', bob = kn ? 0 : Math.sin(t * 1.8) * .18 * sc / 2.3, s = sc * MSC * (kn ? 1.5 : 1.45), up = UPMASK[nm] || (UPMASK[nm] = CDM.mask(M, ['spine_02'], 0)), lay = [];
+  if (!e.alive) { sc = e.sc; tilt = 0; y = -Math.max(0, 1 - e.deadT / .45) * 1.2; }
+  const moved = Math.abs((e.walk || 0) - (e._mw === undefined ? e.walk : e._mw)); e._mw = e.walk; e._mv = (e._mv || 0) + ((moved > .001 ? 1 : 0) - (e._mv || 0)) * .2; const mv = e.alive ? clamp(e._mv, 0, 1) : 0;
+  if (!e.alive) { if (e._dT0 === undefined) e._dT0 = t; lay.push(['die', Math.min(A.die.dur * .92, (t - e._dT0) * 1.6), false, 1]); }
+  else { e._dT0 = undefined; const act = Math.max(clamp(wind * 1.4, 0, 1), at > 0 ? 1 : 0), bm = e._bm || (e._bm = new Float32Array(up.length)); for (let b = 0; b < up.length; b++) bm[b] = 1 - act * up[b];
+    if (mv < 1 || !kn) lay.push(['idle', t * .8 + e.id * .37, true, kn ? 1 - mv : 1, bm]); if (!kn) lay.push(['spidle', t * .8 + e.id * .37, true, 1, up]); /* the wraith's legs stay still under the shroud */ if (kn && mv > 0) lay.push(['walk', (e.walk || 0) / 6.2832 * .9 * A.walk.dur, true, mv, bm]);
+    if (e.hf > 0 && !act) lay.push(['hit', (.22 - e.hf) * 2.4, false, Math.min(1, e.hf * 6) * .6, up]);
+    if (act) { const an = kn ? 'attack' : 'cast', D = A[an].dur, strike = kn ? .38 : .45, k = at > 0 ? strike + (1 - strike) * clamp(1 - at, 0, 1) : strike * clamp(wind * 1.2, 0, 1); lay.push([an, k * D, false, 1, up]); } }
+  const fy = kn ? 0 : (.35 * sc / 2.3 + bob); GLX.base(BMm, e.x + ox, y + fy - M.head.minY * s, e.z + oz, e.rot, s); if (tilt) tiltBase(BMm, e.rot, s, tilt * .5);
+  const ec = col(md.e), dk = lumHex(md.c) < lumHex(md.c2), plate = kn ? hexMix(dk ? md.c : md.c2, 0x3a3a3e, .35) : 0, trim = kn ? (dk ? md.c2 : md.c) : 0, robe = kn ? 0 : hexMix(md.c2, 0x101014, .55), hot = em + (e.alive ? 0 : 0);
+  const look = (gi, gr) => { const k = gr.kind;
+    if (k === 'plain') return [[ec[0] * 3.5, ec[1] * 3.5, ec[2] * 3.5], 3, 0];
+    if (k === 'hair' || k === 'beard' || k === 'hairb') return null;
+    if (k === 'skin') return kn ? [mdye(gr, 0x2a2826, .9, .7), hot, 8] : [mdye(gr, 0x0c0a10, .9, .6), hot, 8];
+    if (k === 'metal') return [mdye(gr, plate, .55, 1.15), hot, 4];
+    if (k === 'leather') return [mdye(gr, kn ? hexMix(trim, 0x2a1e16, .6) : 0x1a1418, .7, 1), hot, 7];
+    if (k === 'cloth') return [mdye(gr, kn ? hexMix(trim, 0x241818, .55) : robe, .9, kn ? .85 : 1), hot + (kn ? 0 : .12), 6];
+    return [MLIFT, hot, gr.mat]; };
+  if (!GLX.drawModel(M, BMm, lay, look)) return false;
+  if (!e.alive && e.deadT < .2) return true;
+  const fr = (n, o) => { const h = GLX.attach(M, n, MAT); if (!h) return null; return m4mul(o, BMm, h); };
+  if (kn) { const steel = col(hexMix(plate, 0xc8ced8, .55)), hb = fr('Head', MBH); if (hb) { const hc = col(hexMix(trim, 0xe8e0c8, .5)); GLX.part('dyn', 'sphere', hb, 0, .1, .03, 0, 0, 0, 0, 0, 0, .26, .31, .3, col(plate), em, 1, 4); GLX.part('dyn', 'rbox', hb, 0, .02, .1, 0, 0, 0, 0, 0, 0, .24, .2, .19, col(plate), em, 1, 4); GLX.part('dyn', 'rbox', hb, 0, .11, .2, 0, 0, 0, 0, 0, 0, .22, .035, .02, col(0x08080a), 0); GLX.part('dyn', 'rbox', hb, 0, .2, .03, 0, 0, 0, 0, 0, 0, .04, .1, .34, hc, em, 1, 4); for (const sd of [1, -1]) { GLX.part('dyn', 'cone', hb, .13 * sd, .2, 0, 0, 0, -sd * 1.05, 0, .12, 0, .05, .26, .05, hc, em, 1, 3); GLX.part('dyn', 'cone', hb, .3 * sd, .3, 0, 0, 0, -sd * .25, 0, .1, 0, .036, .22, .036, hc, em, 1, 3); }
+      GLX.part('glow', 'sphere', hb, .06, .11, .215, 0, 0, 0, 0, 0, 0, .03, .016, .01, ec, 3, 1); GLX.part('glow', 'sphere', hb, -.06, .11, .215, 0, 0, 0, 0, 0, 0, .03, .016, .01, ec, 3, 1); }
+    const h = fr('hand_r', MBH); if (h) { const gold = col(hexMix(trim, 0xb08a3a, .6)); /* a greatsword: the hand's z axis runs along the blade */ GLX.part('dyn', 'rbox', h, 0, 0, -.02, 0, 0, 0, 0, 0, 0, .045, .045, .3, col(0x2a1e16), em, 1, 7); GLX.part('dyn', 'sphere', h, 0, 0, -.19, 0, 0, 0, 0, 0, 0, .07, .07, .07, gold, em, 1, 4); GLX.part('dyn', 'rbox', h, 0, 0, .14, 0, 0, 0, 0, 0, 0, .06, .36, .05, gold, em, 1, 4); GLX.part('dyn', 'rbox', h, 0, 0, .78, 0, 0, 0, 0, 0, 0, .025, .11, 1.25, steel, em + (at > .2 ? .5 : 0), 1, 4); GLX.part('dyn', 'cone', h, 0, 0, 1.45, 1.5708, 0, 0, 0, 0, 0, .025, .1, .11, steel, em, 1, 4); GLX.part('glow', 'rbox', h, 0, 0, .78, 0, 0, 0, 0, 0, 0, .03, .025, 1.15, ec, 1.2, .6); }
+    if (e.alive) GLX.light(e.x, 2.4, e.z, 7, ec, .7, 3); }
+  else { const c2 = col(robe), base = e.alive ? 1 : Math.max(0, e.deadT / .45), pv = fr('Head', MBH), hy = pv ? pv[13] * .5 : 3.2 * sc / 2.3, R = .62 * sc / 2.3; /* a tattered shroud hangs from the hips to the ground and hides the legs */
+    GLX.obj('dyn', 'cone', e.x, hy * .62, e.z, t * .3, R * 2.5, hy * 1.24, R * 1.9, shade(c2, .7), em, 1, 6); GLX.obj('dyn', 'cyl', e.x, hy * .42, e.z, t * .3, R * 2.05, hy * .84, R * 1.7, shade(c2, .74), em, 1, 6); GLX.obj('dyn', 'cone', e.x, hy * .2, e.z, t * .3, R * 3.2, hy * .4, R * 3, shade(c2, .8), em, 1, 6); for (let k = 0; k < 14; k++) { const a = k / 14 * 6.28, sw2 = Math.sin(t * 3 + k * 1.3) * .18, L = hy * (.55 + (k % 3) * .12); GLX.part('dyn', 'rbox', IDM, e.x + Math.cos(a) * R * 2.05, L * .5 * base - .05, e.z + Math.sin(a) * R * 1.75, sw2 - .12, -a + 1.5708, 0, 0, 0, 0, .38 * sc / 2.3, L * base, .04, shade(c2, .7 + (k % 3) * .12), em, 1, 6); } GLX.obj('glow', 'disc', e.x, .06, e.z, 0, 2.6 * sc / 2.3, 1, 2.6 * sc / 2.3, ec, .8, .25 * base, 0);
+    if (e.alive) { for (let k = 0; k < 5; k++) { const a = t * 1.3 + k * 1.257, r2 = 1.9 * sc / 2.3; GLX.obj('glow', 'sphere', e.x + Math.cos(a) * r2, (1.6 + Math.sin(t * 2 + k) * .4) * sc / 2.3, e.z + Math.sin(a) * r2, 0, .14, .14, .14, ec, 2.4, .9); GLX.halo(e.x + Math.cos(a) * r2, (1.6 + Math.sin(t * 2 + k) * .4) * sc / 2.3, e.z + Math.sin(a) * r2, .8, ec, .35); }
+      const h = fr('hand_r', MBH); if (h && wind > .05) { const r = .12 + wind * .25; GLX.obj('glow', 'sphere', h[12], h[13], h[14], 0, r, r, r, ec, 1.4 + wind, 1); GLX.halo(h[12], h[13], h[14], 1 + wind * 2, ec, .4); } GLX.light(e.x, 2.2, e.z, 8, ec, .8, 3); } }
+  return true;
+}
 function drawEnemy(e) {
   if (e.dummy) { const col = GLX.col, wood = col(0x5a4028), straw = col(0xc8a868), sack = col(0xb89a72), rope = col(0x8a6a3a), red = col(0xb03a2a), wht = col(0xe8e0cc), fl = e.flash > 0 ? .6 : 0, w = (e.wob || 0), tx = Math.sin(G.time * 22) * w * .22, tz = Math.cos(G.time * 17) * w * .12;
     GLX.base(BM, e.x, 0, e.z, Math.PI, 1); const q = (g, ox, oy, oz, sx, sy, sz, c, m, em) => GLX.part('dyn', g, BM, 0, .2, 0, tx, 0, tz, ox, oy, oz, sx, sy, sz, c, (em || 0) + fl * .5, 1, m || 0);
@@ -1723,7 +1762,7 @@ function drawEnemy(e) {
   if (e.alive && e.hf > 0) { e.hf -= fdt; const k = Math.max(0, e.hf / .22), q = Math.sin(k * Math.PI) * Math.min(1.4, e.hp0 || 1); tilt = -.32 * q; ox = (e.hdx || 0) * .28 * q; oz = (e.hdz || 0) * .28 * q; } // the flinch: a quick lean back and a small step away from the blow
   GLX.base(BM, e.x + ox, y, e.z + oz, e.rot, sc); if (tilt) tiltBase(BM, e.rot, sc, tilt); const p = (g, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, cc, mat, ee) => GLX.part('dyn', g, BM, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, cc, ee === undefined ? em : ee, 1, mat || 0);
   const eyes = (ex, ey, ez, r) => { p('sphere', ex, ey, ez, 0, 0, 0, 0, 0, 0, r, r, r, ec, 0, 3); p('sphere', -ex, ey, ez, 0, 0, 0, 0, 0, 0, r, r, r, ec, 0, 3); };
-  if (monModel(e, sc, y, tilt, ox, oz, em, wind, at)) { /* build 0055: drawn on a real model */ }
+  if (monModel(e, sc, y, tilt, ox, oz, em, wind, at) || (e.boss && bossModel(e, sc, y, tilt, ox, oz, em, wind, at))) { /* build 0055: drawn on a real model */ }
   else if (e.arch === 'goblin') { const gd = col(0xd8a838), sk2 = col(0x5a8a3a), t = G.time, hop = Math.abs(Math.sin(w * 1.4)) * .14;
     if (e.awake && e.alive && !e.ann && typeof UI !== 'undefined') { e.ann = 1; UI.zoneBanner('Treasure Goblin!', 'Catch it before it escapes: 30 seconds'); SFX.play('drop3'); }
     for (const sd of [1, -1]) p('cap', .16 * sd, .4 + hop, 0, sd * sw * .9, 0, 0, 0, -.2, 0, .14, .36, .14, sk2);
