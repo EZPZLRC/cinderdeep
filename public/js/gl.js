@@ -96,6 +96,8 @@ const GLX = (() => {
     return v;
   }
   const BODY = { // build 0037: hero body shapes
+    skirt: [[-.5, .5, .48, .48, 0], [-.2, .46, .44, .44, 0], [.15, .42, .4, .4, 0], [.5, .4, .37, .37, 0]], // build 0038: chainmail skirt, flaring from the hips
+    hood: [[-.38, .48, .3, .37, -.04], [-.3, .4, .25, .34, -.06], [-.2, .31, .2, .33, -.07], [-.08, .28, .16, .31, -.06], [.08, .28, .16, .3, -.06], [.25, .24, .15, .27, -.07], [.36, .13, .1, .17, -.11], [.42, .02, .02, .04, -.16]], // build 0038: a deep cowl that drapes onto the shoulders, open where the face is
     torso: [[-.5, .34, .3, .3, 0], [-.3, .36, .32, .32, 0], [-.1, .42, .38, .34, .01], [.1, .48, .44, .36, .02], [.25, .5, .42, .34, .01], [.36, .48, .34, .3, 0], [.44, .36, .24, .24, -.01], [.5, .16, .15, .15, 0]],
     uarm: [[-.5, .2, .2, .2, 0], [-.42, .3, .3, .3, 0], [-.22, .34, .36, .34, 0], [.02, .38, .43, .36, .01], [.24, .44, .42, .42, 0], [.42, .42, .4, .4, 0], [.5, .22, .2, .2, 0]],
     farm: [[-.5, .2, .18, .18, 0], [-.42, .27, .26, .26, 0], [-.18, .34, .32, .32, 0], [.15, .44, .42, .4, 0], [.4, .46, .44, .42, 0], [.5, .3, .28, .28, 0]],
@@ -174,8 +176,11 @@ void main(){if(uOut>0.){o=vec4(.016,.012,.009,1.);return;}float mat=vE.y;
     a*=.9+.16*gr;a*=1.-.28*smoothstep(.6,.78,cr);float wo=smoothstep(.5,.85,pt);a=mix(a*.85,a*vec3(1.3,1.18,1.02)+.015,wo);spec=.3*(1.-.6*wo)+.08*gr;shin=18.;n=normalize(n+(vec3(gr,n3(vO*70.+4.),n3(vO*70.+8.))-.5)*.22);ex+=a*uSky*pow(1.-nv,3.)*.5*(1.-wo);}
    else if(mat<8.5){ /* skin: soft wrapped light, warm blood glow where light turns to shadow and through thin edges */
     float nd=dot(n,uSun);a*=.95+.1*n3(vO*25.);wrap=.45;spec=.1;shin=14.;ex+=a*uSunC*vec3(.9,.28,.16)*.24*smoothstep(-.45,.15,nd)*(1.-smoothstep(.15,.7,nd))+a*vec3(1.,.55,.45)*pow(1.-nv,3.)*.2;}
-   else{ /* hair: strands that run down the head with a soft shine along them */
+   else if(mat<9.5){ /* hair: strands that run down the head with a soft shine along them */
     float st=n3(vec3(vO.x*90.,vO.y*7.,vO.z*90.));st=mix(st,.5,smoothstep(.5,1.5,fwidth(vO.x*90.)));a*=.65+.6*st;spec=.12+.3*st;shin=34.;wrap=.2;}
+   else{ /* build 0038: chainmail. Rows of interlocked rings, dark gaps between them, each ring catching its own glint; it melts to an even grey before it can shimmer */
+    float F=uQ>1.5?44.:30.,u=atan(vO.z,vO.x)*F*.16,v=vO.y*F,rw=floor(v);u+=.5*mod(rw,2.);vec2 ce=fract(vec2(u,v))-.5;float rd=length(ce),rg=1.-smoothstep(.06,.14,abs(rd-.3)),fw=fwidth(v)+fwidth(u),fd=smoothstep(.35,1.1,fw);rg=mix(rg,.55,fd);
+    vec3 R=reflect(-Vv,n);a*=mix(.08,.7,rg);spec=.2+.6*rg;shin=40.;n=normalize(n+vec3(ce.x,ce.y,0.)*rg*(1.-fd)*.8);ex+=mix(uGnd*1.2,uSky*1.8,smoothstep(-.3,.6,R.y))*a*.3*rg;}
   }
   else if(mat>4.5&&mat<5.5){float t=clamp(vL.y+.5,0.,1.);a*=mix(.6,1.3,t)*(.8+.4*ns(vW.xz*1.3));ao=mix(.85,1.,t);wrap=.7;spec=.02;}
   else a*=.88+.24*n3(vW*5.);
