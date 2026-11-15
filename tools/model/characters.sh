@@ -9,7 +9,7 @@ H="$K/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (G
 M="$B/Superhero_Male_FullBody.gltf@bones=Head,neck_01"; F="$B/Superhero_Female_FullBody.gltf@bones=Head,neck_01"
 LEGS="thigh_l,calf_l,foot_l,ball_l,ball_leaf_l,thigh_r,calf_r,foot_r,ball_r,ball_leaf_r"
 C="--meshonly 1 --attach hand_r,hand_l,Head,spine_03 --sat .4 --cluster .012"
-node tools/model/anims.mjs $OUT/anims.cdl --anims "$UAL" --fps 20 --keep Idle_Loop=idle,Walk_Loop=walk,Jog_Fwd_Loop=run,Sword_Attack=attack,Death01=die,Roll=roll,Hit_Chest=hit,Spell_Simple_Shoot=cast,Punch_Cross=punch,Punch_Jab=jab,Idle_Talking_Loop=talk
+node tools/model/anims.mjs $OUT/anims.cdl --anims "$UAL" --fps 20 --keep Idle_Loop=idle,Walk_Loop=walk,Jog_Fwd_Loop=run,Sword_Attack=attack,Death01=die,Roll=roll,Hit_Chest=hit,Spell_Simple_Shoot=cast,Punch_Cross=punch,Punch_Jab=jab,Idle_Talking_Loop=talk,Spell_Simple_Idle_Loop=spidle,Crouch_Fwd_Loop=crouch,Crouch_Idle_Loop=crouchi
 # Ranger: hooded ranger outfit
 node tools/model/build.mjs $OUT/ranger.cdm --mesh "$O/Male_Ranger.gltf" --mesh "$M" $C --kinds 'Boots|Bracer|Belt|Pauldron=leather'
 # Warden: the ranger cut turned to steel (chest, shoulder guard, bracers, boots), dark red under-cloth, a beard; helmet and shield are added in game
@@ -29,3 +29,9 @@ node tools/model/build.mjs $OUT/folkm.cdm --mesh "$O/Male_Peasant.gltf" --mesh "
   --kinds 'Buzzed=hairb,Beard=beard,Legs|Feet=leather' --tint 'Peasant_(Body|Arms).*MI_Peasant=a8a8a8:.9'
 node tools/model/build.mjs $OUT/folkf.cdm --mesh "$O/Female_Peasant.gltf" --mesh "$F" --mesh "$H/Hair_Buns.gltf" --mesh "$H/Hair_Long.gltf" $C \
   --kinds 'Hair_Long=hairb,Legs|Feet=leather' --tint 'Peasant_(Body|Arms).*MI_Peasant=a8a8a8:.9'
+# build 0055 monsters. MC skips --sat .4 so each monster sets its own colour strength.
+MC="--meshonly 1 --attach hand_r,hand_l,Head,spine_03 --cluster .012"
+# Risen dead (grunts and brutes): bare torso, peasant trousers; skin is dyed ashen grey in game
+node tools/model/build.mjs $OUT/risen.cdm --mesh "$B/Superhero_Male_FullBody.gltf@nobones=$LEGS" --mesh "$O/Male_Peasant.gltf@nodes=Male_Peasant_Legs" $MC --sat .15 --kinds 'Legs=cloth' --drop 'Eyebrow'
+# Cultist (casters): the hooded ranger outfit, robe parts treated as cloth so they can be dyed
+node tools/model/build.mjs $OUT/cultist.cdm --mesh "$O/Male_Ranger.gltf" --mesh "$M" $MC --sat .1 --drop 'Eyebrow' --kinds 'Hood|Body_Belt|Legs|Ranger_Body=cloth,Boots|Bracer|Pauldron=leather'

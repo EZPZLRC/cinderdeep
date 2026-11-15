@@ -1644,6 +1644,41 @@ function drawHero(o, self) {
   if (o.flaskT > 0) GLX.halo(o.x, 1.4, o.z, 3.5, col(0xff3a3a), .5);
 }
 function tiltBase(o, ry, s, t) { /* build 0048: lean the whole body back by t radians around its own side axis */ const c = Math.cos(ry), sn = Math.sin(ry), ct = Math.cos(t), st = Math.sin(t); o[4] = st * sn * s; o[5] = ct * s; o[6] = st * c * s; o[8] = ct * sn * s; o[9] = -st * s; o[10] = ct * c * s; }
+// ---- build 0055: monsters on real models. Risen dead (grunts), hulking risen (brutes) and hooded cultists (casters) are the free CC0
+// Quaternius base body and outfits, dyed per floor theme with glowing eyes, on the shared animation file. Far away, or if a model
+// has not loaded, the code-built monster is drawn instead ----
+const MON_MDL = { grunt: 'risen', brute: 'risen', caster: 'cultist' }, MON_FAR = 30, MHAND = new Float32Array(16);
+function hexMix(a, b, t) { const c = k => Math.round(((a >> k) & 255) * (1 - t) + ((b >> k) & 255) * t); return (c(16) << 16) | (c(8) << 8) | c(0); }
+function monModel(e, sc, y, tilt, ox, oz, em, wind, at) {
+  const nm = MON_MDL[e.arch]; if (!nm || e.boss || e.dummy || !MODELS_ON || !GLX.model || G.realModels === false || G.monModels === false) return false;
+  if (Math.hypot(e.x - P.x, e.z - P.z) > MON_FAR || (G._mN = (G._mN || 0) + 1) > 24) return false; // at most 24 model monsters a frame keeps big packs smooth on phones
+  const M = GLX.model(nm, 'models/' + nm + '.cdm?v=' + BUILD); if (!M || !M.anims || !M.anims.idle) return false;
+  if (!e.alive) { sc = e.sc; tilt = 0; y = (e.fly ? e.fly.y : 0) - Math.max(0, 1 - e.deadT / .3) * .9; } // the death animation does the falling; at the very end the body sinks away
+  const A = M.anims, t = G.time, md = e.md, cast = e.arch === 'caster', brute = e.arch === 'brute', s = sc * MSC * (brute ? .95 : cast ? 1.02 : .98), up = UPMASK[nm] || (UPMASK[nm] = CDM.mask(M, ['spine_02'], 0)), lay = [];
+  const moved = Math.abs((e.walk || 0) - (e._mw === undefined ? e.walk : e._mw)); e._mw = e.walk; e._mv = (e._mv || 0) + ((moved > .001 ? 1 : 0) - (e._mv || 0)) * .2; const mv = e.alive ? clamp(e._mv, 0, 1) : 0;
+  if (!e.alive) { if (e._dT0 === undefined) e._dT0 = t; lay.push(['die', Math.min(A.die.dur * .92, (t - e._dT0) * 2.6), false, 1]); }
+  else { e._dT0 = undefined; const gait = brute || cast ? 'walk' : 'crouch', ph = (e.walk || 0) / 6.2832 * (gait === 'crouch' ? .7 : 1.1), wnd = e.st === 'wind' || e.st === 'hwind' || e.st === 'cwind', act = Math.max(wnd ? 1 : 0, at > 0 ? 1 : 0), bm = e._bm || (e._bm = new Float32Array(up.length));
+    for (let b = 0; b < up.length; b++) bm[b] = 1 - act * up[b];
+    if (mv < 1) lay.push([cast ? 'spidle' : brute ? 'idle' : 'crouchi', t + e.id * .37, true, 1 - mv, bm]); /* the risen stalk hunched over */ if (mv > 0) lay.push([gait, ph * A[gait].dur, true, mv, bm]);
+    if (e.hf > 0 && !act) lay.push(['hit', (.22 - e.hf) * 2.4, false, Math.min(1, e.hf * 6), up]);
+    if (act) { const an = cast ? 'cast' : brute ? 'punch' : (e.id & 1 ? 'attack' : 'punch'), D = A[an].dur, strike = cast ? .45 : .38, k = wnd ? strike * clamp(wind, 0, 1) : strike + (1 - strike) * clamp(1 - at, 0, 1); lay.push([an, k * D, false, 1, up]); } }
+  GLX.base(BMm, e.x + ox, y - M.head.minY * s, e.z + oz, e.rot, s); if (tilt) tiltBase(BMm, e.rot, s, tilt);
+  const ec = GLX.col(md.e), skinC = hexMix(md.c, brute ? 0x464e52 : 0x5a6260, brute ? .82 : .74), clothC = cast ? hexMix(md.c2, 0x2a161a, .6) : hexMix(md.c2, 0x2a2420, .4);
+  const look = (gi, gr) => { const k = gr.kind;
+    if (k === 'plain') return [[ec[0] * 3, ec[1] * 3, ec[2] * 3], 2.6, 0]; // the eyes burn
+    if (k === 'skin') return [mdye(gr, skinC, .95, .72), em, 8];
+    if (k === 'hair') return cast ? [mdye(gr, 0x1a1414, .8, 1), em, 9] : null;
+    if (k === 'cloth') return [mdye(gr, clothC, .9, .8), em, 6];
+    if (k === 'leather') return [mdye(gr, 0x2a201a, .7, 1), em, 7];
+    if (k === 'metal') return [mdye(gr, 0x5a5650, .6, 1.1), em, 4];
+    return [MLIFT, em, gr.mat]; };
+  if (!GLX.drawModel(M, BMm, lay, look)) return false;
+  // casters cup a ball of the floor's own magic in their hand while they wind up
+  const hand = GLX.attach(M, 'hand_r', MAT); if (hand && e.alive) { m4mul(MHAND, BMm, hand); const hx = MHAND[12], hy = MHAND[13], hz = MHAND[14];
+    if (cast) { const r = .16 + wind * .3; GLX.obj('glow', 'sphere', hx, hy, hz, 0, r, r, r, ec, 1 + wind * .8, 1); GLX.halo(hx, hy, hz, .8 + wind * 1.4, ec, .28 + wind * .2); }
+  }
+  return true;
+}
 function drawEnemy(e) {
   if (e.dummy) { const col = GLX.col, wood = col(0x5a4028), straw = col(0xc8a868), sack = col(0xb89a72), rope = col(0x8a6a3a), red = col(0xb03a2a), wht = col(0xe8e0cc), fl = e.flash > 0 ? .6 : 0, w = (e.wob || 0), tx = Math.sin(G.time * 22) * w * .22, tz = Math.cos(G.time * 17) * w * .12;
     GLX.base(BM, e.x, 0, e.z, Math.PI, 1); const q = (g, ox, oy, oz, sx, sy, sz, c, m, em) => GLX.part('dyn', g, BM, 0, .2, 0, tx, 0, tz, ox, oy, oz, sx, sy, sz, c, (em || 0) + fl * .5, 1, m || 0);
@@ -1659,7 +1694,8 @@ function drawEnemy(e) {
   if (e.alive && e.hf > 0) { e.hf -= fdt; const k = Math.max(0, e.hf / .22), q = Math.sin(k * Math.PI) * Math.min(1.4, e.hp0 || 1); tilt = -.32 * q; ox = (e.hdx || 0) * .28 * q; oz = (e.hdz || 0) * .28 * q; } // the flinch: a quick lean back and a small step away from the blow
   GLX.base(BM, e.x + ox, y, e.z + oz, e.rot, sc); if (tilt) tiltBase(BM, e.rot, sc, tilt); const p = (g, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, cc, mat, ee) => GLX.part('dyn', g, BM, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, cc, ee === undefined ? em : ee, 1, mat || 0);
   const eyes = (ex, ey, ez, r) => { p('sphere', ex, ey, ez, 0, 0, 0, 0, 0, 0, r, r, r, ec, 0, 3); p('sphere', -ex, ey, ez, 0, 0, 0, 0, 0, 0, r, r, r, ec, 0, 3); };
-  if (e.arch === 'goblin') { const gd = col(0xd8a838), sk2 = col(0x5a8a3a), t = G.time, hop = Math.abs(Math.sin(w * 1.4)) * .14;
+  if (monModel(e, sc, y, tilt, ox, oz, em, wind, at)) { /* build 0055: drawn on a real model */ }
+  else if (e.arch === 'goblin') { const gd = col(0xd8a838), sk2 = col(0x5a8a3a), t = G.time, hop = Math.abs(Math.sin(w * 1.4)) * .14;
     if (e.awake && e.alive && !e.ann && typeof UI !== 'undefined') { e.ann = 1; UI.zoneBanner('Treasure Goblin!', 'Catch it before it escapes: 30 seconds'); SFX.play('drop3'); }
     for (const sd of [1, -1]) p('cap', .16 * sd, .4 + hop, 0, sd * sw * .9, 0, 0, 0, -.2, 0, .14, .36, .14, sk2);
     p('sphere', 0, .82 + hop, .05, .5, 0, 0, 0, 0, 0, .5, .5, .45, c, 0); p('sphere', 0, 1.18 + hop, .38, .2, 0, 0, 0, 0, 0, .34, .3, .32, sk2, 0); for (const sd of [1, -1]) p('cone', .3 * sd, 1.28 + hop, .34, 0, 0, sd * 1.2, 0, 0, 0, .08, .34, .08, sk2); eyes(.1, 1.24 + hop, .62, .05); p('sphere', 0, 1.12 + hop, .66, 0, 0, 0, 0, 0, 0, .1, .08, .12, sk2);
@@ -1801,7 +1837,7 @@ function drawWorld() {
     if (P.dash) { const c = hc(P.dash.sk && P.dash.sk.el), dx = P.x - P.dash.x0, dz = P.z - P.dash.z0; for (let q = 1; q <= 5; q++) { const u = q / 6; GLX.obj('glow', 'cap', P.x - dx * u * .8, 1.1, P.z - dz * u * .8, P.rot, .55 * (1 - u * .5), 1.6 * (1 - u * .4), .4, c, 1.2, .35 * (1 - u)); } }
   }
   drawHero(P, true); if (G.online && !G.inTown) for (const id in NET.peers) { const q = NET.peers[id]; if (!q.dead) drawHero(q, false); }
-  for (const e of G.ents) { if (Math.abs(e.x - P.x) > 34 || Math.abs(e.z - P.z) > 34) continue; drawEnemy(e); }
+  G._mN = 0; for (const e of G.ents) { if (Math.abs(e.x - P.x) > 34 || Math.abs(e.z - P.z) > 34) continue; drawEnemy(e); }
   for (const L of Z.lamps) { const d = Math.hypot(L.x - P.x, L.z - P.z); if (d > 32) continue; const c = col(L.big ? 0xff9a3a : Z.th.lamp), fl = fireFl(G.time, L.x + L.z); GLX.light(L.x, L.big ? 2.2 : 1.2, L.z, L.big ? 13 : 7, c, (L.big ? 1.3 : .8) * fl); GLX.halo(L.x, L.big ? 1.6 : .5, L.z, L.big ? 3.2 : 1.8, c, .4 * fl); }
   for (const o of Z.objs) {
     if (Math.hypot(o.x - P.x, o.z - P.z) > 34) continue; const hov = G.hoverObj === o ? .5 : 0;
