@@ -357,7 +357,7 @@ const UI = (() => {
     const sk = $('streak'); if (sk) { const cs = getComputedStyle(sk); sk.style.top = ''; if (cs.right !== 'auto' && parseFloat(getComputedStyle(sk).top) < y + 8 && sk.getBoundingClientRect().left > innerWidth * .6) sk.style.top = Math.round(y + 8) + 'px'; } }
   function hud(dt) {
     stackRight(dt); placeMute(dt); talDot(dt);
-    { const b = G.boss; if (b && b.alive && b.bd && b.bd.phaseLines) { const ph = b.hp > b.maxHp * .66 ? 0 : b.hp > b.maxHp * .33 ? 1 : 2; if (ph > (b.phShown || 0)) { b.phShown = ph; const L = b.bd.phaseLines[ph]; if (L) { U.zoneBanner(L[0], L[1]); SFX.play('boss'); } } } } /* build 0074: Vaeloth's phases are announced */
+    { const b = G.boss; if (b && b.alive && b.bd && b.bd.phaseLines) { const ph = b.hp > b.maxHp * .66 ? 0 : b.hp > b.maxHp * .33 ? 1 : 2; if (ph > (b.phShown || 0)) { b.phShown = ph; const L = b.bd.phaseLines[ph]; if (L) { U.zoneBanner(L[0], L[1]); SFX.play('boss'); } } } } /* build 0074: Vaeloth's phases are announced */ { const b = G.wboss && G.wboss.alive ? G.wboss : G.boss; if (b && b.alive && b.bd && b.bd.sig && !b.p2Shown && b.hp < b.maxHp * .5) { b.p2Shown = 1; U.zoneBanner(b.bd.n + ' is enraged', 'It adds a new move and attacks faster'); SFX.play('boss'); } } /* build 0089 */
     const h = G.hero, s = P.stats, cls = CLASSES[h.cls];
     $('gLife').firstElementChild.style.height = clamp(P.hp / s.maxLife * 100, 0, 100) + '%'; $('gLife').lastElementChild.textContent = Math.ceil(P.hp) + ' / ' + s.maxLife;
     $('gFury').firstElementChild.style.height = clamp(P.mana / s.maxMana * 100, 0, 100) + '%'; $('gFury').lastElementChild.textContent = Math.floor(P.mana) + ' ' + cls.res.n;

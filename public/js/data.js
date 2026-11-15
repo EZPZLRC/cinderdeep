@@ -347,12 +347,14 @@ const THEMES = {
     mon: [{ a: 'grunt', n: 'Voidspawn', c: 0x3a2a56, c2: 0x1c1426, e: 0xd080ff }, { a: 'swarm', n: 'Null Mite', c: 0x5a3a8a, c2: 0x2a1a46, e: 0xff80ff }, { a: 'caster', n: 'Rift Oracle', c: 0x2a1a46, c2: 0xb060ff, e: 0xfff07a }, { a: 'brute', n: 'Abyssal Maw', c: 0x2a2036, c2: 0x7a3ac0, e: 0xff60d0 }, { a: 'bomber', n: 'Unstable Wisp', c: 0x9a5aff, c2: 0x5a2ac0, e: 0xffffff }] }
 };
 // Two guardians per region: which one you meet depends on the floor.
+// build 0089 (Lee: make the boss fights more interesting): sig is each guardian's two signature moves (see bossSig in game.js). The first is
+// in its fight from the start; at half life it is enraged, adds the second and attacks faster. Loot, XP and boss life are unchanged.
 const BOSSES = {
-  forest: [{ n: 'The Rootmother', shape: 'tree', c: 0x3a5a2a, c2: 0x6a4a2a, e: 0xc0ff40, pat: ['slam', 'summon', 'ring', 'barrage'] }, { n: 'Old Thornhide', shape: 'beast', c: 0x5a4a2a, c2: 0x2a3a1a, e: 0xffb03a, sc: 2.6, pat: ['charge', 'slam', 'charge', 'barrage'] }],
-  crypt: [{ n: 'Warden of Bones', shape: 'knight', c: 0xe0d8c0, c2: 0x4a4a6a, e: 0x7ad0ff, pat: ['charge', 'ring', 'summon', 'nova'] }, { n: 'The Hollow Choir', shape: 'wraith', c: 0x6a6a8a, c2: 0x2a2a3a, e: 0xb0ffd0, sc: 2, pat: ['spiral', 'summon', 'nova', 'spiral', 'ring'] }],
-  lava: [{ n: 'The Ashen Tyrant', shape: 'knight', c: 0x3a2020, c2: 0xff5a1a, e: 0xffc040, pat: ['barrage', 'charge', 'spiral', 'slam'] }, { n: 'Magmaw', shape: 'golem', c: 0x5a2a10, c2: 0x1a1210, e: 0xff3a1a, sc: 2.7, pat: ['slam', 'ring', 'slam', 'summon', 'barrage'] }],
-  ice: [{ n: 'The Pale Matriarch', shape: 'wraith', c: 0xc0e0f0, c2: 0x5a90c0, e: 0xffffff, pat: ['spiral', 'nova', 'summon', 'barrage', 'ring'] }, { n: 'Rimefang', shape: 'beast', c: 0x8ab0d0, c2: 0xe0f0ff, e: 0x7ad0ff, sc: 2.5, pat: ['charge', 'nova', 'charge', 'ring'] }],
-  void: [{ n: 'Null, the Unmade', shape: 'wraith', c: 0x2a1a46, c2: 0xb060ff, e: 0xff80ff, pat: ['spiral', 'charge', 'barrage', 'nova', 'summon', 'ring'] }, { n: 'The Gaping Star', shape: 'orb', c: 0x101028, c2: 0xffd84a, e: 0xfff0a0, sc: 2.2, pat: ['ring', 'spiral', 'nova', 'barrage', 'spiral'] }]
+  forest: [{ n: 'The Rootmother', sig: ['roots', 'cage'], shape: 'tree', c: 0x3a5a2a, c2: 0x6a4a2a, e: 0xc0ff40, pat: ['slam', 'summon', 'ring', 'barrage'] }, { n: 'Old Thornhide', sig: ['trail', 'twincone'], shape: 'beast', c: 0x5a4a2a, c2: 0x2a3a1a, e: 0xffb03a, sc: 2.6, pat: ['charge', 'slam', 'charge', 'barrage'] }],
+  crypt: [{ n: 'Warden of Bones', sig: ['twincross', 'cage'], shape: 'knight', c: 0xe0d8c0, c2: 0x4a4a6a, e: 0x7ad0ff, pat: ['charge', 'ring', 'summon', 'nova'] }, { n: 'The Hollow Choir', sig: ['twinrays', 'halo'], shape: 'wraith', c: 0x6a6a8a, c2: 0x2a2a3a, e: 0xb0ffd0, sc: 2, pat: ['spiral', 'summon', 'nova', 'spiral', 'ring'] }],
+  lava: [{ n: 'The Ashen Tyrant', sig: ['trail', 'twincross'], shape: 'knight', c: 0x3a2020, c2: 0xff5a1a, e: 0xffc040, pat: ['barrage', 'charge', 'spiral', 'slam'] }, { n: 'Magmaw', sig: ['fault', 'cage'], shape: 'golem', c: 0x5a2a10, c2: 0x1a1210, e: 0xff3a1a, sc: 2.7, pat: ['slam', 'ring', 'slam', 'summon', 'barrage'] }],
+  ice: [{ n: 'The Pale Matriarch', sig: ['twinrays', 'cage'], shape: 'wraith', c: 0xc0e0f0, c2: 0x5a90c0, e: 0xffffff, pat: ['spiral', 'nova', 'summon', 'barrage', 'ring'] }, { n: 'Rimefang', sig: ['twincone', 'trail'], shape: 'beast', c: 0x8ab0d0, c2: 0xe0f0ff, e: 0x7ad0ff, sc: 2.5, pat: ['charge', 'nova', 'charge', 'ring'] }],
+  void: [{ n: 'Null, the Unmade', sig: ['twincross', 'halo'], shape: 'wraith', c: 0x2a1a46, c2: 0xb060ff, e: 0xff80ff, pat: ['spiral', 'charge', 'barrage', 'nova', 'summon', 'ring'] }, { n: 'The Gaping Star', sig: ['halo', 'twinrays'], shape: 'orb', c: 0x101028, c2: 0xffd84a, e: 0xfff0a0, sc: 2.2, pat: ['ring', 'spiral', 'nova', 'barrage', 'spiral'] }]
 };
 // build 0074: Act III. Vaeloth, the Cinder Prophet, waits on floor 10 and fights in three phases
 const VAELOTH = { n: 'Vaeloth, the Cinder Prophet', shape: 'wraith', c: 0x2a1410, c2: 0xff6a1a, e: 0xffb040, sc: 2.7, hpM: 1.5, pat: ['barrage', 'spiral', 'nova', 'ring'],
@@ -365,7 +367,7 @@ const HEART = { name: 'The Heart of Cinders', theme: 'void', lvl: 30, d: 'Under 
 const WB_NEED = 1000; // kills, server-wide, to raise the world boss. Change this one number to make it rarer or more common
 const WB_LIFE = 3; // its life, in floor guardians (then scaled up for how many players are online)
 const WB_HIT = .02; // no single hit takes more than this share of its life: it is the one fight meant to last
-const WORLD_BOSS = { n: 'The Deepfire Colossus', shape: 'knight', c: 0x2a1c30, c2: 0x7a3ac0, e: 0xc070ff, sc: 3.3, pat: ['slam', 'ring', 'barrage', 'nova', 'spiral', 'charge', 'summon'] };
+const WORLD_BOSS = { n: 'The Deepfire Colossus', sig: ['fault', 'twincross'], shape: 'knight', c: 0x2a1c30, c2: 0x7a3ac0, e: 0xc070ff, sc: 3.3, pat: ['slam', 'ring', 'barrage', 'nova', 'spiral', 'charge', 'summon'] };
 function bossFor(theme, depth, rift) { if ((depth | 0) === 10 && !rift) return VAELOTH; const l = BOSSES[theme] || BOSSES.forest; return l[Math.max(0, (depth | 0) - 1) % l.length]; }
 const ZONES = [
   { name: 'Blighted Hollow', theme: 'forest', lvl: 1, d: 'A rotting wood where the dead refuse to lie still.' },
