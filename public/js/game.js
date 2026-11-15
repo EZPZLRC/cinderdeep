@@ -1252,7 +1252,7 @@ function teleLine(x0, z0, ang, len, w, c, k, fl, cw) { const sn = Math.sin(ang),
   if (k > 0) GLX.obj('glow', 'box', x0 + sn * len * k / 2, .08, z0 + cs * len * k / 2, ang, w, .02, len * k, c, 1, .32, 0);
   for (const sd of [1, -1]) GLX.obj('glow', 'box', x0 + sn * m + px * sd, .09, z0 + cs * m + pz * sd, ang, .12, .02, len, c, 1 + fl, .9, 0);
   GLX.obj('glow', 'box', x0 + sn * len, .09, z0 + cs * len, ang, w, .02, .12, c, 1 + fl, .9, 0); GLX.obj('glow', 'box', x0 + sn * len * k, .1, z0 + cs * len * k, ang, w, .02, .16, cw, 1.4, .8, 0); }
-function drawTele(a, c, k, fl) { const cw = col(0xffd0a0), L = areaLines(a);
+function drawTele(a, c, k, fl) { const cw = GLX.col(0xffd0a0), L = areaLines(a);
   if (L) { for (const l of L) teleLine(l[0], l[1], l[2], a.len, a.w, c, k, fl, cw); return; }
   const n = Math.max(1, Math.round(2 * a.arc / .1745)), st = 2 * a.arc / n, d = a.r * 2; // a cone is a fan of 10 degree slices
   for (let i = 0; i < n; i++) { const q = a.ang - a.arc + st * (i + .5); GLX.obj('glow', 'sect', a.x, .07, a.z, q, d, 1, d, c, 1, .14 + fl * .2, 0); if (k > 0) GLX.obj('glow', 'sect', a.x, .08, a.z, q, d * k, 1, d * k, c, 1, .32, 0);
