@@ -8,7 +8,7 @@ The build number shows in the bottom right corner of the game, in Settings, and 
 
 ## How the live game gets updated
 
-Each tested build is pushed to the `main` branch of this repository. Render sees the new commit and redeploys the site within a few minutes. If it does not, open the service on render.com and choose Manual Deploy, then Deploy latest commit.
+Each tested build is pushed to the `main` branch of this repository. When more than one session is building at the same time, merge the latest `main` into your work before pushing: copying a whole game folder over `public/` throws away whatever was pushed in between. Render sees the new commit and redeploys the site within a few minutes. If it does not, open the service on render.com and choose Manual Deploy, then Deploy latest commit.
 
 ## Run it on your own computer
 
@@ -32,6 +32,7 @@ The server has no dependencies.
 - Build 0043: real models are the default for everyone. `?models=0` forces the classic code-built characters, and `?models=1` shows the load-check line. Any device that cannot load a model, or hits an error drawing one, falls back to the classic look on its own.
 - Build 0044: new floors. The ground shader (material 1 in `gl.js`) blends four layers, the region colour, earth, stone and ash, by height with warped, rotated noise so nothing tiles. Each region sets `gr: [earth, stone, ash, glow]` in THEMES; stone gets flagstones with mortar on Medium and High, and the glow colour is the region lamp colour. Low graphics skips the warp and the flagstones.
 - Gear shapes (build 0038): layered pauldron lames, chainmail skirt (its own ring material on Medium and High) with swinging tassets, leather flaps on leather chests, draped cowl hoods, glowing rune glyphs on rare and better chests, pauldrons, swords and axes, and a soft glow with rising embers around heroes wearing legendaries.
+- Scarcer loot and town tools (build 0045): plain monsters drop about half as much (mostly fewer grey and blue items), a legendary comes about every two and a half floors, and an item is guaranteed after 20 kills without one. A brand-new hero always starts on floor 1: an empty party's floor is only handed back to the same hero. Town has a Training Dummy that shows damage per second. The Badges button (on phones: Leaders, then See all badges) lists every badge; click one to see how it is earned. Bag and Trader items carry a green arrow when they are better overall and a red one when they are not. Treasure Goblins glow on the minimap with a gold arrow pointing to them. A guardian's loot lands away from the gate it opens. Each area has its own song that keeps changing, the bottom bar has a 3D look and the XP bar fills smoothly.
 - Monsters live on the server, so everyone in a party fights the same ones. Their life scales with party size.
 - Loot is personal: every player in a kill gets their own drops. Give an item to the nearest player from the bag.
 - Town is private to each player. The town portal returns you to your party. The Rift Stone in town opens a timed floor for the whole party.

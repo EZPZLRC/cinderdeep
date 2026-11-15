@@ -22,7 +22,7 @@ function cast(room, msg, except) { const s = JSON.stringify(msg); for (const p o
 function roster(room) { return { t: 'players', list: [...room.players.values()].map(p => ({ id: p.id, name: p.name, cls: p.cls })) }; }
 function leave(p) {
   const room = p.room; if (!room) return; p.room = null; room.players.delete(p.id); delete room.ctx.SP[p.id];
-  cast(room, { t: 'leave', id: p.id, name: p.name }); cast(room, roster(room)); if (!room.players.size) room.emptyAt = Date.now(); else rescale(room);
+  cast(room, { t: 'leave', id: p.id, name: p.name }); cast(room, roster(room)); if (!room.players.size) { room.emptyAt = Date.now(); room.last = { name: p.name, cls: p.cls, lvl: p.lvl }; /* who left last, so only that same hero can pick this floor back up (build 0034) */ } else rescale(room);
 }
 // monster life follows the party size as people come and go, not only when a floor is made (build 0022)
 function rescale(room, except) { const r = room.ctx.srvScale(room.players.size); if (r) cast(room, { t: 'scale', r }, except); }
@@ -37,7 +37,12 @@ function onMessage(p, m) {
     if (code === 'auto' || /^dly\d{6}au$/.test(code)) { const base = code === 'auto' ? 'pub' : code.slice(0, 9) + 'p'; let pick = null, k = 1;
       for (const [c, r] of rooms) { if (c.indexOf(base) !== 0 || r.players.size >= PARTY_MAX || !r.players.size) continue; let lv = 1; for (const q of r.players.values()) lv = Math.max(lv, q.lvl); if (Math.abs(lv - p.lvl) <= 6 && (!pick || r.players.size > pick[1].players.size)) pick = [c, r]; }
       if (pick) code = pick[0]; else { while (rooms.has(base + k) && rooms.get(base + k).players.size) k++; code = base + k; } }
-    let room = rooms.get(code), fresh = false; if (!room) { if (rooms.size >= 50) { p.conn.send({ t: 'error', m: 'Server is full.' }); return; } room = makeRoom(code); fresh = true; }
+    let room = rooms.get(code), fresh = false;
+    // build 0034 fix (Lee, Nov 14): an empty party stays on the server for a minute so a dropped connection can pick its floor back up.
+    // It used to be handed to whoever joined next, so a brand-new hero could land on the high-level floor of the hero played just before.
+    // Now only the same hero (same name, class and level) gets the old floor back; anyone else starts a new party from the first floor at their own level.
+    if (room && !room.players.size) { const L = room.last; if (!(L && L.name === p.name && L.cls === p.cls && Math.abs(L.lvl - p.lvl) <= 1)) { rooms.delete(code); room = null; } }
+    if (!room) { if (rooms.size >= 50) { p.conn.send({ t: 'error', m: 'Server is full.' }); return; } room = makeRoom(code); fresh = true; }
     if (room.players.size >= PARTY_MAX) { p.conn.send({ t: 'error', m: 'That party is full (' + PARTY_MAX + ' players).' }); return; }
     p.room = room; room.players.set(p.id, p); room.emptyAt = 0; p.st = null;
     p.conn.send({ t: 'hello', id: p.id, room: code });

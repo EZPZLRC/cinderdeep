@@ -37,6 +37,7 @@ const SFX = (() => {
         case 'leap': noise(.25, .08, 3000); break;
         case 'whirl': noise(.3, .08, 2200); break;
         case 'gold': tone(1568, .06, 'square', .035); tone(2093, .08, 'square', .035, 1, .05); break;
+        case 'goblin': [1319, 1568, 2093, 1568, 2093, 2637].forEach((f, i) => tone(f, .14, 'triangle', .09, 1, i * .075)); tone(3136, .5, 'sine', .05, 1, .46); break; /* build 0034: a coin jingle when a Treasure Goblin is near */
         case 'pickup': tone(520, .08, 'triangle', .1, 1.5); break;
         case 'drop1': tone(660, .25, 'sine', .1); break;
         case 'drop2': tone(784, .22, 'triangle', .12); tone(1047, .4, 'triangle', .12, 1, .12); break;
@@ -54,7 +55,7 @@ const SFX = (() => {
   let amb = null, ambT = 2, ambKind = '', ambLvl = 0;
   const setAmb = () => { if (amb && ac) amb.g.gain.setTargetAtTime(mute ? 0 : ambLvl * master, ac.currentTime, .8); };
   function ambient(kind) {
-    ambKind = kind || ''; const a = ctx(); if (!a) return;
+    ambKind = kind || ''; gameSong = THEMES['s_' + ambKind] ? 's_' + ambKind : ''; const a = ctx(); if (!a) return;
     if (!nb) { nb = a.createBuffer(1, a.sampleRate, a.sampleRate); const ch = nb.getChannelData(0); for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1; }
     if (!amb) { try { const src = a.createBufferSource(); src.buffer = nb; src.loop = true; const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 300; const g = a.createGain(); g.gain.value = 0; src.connect(lp); lp.connect(g); g.connect(a.destination); src.start(); const lfo = a.createOscillator(), lg = a.createGain(); lfo.frequency.value = .09; lg.gain.value = 110; lfo.connect(lg); lg.connect(lp.frequency); lfo.start(); amb = { lp, g }; } catch (e) { amb = null; return; } }
     const p = { forest: [520, .05], town: [420, .032], crypt: [190, .06], lava: [150, .085], ice: [900, .055], void: [260, .05] }[ambKind] || [300, .04];
@@ -81,7 +82,7 @@ const SFX = (() => {
   function snare(t, v) { hit(t, 1900, 'bandpass', .32 * v, .17, mBus); osc('triangle', 190, t, .09, .14 * v, mBus); }
   function chord(n, t, d, v) { for (const [k, det] of [[0, -7], [0, 7], [7, 0], [12, 4]]) osc('sawtooth', MF(n + k), t, d, v * (k === 12 ? .5 : 1), gBus, det); }
   /* build 0033: each hero has a theme on the selection screen. Same instruments as the rock loop, plus a clean bus with an echo for bells, flutes and pads. Degrees index the theme's scale; null is a rest */
-  const SC = { min: [0, 2, 3, 5, 7, 8, 10], dor: [0, 2, 3, 5, 7, 9, 10], hmin: [0, 2, 3, 5, 7, 8, 11], blues: [0, 3, 5, 6, 7, 10] }, _ = null;
+  const SC = { min: [0, 2, 3, 5, 7, 8, 10], dor: [0, 2, 3, 5, 7, 9, 10], hmin: [0, 2, 3, 5, 7, 8, 11], blues: [0, 3, 5, 6, 7, 10], maj: [0, 2, 4, 5, 7, 9, 11], phr: [0, 1, 3, 5, 7, 8, 10] }, _ = null;
   const THEMES = {
     warden: { bpm: 92, base: 73.42, len: 8, sc: 'min', prog: [0, 0, -2, -2, -4, -4, -5, -5], kick: [0, 3, 4], snare: [6], tom: [1, 5, 7], gtr: 'hold', bass: 'root', crash: 1,
       lead: { w: 'sawtooth', v: .05, lp: 1300, oct: 12, m: [0, _, _, 0, 2, _, 4, _, 3, _, 2, _, 0, _, _, _, 0, _, _, 0, 2, _, 4, _, 5, _, 4, _, 7, _, _, _] }, pad: { w: 'sawtooth', v: .018, lp: 700 } },
@@ -94,27 +95,45 @@ const SFX = (() => {
     elementalist: { bpm: 128, base: 92.5, len: 8, sc: 'min', prog: [0, 0, -4, -4, 3, 3, -2, -2], kick: [0, 2, 4, 6], snare: [2, 6], hat: [1, 3, 5, 7], hv: .07, bass: 'off', bw: 'sawtooth', echo: .3,
       arp: { w: 'square', v: .03, d: .18, oct: 24, n: [0, 7, 12, 15, 12, 7, 3, 7], split: 1 }, pad: { w: 'sawtooth', v: .02, lp: 1800, det: 12 }, lead: { w: 'sawtooth', v: .045, oct: 24, lp: 2400, m: [4, _, _, 3, 4, _, 6, _, 7, _, 6, _, 4, _, _, _, 2, _, _, 3, 4, _, 2, _, 0, _, _, _, _, _, _, _] } }
   };
+  /* build 0034: in-game music changes with the place you are in: a calm tune in town, the rock loop in the forest, and its own song for crypt, lava, ice and void floors */
+  Object.assign(THEMES, {
+    s_town: { bpm: 100, base: 98, len: 6, sc: 'maj', prog: [0, 0, 5, 5, 9, 9, 7, 7], progB: [5, 5, 7, 7, 9, 9, 7, 2], kick: [0], snare: [], hat: [3], hv: .02, bass: 'root', bw: 'triangle', echo: .35,
+      arp: { w: 'triangle', v: .045, d: .5, n: [0, 7, 12, 7, 12, 19] }, pad: { w: 'sine', v: .03, iv: [0, 7, 12], det: 6 }, lead: { w: 'sine', v: .07, oct: 24, vib: 1, m: [4, _, 2, 4, _, 7, 5, _, 4, 2, _, _, 1, _, 2, 4, _, 2, 0, _, _, _, _, _] } },
+    s_crypt: { bpm: 72, base: 61.74, len: 8, sc: 'hmin', prog: [0, 0, 1, 1, -4, -4, -5, -5], kick: [0], snare: [], tom: [4, 6], bass: 'long', bw: 'sine', echo: .5,
+      arp: { w: 'sine', v: .05, d: 1.6, oct: 24, n: [0, 7, 3, 12, 7, 15, 12, 7] }, pad: { w: 'sawtooth', v: .016, lp: 900, iv: [0, 7, 12] }, lead: { w: 'triangle', v: .05, oct: 12, m: [0, _, _, _, 1, _, 0, _, 6, _, _, _, 4, _, _, _, 0, _, _, _, 1, _, 2, _, 4, _, 3, _, 1, _, _, _] } },
+    s_lava: { bpm: 150, base: 73.42, len: 8, sc: 'phr', prog: [0, 0, 1, 1, 0, 0, -2, 1], progB: [-4, -4, -2, -2, 1, 1, 0, 0], kick: [0, 1, 3, 4, 5], snare: [2, 6], hat: [0, 2, 4, 6], hv: .05, gtr: 'chug', bass: 'pulse',
+      lead: { w: 'sawtooth', v: .028, oct: 12, dist: 1, m: [0, _, 1, _, 0, _, 4, 3, 1, _, 0, _, _, _, _, _, 0, _, 1, _, 2, _, 4, _, 5, 4, 2, 1, 0, _, _, _] } },
+    s_ice: { bpm: 108, base: 87.31, len: 8, sc: 'dor', prog: [0, 0, 3, 3, 5, 5, -2, -2], kick: [0, 5], snare: [4], hat: [2, 6], hv: .03, bass: 'root', bw: 'sine', echo: .45,
+      arp: { w: 'sine', v: .04, d: .6, oct: 36, n: [0, 7, 14, 7, 12, 19, 14, 7], split: 1 }, pad: { w: 'sine', v: .035, det: 10, iv: [0, 7, 14] }, lead: { w: 'triangle', v: .055, oct: 24, m: [_, _, 4, _, 5, _, 6, _, 7, _, _, _, 6, _, 4, _, 2, _, _, _, 3, _, 4, _, 1, _, _, _, _, _, _, _] } },
+    s_void: { bpm: 118, base: 69.3, len: 8, sc: 'min', prog: [0, 0, -4, -4, 1, 1, -2, -2], kick: [0, 2, 4, 6], snare: [2, 6], hat: [1, 3, 5, 7], hv: .05, bass: 'off', bw: 'sawtooth', echo: .35,
+      arp: { w: 'square', v: .022, d: .16, oct: 24, n: [0, 12, 7, 12, 3, 12, 7, 15], split: 1 }, pad: { w: 'sawtooth', v: .018, lp: 1400, det: 14 }, lead: { w: 'square', v: .03, oct: 12, lp: 1800, m: [0, _, _, 2, 3, _, 2, _, 0, _, _, _, -1, _, 0, _, 4, _, _, 3, 2, _, 0, _, 2, _, _, _, _, _, _, _] } }
+  });
+  let gameSong = '';
   let theme = null, themeK = '', cBus = null;
   if (typeof setInterval !== 'undefined' && typeof document !== 'undefined') setInterval(() => { try { musTick(); } catch (e) { } }, 90); /* keeps the music steady when frames are slow */
   function setTheme(k) { k = THEMES[k] ? k : ''; if (k === themeK) return; themeK = k; theme = THEMES[k] || null; if (mBus && ac) { mBus.gain.cancelScheduledValues(ac.currentTime); mBus.gain.setValueAtTime(0, ac.currentTime); } mStep = 0; if (ac) mNext = ac.currentTime + .25; }
   function tom(t, f, v) { const o = ac.createOscillator(), g = ac.createGain(); o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * .55, t + .3); env(g, t, .003, v, .45); o.connect(g); g.connect(mBus); o.start(t); o.stop(t + .5); hit(t, 600, 'lowpass', v * .3, .08, mBus); }
   function filt(out, f) { const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = f; lp.connect(out); return lp; }
+  /* build 0034: songs now move through sections (intro, verse, a bridge with its own chords and tune, then a big last verse) and every other time round they lift up a key, so they keep changing */
   function themeStep(t, st) {
-    const T = theme, L = T.len, i = mStep % L, bar = Math.floor(mStep / L) % 4, phrase = Math.floor(mStep / L / 4) % 4, half = i < L / 2 ? 0 : 1, root = T.prog[bar * 2 + half], F = n => T.base * Math.pow(2, n / 12), scl = SC[T.sc];
+    const T = theme, L = T.len, P16 = L * 16, i = mStep % L, bar = Math.floor(mStep / L) % 4, phrase = Math.floor(mStep / L / 4) % 4, cyc = Math.floor(mStep / P16), ks = cyc % 2 ? 2 : 0, half = i < L / 2 ? 0 : 1;
+    const B = phrase === 2, prog = B ? (T.progB || T.prog.slice(4).concat(T.prog.slice(0, 4))) : T.prog, root = prog[bar * 2 + half], F = n => T.base * Math.pow(2, (n + ks) / 12), scl = SC[T.sc];
     const deg = (d, o) => { const k = scl.length; return scl[((d % k) + k) % k] + 12 * Math.floor(d / k) + (o || 0); };
-    if (T.kick.includes(i)) kick(t); if (T.snare.includes(i)) snare(t, .9); if (T.tom && T.tom.includes(i)) tom(t, i === T.tom[T.tom.length - 1] ? 70 : 105, .32);
-    if (T.hat) for (const h of T.hat) if (h === i) hit(t, 8000, 'highpass', T.hv * (i % 2 ? .7 : 1), .04, mBus);
-    if (T.crash || i === 0) if (i === 0 && bar === 0) hit(t, 5000, 'highpass', .14, 1.4, mBus);
+    const intro = phrase === 0 && bar < 2 && cyc === 0, brk = B && bar < 2, big = phrase === 3;
+    if (T.kick.includes(i) && !(brk && i !== 0)) kick(t); if (T.snare.includes(i) && !intro && !(brk && i !== T.snare[T.snare.length - 1])) snare(t, .9); if (T.tom && T.tom.includes(i) && !intro) tom(t, i === T.tom[T.tom.length - 1] ? 70 : 105, .32);
+    if (T.hat && !brk) for (const h of T.hat) if (h === i) hit(t, 8000, 'highpass', T.hv * (i % 2 ? .7 : 1), .04, mBus);
+    if (i === 0 && (bar === 0 || (big && bar === 2))) hit(t, 5000, 'highpass', .14, 1.4, mBus);
+    if (bar === 3 && phrase % 2 === 1 && i >= L - 2 && T.snare.length) snare(t, .7 + (i - L + 2) * .2); /* a fill into the next part */
     if (T.hey && bar === 3 && i === 6) { hit(t, 1100, 'bandpass', .3, .16, mBus); hit(t, 1500, 'bandpass', .2, .14, mBus); }
     const ch = i === 0 || i === L / 2;
-    if (T.gtr === 'hold' && ch) for (const [k, det] of [[0, -7], [0, 7], [7, 0], [12, 4]]) osc('sawtooth', F(root + k), t, st * (L / 2) * .95, .05 * (k === 12 ? .5 : 1), gBus, det);
-    if (T.gtr === 'chug') for (const [k, det] of [[0, -7], [0, 7], [7, 0]]) osc('sawtooth', F(root + k), t, st * (ch ? 1.6 : .5), ch ? .06 : .035, gBus, det);
+    if (!intro) { if (T.gtr === 'hold' && ch) for (const [k, det] of [[0, -7], [0, 7], [7, 0], [12, 4]]) osc('sawtooth', F(root + k), t, st * (L / 2) * .95, .05 * (k === 12 ? .5 : 1), gBus, det);
+      if (T.gtr === 'chug' && !(brk && !ch)) for (const [k, det] of [[0, -7], [0, 7], [7, 0]]) osc('sawtooth', F(root + k), t, st * (ch ? 1.6 : .5), ch ? .06 : .035, gBus, det); }
     const bw = T.bw || 'sawtooth', bf = (() => { let f = F(root - 12); while (f < 40) f *= 2; return f; })(), bs = (d, v) => { osc(bw, bf, t, d, v, mBus); osc('sine', bf, t, d, v * .9, mBus); };
-    if (T.bass === 'root' && ch) bs(st * (L / 2) * .8, .12); else if (T.bass === 'long' && i === 0) bs(st * L * .95, .1); else if (T.bass === 'pulse') bs(st * .85, .11); else if (T.bass === 'off' && i % 2) bs(st * .8, .12);
-    if (T.pad && ch) { const o = T.pad.lp ? filt(cBus, T.pad.lp) : cBus; for (const k of [0, 3, 7, 12]) { osc(T.pad.w, F(root + k + 12), t, st * (L / 2) * 1.05, T.pad.v, o, -(T.pad.det || 0)); if (T.pad.det) osc(T.pad.w, F(root + k + 12), t, st * (L / 2) * 1.05, T.pad.v, o, T.pad.det); } }
-    if (T.arp) { const A = T.arp, n = A.n[i % A.n.length]; osc(A.w, F(root + n + (A.oct || 12)), t, A.d, A.v, cBus); if (A.split) osc(A.w, F(root + n + (A.oct || 12)), t + st / 2, A.d, A.v * .7, cBus); }
-    if (T.lead && !(phrase === 0 && bar < 2)) { const Ld = T.lead, d = Ld.m[(mStep % (L * 4)) % Ld.m.length]; if (d !== null && d !== undefined) { let len = 1; while (len < 4 && Ld.m[(mStep + len) % Ld.m.length] === null) len++;
-      const out = Ld.dist ? gBus : Ld.lp ? filt(cBus, Ld.lp) : cBus, o = osc(Ld.w, F(deg(d, Ld.oct || 12)), t, st * len * .95, Ld.v, out); if (Ld.vib) { o.detune.setValueAtTime(0, t); for (let q = 1; q <= len * 3; q++) o.detune.linearRampToValueAtTime(q % 2 ? 14 : -14, t + q * st / 3); } } }
+    if (T.bass === 'root' && ch) bs(st * (L / 2) * .8, .12); else if (T.bass === 'long' && i === 0) bs(st * L * .95, .1); else if (T.bass === 'pulse' && !brk) bs(st * .85, .11); else if (T.bass === 'pulse' && ch) bs(st * (L / 2) * .8, .11); else if (T.bass === 'off' && i % 2) bs(st * .8, .12);
+    if (T.pad && ch) { const o = T.pad.lp ? filt(cBus, T.pad.lp) : cBus, iv = T.pad.iv || [0, 3, 7, 12], pv = T.pad.v * (B ? 1.4 : 1); for (const k of iv) { osc(T.pad.w, F(root + k + 12), t, st * (L / 2) * 1.05, pv, o, -(T.pad.det || 0)); if (T.pad.det) osc(T.pad.w, F(root + k + 12), t, st * (L / 2) * 1.05, pv, o, T.pad.det); } }
+    if (T.arp && !intro) { const A = T.arp, n = A.n[i % A.n.length] + (B ? 12 : 0); osc(A.w, F(root + n + (A.oct || 12)), t, A.d, A.v, cBus); if (A.split || big) osc(A.w, F(root + n + (A.oct || 12)), t + st / 2, A.d, A.v * .6, cBus); }
+    if (T.lead && !(phrase === 0 && cyc === 0) && !brk) { const Ld = T.lead, mm = B ? (T.mB || Ld.m.map(d => d === null ? null : d + 2)) : Ld.m, k = mStep % (L * 4), d = mm[k % mm.length]; if (d !== null && d !== undefined) { let len = 1; while (len < 4 && mm[(k + len) % mm.length] === null) len++;
+      const up = big && bar >= 2 ? 12 : 0, out = Ld.dist ? gBus : Ld.lp ? filt(cBus, Ld.lp) : cBus, o = osc(Ld.w, F(deg(d, (Ld.oct || 12) + up)), t, st * len * .95, Ld.v, out); if (Ld.vib) { o.detune.setValueAtTime(0, t); for (let q = 1; q <= len * 3; q++) o.detune.linearRampToValueAtTime(q % 2 ? 14 : -14, t + q * st / 3); } } }
   }
   function musTick() {
     if (!ac || ac.state !== 'running') return;
@@ -139,7 +158,7 @@ const SFX = (() => {
       mStep++; mNext += st;
     }
   }
-  return { unlock: ctx, play, ambient, ambTick(dt) { setTheme(''); ambTick(dt); musTick(); }, musTick, theme: setTheme, music(v) { mLvl = v; }, toggle() { mute = !mute; setAmb(); return mute; }, vol(v) { master = v; mute = v <= 0; setAmb(); } };
+  return { unlock: ctx, play, ambient, ambTick(dt) { setTheme(gameSong); ambTick(dt); musTick(); }, musTick, theme: setTheme, music(v) { mLvl = v; }, toggle() { mute = !mute; setAmb(); return mute; }, vol(v) { master = v; mute = v <= 0; setAmb(); } };
 })();
 
 // ---------- items ----------
@@ -176,17 +195,20 @@ function itemValue(it) { return Math.round((5 + it.ilvl * 3) * [1, 2.5, 6, 25, 8
 function luck() { return (P.stats.mf || 0) + Math.min(G.streak, 50) * 2; }
 const MYTHIC_CHANCE = .05; // a Legendary drop has this chance to be Mythic instead; no other drop rate moves
 function rollRarity(bonus) {
-  const mf = luck() / 100; const w = [62, 30 * (1 + mf), 7.5 * (1 + mf * 1.2) * (1 + bonus), .5 * (1 + mf * 1.5) * (1 + bonus * 2)];
+  const mf = luck() / 100; const w = [62, 30 * (1 + mf), 7.5 * (1 + mf * 1.2) * (1 + bonus), .35 * (1 + mf * 1.5) * (1 + bonus * 2)]; /* build 0034 (Lee, Nov 14: make loot scarcer): legendary weight .5 -> .35, about one legendary every 2.5 floors instead of every 1.4 */
   let r = Math.random() * (w[0] + w[1] + w[2] + w[3]); for (let i = 0; i < 4; i++) { if (r < w[i]) return i === 3 && Math.random() < MYTHIC_CHANCE ? 4 : i; r -= w[i]; } return 0;
 }
-function dropItem(x, z, it) { const a = rnd(6.28), d = rnd(.6, 1.8); let dx = x + Math.cos(a) * d, dz = z + Math.sin(a) * d; if (blocked(dx, dz, .3)) { dx = x; dz = z; } G.drops.push({ x: dx, z: dz, item: it, t: 0 }); if (it.rar >= 3) jackpot(it); else if (it.rar > 0) SFX.play('drop' + it.rar); }
-function dropGold(x, z, amt) { const a = rnd(6.28), d = rnd(.4, 1.5); let dx = x + Math.cos(a) * d, dz = z + Math.sin(a) * d; if (blocked(dx, dz, .3)) { dx = x; dz = z; } G.drops.push({ x: dx, z: dz, gold: Math.max(1, Math.round(amt * (1 + (P.stats.gf || 0) / 100) * (1 + .15 * townLv('guild')))), t: 0 }); }
-const DROP_MOB = .09; /* build 0027 tuning: plain monsters drop a little less, so events, champions and guardians carry the good loot */
+function dropItem(x, z, it, exact) { const a = rnd(6.28), d = exact ? 0 : rnd(.6, 1.8); let dx = x + Math.cos(a) * d, dz = z + Math.sin(a) * d; if (blocked(dx, dz, .3)) { dx = x; dz = z; } G.drops.push({ x: dx, z: dz, item: it, t: 0 }); if (it.rar >= 3) jackpot(it); else if (it.rar > 0) SFX.play('drop' + it.rar); }
+function dropGold(x, z, amt, exact) { const a = rnd(6.28), d = exact ? 0 : rnd(.4, 1.5); let dx = x + Math.cos(a) * d, dz = z + Math.sin(a) * d; if (blocked(dx, dz, .3)) { dx = x; dz = z; } G.drops.push({ x: dx, z: dz, gold: Math.max(1, Math.round(amt * (1 + (P.stats.gf || 0) / 100) * (1 + .15 * townLv('guild')))), t: 0 }); }
+/* build 0034 (Lee, Nov 14): a guardian's loot no longer lands on the gate that opens where it fell. It bursts out in a fan toward you, 3.6 to 5.6 steps from the gate, so picking it up never brings up the "next floor?" question */
+function lootFan(x, z, i, n) { const toP = typeof P !== 'undefined' && isFinite(P.x) ? Math.atan2(P.z - z, P.x - x) : rnd(6.28), spread = n > 1 ? 2.4 : 0, a0 = toP + (n > 1 ? (i / (n - 1) - .5) * spread : 0), R0 = 3.6 + (i % 3);
+  for (const R of [R0, R0 - .6, R0 + .8, 3.4, 3]) for (const da of [0, .35, -.35, .8, -.8, 1.4, -1.4, 2.2, -2.2, 3.14]) { const a = a0 + da, px = x + Math.cos(a) * R, pz = z + Math.sin(a) * R; if (!blocked(px, pz, .4) && los(x, z, px, pz)) return [px, pz]; } return null; }
+const DROP_MOB = .03, DRY_MAX = 20; /* build 0034 (Lee, Nov 14): loot is scarcer so each drop matters. Plain monsters 9% -> 3% and the dry-spell guarantee 14 -> 20 kills, which halves what plain monsters drop. Champions, guardians, goblins, vaults and wells stay the big loot moments */
 function dropLoot(e) {
   const lv = Math.max(e.lvl, G.hero.level), x = e.x, z = e.z; let n = 0, bonus = 0, minR = 0;
-  if (e.boss) { n = 5; bonus = 3; minR = 2; } else if (e.elite === 2) { n = 2; bonus = 1.5; minR = 2; } else if (e.elite === 1) { n = 1 + (Math.random() < .5 ? 1 : 0); bonus = .8; minR = 2; } /* build 0027: a champion's first item is always rare or better */ else if (e.arch === 'goblin') { n = 4; bonus = 2; minR = 2; for (let i = 0; i < 8; i++) dropGold(x, z, (15 + lv * 7) * rnd(.8, 1.3)); if (Math.random() < .35) dropItem(x, z, makeItem(lv, null, 3)); if (typeof UI !== 'undefined') UI.zoneBanner('Treasure Goblin caught!', 'Its whole sack spills out for you'); } else if (Math.random() < DROP_MOB || (G.dry || 0) >= 14) n = 1; /* Lee, Nov 13: never more than 14 plain kills in a row without an item */ G.dry = n ? 0 : (G.dry || 0) + 1;
-  for (let i = 0; i < n; i++) { let r = rollRarity(bonus); if ((i === 0 || e.arch === 'goblin') && r < minR) r = minR; dropItem(x, z, makeItem(lv, null, r)); }
-  if (e.boss || e.elite || Math.random() < .4) dropGold(x, z, (4 + lv * 2.2) * rnd(.6, 1.4) * (e.boss ? 12 : e.elite ? 4 : 1));
+  if (e.boss) { n = 5; bonus = 3; minR = 2; } else if (e.elite === 2) { n = 2; bonus = 1.5; minR = 2; } else if (e.elite === 1) { n = 1 + (Math.random() < .5 ? 1 : 0); bonus = .8; minR = 2; } /* build 0027: a champion's first item is always rare or better */ else if (e.arch === 'goblin') { n = 4; bonus = 2; minR = 2; for (let i = 0; i < 8; i++) dropGold(x, z, (15 + lv * 7) * rnd(.8, 1.3)); if (Math.random() < .2) dropItem(x, z, makeItem(lv, null, 3)); if (typeof UI !== 'undefined') UI.zoneBanner('Treasure Goblin caught!', 'Its whole sack spills out for you'); } else if (Math.random() < DROP_MOB || (G.dry || 0) >= DRY_MAX) n = 1; /* Lee, Nov 13: a guaranteed item after a dry spell (14 kills then, 20 since build 0034) */ G.dry = n ? 0 : (G.dry || 0) + 1;
+  for (let i = 0; i < n; i++) { let r = rollRarity(bonus); if ((i === 0 || e.arch === 'goblin') && r < minR) r = minR; const sp = e.boss ? lootFan(x, z, i, n + 1) : null; if (sp) dropItem(sp[0], sp[1], makeItem(lv, null, r), true); else dropItem(x, z, makeItem(lv, null, r)); }
+  if (e.boss || e.elite || Math.random() < .4) { const sp = e.boss ? lootFan(x, z, n, n + 1) : null, amt = (4 + lv * 2.2) * rnd(.6, 1.4) * (e.boss ? 12 : e.elite ? 4 : 1); if (sp) dropGold(sp[0], sp[1], amt, true); else dropGold(x, z, amt); }
 }
 // Bag: a 10 x 6 grid. Belts, rings and amulets take one cell; everything else is two cells tall.
 function itemH(it) { return it.slot === 'belt' || it.slot === 'ring' || it.slot === 'amulet' ? 1 : 2; }
@@ -570,7 +592,7 @@ function enterTown() {
   if (G.inTown || P.dead || G.state !== 'play') return; for (const e of G.ents) if (e.alive && e.awake && Math.hypot(e.x - P.x, e.z - P.z) < 16) { hint('You cannot leave while enemies are near. Finish the fight or step away first.'); return; }
   goalDone('town'); P.fl = FLASK_MAX; P.flaskCd = 0; /* build 0026: only a real trip to town counts (and refills potions) */ if (P.meter) P.meter.peak = 0; /* Sprint 1: peak hit resets in town */
   G.away = { zone: G.zone, ents: G.ents, drops: G.drops, boss: G.boss, x: P.x, z: P.z, seed: G.zone.def.seed }; G.ents = []; G.drops = []; G.projs = []; G.pp = []; G.areas = []; G.fx = []; G.texts = []; G.timers = []; G.boss = null; G.streak = 0;
-  G.zone = genTown(); G.inTown = true; buildStatic(G.zone); setEnv(G.zone); P.x = G.zone.start[0]; P.z = G.zone.start[1]; P.y = 0; P.rot = Math.PI; P.act = P.spin = P.dash = P.move = P.atk = P.inter = P.pick = null; BOT.path = null; P.hp = P.stats.maxLife;
+  G.zone = genTown(); G.inTown = true; buildStatic(G.zone); setEnv(G.zone); P.x = G.zone.start[0]; P.z = G.zone.start[1]; P.y = 0; P.rot = Math.PI; P.act = P.spin = P.dash = P.move = P.atk = P.inter = P.pick = null; BOT.path = null; P.hp = P.stats.maxLife; addDummy();
   const h = G.hero; if (!h.stock || Math.abs(h.kills - (h.stockK || 0)) >= 25 || h.stockL !== h.level) { h.stock = []; for (let i = 0; i < 10; i++) h.stock.push(makeItem(h.level, null, Math.random() < .12 ? 3 : Math.random() < .5 ? 2 : 1)); h.stockK = h.kills; h.stockL = h.level; }
   SFX.play('shrine'); UI.zoneBanner('Emberwatch', 'Stash · Trader · Altar'); saveGame();
 }
@@ -662,20 +684,26 @@ function expHit() { const s = P.stats; if (!s || !s.wmin || !G.hero) return 0; c
 function meterHit(v) { const m = P.meter || (P.meter = { log: [], peak: 0 }); m.log.push([G.time, v]); if (v > m.peak) m.peak = v; while (m.log.length && m.log[0][0] < G.time - 10) m.log.shift(); }
 function meterDps() { const m = P.meter; if (!m) return 0; let t = 0; for (const q of m.log) if (q[0] >= G.time - 10) t += q[1]; return Math.round(t / 10); }
 function rollDmg(sk, mult) { const s = P.stats; const base = rnd(s.wmin, s.wmax) + s.addPhys + s.addFire + s.addCold + s.addLight; let inc = s.dmg + (s[sk.el] || 0) + (sk.el !== 'phys' ? s.ele : 0); if (s.lowLife && P.hp < s.maxLife * .5) inc += s.lowLife; let v = base * sk.m * (mult || 1) * (1 + inc / 100) * (1 + partyBonus() / 100); const crit = Math.random() * 100 < s.critT; if (crit) v *= s.critM; return { v, crit }; }
+/* build 0034: a training dummy in town. It never fights back or dies; it shows your damage per second, total and biggest hit, and resets after 4 seconds without a hit */
+function addDummy() { const cx = GW / 2 * CS, cz = GW / 2 * CS; let x = cx - 6.5, z = cz + 10.5; for (let k = 0; k < 40 && blocked(x, z, 1); k++) { x = cx - 6.5 + rnd(-4, 4); z = cz + 10.5 + rnd(-4, 4); }
+  const key = Object.keys(ARCH)[0], h = G.hero; G.ents.push({ id: ++G.eid, md: { n: 'Training Dummy', c: 0xc8a868, c2: 0x6a4a2a, e: 0xffd070 }, a: ARCH[key], arch: key, x, z, rot: 0, lvl: h ? h.level : 1, elite: 0, pack: -1, r: .7, sc: 1, maxHp: 1e12, hp: 1e12, dmg: 0, spd: 0, st: 'idle', t: 0, cd: 0, walk: 0, awake: true, flash: 0, chill: 0, shock: 0, frozen: 0, burn: 0, burnT: 0, atk: 0, alive: true, deadT: 0, modT: 0, name: 'Training Dummy', mods: [], dummy: 1, wob: 0, tot: 0, big: 0, t0: 0, lastT: -99 }); }
+function dummyHit(e, v) { if (G.time - e.lastT > 4) { e.t0 = G.time; e.tot = 0; e.big = 0; e.n = 0; } e.tot += v; e.big = Math.max(e.big, v); e.n++; e.lastT = G.time; e.wob = 1; e.hp = e.maxHp; }
+function dummyDps(e) { if (!e.tot) return 0; const live = G.time - e.lastT <= 4, span = (live ? G.time : e.lastT) - e.t0; return e.tot / Math.max(1, span); }
 function hitEnemy(e, sk, mult, noProc) { if (e && e.alive && e.arch === 'goblin' && typeof UI !== 'undefined' && Math.random() < .55) dropGold(e.x, e.z, (4 + (G.hero ? G.hero.level : 1) * 2) * rnd(.8, 1.3)); /* build 0027: coins fly out with every hit */
   if (!e.alive) return; const s = P.stats, d = rollDmg(sk, mult); let v = d.v; if (e.armored) v *= .6; if (e.shock > 0) v *= 1.15; if (!e.boss && !e.elite && e.hp > e.maxHp * .95) v = Math.min(v, e.maxHp * .65); v = Math.max(1, Math.round(v)); // house rule: ordinary monsters always take at least 2 hits
-  const over = v > 3 * Math.max(1, e.hp); /* Sprint 1: overkill, more than three times the life it had left */ meterHit(v);
+  const over = v > 3 * Math.max(1, e.hp); /* Sprint 1: overkill, more than three times the life it had left */ meterHit(v); if (e.dummy) dummyHit(e, v);
   e.hp -= v; e.flash = .13; wake(e); P.lastHit = G.time; if (sk.gen) P.mana = Math.min(s.maxMana, P.mana + sk.gen);
   floatText(e.x, 1.6 * e.sc + .6, e.z, (d.crit ? '✦' : '') + v, d.crit ? '#ffe14a' : EL_CSS[sk.el], d.crit ? 1.1 : .8, d.crit ? 21 : 15);
   if (sk.freeze && !e.boss) e.frozen = sk.freeze;
   if (sk.el === 'fire') { e.burn = Math.max(e.burn, v * .15); e.burnT = 3; } else if (sk.el === 'cold') e.chill = 2.5; else if (sk.el === 'light') e.shock = 3;
   if (s.lifeOnHit) P.hp = Math.min(s.maxLife, P.hp + s.lifeOnHit); if (s.leech) P.hp = Math.min(s.maxLife, P.hp + v * s.leech / 100);
-  if (!G.online && !e.boss && e.arch !== 'brute') { const dx = e.x - P.x, dz = e.z - P.z, l = Math.hypot(dx, dz) || 1; moveEnt(e, dx / l * .4, dz / l * .4, e.r); }
+  if (!G.online && !e.boss && !e.dummy && e.arch !== 'brute') { const dx = e.x - P.x, dz = e.z - P.z, l = Math.hypot(dx, dz) || 1; moveEnt(e, dx / l * .4, dz / l * .4, e.r); }
   burst(e.x, 1.1 * e.sc, e.z, d.crit ? 0xffe14a : EL_COL[sk.el], d.crit ? 12 : 6, d.crit ? 7 : 5);
   { const heavy = sk.type === 'melee' || !!sk.land || sk.type === 'nova'; G.fx.push({ flash: 1, x: e.x, y: 1.1 * e.sc, z: e.z, r: d.crit ? 3.2 : heavy ? 2.2 : 1.4, life: .12, max: .12, c: GLX.col(d.crit ? 0xfff2b0 : EL_COL[sk.el]) }); if (heavy && !G.auto) G.hitStop = Math.max(G.hitStop || 0, d.crit ? .085 : .04); if (d.crit) G.shake = Math.min(.5, G.shake + .12); }
   if (over) { burst(e.x, 1.1 * e.sc, e.z, e.md.c2, 30, 10); burst(e.x, .4, e.z, 0x7a1010, 18, 6); ring(e.x, e.z, 0, 3.4 * e.sc, .35, 0xffd0a0); G.fx.push({ scorch: 1, x: e.x, z: e.z, r: 1.6 * e.sc, life: 2, max: 2, c: GLX.col(0x5a0c0c) }); if (!G.auto) G.hitStop = Math.max(G.hitStop || 0, .14); G.shake = Math.min(.6, G.shake + .2); }
   if (G.time - G.hitSfx > .05) { G.hitSfx = G.time; SFX.play(d.crit ? 'crit' : 'hit'); }
   if (!noProc && s.procLight && Math.random() * 100 < s.procLight) addArea({ x: e.x, z: e.z, r: 2.6, delay: .15, owner: 'p', sk: { el: 'light', m: 1.5 }, c: 0xfff07a, proc: 1 });
+  if (e.dummy) return;
   if (G.online) { const cl = !e.boss && s.cull && e.hp < e.maxHp * s.cull / 100; NET.send({ t: 'hit', id: e.id, v: cl ? e.maxHp * 2 : v, el: sk.el, fz: sk.freeze || 0 }); if (e.hp < 0) e.hp = 0; return; }
   if (e.hp <= 0 || (!e.boss && s.cull && e.hp < e.maxHp * s.cull / 100)) killEnemy(e);
 }
@@ -686,7 +714,7 @@ function killEnemy(e) {
   { const MS = { 10: ['Rampage!', 0xffb03a], 25: ['Massacre!', 0xff6a3a], 50: ['Unstoppable!', 0xff3a6a], 100: ['Godlike!', 0xc070ff] }, m = MS[G.streak]; if (m) { const bonus = Math.round((8 + h.level * 4) * (G.streak / 10)); h.gold += bonus; UI.streakPop && UI.streakPop('x' + G.streak + ' ' + m[0], '+' + bonus + ' gold', m[1]); impact(P.x, P.z, 2.2, m[1], true); SFX.play('level'); } } // kill streak milestones with a small gold bonus
   if (!G.inTown && h.tq) { const q = tqCur(); if (q) { const g = q.goal; const fl = G.zone.def.depth || 1; if (g.k === 'kills') tqAdd('kills'); else if (g.k === 'elite' && e.elite) tqAdd('elite'); else if (g.k === 'arch' && e.arch === g.arch) tqAdd('arch'); else if (g.k === 'boss' && e.boss && fl >= (g.min || 1)) tqAdd('boss'); else if (g.k === 'collect' && fl >= (g.min || 1) && h.tq.n + G.drops.filter(d => d.q).length < g.n && Math.random() < (e.boss ? 1 : e.elite ? .7 : g.p)) G.drops.push({ q: g.item, qc: g.c, x: e.x + rnd(-.5, .5), z: e.z + rnd(-.5, .5), t: 0, y: 0 }); } } // townsfolk quests
   dropLoot(e); burst(e.x, 1, e.z, e.md.c2, 8, 6); deathFx(e); SFX.play('kill');
-  if (!e.noLoot && (e.elite || Math.random() < .12)) G.drops.push({ x: e.x, z: e.z, globe: 1, t: 0 });
+  if (!e.noLoot && (e.elite || Math.random() < .12)) { const sp = e.boss ? lootFan(e.x, e.z, 0, 1) : null; G.drops.push({ x: sp ? sp[0] : e.x, z: sp ? sp[1] : e.z, globe: 1, t: 0 }); }
   if (s.boomFire) addArea({ x: e.x, z: e.z, r: 3.4, delay: .12, owner: 'p', sk: { el: 'fire', m: 1.2 }, c: 0xff7a2a, proc: 1 });
   if (s.boomCold) addArea({ x: e.x, z: e.z, r: 3.4, delay: .12, owner: 'p', sk: { el: 'cold', m: 1.0 }, c: 0x7ad0ff, proc: 1 });
   if (e.volatile && !G.online) addArea({ x: e.x, z: e.z, r: 3.2, delay: 1, owner: 'e', dmg: e.dmg * 1.8, el: 'fire', c: 0xff5a2a });
@@ -863,7 +891,7 @@ function botStep(dt) {
   const h = G.hero, s = P.stats; BOT.t -= dt; if (G.set.apPot !== false && P.hp < s.maxLife * .45) useFlask();
   for (const a of G.areas) if (a.owner === 'e' && !a.done) { const d = Math.hypot(P.x - a.x, P.z - a.z); if (d < a.r + .8) { const nx = d > .1 ? (P.x - a.x) / d : 1, nz = d > .1 ? (P.z - a.z) / d : 0; P.atk = null; P.move = [P.x + nx * 4, P.z + nz * 4]; BOT.dodge = .2; return false; } }
   if (BOT.dodge > 0) { BOT.dodge -= dt; return false; }
-  let tgt = null, bd = 17, goal = null, act = null; for (const e of G.ents) { if (!e.alive || !e.awake) continue; const d = Math.hypot(e.x - P.x, e.z - P.z); if (d < bd) { bd = d; tgt = e; } }
+  let tgt = null, bd = 17, goal = null, act = null; for (const e of G.ents) { if (!e.alive || !e.awake || e.dummy) continue; const d = Math.hypot(e.x - P.x, e.z - P.z); if (d < bd) { bd = d; tgt = e; } }
   if (tgt) {
     const clear = los(P.x, P.z, tgt.x, tgt.z), bs = SKILLS[h.bar[0]] || SKILLS.cleave;
     if (bs.range > 5 && bd < 4 && (BOT.kite || 0) <= 0 && tgt.arch !== 'caster' && !tgt.boss) BOT.kite = .7;
@@ -886,7 +914,7 @@ function botStep(dt) {
   }
   if (BOT.t <= 0 || !BOT.path) {
     BOT.t = .35; const f = botField();
-    if (!goal) { let bdist = 1e9, be = null; for (const e of G.ents) { if (!e.alive) continue; const dc = f.dist[cellOf(e.x, e.z)]; if (dc >= 0 && dc < bdist) { bdist = dc; be = e; } } if (be) goal = [be.x, be.z]; else { const po = G.zone.objs.find(o => o.kind === 'portal' && !o.used); if (po) { goal = [po.x, po.z]; act = () => { po.gone = true; interact(po); }; } } }
+    if (!goal) { let bdist = 1e9, be = null; for (const e of G.ents) { if (!e.alive || e.dummy) continue; const dc = f.dist[cellOf(e.x, e.z)]; if (dc >= 0 && dc < bdist) { bdist = dc; be = e; } } if (be) goal = [be.x, be.z]; else { const po = G.zone.objs.find(o => o.kind === 'portal' && !o.used); if (po) { goal = [po.x, po.z]; act = () => { po.gone = true; interact(po); }; } } }
     if (!goal) { BOT.path = null; return false; }
     const g = cellOf(goal[0], goal[1]), out = [goal]; if (f.prev[g] >= 0) { let k = g; while (k !== f.s) { k = f.prev[k]; if (k !== f.s) out.push([(k % GW + .5) * CS, ((k / GW | 0) + .5) * CS]); } } BOT.path = out.reverse(); BOT.act = act; BOT.goal = goal;
   }
@@ -921,7 +949,8 @@ function updPlayer(dt) {
   const jx = IN.joy.x, jz = IN.joy.z, jm = IN.joy.on ? Math.hypot(jx, jz) : 0; let chase = null;
   // auto-cast: skills switched to auto fire by themselves at the nearest foe, only while foes are near
   if (h.autoPot && !P.dead && P.stats && P.hp < P.stats.maxLife * .5 && (P.fl === undefined || P.fl > 0) && !(P.flaskT > 0)) useFlask();
-  if (h.autoc && !P.act) for (let i = 1; i < 4; i++) { if (!h.autoc[i] || !h.bar[i]) continue; const sk = SKILLS[h.bar[i]], e = nearFoe(sk.type === 'melee' || sk.type === 'nova' || sk.type === 'spin' ? (sk.range || sk.r || 3) * .8 : 11); if (!e || (P.cds[h.bar[i]] || 0) > 0 || P.mana < (sk.cost || 0)) continue; const esc = sk.type === 'dash' && !sk.land; if (esc) continue; if (tryCast(i, e.x, e.z)) return; }
+  if (h.autoc && !P.act) for (let i = 1; i < 4; i++) { if (!h.autoc[i] || !h.bar[i]) continue; const sk = SKILLS[h.bar[i]], e = nearFoe(sk.type === 'melee' || sk.type === 'nova' || sk.type === 'spin' ? (sk.range || sk.r || 3) * .8 : 11); if (!e || (e.dummy && G.time - (P.manT || -99) > 1.5) /* build 0034: autocast only joins in while you are attacking the Training Dummy yourself */ || (P.cds[h.bar[i]] || 0) > 0 || P.mana < (sk.cost || 0)) continue; const esc = sk.type === 'dash' && !sk.land; if (esc) continue; if (tryCast(i, e.x, e.z)) return; }
+  if ((IN.lmb && P.atk && P.atk.dummy) || IN.rmb || IN.tb[0] || IN.tb[1] || IN.tb[2] || IN.tb[3]) P.manT = G.time; /* the last moment you attacked by hand */
   for (let i = 0; i < 4; i++) if (IN.tb[i]) {
     const e = nearFoe(15), sk = SKILLS[i === 0 && !h.eq.weapon ? 'punch' : h.bar[i]];
     const melee = sk && sk.type === 'melee', dash = sk && sk.type === 'dash', steer = jm >= .18, far = dash ? sk.range * .85 : 6;
@@ -1099,9 +1128,9 @@ function riftDone(ms, tier) { G.riftDone = 1; const s2 = Math.round(ms / 1000), 
 function pickupNear() { for (const d of G.drops.slice()) if (d.item && Math.hypot(d.x - P.x, d.z - P.z) < 5 && d.item.rar >= G.hero.filter) pickup(d); }
 function interact(o) {
   if (o.used) return;
-  if (o.kind === 'chest') { o.used = true; const lv = G.hero.level; for (let i = 0; i < 2; i++) dropItem(o.x, o.z, makeItem(lv, null, rollRarity(1))); dropGold(o.x, o.z, (10 + lv * 5) * rnd(.8, 1.5)); burst(o.x, 1, o.z, 0xffd84a, 20, 6); SFX.play('pickup'); }
+  if (o.kind === 'chest') { o.used = true; const lv = G.hero.level; dropItem(o.x, o.z, makeItem(lv, null, Math.max(1, rollRarity(1)))); /* build 0034: one item instead of two, and never a grey one */ dropGold(o.x, o.z, (10 + lv * 5) * rnd(.8, 1.5)); burst(o.x, 1, o.z, 0xffd84a, 20, 6); SFX.play('pickup'); }
   else if (o.kind === 'gchest') { o.used = true; const lv = G.hero.level; for (let i = 0; i < 2; i++) dropItem(o.x, o.z, makeItem(lv, null, Math.max(2, rollRarity(2)))); dropGold(o.x, o.z, (20 + lv * 9) * rnd(.9, 1.4)); burst(o.x, 1, o.z, 0xffd84a, 30, 7); SFX.play('drop2'); if (G.zone.objs.filter(q => q.kind === 'gchest' && !q.used).length === 0) UI.zoneBanner('Treasure Vault emptied!', 'Every chest was yours'); }
-  else if (o.kind === 'well') { o.used = true; const lv = G.hero.level; for (let i = 0; i < 3; i++) dropItem(o.x, o.z, makeItem(lv, null, i === 0 && Math.random() < .25 ? 3 : Math.max(2, rollRarity(2)))); for (let i = 0; i < 6; i++) dropGold(o.x, o.z, (12 + lv * 6) * rnd(.8, 1.3)); for (let i = 0; i < 3; i++) ring(o.x, o.z, 0, 4 + i * 3, .6 + i * .2, 0xffd84a); burst(o.x, 2, o.z, 0xffd84a, 60, 9); burst(o.x, 2, o.z, 0x9ad0ff, 30, 7); SFX.play('drop4'); UI.zoneBanner('Your wish is granted!', 'The Wishing Well showers you with treasure'); }
+  else if (o.kind === 'well') { o.used = true; const lv = G.hero.level; for (let i = 0; i < 3; i++) dropItem(o.x, o.z, makeItem(lv, null, i === 0 && Math.random() < .15 ? 3 : Math.max(2, rollRarity(2)))); for (let i = 0; i < 6; i++) dropGold(o.x, o.z, (12 + lv * 6) * rnd(.8, 1.3)); for (let i = 0; i < 3; i++) ring(o.x, o.z, 0, 4 + i * 3, .6 + i * .2, 0xffd84a); burst(o.x, 2, o.z, 0xffd84a, 60, 9); burst(o.x, 2, o.z, 0x9ad0ff, 30, 7); SFX.play('drop4'); UI.zoneBanner('Your wish is granted!', 'The Wishing Well showers you with treasure'); }
   else if (o.kind === 'shrine') { o.used = true; P.buffs.push({ s: o.sh.s, t: 45, n: o.sh.n }); computeStats(); ring(o.x, o.z, 0, 8, .7, o.sh.c); SFX.play('shrine'); hint(o.sh.n + ' empowers you for 45 seconds.'); }
   else if (o.kind === 'planner') UI.openPlanner && UI.openPlanner();
   else if (o.kind === 'stash' || o.kind === 'vendor' || o.kind === 'altar') UI.openTown(o.kind);
@@ -1125,6 +1154,7 @@ function bossPattern(e) {
   else if (pat === 'spiral') e.spiral = 2;
 }
 function updEnemy(e, dt) {
+  if (e.dummy) { if (e.flash > 0) e.flash -= dt; e.wob = Math.max(0, (e.wob || 0) - dt * 1.6); if (e.burnT > 0) { e.burnT -= dt; dummyHit(e, e.burn * dt); } e.chill = e.shock = e.frozen = 0; e.awake = true; return; }
   if (e.flash > 0) e.flash -= dt; if (e.atk > 0) e.atk -= dt * 3; if (e.chill > 0) e.chill -= dt; if (e.shock > 0) e.shock -= dt;
   if (e.burnT > 0) { e.burnT -= dt; e.hp -= e.burn * dt; if (e.hp <= 0) { killEnemy(e); return; } }
   const dx = P.x - e.x, dz = P.z - e.z, d = Math.hypot(dx, dz) || .001;
@@ -1172,7 +1202,7 @@ function update(dt) {
   if (G.auto && P.dead) { BOT.rv += dt; if (BOT.rv > 2.5) { BOT.rv = 0; UI.revive(); } }
   // enemies
   const act = [];
-  for (const e of G.ents) { if (!e.alive) { e.deadT -= dt; continue; } if (G.online) repEnemy(e, dt); else updEnemy(e, dt); if (e.alive && e.awake) act.push(e); }
+  for (const e of G.ents) { if (!e.alive) { e.deadT -= dt; continue; } if (G.online && !e.dummy) repEnemy(e, dt); else updEnemy(e, dt); /* the Training Dummy lives only on your own screen, so it never takes the online path */ if (e.alive && e.awake && !e.dummy) act.push(e); }
   if (!G.online) for (let i = 0; i < act.length; i++) { const a = act[i]; for (let j = i + 1; j < act.length; j++) { const b = act[j], dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz), m = a.r + b.r; if (d < m && d > .001) { const p = (m - d) * .5, nx = dx / d * p, nz = dz / d * p; if (!a.boss) moveEnt(a, -nx, -nz, a.r * .8); if (!b.boss) moveEnt(b, nx, nz, b.r * .8); } }
     const dx = a.x - P.x, dz = a.z - P.z, d = Math.hypot(dx, dz), m = a.r + .5; if (d < m && d > .001 && !a.boss && !P.dash) moveEnt(a, dx / d * (m - d), dz / d * (m - d), a.r * .8); }
   if (G.ents.length && G.ents.some(e => !e.alive && e.deadT <= 0)) G.ents = G.ents.filter(e => e.alive || e.deadT > 0);
@@ -1487,6 +1517,14 @@ function drawHero(o, self) {
   if (o.flaskT > 0) GLX.halo(o.x, 1.4, o.z, 3.5, col(0xff3a3a), .5);
 }
 function drawEnemy(e) {
+  if (e.dummy) { const col = GLX.col, wood = col(0x5a4028), straw = col(0xc8a868), sack = col(0xb89a72), rope = col(0x8a6a3a), red = col(0xb03a2a), wht = col(0xe8e0cc), fl = e.flash > 0 ? .6 : 0, w = (e.wob || 0), tx = Math.sin(G.time * 22) * w * .22, tz = Math.cos(G.time * 17) * w * .12;
+    GLX.base(BM, e.x, 0, e.z, Math.PI, 1); const q = (g, ox, oy, oz, sx, sy, sz, c, m, em) => GLX.part('dyn', g, BM, 0, .2, 0, tx, 0, tz, ox, oy, oz, sx, sy, sz, c, (em || 0) + fl * .5, 1, m || 0);
+    GLX.part('dyn', 'cyl', BM, 0, 0, 0, 0, 0, 0, 0, .1, 0, 1.1, .2, 1.1, col(0x4a3a2a), 0, 1, 3); q('cyl', 0, .9, 0, .14, 1.9, .14, wood, 3); q('rbox', 0, 1.75, 0, 1.6, .12, .12, wood, 3);
+    q('taper', 0, 1.25, 0, .7, .95, .5, straw); q('sphere', 0, 1.62, 0, .74, .42, .52, straw); for (const y of [.95, 1.3, 1.6]) q('cap', 0, y, 0, .74 - (y < 1 ? .08 : 0), .03, .54, rope);
+    q('sphere', 0, 2.22, 0, .44, .5, .42, sack); q('cap', 0, 2.0, 0, .3, .05, .3, rope); for (const sd of [1, -1]) { q('rbox', .1 * sd, 2.28, .2, .08, .02, .02, col(0x2a2018)); q('rbox', .1 * sd, 2.28, .2, .02, .08, .02, col(0x2a2018)); }
+    for (const sd of [1, -1]) { q('sphere', .82 * sd, 1.75, 0, .2, .2, .2, straw); for (let k = 0; k < 3; k++) q('cone', (.92 + k * .02) * sd, 1.7 - k * .05, (k - 1) * .05, .05, .16, .05, straw); }
+    q('cap', 0, 1.4, .27, .44, .02, .44, wht); q('cap', 0, 1.4, .285, .3, .02, .3, red); q('cap', 0, 1.4, .3, .15, .02, .15, wht); q('cap', 0, 1.4, .31, .06, .02, .06, red, 0, .3);
+    return; }
   const col = GLX.col, md = e.md, c = col(md.c), c2 = col(md.c2), ec = col(md.e); let sc = e.sc, y = 0;
   if (!e.alive) { const k = Math.max(0, e.deadT / .45); sc *= .3 + .7 * k; y = -(1 - k) * .8; }
   const fdt = Math.min(.1, G.time - (e.wkT === undefined ? G.time : e.wkT)); e.wkT = G.time; e.wk = (e.wk || 0) + ((e.st === 'wind' ? 1 : 0) - (e.wk || 0)) * Math.min(1, fdt * 9); /* wind-ups blend in and out instead of snapping */ const em = e.flash > 0 ? 1.4 : 0, w = e.walk, sw = Math.sin(w), at = Math.max(0, e.atk), wind = e.wk;
@@ -1496,7 +1534,7 @@ function drawEnemy(e) {
     if (e.awake && e.alive && !e.ann && typeof UI !== 'undefined') { e.ann = 1; UI.zoneBanner('Treasure Goblin!', 'Catch it before it escapes: 30 seconds'); SFX.play('drop3'); }
     for (const sd of [1, -1]) p('cap', .16 * sd, .4 + hop, 0, sd * sw * .9, 0, 0, 0, -.2, 0, .14, .36, .14, sk2);
     p('sphere', 0, .82 + hop, .05, .5, 0, 0, 0, 0, 0, .5, .5, .45, c, 0); p('sphere', 0, 1.18 + hop, .38, .2, 0, 0, 0, 0, 0, .34, .3, .32, sk2, 0); for (const sd of [1, -1]) p('cone', .3 * sd, 1.28 + hop, .34, 0, 0, sd * 1.2, 0, 0, 0, .08, .34, .08, sk2); eyes(.1, 1.24 + hop, .62, .05); p('sphere', 0, 1.12 + hop, .66, 0, 0, 0, 0, 0, 0, .1, .08, .12, sk2);
-    p('sphere', 0, 1.2 + hop, -.32, .1, 0, 0, 0, 0, 0, .62, .66, .58, c2, 0, .25); p('cap', 0, 1.62 + hop, -.32, 0, 0, 0, 0, 0, 0, .2, .14, .2, col(0x6a4a24)); for (let k = 0; k < 4; k++) { const an = k * 1.57 + t * 2; GLX.obj('glow', 'gem', e.x + Math.cos(an) * .7 * sc, (1.3 + Math.sin(t * 3 + k) * .3) * sc, e.z + Math.sin(an) * .7 * sc, t * 4, .07, .12, .07, gd, 2, .9); } GLX.halo(e.x, 1.1 * sc, e.z, 2.2, gd, .4); }
+    p('sphere', 0, 1.2 + hop, -.32, .1, 0, 0, 0, 0, 0, .62, .66, .58, c2, 0, .25); p('cap', 0, 1.62 + hop, -.32, 0, 0, 0, 0, 0, 0, .2, .14, .2, col(0x6a4a24)); for (let k = 0; k < 4; k++) { const an = k * 1.57 + t * 2; GLX.obj('glow', 'gem', e.x + Math.cos(an) * .7 * sc, (1.3 + Math.sin(t * 3 + k) * .3) * sc, e.z + Math.sin(an) * .7 * sc, t * 4, .07, .12, .07, gd, 2, .9); } GLX.halo(e.x, 1.1 * sc, e.z, 2.2, gd, .4); if (e.alert && e.alive) { const pu = .6 + .4 * Math.sin(t * 6); GLX.obj('glow', 'ring', e.x, .07, e.z, t * 2, 2.6, 1, 2.6, gd, 1, .7 * pu, -1); GLX.obj('glow', 'box', e.x, 3.2, e.z, .78, .12, 6.4, .12, gd, 1, .3 * pu); GLX.halo(e.x, 1.4, e.z, 4.5, gd, .35 * pu); } }
   else if (e.arch === 'grunt') {
     for (const sd of [1, -1]) { p('cap', .16 * sd, .82, 0, sd * sw * .7, 0, 0, 0, -.2, 0, .2, .42, .22, c2); p('cap', .16 * sd, .82, 0, sd * sw * .9, 0, 0, 0, -.6, .03, .16, .42, .17, c); }
     p('taper', 0, 1.18, .04, .35, 0, 0, 0, 0, 0, .56, -.72, .36, c, 3); p('sphere', 0, 1.0, 0, .3, 0, 0, 0, 0, 0, .5, .36, .36, c2); p('sphere', 0, 1.66, .2, .3, 0, 0, 0, 0, 0, .36, .4, .38, c, 3); p('rbox', 0, 1.52, .36, .5, 0, 0, 0, 0, 0, .2, .1, .12, c2);
