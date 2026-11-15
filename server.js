@@ -130,8 +130,9 @@ setInterval(() => {
 
 // ---- leaderboard: highest level and deepest floor this build (it starts fresh with every build, like the heroes) ----
 const SEASON = (/const SEASON = '([^']+)'/.exec(fs.readFileSync(path.join(PUB, 'js/data.js'), 'utf8')) || [])[1] || BUILD; /* heroes carry over between builds, so the leaderboard follows the season, not the build */
-const LB_FILE = path.join(process.env.LB_DIR || require('os').tmpdir(), 'cinderdeep-lb-' + SEASON + '.json');
-let LB = { lvl: [], deep: [] }; try { const j = JSON.parse(fs.readFileSync(LB_FILE, 'utf8')); if (Array.isArray(j.lvl) && Array.isArray(j.deep)) LB = j; } catch (e) { }
+const LB_DIR = process.env.LB_DIR || require('os').tmpdir(), LB_FILE = path.join(LB_DIR, 'oathbyte-lb-' + SEASON + '.json');
+const LB_OLD = path.join(LB_DIR, 'cinderdeep-lb-' + SEASON + '.json'); /* build 0102: the board file took the new name. If only the old file is there, its scores load and are written under the new name (the old file is left alone) */
+let LB = { lvl: [], deep: [] }; for (const f of [LB_FILE, LB_OLD]) { try { const j = JSON.parse(fs.readFileSync(f, 'utf8')); if (Array.isArray(j.lvl) && Array.isArray(j.deep)) { LB = j; if (f === LB_OLD) fs.writeFile(LB_FILE, JSON.stringify(LB), () => { }); break; } } catch (e) { } }
 let lbDirty = false; setInterval(() => { if (!lbDirty) return; lbDirty = false; fs.writeFile(LB_FILE, JSON.stringify(LB), () => { }); }, 15000);
 function lbPut(list, e, score) { const k = e.n + '|' + e.c, i = list.findIndex(q => q.n + '|' + q.c === k); if (i >= 0) { if (list[i].s >= score) { if (e.x && !list[i].x) { list[i].x = 1; lbDirty = true; } if (e.f && !list[i].f) { list[i].f = 1; lbDirty = true; } return; } list.splice(i, 1); } else if (list.length >= 10 && list[list.length - 1].s >= score) return; list.push(Object.assign({}, e, { s: score })); list.sort((a, b) => b.s - a.s); list.length = Math.min(list.length, 10); lbDirty = true; }
 function lbRift(room, msg) { LB.rift = LB.rift || []; for (const q of room.players.values()) { if (!q.name) continue; lbPut(LB.rift, { n: q.name, c: q.cls, l: q.lvl | 0, d: msg.tier, ms: msg.ms }, 1e9 - msg.ms); } } // fastest rift clears
@@ -144,10 +145,10 @@ function lbNote(p, pl, dp, room, fc) {
 }
 // build 0074: moving to the OathByte address. Once MOVE_TO is set, the old address answers its front page with a tiny page that reads this
 // browser's heroes and sends the player on with the heroes in the link (after the #, so no server sees them). Empty: nothing changes.
-const MOVE_TO = 'https://oathbyte.onrender.com', MOVE_FROM = 'cinderdeep.onrender.com';
+const MOVE_TO = 'https://oathbyte.onrender.com', MOVE_FROM = 'cinderdeep.onrender.com'; /* the old host's address is fixed by the host, so it stays here to keep sending old links on */
 const MOVE_PAGE = '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>OathByte has moved</title><body style="background:#121014;color:#e8dcc8;font:16px sans-serif;padding:24px">'
   + '<p>OathByte has a new home at <a style="color:#e0a040" id="go" href="' + MOVE_TO + '/">' + MOVE_TO.replace('https://', '') + '</a>. Taking you there with your heroes…</p>'
-  + '<script>(function(){var o={},n=0;try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k.indexOf("cinderdeep_")===0){o[k]=localStorage.getItem(k);n++;}}}catch(e){}'
+  + '<script>(function(){var o={},n=0;try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(/^(cinderdeep|oathbyte)_/.test(k)){o[k]=localStorage.getItem(k);n++;}}}catch(e){}'
   + 'var u=' + JSON.stringify(MOVE_TO) + '+location.pathname+location.search;if(n){try{u+="#xfer="+btoa(unescape(encodeURIComponent(JSON.stringify(o))));}catch(e){}}document.getElementById("go").href=u;location.replace(u);})();</script>';
 // ---- http + websocket ----
 let INDEX_TXT = '';

@@ -14,7 +14,7 @@ const NET = (() => {
   }
   // Founder Pack (Lee, Nov 15): the code from the Ko-fi shop is kept in this browser and shown to the server on every join. The server
   // checks it, so other players only see a gold name, badge, cape and ember glow when the code is real. Looks only: no loot, drops or XP.
-  const FKEY = 'cinderdeep_founder'; /* the cinderdeep_ prefix rides along with hero backups and the move to the new address */
+  const FKEY = 'oathbyte_founder'; /* the oathbyte_ prefix rides along with hero backups */
   N.founderKey = () => { try { return localStorage.getItem(FKEY) || ''; } catch (e) { return ''; } };
   G.founder = !!N.founderKey();
   N.founderSet = k => { try { if (k) localStorage.setItem(FKEY, k); else localStorage.removeItem(FKEY); } catch (e) { } G.founder = !!k; };
