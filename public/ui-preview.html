@@ -511,7 +511,7 @@ body.isz1 .it .ar{width:18px;height:18px;font-size:11px}body.isz2 .it .ar{width:
       $('menuMsg').textContent = 'Pick a hero, carve through the Blighted Hollow, slay its guardian, and take the portal deeper.';
       $('menuOn').textContent = '3 players online';
     } else if (v === 'hud' || v === 'skills' || v === 'story') {
-      $('menu').classList.add('hide');
+      $('menu').classList.add('hide'); $('game').classList.remove('hide');
       document.body.style.background = 'radial-gradient(ellipse at 50% 60%,#3a3428,#141210 70%)';
       $('gLife').firstElementChild.style.height = '72%'; $('gLife').lastElementChild.textContent = '412 / 570';
       $('gFury').firstElementChild.style.height = '45%'; $('gFury').lastElementChild.textContent = '45 / 100';
