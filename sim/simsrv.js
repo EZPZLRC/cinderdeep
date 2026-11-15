@@ -21,7 +21,7 @@ function srvScale(n) { if (!G.zone || n < 1) return 0; const k = partyK(n), r = 
 function srvFloor() { return depth + 1; } /* the floor this party is on, for the party browser */
 function srvState() { return { t: 'zone', seed: G.zone.def.seed, lvl: G.zone.def.lvl, d: depth, theme: G.zone.def.theme, rift: rift ? (rift.done ? -1 : Date.now() - rift.t0) : undefined, cleared: !!G.zone.cleared, bossAt: G.zone.bossAt, ents: G.ents.filter(e => e.alive).map(entInfo) }; }
 dmgPlayer = function (v, el, src) { if (curTarget) __emit(curTarget.id, { t: 'dmg', v: Math.round(v), el: el, src: src ? src.id : 0 }); };
-addArea = function (o) { o.t = 0; G.areas.push(o); if (o.owner === 'e') __emit(null, { t: 'area', x: r2(o.x), z: r2(o.z), r: o.r, delay: o.delay, c: o.c }); return o; };
+addArea = function (o) { o.t = 0; G.areas.push(o); if (o.owner === 'e') __emit(null, { t: 'area', x: r2(o.x), z: r2(o.z), r: o.r, delay: o.delay, c: o.c, sh: o.sh, ang: o.ang === undefined ? undefined : r2(o.ang), arc: o.arc, len: o.len, w: o.w, n: o.n, hv: o.hvy }); return o; }; // build 0048: shapes and heavy blows go to every player
 eShoot = function (e, ang, spd, dmgM, el) {
   const p = { x: e.x + Math.sin(ang) * e.r, z: e.z + Math.cos(ang) * e.r, vx: Math.sin(ang) * spd, vz: Math.cos(ang) * spd, life: 3, r: .45, dmg: e.dmg * (dmgM || 1), el: el || 'phys' };
   G.projs.push(p); __emit(null, { t: 'proj', x: r2(p.x), z: r2(p.z), vx: r2(p.vx), vz: r2(p.vz), c: e.md.e });
@@ -61,7 +61,7 @@ function srvTick(dt) {
   }
   for (let i = G.areas.length - 1; i >= 0; i--) {
     const a = G.areas[i]; a.t += dt;
-    if (!a.done && a.t >= a.delay) { a.done = true; if (a.owner === 'e') for (const q of pl) if (Math.hypot(q.x - a.x, q.z - a.z) <= a.r + .3) __emit(q.id, { t: 'dmg', v: Math.round(a.dmg), el: a.el, src: a.src ? a.src.id : 0 }); }
+    if (!a.done && a.t >= a.delay) { a.done = true; if (a.owner === 'e' && !a.vis) for (const q of pl) if (inArea(a, q.x, q.z, .3)) __emit(q.id, { t: 'dmg', v: Math.round(a.dmg), el: a.el, src: a.src ? a.src.id : 0, hv: a.hvy || undefined }); }
     if (a.t >= a.delay + .05) G.areas.splice(i, 1);
   }
   G.fx.length = 0; G.texts.length = 0; G.hints.length = 0; G.drops.length = 0;

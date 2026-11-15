@@ -48,6 +48,8 @@ const SFX = (() => {
         case 'boss': tone(55, 1.4, 'sawtooth', .16, .7); noise(1.2, .12, 240); break;
         case 'shrine': [440, 554, 659].forEach((f, i) => tone(f, .8, 'sine', .09, 1, i * .05)); break;
         case 'die': tone(200, 1, 'sawtooth', .14, .25); break;
+        case 'warn': tone(70, .55, 'sawtooth', .07, 1.9); noise(.45, .06, 700); tone(140, .3, 'sine', .05, 1.5, .12); break; // build 0048: a heavy blow is being marked
+        case 'evade': tone(880, .12, 'sine', .05, 1.4); tone(1320, .1, 'sine', .03, 1.2, .05); break;
         case 'hum': tone(55, 3.4, 'sine', .07); tone(82.4, 3.2, 'triangle', .025, 1.01); tone(110, 3, 'sine', .03, .99, .2); noise(2.6, .025, 260); break; // build 0046: the portal's low hum
         case 'warp': tone(110, .9, 'sine', .14, 4); tone(220, .7, 'triangle', .06, 3, .1); noise(.8, .12, 1600); [523, 659, 784].forEach((f, i) => tone(f, .6, 'sine', .05, 1, .25 + i * .07)); break;
       }
@@ -690,7 +692,21 @@ function impact(x, z, r, c, heavy) { if (typeof document === 'undefined') return
   if (G.fx.length > 900) G.fx.splice(0, G.fx.length - 900); }
 function ring(x, z, r0, r1, life, c) { G.fx.push({ ring: 1, x, z, r0, r1, life, max: life, c: GLX.col(c) }); }
 function floatText(x, y, z, txt, col, life, size) { if (!G.set.nums && /^[-+✦\d]/.test(txt)) return; G.texts.push({ x: x + rnd(-.4, .4), y, z, txt, col, life: life || .9, max: life || .9, size: size || 15 }); if (G.texts.length > 60) G.texts.shift(); }
-function addArea(o) { o.t = 0; G.areas.push(o); return o; }
+function addArea(o) { o.t = 0; G.areas.push(o); if (o.owner === 'e' && o.hvy && typeof document !== 'undefined' && !P.dead && inArea(o, P.x, P.z, 5)) { if (G.time - (G.warnT || -9) > .35) { G.warnT = G.time; SFX.play('warn'); } const h = G.hero; if (h && !h.teleHint) { h.teleHint = 1; hint(G.tj ? 'Red shapes on the ground mark a heavy blow. Step out before they fill, or tap the dodge button.' : 'Red shapes on the ground mark a heavy blow. Step out before they fill, or dodge with Space.'); } } return o; }
+/* build 0048: heavy blows come in shapes (circle, cone, line, cross, rays). hvy sets the least a heavy blow takes, as a share of your life, so standing in one always hurts and stepping out always pays */
+function inLine(x0, z0, ang, len, w, x, z, pad) { const s = Math.sin(ang), c = Math.cos(ang), dx = x - x0, dz = z - z0, f = dx * s + dz * c; return f >= -pad && f <= len + pad && Math.abs(dx * c - dz * s) <= w / 2 + pad; }
+function areaLines(a) { if (a.sh === 'line') return [[a.x, a.z, a.ang]]; if (a.sh === 'cross') { const L = []; for (const q of [a.ang, a.ang + 1.5708]) L.push([a.x - Math.sin(q) * a.len / 2, a.z - Math.cos(q) * a.len / 2, q]); return L; } if (a.sh === 'rays') { const L = []; for (let i = 0; i < a.n; i++) L.push([a.x, a.z, a.ang + i / a.n * 6.2832]); return L; } return null; }
+function angD(a, b) { let d = a - b; while (d > Math.PI) d -= 6.2832; while (d < -Math.PI) d += 6.2832; return d; }
+function inArea(a, x, z, pad) { pad = pad || 0; const L = areaLines(a); if (L) { for (const l of L) if (inLine(l[0], l[1], l[2], a.len, a.w, x, z, pad)) return true; return false; }
+  const dx = x - a.x, dz = z - a.z, d = Math.hypot(dx, dz); if (d > a.r + pad) return false; if (a.sh === 'cone') return d < .9 + pad || Math.abs(angD(Math.atan2(dx, dz), a.ang)) <= a.arc + pad / Math.max(1, d); return true; }
+function areaOut(a, x, z) { /* the quickest way out, for the AI hero */ const L = areaLines(a); if (L) { for (const l of L) if (inLine(l[0], l[1], l[2], a.len, a.w, x, z, .8)) { const s = Math.sin(l[2]), c = Math.cos(l[2]), k = (x - l[0]) * c - (z - l[1]) * s >= 0 ? 1 : -1; return [c * k, -s * k]; } return [1, 0]; }
+  const dx = x - a.x, dz = z - a.z, d = Math.hypot(dx, dz); if (a.sh === 'cone' && d > 1.2) { const t = a.ang + (angD(Math.atan2(dx, dz), a.ang) >= 0 ? 1.5708 : -1.5708); return [Math.sin(t), Math.cos(t)]; } return d > .1 ? [dx / d, dz / d] : [1, 0]; }
+function heavyK(mul) { const dp = (G.zone && G.zone.def && G.zone.def.depth) || 1; return Math.min(.5, (.12 + Math.min(dp, 14) * .022) * (mul || 1)); }
+function eTele(o) { let n = 0; for (const a of G.areas) if (a.hvy && !a.done) n++; return n >= 5 ? null : addArea(o); } // never more than five heavy blows marked at once
+function areaLand(a) { const L = areaLines(a);
+  if (L) { for (const l of L) for (let k = 0; k <= 4; k++) { const f = a.len * k / 4, x = l[0] + Math.sin(l[2]) * f, z = l[1] + Math.cos(l[2]) * f; burst(x, .4, z, a.c, 4, 6); } }
+  else if (a.sh === 'cone') { for (let k = -2; k <= 2; k++) { const q = a.ang + a.arc * k / 2.5; for (const f of [.45, .85]) burst(a.x + Math.sin(q) * a.r * f, .4, a.z + Math.cos(q) * a.r * f, a.c, 3, 6); } }
+  else { ring(a.x, a.z, a.r * .3, a.r, .3, a.c); burst(a.x, .5, a.z, a.c, 12, 7); } }
 
 // ---------- combat ----------
 function wake(e) { if (e.awake) return; if (e.boss) { e.awake = true; return; } /* the boss intro card in ui.js announces it */ for (const o of G.ents) if (o.pack === e.pack && !o.awake) { o.awake = true; o.cd = rnd(.2, .9); } }
@@ -754,10 +770,10 @@ function killEnemy(e) {
 function goalDone(k) { const h = G.hero; if (!h || !h.goals || h.goals.all || h.goals[k]) return; h.goals[k] = 1; const g = GOALS.find(x => x[0] === k); SFX.play('shrine'); floatText(P.x, 3.2, P.z, '✓ ' + g[1], '#9effa8', 2, 16);
   if (GOALS.every(x => h.goals[x[0]])) { h.goals.all = 1; if (typeof UI !== 'undefined') UI.zoneBanner('First steps complete', 'The deep is yours to explore'); SFX.play('level'); } saveGame(); }
 const blessed = () => { const h = G.hero; return !!h && !h.runs && h.level < 4; }; // newcomer's blessing: softer hits until the first guardian falls
-function dmgPlayer(v, el, src) {
+function dmgPlayer(v, el, src, hvy) {
   if (P.dead || P.iframes > 0) return; const s = P.stats; if (blessed()) v *= .6; if (src && src.name) P.killer = src.name; else if (!src) P.killer = '';
   if (Math.random() * 100 < s.dodgeT) { floatText(P.x, 2.6, P.z, 'Dodge', '#9fe', .7); return; }
-  if (el === 'phys') v *= 1 - Math.min(.8, s.armorT / (s.armorT + 60 + v * 6)); else v *= 1 - (s['r' + el] || 0) / 100; v *= 1 - Math.min(50, s.dr + furyDR()) / 100; v = Math.max(1, Math.round(v));
+  if (el === 'phys') v *= 1 - Math.min(.8, s.armorT / (s.armorT + 60 + v * 6)); else v *= 1 - (s['r' + el] || 0) / 100; v *= 1 - Math.min(50, s.dr + furyDR()) / 100; if (hvy > 0) v = Math.max(v, s.maxLife * Math.min(.5, hvy) * (blessed() ? .6 : 1) * (1 - Math.min(50, s.dr + furyDR()) / 100)); v = Math.max(1, Math.round(v));
   P.hp -= v; P.hurt = .25; P.lastHit = G.time; P.mana = Math.min(s.maxMana, P.mana + 2); G.shake = Math.min(.7, G.shake + .12 + v / s.maxLife); floatText(P.x, 2.6, P.z, '-' + v, '#ff5a4a', .9, 17); SFX.play('hurt'); burst(P.x, 1.4, P.z, 0xffc070, 7, 5); { const hf = typeof document !== 'undefined' && document.getElementById('hurtFx'); if (hf && hf.animate) hf.animate([{ opacity: Math.min(.75, .3 + v / s.maxLife * 2) }, { opacity: 0 }], { duration: 450, easing: 'ease-out' }); }
   if (src && src.alive && s.thorns > 0) { src.flash = .1; if (G.online) NET.send({ t: 'hit', id: src.id, v: s.thorns, el: 'phys' }); else { src.hp -= s.thorns; if (src.hp <= 0) killEnemy(src); } }
   if (P.hp <= 0) { if (s.cheat && P.cheatCd <= 0) { P.hp = s.maxLife; P.cheatCd = 60; ring(P.x, P.z, 0, 10, .8, 0xff8a2a); hint('Emberheart saves you from death!'); } else { P.hp = 0; P.dead = true; P.act = P.spin = P.dash = null; G.streak = 0; SFX.play('die'); UI.showDeath(); } }
@@ -914,7 +930,7 @@ function botGear() {
 function botStep(dt) {
   if (G.inTown) { leaveTown(); return false; }
   const h = G.hero, s = P.stats; BOT.t -= dt; if (G.set.apPot !== false && P.hp < s.maxLife * .45) useFlask();
-  for (const a of G.areas) if (a.owner === 'e' && !a.done) { const d = Math.hypot(P.x - a.x, P.z - a.z); if (d < a.r + .8) { const nx = d > .1 ? (P.x - a.x) / d : 1, nz = d > .1 ? (P.z - a.z) / d : 0; P.atk = null; P.move = [P.x + nx * 4, P.z + nz * 4]; BOT.dodge = .2; return false; } }
+  for (const a of G.areas) if (a.owner === 'e' && !a.done && inArea(a, P.x, P.z, .8)) { const o = areaOut(a, P.x, P.z); P.atk = null; P.move = [P.x + o[0] * 4, P.z + o[1] * 4]; BOT.dodge = .2; if (a.hvy && a.delay - a.t < .45 && !(P.dodgeCd > 0)) dodge(P.x + o[0] * 4, P.z + o[1] * 4); return false; }
   if (BOT.dodge > 0) { BOT.dodge -= dt; return false; }
   let tgt = null, bd = 17, goal = null, act = null; for (const e of G.ents) { if (!e.alive || !e.awake || e.dummy) continue; const d = Math.hypot(e.x - P.x, e.z - P.z); if (d < bd) { bd = d; tgt = e; } }
   if (tgt) {
@@ -1172,13 +1188,19 @@ function eShoot(e, ang, spd, dmgM, el) { G.projs.push({ x: e.x + Math.sin(ang) *
 function bossPattern(e) {
   const pat = e.bd.pat[e.pi++ % e.bd.pat.length], el = G.zone.th.elem;
   if (pat === 'ring') { const n = 18; for (let i = 0; i < n; i++) eShoot(e, i / n * 6.2832 + e.pi, 9, .8, el); }
-  else if (pat === 'slam') addArea({ x: P.x, z: P.z, r: 5, delay: 1.1, owner: 'e', dmg: e.dmg * 2, el: 'phys', c: 0xff4a2a, src: e });
+  else if (pat === 'slam') addArea({ x: P.x, z: P.z, r: 5, delay: 1.1, owner: 'e', dmg: e.dmg * 2, el: 'phys', c: 0xff4a2a, src: e, hvy: heavyK(1.3) });
   else if (pat === 'summon') { const md = G.zone.th.mon.find(m => m.a === 'swarm') || G.zone.th.mon[0]; for (let i = 0; i < 5; i++) { const a = i / 5 * 6.28, x = e.x + Math.cos(a) * 3.5, z = e.z + Math.sin(a) * 3.5; if (!blocked(x, z, .6)) { const m = mkEnemy(md, x, z, e.lvl - 1, 0, -2); m.awake = true; m.noLoot = true; ring(x, z, 0, 2, .4, e.md.e); } } }
-  else if (pat === 'barrage') { for (let i = 0; i < 7; i++) addArea({ x: P.x + rnd(-6, 6), z: P.z + rnd(-6, 6), r: 2.6, delay: .9 + i * .14, owner: 'e', dmg: e.dmg * 1.4, el, c: 0xff7a2a, src: e }); }
-  else if (pat === 'nova') addArea({ x: e.x, z: e.z, r: 8.5, delay: 1.3, owner: 'e', dmg: e.dmg * 2.2, el, c: 0xff4a2a, src: e });
+  else if (pat === 'barrage') { for (let i = 0; i < 7; i++) addArea({ x: P.x + rnd(-6, 6), z: P.z + rnd(-6, 6), r: 2.6, delay: .9 + i * .14, owner: 'e', dmg: e.dmg * 1.4, el, c: 0xff7a2a, src: e, hvy: heavyK(.7) }); }
+  else if (pat === 'nova') addArea({ x: e.x, z: e.z, r: 8.5, delay: 1.3, owner: 'e', dmg: e.dmg * 2.2, el, c: 0xff4a2a, src: e, hvy: heavyK(1.4) });
   else if (pat === 'charge') { e.st = 'charge'; e.t = .8; e.cdir = Math.atan2(P.x - e.x, P.z - e.z); e.chit = false; }
   else if (pat === 'spiral') e.spiral = 2;
 }
+function bossTele(e) { // build 0048: between its usual attacks a guardian marks one of three big shapes: a breath cone, a cross on you, or rays from itself
+  const k = (e.ti = (e.ti || 0) + 1) % 3, an = Math.atan2(P.x - e.x, P.z - e.z), el = G.zone.th.elem;
+  if (k === 1) addArea({ x: e.x, z: e.z, sh: 'cone', ang: an, arc: .6, r: 11 + e.r, delay: 1.2, owner: 'e', dmg: e.dmg * 2, el, c: 0xff4a2a, src: e, hvy: heavyK(1.4) });
+  else if (k === 2) addArea({ x: P.x, z: P.z, sh: 'cross', ang: an + rnd(-.4, .4), len: 24, w: 2.6, delay: 1.25, owner: 'e', dmg: e.dmg * 1.8, el, c: 0xff5a2a, src: e, hvy: heavyK(1.2) });
+  else addArea({ x: e.x, z: e.z, sh: 'rays', n: 6, ang: an, len: 17, w: 1.9, delay: 1.3, owner: 'e', dmg: e.dmg * 1.8, el, c: 0xff5a2a, src: e, hvy: heavyK(1.2) });
+  e.st = 'hwind'; e.t = 1; }
 function updEnemy(e, dt) {
   if (e.dummy) { if (e.flash > 0) e.flash -= dt; e.wob = Math.max(0, (e.wob || 0) - dt * 1.6); if (e.burnT > 0) { e.burnT -= dt; dummyHit(e, e.burn * dt); } e.chill = e.shock = e.frozen = 0; e.awake = true; return; }
   if (e.flash > 0) e.flash -= dt; if (e.atk > 0) e.atk -= dt * 3; if (e.chill > 0) e.chill -= dt; if (e.shock > 0) e.shock -= dt;
@@ -1205,11 +1227,17 @@ function updEnemy(e, dt) {
     const q = Math.ceil(e.hp / e.maxHp * 4); if (e.q && q < e.q) for (let i = 0; i < 2; i++) G.drops.push({ x: e.x + rnd(-4, 4), z: e.z + rnd(-4, 4), globe: 1, t: 0 }); e.q = q;
     if (e.spiral > 0) { e.spiral -= dt; e.spT = (e.spT || 0) - dt; if (e.spT <= 0) { e.spT = .09; e.spA = (e.spA || 0) + .5; eShoot(e, e.spA, 10, .7, G.zone.th.elem); eShoot(e, e.spA + Math.PI, 10, .7, G.zone.th.elem); } return; }
     e.pt -= dt; if (e.pt <= 0) { e.pt = e.hp < e.maxHp * .4 ? 2.3 : 3.3; bossPattern(e); return; }
+    e.tt = (e.tt === undefined ? 1.4 : e.tt) - dt; if (e.tt <= 0 && d < 16) { e.tt = e.hp < e.maxHp * .4 ? 4.6 : 6; bossTele(e); return; }
   }
   if (e.arch === 'caster') { if (d > 11) go(1); else if (d < 6) go(-1, .8); else { const sd = Math.sin(G.time * .5 + e.id) > 0 ? 1 : -1, st = sp * dt * .55; moveEnt(e, dz / d * st * sd, -dx / d * st * sd, e.r * .8); e.walk += st * 1.6; } // keeps moving sideways so it is harder to line up
+    if (!e.elite && e.md.v !== 'lob') { e.sgT = (e.sgT === undefined ? rnd(2, 5) : e.sgT) - dt; if (e.sgT <= 0 && d < 13) { const an = Math.atan2(dx, dz), o = eTele({ x: e.x, z: e.z, sh: 'line', ang: an, len: 15, w: 1.5, delay: 1.15, owner: 'e', dmg: e.dmg * 1.5, el: G.zone.th.elem, c: e.md.e, src: e, hvy: heavyK(.9) }); if (o) { e.sgT = rnd(8, 11); e.st = 'hwind'; e.t = o.delay; e.rot = an; return; } e.sgT = .5; } } // build 0048: casters also charge a beam along a marked line
     if (e.cd <= 0 && d < 14) { e.cd = 2.4; e.st = 'wind'; e.t = a.wind; e.lx = P.x; e.lz = P.z; } return; }
   if (e.md.v === 'charge' && !e.boss && d > 4.5 && d < 10 && !(e.cd2 > 0)) { e.cd2 = 5.5; e.st = 'cwind'; e.t = .7; e.cdir = Math.atan2(dx, dz); e.rot = e.cdir; for (const k of [3, 6, 9]) addArea({ x: e.x + Math.sin(e.cdir) * k, z: e.z + Math.cos(e.cdir) * k, r: 1.1, delay: .7, owner: 'e', vis: true, dmg: 0, el: 'phys', c: 0xff4a2a }); return; }
-  if (e.elite && d < 7 && e.arch !== 'bomber' && e.arch !== 'goblin') { e.hsT = (e.hsT === undefined ? rnd(2, 4) : e.hsT) - dt; if (e.hsT <= 0) { e.hsT = rnd(5, 7); e.st = 'hwind'; e.t = .95; addArea({ x: P.x, z: P.z, r: 2.8, delay: .95, owner: 'e', dmg: e.dmg * 2.2, el: 'phys', c: 0xff4a2a, src: e }); return; } } // build 0035: champions wind up a heavy blow; step out of the red circle or dodge
+  if (e.elite && d < 7 && e.arch !== 'bomber' && e.arch !== 'goblin') { e.hsT = (e.hsT === undefined ? rnd(2, 4) : e.hsT) - dt; if (e.hsT <= 0) { e.hsT = rnd(5, 7); e.st = 'hwind'; e.t = .95; addArea({ x: P.x, z: P.z, r: 2.8, delay: .95, owner: 'e', dmg: e.dmg * 2.2, el: 'phys', c: 0xff4a2a, src: e, hvy: heavyK(1.25) }); return; } } // build 0035: champions wind up a heavy blow; step out of the red circle or dodge
+  if (!e.elite && (e.arch === 'grunt' && e.md.v !== 'charge' || e.arch === 'brute')) { e.sgT = (e.sgT === undefined ? rnd(1, 3.5) : e.sgT) - dt; if (e.sgT <= 0) { const an = Math.atan2(dx, dz); let o = null; // build 0048: every grunt and brute has a marked heavy blow
+      if (e.arch === 'grunt' && d < 3.6) o = eTele({ x: e.x, z: e.z, sh: 'cone', ang: an, arc: .8, r: 3.8 + e.r * .5, delay: .85, owner: 'e', dmg: e.dmg * 1.6, el: 'phys', c: 0xff4a2a, src: e, hvy: heavyK(1) });
+      else if (e.arch === 'brute' && d > 2.5 && d < 10) o = eTele({ x: e.x, z: e.z, sh: 'line', ang: an, len: 11, w: 2.4, delay: 1, owner: 'e', dmg: e.dmg * 1.8, el: 'phys', c: 0xff5a2a, src: e, hvy: heavyK(1.15) });
+      if (o) { e.sgT = rnd(6, 9); e.st = 'hwind'; e.t = o.delay; e.rot = an; return; } e.sgT = .5; } }
   const reach = a.reach + e.r * .5;
   if (d > reach) { if (d > 3.2 && !e.boss && e.arch !== 'brute') { if (e.fl === undefined) e.fl = ((e.id * 7919 % 100) / 100 - .5) * 6; const fx = P.x - dz / d * e.fl - e.x, fz = P.z + dx / d * e.fl - e.z, fd = Math.hypot(fx, fz) || 1, st = sp * dt; moveEnt(e, fx / fd * st, fz / fd * st, e.r * .8); e.walk += st * 1.6; } else go(1); } // the pack fans out to surround instead of queueing up
   else if (e.cd <= 0) {
@@ -1218,6 +1246,18 @@ function updEnemy(e, dt) {
     else if (e.boss) addArea({ x: e.x + dx / d * 2.5, z: e.z + dz / d * 2.5, r: 4, delay: e.t, owner: 'e', dmg: e.dmg * 1.3, el: 'phys', c: 0xff4a2a, src: e });
   }
 }
+// build 0048: cones and lines drawn on the ground. A dim outline shows the whole shape, a brighter fill grows from the attacker until it lands
+function teleLine(x0, z0, ang, len, w, c, k, fl, cw) { const sn = Math.sin(ang), cs = Math.cos(ang), px = cs * w / 2, pz = -sn * w / 2, m = len / 2;
+  GLX.obj('glow', 'box', x0 + sn * m, .07, z0 + cs * m, ang, w, .02, len, c, 1, .14 + fl * .2, 0);
+  if (k > 0) GLX.obj('glow', 'box', x0 + sn * len * k / 2, .08, z0 + cs * len * k / 2, ang, w, .02, len * k, c, 1, .32, 0);
+  for (const sd of [1, -1]) GLX.obj('glow', 'box', x0 + sn * m + px * sd, .09, z0 + cs * m + pz * sd, ang, .12, .02, len, c, 1 + fl, .9, 0);
+  GLX.obj('glow', 'box', x0 + sn * len, .09, z0 + cs * len, ang, w, .02, .12, c, 1 + fl, .9, 0); GLX.obj('glow', 'box', x0 + sn * len * k, .1, z0 + cs * len * k, ang, w, .02, .16, cw, 1.4, .8, 0); }
+function drawTele(a, c, k, fl) { const cw = col(0xffd0a0), L = areaLines(a);
+  if (L) { for (const l of L) teleLine(l[0], l[1], l[2], a.len, a.w, c, k, fl, cw); return; }
+  const n = Math.max(1, Math.round(2 * a.arc / .1745)), st = 2 * a.arc / n, d = a.r * 2; // a cone is a fan of 10 degree slices
+  for (let i = 0; i < n; i++) { const q = a.ang - a.arc + st * (i + .5); GLX.obj('glow', 'sect', a.x, .07, a.z, q, d, 1, d, c, 1, .14 + fl * .2, 0); if (k > 0) GLX.obj('glow', 'sect', a.x, .08, a.z, q, d * k, 1, d * k, c, 1, .32, 0);
+    const m = a.r * Math.cos(st / 2), ch = 2 * a.r * Math.sin(st / 2); GLX.obj('glow', 'box', a.x + Math.sin(q) * m, .09, a.z + Math.cos(q) * m, q, ch, .02, .12, c, 1 + fl, .9, 0); GLX.obj('glow', 'box', a.x + Math.sin(q) * m * k, .1, a.z + Math.cos(q) * m * k, q, ch * k, .02, .16, cw, 1.4, .8, 0); }
+  for (const sd of [-1, 1]) { const q = a.ang + a.arc * sd; GLX.obj('glow', 'box', a.x + Math.sin(q) * a.r / 2, .09, a.z + Math.cos(q) * a.r / 2, q, .12, .02, a.r, c, 1 + fl, .9, 0); } }
 function update(dt) {
   if (typeof UI !== 'undefined' && UI.panelOpen && UI.panelOpen()) { if (!G.online) return; G.menuHold = true; P.iframes = Math.max(P.iframes || 0, .4); P.move = P.atk = null; } else G.menuHold = false; // menus pause the game; online, where the world cannot stop, they shield you instead
   if (G.hitStop > 0) { G.hitStop -= dt; dt *= .12; } // a heavy blow lands: the world holds its breath for a few frames
@@ -1247,8 +1287,8 @@ function update(dt) {
   }
   // areas
   for (let i = G.areas.length - 1; i >= 0; i--) {
-    const a = G.areas[i]; a.t += dt;
-    if (!a.done && a.t >= a.delay) { a.done = true; if (a.owner === 'p') { for (const e of G.ents) if (e.alive && Math.hypot(e.x - a.x, e.z - a.z) <= a.r + e.r) hitEnemy(e, a.sk, a.mult, a.proc); } else if (!a.vis && !P.dead && Math.hypot(P.x - a.x, P.z - a.z) <= a.r + .3 && P.y < 1.5) dmgPlayer(a.dmg, a.el, a.src); ring(a.x, a.z, a.r * .3, a.r, .3, a.c); burst(a.x, .5, a.z, a.c, 12, 7); if (a.owner === 'p' && !a.proc) impact(a.x, a.z, a.r * .8, a.c, a.r >= 2.5); if (a.owner === 'e') G.shake = Math.min(.5, G.shake + .08); }
+    const a = G.areas[i]; a.t += dt; if (a.hvy && !a.done && !a.was && a.t < a.delay * .8 && !P.dead && inArea(a, P.x, P.z, 0)) a.was = 1;
+    if (!a.done && a.t >= a.delay) { a.done = true; if (a.owner === 'p') { for (const e of G.ents) if (e.alive && Math.hypot(e.x - a.x, e.z - a.z) <= a.r + e.r) hitEnemy(e, a.sk, a.mult, a.proc); } else { const inn = !P.dead && inArea(a, P.x, P.z, .3) && P.y < 1.5; if (!a.vis && inn) dmgPlayer(a.dmg, a.el, a.src, a.hvy); else if (a.hvy && a.was && !inn && !P.dead) { floatText(P.x, 2.8, P.z, 'Evaded', '#9fe', .8, 15); SFX.play('evade'); } } areaLand(a); if (a.owner === 'p' && !a.proc) impact(a.x, a.z, a.r * .8, a.c, a.r >= 2.5); if (a.owner === 'e') G.shake = Math.min(.5, G.shake + .08); }
     if (a.t >= a.delay + .05) G.areas.splice(i, 1);
   }
   // drops
@@ -1773,8 +1813,10 @@ function drawWorld() {
   }
   for (const p of G.projs) { GLX.obj('glow', 'sphere', p.x, 1.2, p.z, 0, p.r * 1.6, p.r * 1.6, p.r * 1.6, p.c, 1.6, 1); GLX.halo(p.x, 1.2, p.z, p.r * 5, p.c, .6); }
   for (const a of G.areas) {
-    const c = col(a.c), k = clamp(a.t / a.delay, 0, 1), d = a.r * 2;
-    GLX.obj('glow', 'ring', a.x, .09, a.z, 0, d, 1, d, c, 1, a.owner === 'e' ? .9 : .5, -1); GLX.obj('glow', 'disc', a.x, .08, a.z, 0, d * k, 1, d * k, c, 1, a.owner === 'e' ? .35 : .2, 0);
+    const c = col(a.c), k = clamp(a.t / a.delay, 0, 1), d = a.r * 2, fl = a.hvy && !a.done && k > .72 ? .55 + .45 * Math.sin(G.time * 38) : 0; // build 0048: heavy blows flash just before they land
+    if (a.sh) { drawTele(a, c, k, fl); continue; }
+    GLX.obj('glow', 'ring', a.x, .09, a.z, 0, d, 1, d, c, 1 + fl, a.owner === 'e' ? .9 : .5, -1); GLX.obj('glow', 'disc', a.x, .08, a.z, 0, d * k, 1, d * k, c, 1, a.owner === 'e' ? .35 : .2, 0);
+    if (a.hvy && !a.done) { GLX.obj('glow', 'disc', a.x, .07, a.z, 0, d, 1, d, c, 1, .12 + fl * .2, 0); GLX.obj('glow', 'ring', a.x, .1, a.z, 0, d * k * 1.02, 1, d * k * 1.02, col(0xffd0a0), 1.4, .7, -1); }
     if (a.owner === 'p' && !a.done) { const fy = (1 - k) * 10 + .3, wb = (1 - k) * 1.6; GLX.obj('glow', 'ring', a.x, .12, a.z, G.time * 2, d * .7, 1, d * .7, c, 1, .3 + k * .4, -1); // something falls from the sky onto the marked spot
       GLX.obj('glow', 'sphere', a.x + wb, fy, a.z - wb, 0, .3 + a.r * .12, .3 + a.r * .12, .3 + a.r * .12, c, 2.2, .95); GLX.obj('glow', 'sphere', a.x + wb, fy, a.z - wb, 0, .14, .14, .14, col(0xffffff), 2, .9); GLX.part('glow', 'box', IDM, a.x + wb * 1.6, fy + 1.2, a.z - wb * 1.6, -.15, -.785, 0, 0, 0, 0, .12, .12, 2.6, c, 1.2, .45); GLX.halo(a.x + wb, fy, a.z - wb, 1.2 + a.r * .3, c, .5); }
   }

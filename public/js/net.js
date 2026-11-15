@@ -39,8 +39,8 @@ const NET = (() => {
       case 'spawn': for (const i of m.ents) { addReplica(i); const e = find(i.id); if (e) ring(e.x, e.z, 0, 2, .4, e.md.e); } break;
       case 'riftDone': if (G.zone && G.zone.def.rift && !G.riftDone) riftDone(+m.ms || 0, m.tier | 0); break;
       case 'die': { const e = find(m.id); if (e && e.alive) { e.hp = 0; killEnemy(e); } break; }
-      case 'dmg': dmgPlayer(+m.v || 0, m.el === 'fire' || m.el === 'cold' || m.el === 'light' ? m.el : 'phys', m.src ? find(m.src) : null); break;
-      case 'area': addArea({ x: +m.x, z: +m.z, r: +m.r, delay: +m.delay, owner: 'e', vis: 1, dmg: 0, el: 'phys', c: m.c | 0 }); break;
+      case 'dmg': dmgPlayer(+m.v || 0, m.el === 'fire' || m.el === 'cold' || m.el === 'light' ? m.el : 'phys', m.src ? find(m.src) : null, Math.min(.5, Math.max(0, +m.hv || 0))); break;
+      case 'area': { const sh = m.sh === 'cone' || m.sh === 'line' || m.sh === 'cross' || m.sh === 'rays' ? m.sh : undefined; addArea({ x: +m.x, z: +m.z, r: +m.r || 0, delay: +m.delay, owner: 'e', vis: 1, dmg: 0, el: 'phys', c: m.c | 0, sh, ang: +m.ang || 0, arc: Math.min(1.6, +m.arc || 0), len: Math.min(40, +m.len || 0), w: Math.min(8, +m.w || 0), n: Math.min(12, m.n | 0), hvy: Math.min(.5, Math.max(0, +m.hv || 0)) }); break; }
       case 'proj': G.projs.push({ x: +m.x, z: +m.z, vx: +m.vx, vz: +m.vz, life: 3, r: .45, dmg: 0, el: 'phys', vis: 1, c: GLX.col(m.c | 0) }); break;
       case 'fx': if (m.k === 'p') G.projs.push({ x: +m.x, z: +m.z, vx: Math.sin(+m.rot) * +m.r, vz: Math.cos(+m.rot) * +m.r, life: clamp(+m.arc || .5, .1, 2), r: .4, dmg: 0, el: 'phys', vis: 1, peer: 1, c: GLX.col(m.c | 0) }); else if (m.k === 's') G.fx.push({ slash: 1, x: +m.x, z: +m.z, rot: +m.rot, r: +m.r, arc: +m.arc, life: .16, max: .16, c: GLX.col(0xfff0d0) }); else ring(+m.x, +m.z, .5, +m.r, .35, m.c || 0xffc890); break;
       case 'chat': { const bd = typeof m.b === 'string' && ACH.some(a => a[1] === m.b) ? m.b + ' ' : ''; UI.chat(bd + txt(m.n, 16), txt(m.m, 140), m.g ? 'g' : 'p'); break; }

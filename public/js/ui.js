@@ -230,6 +230,7 @@ const UI = (() => {
       d.addEventListener('mouseleave', hideTip); bar.appendChild(d); skEls.push(d);
     }
     { const d = document.createElement('div'); d.className = 'sk use'; d.id = 'bUse'; d.style.pointerEvents = 'auto'; d.innerHTML = '<span class="ic">' + (typeof ICONS !== 'undefined' ? ICONS.ui('loot', 'gold') : 'Loot') + '</span>'; d.title = 'Loot'; d.addEventListener('pointerdown', e => { e.preventDefault(); SFX.unlock(); useNear(); }); bar.appendChild(d); }
+    { const d = document.createElement('div'); d.className = 'sk dg'; d.id = 'bDodge'; d.style.pointerEvents = 'auto'; d.innerHTML = '<span class="ic">' + (typeof ICONS !== 'undefined' ? ICONS.ui('dodge', 'cold') : 'Roll') + '</span>'; d.title = 'Dodge'; d.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); SFX.unlock(); const m = P.move; if (m) dodge(m[0], m[1]); else dodge(); }); bar.appendChild(d); } // build 0048: phones get a dodge roll too
   }
   // ---- skills panel ----
   let sklOpen = false, sklSlot = 1;
