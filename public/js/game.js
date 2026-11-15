@@ -444,7 +444,7 @@ const ENV_ON = !(typeof location !== 'undefined' && /[?&]scenery=0/.test(locatio
 function buildStatic(Z) { Z.torches = [];
   GLX.statBegin(); const th = Z.th, S = GW * CS, c = Z.cell, col = GLX.col;
   const EV = ENV_ON && !!GLX.envOn && GLX.envOn() && (Z.def.type === 'town' || th.wall === 'tree'), Mx = (n, x, y, z, ry, s, cc, sy) => GLX.obj('stat', 'm:' + n, x, y, z, ry, s, sy || s, s, cc || ENV_W, 0, 1, 0);
-  if (ENV_ON && GLX.envLoad && GLX.envInfo && GLX.envInfo().state === 'off' && (Z.def.type === 'town' || th.wall === 'tree')) GLX.envLoad('env/', BUILD).then(ok => { const z2 = G.zone; if (ok && z2 && z2.th && (z2.def.type === 'town' || z2.th.wall === 'tree')) buildStatic(z2); });
+  if (ENV_ON && GLX.envLoad && GLX.envInfo && (GLX.envInfo().state === 'off' || GLX.envInfo().state === 'loading') && (Z.def.type === 'town' || th.wall === 'tree')) GLX.envLoad('env/', BUILD).then(ok => { const z2 = G.zone; if (ok && z2 && z2.th && (z2.def.type === 'town' || z2.th.wall === 'tree')) buildStatic(z2); });
   GLX.obj('stat', 'box', S / 2, -.5, S / 2, 0, S + 120, 1, S + 120, col(th.ground), 0, 1, th.gdet);
   srand(Z.def.seed ^ 0x5bd1e995);
   const bark = col(th.wc[0]), leaf = [col(th.wc[1]), col(th.wc[2]), col(0x3a4a22)], stone = col(0x6c6a64), grassC = ({ crypt: [0x56604a, 0x4a5644, 0x66684e, 0x3e4a3c], lava: [0x4a3428, 0x5a3a26, 0x3a2a22, 0x6a4428], ice: [0xa8c0c8, 0x90aab8, 0xc0d4d8, 0x7c98a8], void: [0x4a3a6a, 0x3a2e58, 0x5a4680, 0x2e2446] }[Z.def.theme] || [0x5c7a32, 0x688236, 0x748034, 0x4e6c2e]).map(c => col(c));

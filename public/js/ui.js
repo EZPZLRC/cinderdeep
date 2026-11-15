@@ -655,7 +655,16 @@ const UI = (() => {
   $('bAuto').onclick = toggleAuto; $('bSpd').onclick = cycleSpeed; $('tChat').onclick = openChat;
 
   // ---- flow ----
-  function start(hero, net) {
+  /* build 0086 (Lee: the old graphics showed for a moment before the new ones): the scenery pack and the hero and townsfolk models now start
+     downloading on the title screen, and Play waits for them (12 seconds at most) so the first frame of the game is already the real world */
+  let artOK = false, artWait = 0;
+  const ART_NEED = cls => [MODEL_OF[cls], 'folkm', 'folkf'].filter(Boolean), artUrl = nm => 'models/' + nm + '.cdm?v=' + BUILD, artModels = () => MODELS_ON && GLX.model && G.realModels !== false;
+  function artLoad(cls) { if (!artOK) return; try { if (ENV_ON && GLX.envLoad && GLX.envInfo && GLX.envInfo().state === 'off') GLX.envLoad('env/', BUILD); if (artModels()) for (const nm of ART_NEED(cls).concat(['risen', 'cultist'])) GLX.model(nm, artUrl(nm)); } catch (e) { } }
+  function artReady(cls) { try { if (!artOK) return true; if (ENV_ON && GLX.envInfo && GLX.envInfo().state === 'loading') return false; if (artModels() && GLX.modelInfo && GLX.modelInfo().state !== 'off' && GLX.modelInfo().state !== 'failed') for (const nm of ART_NEED(cls)) if (!GLX.model(nm, artUrl(nm))) return false; } catch (e) { } return true; }
+  function start(hero, net, artGo) {
+    if (artWait) return; artLoad(hero.cls);
+    if (!artGo && !artReady(hero.cls)) { const t0 = Date.now(), b = $('btnNew'), msg = $('menuMsg'), was = msg.textContent; b.disabled = true; msg.textContent = 'Loading the world\u2026';
+      artWait = setInterval(() => { if (!artReady(hero.cls) && Date.now() - t0 < 12000) return; clearInterval(artWait); artWait = 0; b.disabled = false; if (msg.textContent === 'Loading the world\u2026') msg.textContent = was; start(hero, net, true); }, 100); return; }
     G.hero = hero; SFX.unlock(); P.hp = 1e9; U.invDirty = true; menuBuilt = false;
     if (net) { $('menuMsg').textContent = 'Connecting to the server…'; NET.connect(net.name, net.room); return; }
     $('menu').classList.add('hide'); $('game').classList.remove('hide'); buildBar(); enterZone();
@@ -747,7 +756,7 @@ const UI = (() => {
   }
   const MENU_PITCH = 'Descend the Blighted Hollow, face the Ashen Tyrant, and keep your oath. Free in your browser, alone or with friends.';
   let selCls = 'warden', resetArmed = false, hasServer = false, serverChecked = false; try { const c = localStorage.getItem('cinderdeep_class'); if (CLASSES[c]) selCls = c; } catch (e) { }
-  function renderClasses() {
+  function renderClasses() { artLoad(selCls);
     $('classes').innerHTML = CLASS_IDS.map(id => { const c = CLASSES[id], sv = loadGame(id); return `<div class="ccard${id === selCls ? ' on' : ''}" data-c="${id}" role="button" tabindex="0" title="${c.d}" style="--cc:#${(CLASS_COL[id] || 0xd8b060).toString(16).padStart(6, '0')};background-image:url(brand/ka/cls-${id}.webp)"><div class="cl">${sv ? 'Lv ' + sv.level : 'New'}</div><div class="cn">${c.n}</div><div class="ct">${c.tag}</div></div>`; }).join(''); /* build 0078: hero portrait tiles on the key art title screen */
     for (const id of CLASS_IDS) { const v = loadGame(id); menuGear[id] = gearDecode(v ? gearCode(v.eq) : gearCode({ weapon: { base: CLASSES[id].w, rar: 0 } })); }
     const sv = loadGame(selCls), web = /^https?:$/.test(location.protocol), pre = hasServer ? 'Play online · ' : serverChecked || !web ? 'Offline preview · ' : '';
@@ -801,7 +810,7 @@ const UI = (() => {
   // build 0040: with ?models=1 a small line says whether the real hero models loaded, and if not, why
   let mbN = 0; function modelBadge() { let el = $('mdlInfo'); if (!el) { el = document.createElement('div'); el.id = 'mdlInfo'; el.style.cssText = 'position:fixed;left:8px;bottom:8px;max-width:70vw;font:12px/1.35 system-ui,sans-serif;color:#e8e0d0;background:rgba(10,8,6,.78);border:1px solid #6a5a40;border-radius:6px;padding:5px 8px;z-index:60;pointer-events:none'; document.body.appendChild(el); } const mi = GLX.modelInfo ? GLX.modelInfo() : { state: 'off', why: 'old renderer' }; const t = 'Real models test: ' + mi.state + (mi.why ? ' (' + mi.why + ')' : ''); if (el.textContent !== t) el.textContent = t; }
   if (!GLX.init(glc)) { $('menuMsg').textContent = 'This game needs WebGL2, which this browser or device does not provide. Try a current desktop Chrome, Edge or Firefox.'; $('btnNew').classList.add('hide'); $('classes').classList.add('hide'); }
-  else requestAnimationFrame(frame);
+  else { requestAnimationFrame(frame); artOK = true; artLoad(selCls); }
   setInterval(() => { if (G.state === 'play' && !P.dead) saveGame(); }, 20000);
   return U;
 })();
