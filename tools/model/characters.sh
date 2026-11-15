@@ -9,7 +9,7 @@ H="$K/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (G
 M="$B/Superhero_Male_FullBody.gltf@bones=Head,neck_01"; F="$B/Superhero_Female_FullBody.gltf@bones=Head,neck_01"
 LEGS="thigh_l,calf_l,foot_l,ball_l,ball_leaf_l,thigh_r,calf_r,foot_r,ball_r,ball_leaf_r"
 C="--meshonly 1 --attach hand_r,hand_l,Head,spine_03 --sat .4 --cluster .012"
-node tools/model/anims.mjs $OUT/anims.cdl --anims "$UAL" --fps 20 --keep Idle_Loop=idle,Walk_Loop=walk,Jog_Fwd_Loop=run,Sword_Attack=attack,Death01=die,Roll=roll,Hit_Chest=hit,Spell_Simple_Shoot=cast,Punch_Cross=punch,Punch_Jab=jab,Idle_Talking_Loop=talk,Spell_Simple_Idle_Loop=spidle,Crouch_Fwd_Loop=crouch,Crouch_Idle_Loop=crouchi
+node tools/model/anims.mjs $OUT/anims.cdl --anims "$UAL" --fps 20 --keep Idle_Loop=idle,Walk_Loop=walk,Jog_Fwd_Loop=run,Sword_Attack=attack,Death01=die,Roll=roll,Hit_Chest=hit,Spell_Simple_Shoot=cast,Punch_Cross=punch,Punch_Jab=jab,Idle_Talking_Loop=talk,Spell_Simple_Idle_Loop=spidle,Crouch_Fwd_Loop=crouch,Crouch_Idle_Loop=crouchi,Jump_Start=jstart,Jump_Loop=jloop,Jump_Land=jland,Sword_Idle=cstance,Spell_Simple_Enter=spenter,Sprint_Loop=sprint,Hit_Head=hit2
 # Ranger: hooded ranger outfit
 node tools/model/build.mjs $OUT/ranger.cdm --mesh "$O/Male_Ranger.gltf" --mesh "$M" $C --kinds 'Boots|Bracer|Belt|Pauldron=leather'
 # Warden: the ranger cut turned to steel (chest, shoulder guard, bracers, boots), dark red under-cloth, a beard; helmet and shield are added in game

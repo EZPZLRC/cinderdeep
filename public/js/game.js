@@ -1457,15 +1457,26 @@ function heroModel(o, cls, rot, tw, lu, dy, mv, AW, wt, wglow, em) {
   const M = GLX.model(nm, 'models/' + nm + '.cdm?v=' + BUILD); if (!M || !M.anims || !M.anims.idle) return null;
   const A = M.anims, t = G.time, s = (o.sc || 1.08) * MSC, /* build 0041: as tall as the code-built heroes */ up = UPMASK[nm] || (UPMASK[nm] = CDM.mask(M, ['spine_02'], 0)), hero = !!CLASS_COL[cls];
   const bm = o._bm || (o._bm = new Float32Array(up.length)), act = !o.dead && !o.dash && o.act && AW > .01 ? AW : 0;
-  for (let b = 0; b < up.length; b++) bm[b] = 1 - act * up[b];
+  const full = act && mv < .15 && wt !== 'bow' ? 1 : 0; for (let b = 0; b < up.length; b++) bm[b] = 1 - act * (full || up[b]); /* build 0066: standing still, the swing takes the legs too */
   const lay = [];
   if (o.dead) { if (o.fallT0 === undefined) o.fallT0 = t; lay.push(['die', (t - o.fallT0) * 1.3, false, 1]); }
-  else if (o.dash) { if (o._rT0 === undefined) o._rT0 = t; lay.push(['roll', .25 + (t - o._rT0) * 2.6, false, 1]); }
+  else if (o.dash) { if (o._rT0 === undefined) o._rT0 = t; const D = typeof o.dash === 'object' ? o.dash : null, dsk = D && D.sk, f = D && D.dur ? clamp(D.t / D.dur, 0, 1) : -1;
+    /* build 0066: a Leap is a real jump (take-off, hang, and a heavy landing after), a Charge is a flat-out sprint, and only the dodge is a roll */
+    if (dsk && !dsk.flat && !dsk.blink && f >= 0 && A.jstart) { o._jl = t; if (f < .3) lay.push(['jstart', A.jstart.dur * (.5 + f / .3 * .5), false, 1]); else lay.push(['jloop', (f - .3) * 1.2, true, 1]); }
+    else if (dsk && dsk.flat && dsk.n && A.sprint) lay.push(['sprint', (t - o._rT0) * 1.5, true, 1]);
+    else lay.push(['roll', .25 + (t - o._rT0) * 2.6, false, 1]); }
   else { o._rT0 = undefined; const m = Math.min(1, mv * 1.6), ph = (o.walk || 0) / 6.2832, gait = hero || mv > .85 ? 'run' : 'walk';
-    if (m < 1) lay.push([o.talk ? 'talk' : 'idle', t + o.x * .37, true, 1 - m, bm]); if (m > 0) lay.push([gait, ph * A[gait].dur, true, m, bm]);
-    if (o.hurt > 0 && !act) lay.push(['hit', (.4 - Math.min(.4, o.hurt)) * 1.6, false, Math.min(1, o.hurt * 4), up]);
+    const melee = hero && wt !== 'bow' && wt !== 'staff' && wt !== 'wand' && wt !== 'fist' && wt !== 'none'; if (o.act) o._aT = t;
+    /* build 0066: sword and axe heroes hold a guard stance for a few seconds after they fight, instead of dropping straight back to a relaxed idle */
+    const idl = o.talk ? 'talk' : melee && A.cstance && t - (o._aT || -99) < 4 ? 'cstance' : 'idle';
+    if (m < 1) lay.push([idl, t + o.x * .37, true, 1 - m, bm]); if (m > 0) lay.push([gait, ph * A[gait].dur, true, m, bm]);
+    if (o._jl !== undefined && A.jland) { const u = t - o._jl; if (u < .5) lay.push(['jland', .25 + u * 1.6, false, Math.min(1, (.5 - u) * 4), null]); else o._jl = undefined; } /* the knees take the landing */
+    if (o.hurt > 0 && !act) { if (o.hurt > .35 && !o._hv) o._hv = A.hit2 && Math.random() < .5 ? 'hit2' : 'hit'; const hv = o._hv || 'hit'; lay.push([hv, (.4 - Math.min(.4, o.hurt)) * (hv === 'hit2' ? 1.3 : 1.6), false, Math.min(1, o.hurt * 4), up]); } else o._hv = 0;
     if (act) { const k = clamp(o.swing || 0, 0, 1), ranged = wt === 'bow' || wt === 'staff' || wt === 'wand', fist = wt === 'fist' || wt === 'none', an = ranged ? 'cast' : fist ? ((o._pk = o._pk || (Math.random() < .5 ? 1 : 2)) === 1 ? 'punch' : 'jab') : 'attack'; if (k < .05) o._pk = 0;
-      lay.push([an, k * A[an].dur, false, act, up]); } }
+      const still = mv < .15, msk = still && !ranged ? null : up; /* standing still, the whole body swings: feet plant and the hips turn into the blow */
+      if ((wt === 'staff' || wt === 'wand') && A.spenter && k < .38) lay.push(['spenter', k / .38 * A.spenter.dur, false, act, still ? null : up]); /* spells gather power before they fly */
+      else if (wt === 'staff' || wt === 'wand') lay.push(['cast', (k - .38) / .62 * A.cast.dur, false, act, still ? null : up]);
+      else lay.push([an, k * A[an].dur, false, act, msk]); } }
   GLX.base(BMm, o.x + Math.sin(rot) * lu, o.y + dy - M.head.minY * s, o.z + Math.cos(rot) * lu, rot + tw, s);
   const folk = !hero, alt = HAIR_ALT[cls] ? 1 : 0, L = LOOK[cls] || LOOK.vil1, hairC = o.hair || 0x4a3626;
   const look = (gi, gr) => { const k = gr.kind, mt = gr.mat; if (k === 'beard' && !o.beard) return null; if (k === 'hair' && alt && M.head.groups.some(g => g.kind === 'hairb')) return null; if (k === 'hairb' && !alt) return null;
