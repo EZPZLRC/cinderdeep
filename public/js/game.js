@@ -316,14 +316,14 @@ function newHero(cls) {
   const h = { v: 1, name: c.n, cls, level: 1, xp: 0, gold: 0, inv: new Array(BAG_N).fill(null), bagV: 2, eq: {}, bar: [sk[0], null, null, null], picks: [null, null, null, null], goals: {}, filter: 0, kills: 0, runs: 0, best: 0 };
   h.eq.weapon = makeItem(1, 'weapon', 0, c.w); applyKit(h); return h;
 }
-function calcStats(eq) {
+function calcStats(eq, noBuff) { /* build 0090: noBuff leaves out skill buffs, so item comparisons don't shift while War Cry and the like are up */
   const h = G.hero, c = CLASSES[h.cls], s = {}; for (const k in STATS) s[k] = 0;
   const uk = Math.pow(1.11, h.level) * .7; let wmin = Math.max(1, Math.round(3 * uk)), wmax = Math.max(2, Math.round(5 * uk)), wspd = 1.3, arm = 0; // bare fists until a weapon says otherwise
   for (const sl of SLOTS) {
     const it = eq[sl]; if (!it) continue; if (it.dmg) { wmin = it.dmg[0]; wmax = it.dmg[1]; wspd = it.spd; } if (it.armor) arm += it.armor;
     for (const a of it.aff) s[a.k] = (s[a.k] || 0) + a.v; if (it.power) { const p = POWERS[it.power].s; for (const k in p) s[k] = (s[k] || 0) + p[k]; }
   }
-  for (const b of P.buffs) for (const k in b.s) s[k] = (s[k] || 0) + b.s[k];
+  if (!noBuff) for (const b of P.buffs) for (const k in b.s) s[k] = (s[k] || 0) + b.s[k];
   const pg = h.pg || {}; s.dmg += pg.dmg || 0; s.lifePct += pg.life || 0; s.armorPct += (pg.armor || 0) * 2; s.critDmg += (pg.crit || 0) * 2; s.mf += pg.mf || 0; s.ms += Math.min(25, pg.ms || 0);
   { const ts = talBuild().s; for (const k in ts) s[k] = (s[k] || 0) + ts[k]; } /* build 0074: talent cards */
   s.wmin = wmin; s.wmax = wmax; s.wspd = wspd;
@@ -344,8 +344,19 @@ function effectWorth(s) { const h = G.hero, bar = ((h && h.bar) || []).map((id, 
   W = W || 1; pj /= W; ar /= W; cd /= W; const g = k => s[k] || 0; let d = 0, t = 0;
   d += g('projExtra') * .25 * pj; d += g('echo') / 100 * .8; d += g('procLight') / 100 * .75; d += g('lowLife') / 100 * .3; d += (g('boomFire') ? .12 : 0) + (g('boomCold') ? .12 : 0);
   d += g('area') / 100 * .45 * ar; d += 1 / (1 - Math.min(50, g('cull')) / 100) - 1; d += (s.cdrT || 0) / 100 * .5 * cd; d += Math.min(80, g('ms')) / 100 * .15;
-  t += g('leech') * .03 + (g('cheat') ? .35 : 0); return { d, t }; }
-function gearValue(s) { const w = effectWorth(s); return { dps: s.dps * (1 + w.d), tough: s.tough * (1 + w.t) }; }
+  t += g('leech') * .03 + (g('cheat') ? .35 : 0);
+  /* build 0090 (Lee: every stat counts): elemental damage for the other skills on the bar, not only the first one */
+  { const inc = k => 1 + (g('dmg') + g(k.el || 'phys') + (k.el && k.el !== 'phys' ? g('ele') : 0)) / 100, b0 = bar.find(x => x[1] === 0); if (b0) { const i0 = inc(b0[0]); for (const [k, i] of bar) if (i > 0 && k.el && k.m) d += (1 / W) * (inc(k) / i0 - 1); } }
+  /* life regen, life on hit and thorns keep you alive; cooldown helps any bar a little; movement also helps you get out of the way */
+  const ml = Math.max(1, s.maxLife || 1), aps = (s.wspd || 1) * (1 + g('aspd') / 100);
+  t += g('lifeRegen') / ml * 3 + g('lifeOnHit') * aps / ml * 2 + g('thorns') / ml * .3 + Math.min(80, g('ms')) / 100 * .1; d += (s.cdrT || 0) / 100 * .1;
+  /* finding loot, gold and experience: worth less than damage or life, but never nothing */
+  const u = g('mf') * .002 + g('gf') * .0015 + g('xp') * .01;
+  return { d, t, u }; }
+function gearValue(s) { const w = effectWorth(s); return { dps: s.dps * (1 + w.d), tough: s.tough * (1 + w.t), util: 1 + w.u }; }
+/* build 0090: the one comparison behind the bag arrows, the tooltip, the Trader and the pet. Every stat on both items counts: damage, toughness and finding (magic find, gold find, experience) */
+function gearCmp(eqA, eqB) { const a = gearValue(calcStats(eqA, 1)), b = gearValue(calcStats(eqB, 1)), L = (x, y) => Math.log(Math.max(1, x) / Math.max(1, y)), d = L(b.dps, a.dps), t = L(b.tough, a.tough), u = Math.log(b.util / a.util); return { d, t, u, v: d + t + u, a, b }; }
+function itemCmp(it) { const eq = Object.assign({}, G.hero.eq); eq[it.slot === 'ring' ? 'ring1' : it.slot] = it; return gearCmp(G.hero.eq, eq); }
 function computeStats() { const s = calcStats(G.hero.eq); P.gear = gearDecode(P.gc = gearCode(G.hero.eq)); P.stats = s; P.hp = Math.min(P.hp, s.maxLife); P.mana = Math.min(P.mana, s.maxMana); return s; }
 function paragonFree() { const h = G.hero, pg = h.pg || {}; let used = 0; for (const k in pg) used += pg[k]; return (h.plvl || 0) - used; }
 function spendParagon(k) { const h = G.hero; if (!PARAGON[k] || paragonFree() < 1) return false; h.pg = h.pg || {}; if (PARAGON[k][2] && (h.pg[k] || 0) >= PARAGON[k][2]) { hint(PARAGON[k][0] + ' is at its limit.'); return false; } h.pg[k] = (h.pg[k] || 0) + 1; computeStats(); SFX.play('pickup'); saveGame(); return true; }
@@ -1353,7 +1364,7 @@ const PET_PACK = 8, PET_TRIP = 20; // items it can carry, and seconds the trip t
 function petGive(i) { const h = G.hero, it = h.inv[i]; if (!it) return false; if (G.set.pet === false) { hint('Your pet is turned off. Turn it on in Settings first.'); return false; } if (it.lock) { hint('That item is locked. Unlock it first.'); return false; } if (PET.away > 0) { hint('Your pet is away selling. It will be back in ' + Math.ceil(PET.away) + ' seconds.'); return false; } h.petBag = h.petBag || []; if (h.petBag.length >= PET_PACK) { hint('Your pet can carry ' + PET_PACK + ' items. Click it to send it to town first.'); return false; } h.petBag.push(it); h.inv[i] = null; SFX.play('pickup'); saveGame(); return true; }
 function petTake() { const h = G.hero; if (!h.petBag) return; while (h.petBag.length) { if (!addItem(h.petBag[h.petBag.length - 1])) { hint('Your bag is full.'); break; } h.petBag.pop(); } saveGame(); }
 function petWorth() { return ((G.hero && G.hero.petBag) || []).reduce((s, it) => s + itemValue(it), 0); }
-function petWorse(it) { /* build 0088: the same test as the bag's arrows (ui.js verdict): a down arrow means the item would not make you stronger, or your hero can't use it */ try { if (!it || !G.hero || !P.stats) return false; if (!canUse(it)) return true; const eq = Object.assign({}, G.hero.eq); eq[it.slot === 'ring' ? 'ring1' : it.slot] = it; const a = gearValue(calcStats(G.hero.eq)), b = gearValue(calcStats(eq)), v = Math.log(Math.max(1, b.dps) / Math.max(1, a.dps)) + Math.log(Math.max(1, b.tough) / Math.max(1, a.tough)); return v <= .004; } catch (e) { return false; } }
+function petWorse(it) { /* build 0088: the same test as the bag's arrows (ui.js verdict): a down arrow means the item would not make you stronger, or your hero can't use it. Build 0090: both use itemCmp */ try { if (!it || !G.hero || !P.stats) return false; if (!canUse(it)) return true; return itemCmp(it).v <= .004; } catch (e) { return false; } }
 function petPicks(all) { const h = G.hero, room = PET_PACK - (all ? 0 : (h.petBag && h.petBag.length) || 0), out = []; if (room <= 0) return out; for (let i = 0; i < h.inv.length && out.length < room; i++) { const it = h.inv[i]; if (it && !it.lock && petWorse(it)) out.push(i); } return out; }
 function petSell() { const h = G.hero; if (G.set.pet === false || P.dead) return false; if (PET.away > 0) { hint('Your pet is on its way. Back in ' + Math.ceil(PET.away) + ' seconds.'); return false; } h.petBag = h.petBag || [];
   /* build 0088: one click. The pet takes up to 8 down-arrow items from your bag (never locked, never up-arrow, and never what you wear, which is not in the bag) and sells them in town for the same gold as before */
