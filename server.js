@@ -30,6 +30,15 @@ function wbDk(n) { return Math.min(1.5, 1 + .1 * Math.max(0, n - 1)); }
 function wbStart() { const online = onlineCount(); WB.k = WB_NEED; WB.on = { f: 1, k: wbK(online), dk: wbDk(online), hit: new Set() }; wbDirty = true; everyone({ t: 'wb', ev: 'up', n: WB.n }); console.log('[WORLD BOSS] risen, ' + online + ' online'); }
 function wbHit(room, df, pid) { const A = WB.on; if (!A || !(df > 0)) return; A.f -= Math.min(df, .05); const p = room.players.get(pid); if (p && p.name) A.hit.add(p.name); if (A.f <= 0) wbDead(); }
 function wbDead() { const A = WB.on; if (!A) return; WB.on = null; WB.k = 0; WB.n++; wbDirty = true; for (const r of rooms.values()) { try { r.ctx.srvWbEnd(); } catch (e) { console.error('wb end', e); } } const by = [...A.hit]; everyone({ t: 'wb', ev: 'dead', n: WB.n - 1, by: by.slice(0, 6), c: by.length }); console.log('[WORLD BOSS] slain by ' + by.join(', ')); }
+// ---- Founder Pack (Lee, Nov 15): supporters type the code from the Ko-fi shop in Settings. The server checks it, so the gold name,
+// badge, cape and ember glow that other players see can't be faked. Only the code's fingerprint lives here, never the code. FOUNDER_CODES
+// (comma separated, set on the host) adds or replaces codes without a new build. Looks only: nothing here touches loot, drops or XP.
+const FOUNDER_HASH = ['29f1a0d39a7f6cb6a3d0cf15e6e607d3af33e3f90c3152d227674b28e44d043f'];
+function founderNorm(k) { return String(k == null ? '' : k).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 40); }
+function founderOk(k) { const n = founderNorm(k); if (n.length < 8) return false; const env = String(process.env.FOUNDER_CODES || '').split(',').map(founderNorm).filter(Boolean); if (env.includes(n)) return true; return FOUNDER_HASH.includes(crypto.createHash('sha256').update('oathbyte-founder:' + n).digest('hex')); }
+const fdTries = new Map(); /* wrong codes count against the address: 8 misses a minute and it waits, so nobody can guess codes by brute force */
+function fdCheck(ip, k) { const now = Date.now(), t = (fdTries.get(ip) || []).filter(x => now - x < 60000); if (t.length >= 8) { fdTries.set(ip, t); return false; } const ok = founderOk(k); if (!ok) { t.push(now); fdTries.set(ip, t); if (fdTries.size > 5000) fdTries.clear(); } return ok; }
+const fdSeen = new Set(); /* name|class keys of founders seen online, for the players-online list */
 const PARTY_MAX = 10; // players per party, for both party codes and blank-code matching (build 0022)
 
 function makeRoom(code) {
@@ -41,7 +50,7 @@ function makeRoom(code) {
   room.ctx = ctx; rooms.set(code, room); return room;
 }
 function cast(room, msg, except) { const s = JSON.stringify(msg); for (const p of room.players.values()) if (p.id !== except) p.conn.sendRaw(s); }
-function roster(room) { return { t: 'players', list: [...room.players.values()].map(p => ({ id: p.id, name: p.name, cls: p.cls })) }; }
+function roster(room) { return { t: 'players', list: [...room.players.values()].map(p => ({ id: p.id, name: p.name, cls: p.cls, f: p.fd ? 1 : 0 })) }; }
 function leave(p) {
   const room = p.room; if (!room) return; p.room = null; room.players.delete(p.id); delete room.ctx.SP[p.id];
   cast(room, { t: 'leave', id: p.id, name: p.name }); cast(room, roster(room)); if (!room.players.size) { room.emptyAt = Date.now(); room.last = { name: p.name, cls: p.cls, lvl: p.lvl }; /* who left last, so only that same hero can pick this floor back up (build 0034) */ } else rescale(room);
@@ -58,7 +67,7 @@ function onMessage(p, m) {
   if (m.t === 'join') {
     if (p.room) return; p.name = clean(m.name, 16) || 'Warden';
     // build 0075 (party sync): a dropped connection that comes back used to leave its old self standing on the floor for up to a minute. Monsters kept chasing that ghost and the party looked out of step. The same browser coming back now replaces its old connection at once
-    p.sid = clean(m.sid, 32); if (p.sid) for (const r of rooms.values()) for (const q of [...r.players.values()]) if (q !== p && q.sid === p.sid) q.conn.close(); let code = (clean(m.room, 12) || 'public').toLowerCase(); p.lvl = Math.max(1, Math.min(60, m.lvl | 0)); p.cls = clean(m.cls, 14) || 'warden';
+    p.sid = clean(m.sid, 32); if (p.sid) for (const r of rooms.values()) for (const q of [...r.players.values()]) if (q !== p && q.sid === p.sid) q.conn.close(); let code = (clean(m.room, 12) || 'public').toLowerCase(); p.lvl = Math.max(1, Math.min(60, m.lvl | 0)); p.cls = clean(m.cls, 14) || 'warden'; p.fd = m.fk ? fdCheck(p.ip, m.fk) : false; /* Founder Pack */
     // the kill count lives in memory, and a new build restarts the server: a returning player hands back the count they last saw, so an update does not wipe everyone's progress toward the boss
     if (Array.isArray(m.wb) && !WB.on) { const k = Math.max(0, Math.min(WB_NEED, m.wb[0] | 0)), n = Math.max(0, Math.min(999999, m.wb[1] | 0)); if (n > WB.n || (n === WB.n && k > WB.k)) { WB.n = n; WB.k = k; wbDirty = true; } }
     // auto-party (build 0020): a blank party code puts you with other players of a similar level, up to 6 per party
@@ -73,7 +82,7 @@ function onMessage(p, m) {
     if (!room) { if (rooms.size >= 50) { p.conn.send({ t: 'error', m: 'Server is full.' }); return; } room = makeRoom(code); fresh = true; }
     if (room.players.size >= PARTY_MAX) { p.conn.send({ t: 'error', m: 'That party is full (' + PARTY_MAX + ' players).' }); return; }
     p.room = room; room.players.set(p.id, p); room.emptyAt = 0; p.st = null;
-    p.conn.send({ t: 'hello', id: p.id, room: code });
+    p.conn.send({ t: 'hello', id: p.id, room: code, fd: m.fk ? (p.fd ? 1 : 0) : undefined });
     if (fresh) room.ctx.srvTier(m.tier | 0); /* build 0074: a new party plays at the difficulty its first hero picked */
     if (fresh) p.conn.send(((m.dep | 0) > 1 || (m.sd > 0 && (m.dep | 0) >= 1)) && typeof room.ctx.srvResume === 'function' ? room.ctx.srvResume(p.lvl, 1, m.dep | 0, +m.sd || 0, +m.px, +m.pz, !!m.clr) : room.ctx.srvNewZone(p.lvl, 1)); else { rescale(room, p.id); p.conn.send(room.ctx.srvState()); }
     room.ctx.SP[p.id] = { id: p.id, x: -999, z: -999, dead: true, lvl: p.lvl };
@@ -81,11 +90,12 @@ function onMessage(p, m) {
   }
   const room = p.room; if (!room) return;
   switch (m.t) {
-    case 'p': { const x = +m.x, z = +m.z; if (!isFinite(x) || !isFinite(z)) return; const sp = room.ctx.SP[p.id]; sp.x = x; sp.z = z; sp.dead = !!m.dead; { const want = Math.max(1, Math.min(60, m.lvl | 0)), now = Date.now(); if (want > p.lvl) { if (now - (p.lvlT || 0) > 10000) { p.lvlT = now; p.lvlUp = 0; } const room0 = Math.max(0, 3 - (p.lvlUp || 0)), step = Math.min(want - p.lvl, room0); p.lvlUp = (p.lvlUp || 0) + step; p.lvl += step; } else p.lvl = want; sp.lvl = p.lvl; } /* build 0074: a level can only climb a few steps at a time, so a hero cannot jump to 60 mid-game */ p.lastP = Date.now(); p.st = [p.id, x, z, +m.r || 0, m.mv ? 1 : 0, m.a | 0, Math.max(0, Math.min(100, m.hp | 0)), p.lvl, m.dead ? 1 : 0, clean(m.g, 24), cleanAi(m.ai), m.tw ? 1 : 0]; p.hc = !!m.hc; if (m.dead && p.hc) p.hcDead = true; lbNote(p, m.pl, m.dp, room, m.fc); break; }
+    case 'p': { const x = +m.x, z = +m.z; if (!isFinite(x) || !isFinite(z)) return; if (p.fd && p.name) fdSeen.add(p.name + '|' + p.cls); const sp = room.ctx.SP[p.id]; sp.x = x; sp.z = z; sp.dead = !!m.dead; { const want = Math.max(1, Math.min(60, m.lvl | 0)), now = Date.now(); if (want > p.lvl) { if (now - (p.lvlT || 0) > 10000) { p.lvlT = now; p.lvlUp = 0; } const room0 = Math.max(0, 3 - (p.lvlUp || 0)), step = Math.min(want - p.lvl, room0); p.lvlUp = (p.lvlUp || 0) + step; p.lvl += step; } else p.lvl = want; sp.lvl = p.lvl; } /* build 0074: a level can only climb a few steps at a time, so a hero cannot jump to 60 mid-game */ p.lastP = Date.now(); p.st = [p.id, x, z, +m.r || 0, m.mv ? 1 : 0, m.a | 0, Math.max(0, Math.min(100, m.hp | 0)), p.lvl, m.dead ? 1 : 0, clean(m.g, 24), cleanAi(m.ai), m.tw ? 1 : 0, p.fd ? 1 : 0]; p.hc = !!m.hc; if (m.dead && p.hc) p.hcDead = true; lbNote(p, m.pl, m.dp, room, m.fc); break; }
     case 'hit': room.ctx.srvHit(p.id, m); break;
     case 'fx': cast(room, { t: 'fx', k: clean(m.k, 2), x: +m.x || 0, z: +m.z || 0, rot: +m.rot || 0, r: Math.min(80, +m.r || 0), arc: +m.arc || 0, c: m.c | 0 }, p.id); break;
     case 'found': { const s = clean(m.item, 60), now = Date.now(); if (!s || (m.r !== 3 && m.r !== 4) || now - (p.lastFound || 0) < 4000) break; p.lastFound = now; const raw = JSON.stringify({ t: 'found', n: p.name, item: s, r: m.r }); for (const r of rooms.values()) for (const q of r.players.values()) q.conn.sendRaw(raw); break; }
-    case 'chat': { const s = clean(m.m, 140), now = Date.now(); if (!s || now - (p.lastChat || 0) < 700) break; p.lastChat = now; const bd = typeof m.b === 'string' && m.b.length <= 2 && /^[\u2600-\u27BF\u2580-\u25FF\u2654-\u265F]$/.test(m.b) ? m.b : undefined; if (m.g) { const raw = JSON.stringify({ t: 'chat', n: p.name, m: s, g: 1, b: bd }); for (const r of rooms.values()) for (const q of r.players.values()) q.conn.sendRaw(raw); } else cast(room, { t: 'chat', n: p.name, m: s, b: bd }); break; }
+    case 'chat': { const s = clean(m.m, 140), now = Date.now(); if (!s || now - (p.lastChat || 0) < 700) break; p.lastChat = now; const bd = typeof m.b === 'string' && m.b.length <= 2 && /^[\u2600-\u27BF\u2580-\u25FF\u2654-\u265F]$/.test(m.b) ? m.b : undefined; if (m.g) { const raw = JSON.stringify({ t: 'chat', n: p.name, m: s, g: 1, b: bd, f: p.fd ? 1 : undefined }); for (const r of rooms.values()) for (const q of r.players.values()) q.conn.sendRaw(raw); } else cast(room, { t: 'chat', n: p.name, m: s, b: bd, f: p.fd ? 1 : undefined }); break; }
+    case 'founder': { const ok = fdCheck(p.ip, m.k); p.conn.send({ t: 'founder', ok: ok ? 1 : 0 }); if (ok && !p.fd) { p.fd = true; cast(room, roster(room)); } break; } /* Founder Pack: redeemed mid-game, no reconnect needed */
     case 'tier': { const v = room.ctx.srvTier(m.v | 0); cast(room, { t: 'note', m: p.name + ' set the difficulty to ' + room.ctx.srvTierName(v) + ' from the next floor.' }); break; } /* build 0074 */
     case 'sync': p.conn.send(Object.assign(room.ctx.srvState(), { sync: 1 })); break;
     case 'prev': if (room.ctx.srvCleared() || room.players.size === 1) { let lv = 1; for (const q of room.players.values()) lv = Math.max(lv, q.lvl); cast(room, room.ctx.srvNewZone(lv, room.players.size, 'prev')); } break;
@@ -103,7 +113,7 @@ function onMessage(p, m) {
 const seenAt = new Map();
 function onlineCount() { const now = Date.now(); for (const r of rooms.values()) for (const p of r.players.values()) seenAt.set((p.name || '') + '|' + (p.cls || '') + '|' + (p.name ? '' : p.id), now); let n = 0; for (const [k, t] of seenAt) { if (now - t > 45000) seenAt.delete(k); else n++; } return n; }
 /* build 0092 (Lee): the hero names behind the player count, for its hover list on the title screen. Names and hero class only, never room codes */
-function onlineNames() { onlineCount(); const out = [], seen = new Set(); for (const k of seenAt.keys()) { const [n, c] = k.split('|'); const nm = String(n || '').slice(0, 24); if (!nm || seen.has(nm + c)) continue; seen.add(nm + c); out.push({ n: nm, c: String(c || '').slice(0, 16) }); if (out.length >= 40) break; } return out.sort((a, b) => a.n.localeCompare(b.n)); }
+function onlineNames() { onlineCount(); const out = [], seen = new Set(); for (const k of seenAt.keys()) { const [n, c] = k.split('|'); const nm = String(n || '').slice(0, 24); if (!nm || seen.has(nm + c)) continue; seen.add(nm + c); out.push({ n: nm, c: String(c || '').slice(0, 16), f: fdSeen.has(n + '|' + c) ? 1 : undefined }); if (out.length >= 40) break; } return out.sort((a, b) => a.n.localeCompare(b.n)); }
 // ---- game loop ----
 let last = Date.now(), tickN = 0;
 setInterval(() => {
@@ -123,12 +133,12 @@ const SEASON = (/const SEASON = '([^']+)'/.exec(fs.readFileSync(path.join(PUB, '
 const LB_FILE = path.join(process.env.LB_DIR || require('os').tmpdir(), 'cinderdeep-lb-' + SEASON + '.json');
 let LB = { lvl: [], deep: [] }; try { const j = JSON.parse(fs.readFileSync(LB_FILE, 'utf8')); if (Array.isArray(j.lvl) && Array.isArray(j.deep)) LB = j; } catch (e) { }
 let lbDirty = false; setInterval(() => { if (!lbDirty) return; lbDirty = false; fs.writeFile(LB_FILE, JSON.stringify(LB), () => { }); }, 15000);
-function lbPut(list, e, score) { const k = e.n + '|' + e.c, i = list.findIndex(q => q.n + '|' + q.c === k); if (i >= 0) { if (list[i].s >= score) { if (e.x && !list[i].x) { list[i].x = 1; lbDirty = true; } return; } list.splice(i, 1); } else if (list.length >= 10 && list[list.length - 1].s >= score) return; list.push(Object.assign({}, e, { s: score })); list.sort((a, b) => b.s - a.s); list.length = Math.min(list.length, 10); lbDirty = true; }
+function lbPut(list, e, score) { const k = e.n + '|' + e.c, i = list.findIndex(q => q.n + '|' + q.c === k); if (i >= 0) { if (list[i].s >= score) { if (e.x && !list[i].x) { list[i].x = 1; lbDirty = true; } if (e.f && !list[i].f) { list[i].f = 1; lbDirty = true; } return; } list.splice(i, 1); } else if (list.length >= 10 && list[list.length - 1].s >= score) return; list.push(Object.assign({}, e, { s: score })); list.sort((a, b) => b.s - a.s); list.length = Math.min(list.length, 10); lbDirty = true; }
 function lbRift(room, msg) { LB.rift = LB.rift || []; for (const q of room.players.values()) { if (!q.name) continue; lbPut(LB.rift, { n: q.name, c: q.cls, l: q.lvl | 0, d: msg.tier, ms: msg.ms }, 1e9 - msg.ms); } } // fastest rift clears
 function lbToday() { const d = new Date(); return String(d.getUTCFullYear()).slice(2) + String(d.getUTCMonth() + 1).padStart(2, '0') + String(d.getUTCDate()).padStart(2, '0'); }
 function lbNote(p, pl, dp, room, fc) {
   if (!p.name) return; const fl = room && room.ctx.srvFloor ? room.ctx.srvFloor() | 0 : 0; if (room && room.ctx.srvCleared && room.ctx.srvCleared() && !(room.ctx.srvIsRift && room.ctx.srvIsRift())) p.best = Math.max(p.best || 0, fl); /* build 0074: the boards only count floors this server saw you clear */
-  const lvl = p.lvl | 0, par = Math.max(0, Math.min(99999, pl | 0)), d = Math.max(1, Math.min(9999, dp | 0, fl || 9999)), cl = Math.max(0, Math.min(9999, fc | 0, p.best || 0)), e = { n: p.name, c: p.cls, l: lvl, p: par, d: cl, h: p.hc ? 1 : 0, x: p.hcDead ? 1 : 0 }; /* the floors board counts floors completed (Lee, Nov 13) */
+  const lvl = p.lvl | 0, par = Math.max(0, Math.min(99999, pl | 0)), d = Math.max(1, Math.min(9999, dp | 0, fl || 9999)), cl = Math.max(0, Math.min(9999, fc | 0, p.best || 0)), e = { n: p.name, c: p.cls, l: lvl, p: par, d: cl, h: p.hc ? 1 : 0, x: p.hcDead ? 1 : 0, f: p.fd ? 1 : 0 }; /* the floors board counts floors completed (Lee, Nov 13) */
   lbPut(LB.lvl, e, lvl * 100000 + (lvl >= 60 ? par : 0)); if (cl > 0) lbPut(LB.deep, e, cl);
   if (room && room.daily) { const td = lbToday(); if (room.daily === td) { if (LB.dlyDate !== td) { LB.dlyDate = td; LB.dly = []; } if (d > 1) lbPut(LB.dly, Object.assign({}, e, { d: d - 1 }), d - 1); } }
 }
@@ -146,6 +156,7 @@ const server = http.createServer((req, res) => {
   if (u === '/cinderdeep-server') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ cinderdeep: 1, build: BUILD, players: onlineCount(), names: onlineNames(), upAgo: Date.now() - LIVE_AT, worldBoss: { kills: WB.on ? WB_NEED : WB.k, need: WB_NEED, up: !!WB.on, slain: WB.n } })); /* build 0073: how long this build has been live, by the server's own clock */ return; }
   if (u === '/parties') { const list = []; for (const [code, r] of rooms) { if (!r.players.size || /^solo/.test(code)) continue; const pl = [...r.players.values()].map(q => ({ n: q.name, c: q.cls, l: q.lvl | 0 })); list.push({ code, players: pl, floor: r.ctx.srvFloor ? r.ctx.srvFloor() : 1, daily: !!r.daily }); } list.sort((a, b) => b.players.length - a.players.length); res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ parties: list.slice(0, 40), max: PARTY_MAX })); return; } // party browser (build 0021)
   if (u === '/leaderboard') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ build: BUILD, lvl: LB.lvl, deep: LB.deep, rift: LB.rift || [], daily: LB.dlyDate === lbToday() ? LB.dly || [] : [], today: lbToday() })); return; }
+  if (u === '/founder' && req.method === 'POST') { let body = ''; req.on('data', d => { body += d; if (body.length > 400) req.destroy(); }); req.on('end', () => { let k = ''; try { k = JSON.parse(body).k; } catch (e) { } const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim(), ok = fdCheck(ip, k); res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ ok: ok ? 1 : 0 })); }); return; } /* Founder Pack: check a code from Settings */
   if (u === '/favicon.ico') { res.writeHead(204); res.end(); return; }
   if (MOVE_TO && String(req.headers.host || '').split(':')[0] === MOVE_FROM && (u === '/' || u === '/index.html')) { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(MOVE_PAGE); return; } /* build 0074 */
   // build 0078 (Lee, Nov 15: playable links): an invite link gets its own preview card in chat apps, naming who sent it and the floor their party is on
@@ -184,7 +195,7 @@ server.on('upgrade', (req, sock) => {
   const key = req.headers['sec-websocket-key']; if (req.url.split('?')[0] !== '/ws' || !key) { sock.destroy(); return; }
   const acc = crypto.createHash('sha1').update(key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
   sock.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ' + acc + '\r\n\r\n'); sock.setNoDelay(true);
-  const conn = new Conn(sock), p = { id: nextId++, conn, room: null, name: '', lvl: 1, st: null }; conns.add(conn);
+  const conn = new Conn(sock), p = { id: nextId++, conn, room: null, name: '', lvl: 1, st: null, ip: String(req.headers['x-forwarded-for'] || sock.remoteAddress || '').split(',')[0].trim() }; conns.add(conn);
   conn.onmsg = m => { try { onMessage(p, m); } catch (e) { console.error('msg', e); } };
   conn.onclose = () => { conns.delete(conn); leave(p); };
   sock.on('data', d => conn.feed(d)); sock.on('close', () => conn.close()); sock.on('error', () => conn.close());
