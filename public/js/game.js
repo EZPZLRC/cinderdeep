@@ -15,7 +15,7 @@ let itemId = 1;
 // ---------- sound ----------
 const SFX = (() => {
   let ac = null, mute = false, nb = null, master = .7;
-  function ctx() { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ac = null; } } if (ac && ac.state === 'suspended') ac.resume().catch(() => { }); return ac; }
+  function ctx() { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ac = null; } if (ac) { loadSmp(); setTimeout(loadFight, 3500); } } if (ac && ac.state === 'suspended') ac.resume().catch(() => { }); return ac; }
   function tone(f, d, type, vol, slide, delay) {
     const a = ctx(); if (!a || mute) return; const t = a.currentTime + (delay || 0); const o = a.createOscillator(), g = a.createGain(); o.type = type || 'sine'; o.frequency.setValueAtTime(f, t);
     if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(20, f * slide), t + d); g.gain.setValueAtTime(Math.max(.0002, (vol || .1) * master), t); g.gain.exponentialRampToValueAtTime(.0001, t + d); o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + d + .02);
@@ -25,18 +25,30 @@ const SFX = (() => {
     const t = a.currentTime + (delay || 0); const s = a.createBufferSource(); s.buffer = nb; const f = a.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = freq || 1200; const g = a.createGain(); g.gain.setValueAtTime(Math.max(.0002, (vol || .1) * master), t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
     s.connect(f); f.connect(g); g.connect(a.destination); s.start(t, Math.random() * .5, d + .05);
   }
+  /* build 0051: recorded sounds (Kenney's CC0 packs) for hits, kills, footsteps, coins and more. Until they load, or if they can't, the old synth sounds play */
+  const SMP = {}, SLAST = {}, SFILES = ['hit', 'impact', 'kill', 'big_kill', 'boss', 'hurt', 'coin', 'step', 'land', 'dash'], SQ = '?v=' + (typeof BUILD !== 'undefined' ? BUILD : '');
+  let smpGo = false, sBus = null;
+  function getBuf(f, done) { if (typeof fetch === 'undefined') return; fetch(f + SQ).then(r => r.ok ? r.arrayBuffer() : null).then(b => { if (b) ac.decodeAudioData(b, done, () => { }); }).catch(() => { }); }
+  function loadSmp() { if (smpGo || !ac) return; smpGo = true; for (const k of SFILES) getBuf('sfx/' + k + '.mp3', buf => { SMP[k] = buf; }); }
+  function smp(k, vol, rate, delay) {
+    const a = ac, b = SMP[k]; if (!a || !b) return false; if (mute) return true; const now = a.currentTime; if (!delay && now - (SLAST[k] || -1) < .045) return true; SLAST[k] = now;
+    if (!sBus) { sBus = a.createDynamicsCompressor(); sBus.threshold.value = -10; sBus.ratio.value = 6; sBus.connect(a.destination); }
+    const s = a.createBufferSource(), g = a.createGain(); s.buffer = b; s.playbackRate.value = (rate || 1) * (.93 + Math.random() * .14); g.gain.value = (vol || .5) * master; s.connect(g); g.connect(sBus); s.start(now + (delay || 0)); return true;
+  }
   function play(n) {
     try {
       switch (n) {
         case 'swing': noise(.12, .07, 2600); break;
-        case 'hit': noise(.09, .16, 900); tone(140, .1, 'triangle', .12, .5); break;
-        case 'crit': noise(.14, .22, 1800); tone(220, .16, 'square', .07, .4); break;
-        case 'hurt': tone(110, .2, 'sawtooth', .12, .5); break;
-        case 'kill': tone(90, .22, 'triangle', .14, .4); noise(.16, .1, 500); break;
-        case 'slam': noise(.4, .3, 320); tone(60, .4, 'sine', .3, .5); break;
-        case 'leap': noise(.25, .08, 3000); break;
-        case 'whirl': noise(.3, .08, 2200); break;
-        case 'gold': tone(1568, .06, 'square', .035); tone(2093, .08, 'square', .035, 1, .05); break;
+        case 'hit': if (smp('hit', .55)) tone(140, .08, 'triangle', .05, .5); else { noise(.09, .16, 900); tone(140, .1, 'triangle', .12, .5); } break;
+        case 'crit': if (smp('impact', .65, 1.15)) { smp('hit', .45, 1.25); noise(.07, .08, 3200); } else { noise(.14, .22, 1800); tone(220, .16, 'square', .07, .4); } break;
+        case 'hurt': if (!smp('hurt', .5)) tone(110, .2, 'sawtooth', .12, .5); break;
+        case 'kill': if (smp('kill', .55)) tone(90, .16, 'triangle', .06, .4); else { tone(90, .22, 'triangle', .14, .4); noise(.16, .1, 500); } break;
+        case 'bigkill': if (smp('big_kill', .5)) smp('kill', .55, .85); else { tone(70, .5, 'triangle', .16, .4); noise(.3, .14, 400); } break;
+        case 'step': smp('step', .11, .9 + Math.random() * .25); break;
+        case 'slam': if (smp('impact', .75, .72)) { smp('land', .6, .8); tone(55, .4, 'sine', .22, .5); } else { noise(.4, .3, 320); tone(60, .4, 'sine', .3, .5); } break;
+        case 'leap': if (!smp('dash', .5)) noise(.25, .08, 3000); break;
+        case 'whirl': if (!smp('dash', .38, .78)) noise(.3, .08, 2200); break;
+        case 'gold': if (!smp('coin', .32)) { tone(1568, .06, 'square', .035); tone(2093, .08, 'square', .035, 1, .05); } break;
         case 'goblin': [1319, 1568, 2093, 1568, 2093, 2637].forEach((f, i) => tone(f, .14, 'triangle', .09, 1, i * .075)); tone(3136, .5, 'sine', .05, 1, .46); break; /* build 0034: a coin jingle when a Treasure Goblin is near */
         case 'pickup': tone(520, .08, 'triangle', .1, 1.5); break;
         case 'drop1': tone(660, .25, 'sine', .1); break;
@@ -45,9 +57,9 @@ const SFX = (() => {
         case 'drop3': [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, .7, 'triangle', .13, 1, i * .09)); tone(2093, 1.2, 'sine', .06, 1, .45); break;
         case 'level': [392, 523, 659, 784].forEach((f, i) => tone(f, .5, 'square', .06, 1, i * .1)); break;
         case 'flask': tone(300, .3, 'sine', .12, 2); break;
-        case 'boss': tone(55, 1.4, 'sawtooth', .16, .7); noise(1.2, .12, 240); break;
+        case 'boss': if (smp('boss', .7)) { smp('big_kill', .4, .7, .15); tone(55, 1.4, 'sawtooth', .07, .7); } else { tone(55, 1.4, 'sawtooth', .16, .7); noise(1.2, .12, 240); } break;
         case 'shrine': [440, 554, 659].forEach((f, i) => tone(f, .8, 'sine', .09, 1, i * .05)); break;
-        case 'die': tone(200, 1, 'sawtooth', .14, .25); break;
+        case 'die': smp('big_kill', .5, .6); tone(200, 1, 'sawtooth', .14, .25); break;
         case 'warn': tone(70, .55, 'sawtooth', .07, 1.9); noise(.45, .06, 700); tone(140, .3, 'sine', .05, 1.5, .12); break; // build 0048: a heavy blow is being marked
         case 'evade': tone(880, .12, 'sine', .05, 1.4); tone(1320, .1, 'sine', .03, 1.2, .05); break;
         case 'hum': tone(55, 3.4, 'sine', .07); tone(82.4, 3.2, 'triangle', .025, 1.01); tone(110, 3, 'sine', .03, .99, .2); noise(2.6, .025, 260); break; // build 0046: the portal's low hum
@@ -77,7 +89,17 @@ const SFX = (() => {
   // background music (build 0020): a driving rock loop written on the fly. Drums, distorted power chords, bass and a lead riff in E minor.
   let mBus = null, gBus = null, mLvl = .4, mNext = 0, mStep = 0, mOn = true;
   const MF = n => 82.41 * Math.pow(2, n / 12), RIFF = [0, 0, -4, -2, 0, 0, 3, 5], PENT = [0, 3, 5, 7, 10, 12, 15, 17], BPM = 138;
-  const mVol = () => (mute || !mOn ? 0 : mLvl * master * .5);
+  const mVol = () => (mute || !mOn ? 0 : mLvl * master * .5 * (fBuf ? 1 - .9 * Math.min(1, fLvl * 1.6) : 1));
+  /* build 0051: fight music. "Battle Theme A" by cynicmusic (CC0) fades in over the area tune when a fight starts, and its sound opens up as the fight grows */
+  let fBuf = null, fSrc = null, fG = null, fLp = null, fLvl = 0, fGo = false, fT0 = 0, fOff = 0;
+  function loadFight() { if (fGo || !ac) return; fGo = true; getBuf('sfx/battle.mp3', b => { fBuf = b; }); }
+  function fight(k, dt) {
+    if (!ac || !(dt > 0)) return; fLvl += (k - fLvl) * Math.min(1, dt * (k > fLvl ? 1.4 : .3)); if (fLvl < .003 && k <= 0) fLvl = 0; if (!fBuf) return;
+    const v = mute || !mOn ? 0 : Math.min(1, fLvl * 1.3) * mLvl * master * .8, now = ac.currentTime;
+    if (v > .001 && !fSrc) { fG = ac.createGain(); fG.gain.value = 0; fLp = ac.createBiquadFilter(); fLp.type = 'lowpass'; fLp.frequency.value = 600; fSrc = ac.createBufferSource(); fSrc.buffer = fBuf; fSrc.loop = true; fSrc.connect(fLp); fLp.connect(fG); fG.connect(ac.destination); fSrc.start(now, fOff % fBuf.duration); fT0 = now - fOff; }
+    if (!fSrc) return; fG.gain.setTargetAtTime(v, now, .25); fLp.frequency.setTargetAtTime(500 + fLvl * fLvl * 14000, now, .3);
+    if (fLvl <= 0 || v <= 0) { fOff = (now - fT0) % fBuf.duration; try { fSrc.stop(now + .6); } catch (e) { } fSrc = null; }
+  }
   function nz() { if (!nb) { nb = ac.createBuffer(1, ac.sampleRate, ac.sampleRate); const ch = nb.getChannelData(0); for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1; } return nb; }
   function env(node, t, a, v, d) { node.gain.setValueAtTime(.0001, t); node.gain.linearRampToValueAtTime(v, t + a); node.gain.exponentialRampToValueAtTime(.0001, t + d); }
   function osc(type, f, t, d, v, out, det) { const o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (det) o.detune.value = det; env(g, t, .005, v, d); o.connect(g); g.connect(out); o.start(t); o.stop(t + d + .05); return o; }
@@ -162,7 +184,7 @@ const SFX = (() => {
       mStep++; mNext += st;
     }
   }
-  return { unlock: ctx, play, ambient, ambTick(dt) { setTheme(gameSong); ambTick(dt); musTick(); }, musTick, theme: setTheme, music(v) { mLvl = v; }, toggle() { mute = !mute; setAmb(); return mute; }, vol(v) { master = v; mute = v <= 0; setAmb(); } };
+  return { unlock: ctx, play, fight, ambient, ambTick(dt) { setTheme(gameSong); ambTick(dt); musTick(); }, musTick, theme: setTheme, music(v) { mLvl = v; }, toggle() { mute = !mute; setAmb(); return mute; }, vol(v) { master = v; mute = v <= 0; setAmb(); } };
 })();
 
 // ---------- items ----------
@@ -717,6 +739,12 @@ function partyBonus() { if (!G.online || G.inTown) return 0; let n = 0; for (con
 function dodge(tx, tz) { if (G.state !== 'play' || P.dead || P.dash || (P.dodgeCd || 0) > 0 || G.inTown && false) return false; let dx = (tx === undefined ? P.x + Math.sin(P.rot) : tx) - P.x, dz = (tz === undefined ? P.z + Math.cos(P.rot) : tz) - P.z; const d = Math.hypot(dx, dz); if (d < .3) { dx = Math.sin(P.rot); dz = Math.cos(P.rot); } else { dx /= d; dz /= d; }
   let ex = P.x, ez = P.z; for (let t = .5; t <= 5; t += .5) { const nx = P.x + dx * t, nz = P.z + dz * t; if (blocked(nx, nz, .55)) break; ex = nx; ez = nz; } if (Math.hypot(ex - P.x, ez - P.z) < .4) return false;
   P.act = P.move = P.atk = null; P.rot = Math.atan2(dx, dz); P.dash = { x0: P.x, z0: P.z, x1: ex, z1: ez, t: 0, dur: .22, sk: { flat: 1 } }; P.iframes = Math.max(P.iframes || 0, .35); P.dodgeCd = 1; for (let i = 0; i < 6; i++) G.fx.push({ smoke: 1, x: P.x - dx * i * .3 + rnd(-.3, .3), y: .3, z: P.z - dz * i * .3 + rnd(-.3, .3), vx: rnd(-.5, .5), vy: rnd(.3, .9), vz: rnd(-.5, .5), life: rnd(.4, .7), max: .7, size: rnd(.3, .5), c: GLX.col(0xa89a80) }); SFX.play('leap'); return true; }
+/* build 0051: how hot the fight is, from 0 (calm) to 1 (a boss), for the fight music. It holds a few seconds after the last foe so the music doesn't cut in and out */
+function fightHeat(dt) {
+  let k = 0; if (G.state === 'play' && !G.inTown && !P.dead && G.ents) { let n = 0, el = 0; for (const e of G.ents) { if (!e.alive || !e.awake || e.dummy) continue; if (Math.hypot(e.x - P.x, e.z - P.z) > 17) continue; if (e.boss) { n = -1; break; } n++; if (e.elite) el = 1; } k = n < 0 ? 1 : n ? Math.min(.85, .38 + n * .06 + el * .22) : 0; }
+  if (k > 0) { G.heatK = Math.max(k, (G.heatK || 0) * .97); G.heatT = 4.5; } else if ((G.heatT = (G.heatT || 0) - dt) > 0) k = (G.heatK || 0) * .8; else G.heatK = 0;
+  return k;
+}
 function furyDR() { return G.hero && G.hero.cls === 'warden' && P.mana >= 30 ? 15 : 0; }
 function aspdK() { return G.hero && G.hero.cls === 'brawler' && P.mana > 60 ? 1.1 : 1; }
 // Sprint 1 damage meter: every hit you land, for DPS over the last 10 seconds and the biggest single hit
@@ -760,7 +788,7 @@ function killEnemy(e) {
   G.streak++; G.streakT = 4; if (G.streak > G.bestStreak) G.bestStreak = G.streak; if (G.streak > (h.best || 0)) h.best = G.streak;
   { const MS = { 10: ['Rampage!', 0xffb03a], 25: ['Massacre!', 0xff6a3a], 50: ['Unstoppable!', 0xff3a6a], 100: ['Godlike!', 0xc070ff] }, m = MS[G.streak]; if (m) { const bonus = Math.round((8 + h.level * 4) * (G.streak / 10)); h.gold += bonus; UI.streakPop && UI.streakPop('x' + G.streak + ' ' + m[0], '+' + bonus + ' gold', m[1]); impact(P.x, P.z, 2.2, m[1], true); SFX.play('level'); } } // kill streak milestones with a small gold bonus
   if (!G.inTown && h.tq) { const q = tqCur(); if (q) { const g = q.goal; const fl = G.zone.def.depth || 1; if (g.k === 'kills') tqAdd('kills'); else if (g.k === 'elite' && e.elite) tqAdd('elite'); else if (g.k === 'arch' && e.arch === g.arch) tqAdd('arch'); else if (g.k === 'boss' && e.boss && fl >= (g.min || 1)) tqAdd('boss'); else if (g.k === 'collect' && fl >= (g.min || 1) && h.tq.n + G.drops.filter(d => d.q).length < g.n && Math.random() < (e.boss ? 1 : e.elite ? .7 : g.p)) G.drops.push({ q: g.item, qc: g.c, x: e.x + rnd(-.5, .5), z: e.z + rnd(-.5, .5), t: 0, y: 0 }); } } // townsfolk quests
-  dropLoot(e); burst(e.x, 1, e.z, e.md.c2, 8, 6); deathFx(e); SFX.play('kill');
+  dropLoot(e); burst(e.x, 1, e.z, e.md.c2, 8, 6); deathFx(e); SFX.play(e.elite || e.boss ? 'bigkill' : 'kill');
   if (!e.noLoot && (e.elite || Math.random() < .12)) { const sp = e.boss ? lootFan(e.x, e.z, 0, 1) : null; G.drops.push({ x: sp ? sp[0] : e.x, z: sp ? sp[1] : e.z, globe: 1, t: 0 }); }
   if (s.boomFire) addArea({ x: e.x, z: e.z, r: 3.4, delay: .12, owner: 'p', sk: { el: 'fire', m: 1.2 }, c: 0xff7a2a, proc: 1 });
   if (s.boomCold) addArea({ x: e.x, z: e.z, r: 3.4, delay: .12, owner: 'p', sk: { el: 'cold', m: 1.0 }, c: 0x7ad0ff, proc: 1 });
@@ -1024,7 +1052,7 @@ function updPlayer(dt) {
     if (!P.spin) { let da = Math.atan2(dx, dz) - P.rot; while (da > Math.PI) da -= 6.2832; while (da < -Math.PI) da += 6.2832; P.rot += da * Math.min(1, dt * 18); }
     const ox = P.x, oz = P.z; moveEnt(P, dx / d * st, dz / d * st, .55); let moved = Math.hypot(P.x - ox, P.z - oz);
     if (moved < st * .5) { const ccx = (Math.floor(P.x / CS) + .5) * CS, ccz = (Math.floor(P.z / CS) + .5) * CS; if (Math.abs(dx) > Math.abs(dz)) moveEnt(P, 0, Math.sign(ccz - P.z) * Math.min(st, Math.abs(ccz - P.z)), .55); else moveEnt(P, Math.sign(ccx - P.x) * Math.min(st, Math.abs(ccx - P.x)), 0, .55); moved = Math.hypot(P.x - ox, P.z - oz); }
-    if (moved < st * .15) { if (P.move && !IN.lmb) P.move = null; } else { P.moving = true; P.walk += moved * 1.5; }
+    if (moved < st * .15) { if (P.move && !IN.lmb) P.move = null; } else { P.moving = true; P.walk += moved * 1.5; const sn = Math.floor(P.walk / Math.PI); if (sn !== P.stepN) { P.stepN = sn; SFX.play('step'); } }
   }
 }
 // ---- skill choices ----
@@ -1269,7 +1297,7 @@ function update(dt) {
   if (typeof UI !== 'undefined' && UI.panelOpen && UI.panelOpen()) { if (!G.online) return; G.menuHold = true; P.iframes = Math.max(P.iframes || 0, .4); P.move = P.atk = null; } else G.menuHold = false; // menus pause the game; online, where the world cannot stop, they shield you instead
   if (G.hitStop > 0) { G.hitStop -= dt; dt *= .12; } // a heavy blow lands: the world holds its breath for a few frames
   if (G.auto && G.hero && G.hero.picks) { const i = pendingPick(G.hero); if (i >= 0) pickSkill(i, skillTiers(G.hero.cls)[i][Math.random() * 2 | 0]); }
-  SFX.ambTick(dt); updAlly(dt); G.time += dt; if (G.shake > 0) G.shake = Math.max(0, G.shake - dt * 1.8);
+  SFX.ambTick(dt); SFX.fight(fightHeat(dt), dt); updAlly(dt); G.time += dt; if (G.shake > 0) G.shake = Math.max(0, G.shake - dt * 1.8);
   P.mv += ((P.moving ? 1 : 0) - P.mv) * Math.min(1, dt * 12);
   updPlayer(dt); if (G.online) NET.tick(dt); updGps(dt); updPet(dt); if (!G.online && !G.inTown) repop(dt, [P]); if (G.zone && !G.inTown && !P.dead) for (const o of G.zone.objs) if (o.kind === 'lost' && !o.used && Math.hypot(o.x - P.x, o.z - P.z) < 2.4) interact(o); G.achT = (G.achT || 0) - dt; if (G.achT <= 0) { G.achT = 1; achCheck(); }
   if (G.auto && P.dead) { BOT.rv += dt; if (BOT.rv > 2.5) { BOT.rv = 0; UI.revive(); } }

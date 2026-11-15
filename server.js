@@ -3,7 +3,7 @@
 // Serves the game from ./public and runs one shared world per party over WebSockets at /ws.
 const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto'), vm = require('vm');
 const PORT = process.env.PORT || 3000, PUB = process.env.PUBLIC_DIR || path.join(__dirname, 'public');
-const zlib = require('zlib'), GZ = new Map(); const MIME = { '.cdm': 'application/octet-stream', '.cde': 'application/octet-stream', '.cdl': 'application/octet-stream', '.jpg': 'image/jpeg', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.ico': 'image/x-icon' };
+const zlib = require('zlib'), GZ = new Map(); const MIME = { '.cdm': 'application/octet-stream', '.cde': 'application/octet-stream', '.cdl': 'application/octet-stream', '.jpg': 'image/jpeg', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.ico': 'image/x-icon', '.mp3': 'audio/mpeg' };
 const simSrc = ['js/data.js', 'js/game.js'].map(f => new vm.Script(fs.readFileSync(path.join(PUB, f), 'utf8'), { filename: f }));
 simSrc.push(new vm.Script(fs.readFileSync(path.join(__dirname, 'sim', 'simsrv.js'), 'utf8'), { filename: 'simsrv.js' }));
 const BUILD = (/const BUILD = '([^']+)'/.exec(fs.readFileSync(path.join(PUB, 'js/data.js'), 'utf8')) || [])[1] || '?';
