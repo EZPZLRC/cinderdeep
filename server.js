@@ -3,7 +3,7 @@
 // Serves the game from ./public and runs one shared world per party over WebSockets at /ws.
 const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto'), vm = require('vm');
 const PORT = process.env.PORT || 3000, PUB = process.env.PUBLIC_DIR || path.join(__dirname, 'public');
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.ico': 'image/x-icon' };
+const zlib = require('zlib'), GZ = new Map(); const MIME = { '.cdm': 'application/octet-stream', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.ico': 'image/x-icon' };
 const simSrc = ['js/data.js', 'js/game.js'].map(f => new vm.Script(fs.readFileSync(path.join(PUB, f), 'utf8'), { filename: f }));
 simSrc.push(new vm.Script(fs.readFileSync(path.join(__dirname, 'sim', 'simsrv.js'), 'utf8'), { filename: 'simsrv.js' }));
 const BUILD = (/const BUILD = '([^']+)'/.exec(fs.readFileSync(path.join(PUB, 'js/data.js'), 'utf8')) || [])[1] || '?';
@@ -97,7 +97,11 @@ const server = http.createServer((req, res) => {
   if (u === '/favicon.ico') { res.writeHead(204); res.end(); return; }
   if (u === '/') u = '/index.html'; const f = path.normalize(path.join(PUB, u));
   if (!f.startsWith(PUB)) { res.writeHead(403); res.end(); return; }
-  fs.readFile(f, (err, data) => { if (err) { res.writeHead(404); res.end('Not found'); return; } res.writeHead(200, { 'Content-Type': MIME[path.extname(f)] || 'application/octet-stream', 'Cache-Control': 'no-cache' }); res.end(data); });
+  // build 0039: model files and scripts go out gzipped when the browser accepts it (the hero models are about a third smaller)
+  const gz = /\bgzip\b/.test(req.headers['accept-encoding'] || '') && /\.(cdm|js|html|css|json)$/.test(f);
+  if (gz && GZ.has(f)) { res.writeHead(200, { 'Content-Type': MIME[path.extname(f)] || 'application/octet-stream', 'Cache-Control': 'no-cache', 'Content-Encoding': 'gzip', 'Vary': 'Accept-Encoding' }); res.end(GZ.get(f)); return; }
+  fs.readFile(f, (err, data) => { if (err) { res.writeHead(404); res.end('Not found'); return; } const h = { 'Content-Type': MIME[path.extname(f)] || 'application/octet-stream', 'Cache-Control': 'no-cache' };
+    if (gz) { const z = zlib.gzipSync(data, { level: 9 }); GZ.set(f, z); h['Content-Encoding'] = 'gzip'; h.Vary = 'Accept-Encoding'; data = z; } res.writeHead(200, h); res.end(data); });
 });
 class Conn {
   constructor(sock) { this.sock = sock; this.buf = Buffer.alloc(0); this.frag = []; this.open = true; this.alive = true; }

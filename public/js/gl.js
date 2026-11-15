@@ -241,11 +241,11 @@ void main(){
   c+=(fract(sin(dot(uv+fract(uT),vec2(12.9898,78.233)))*43758.5453)-.5)*.016;o=vec4(c,1.);}}`;
   // build 0039: skinned variants of the hero shaders. Bone matrices live in a float texture (3 texels a bone, one row per drawn copy),
   // so a real model's mesh stays on the graphics card and only ~19 KB of bones are sent each frame for a full party
-  const SKN = `layout(location=8) in vec4 aJ; layout(location=9) in vec4 aW; uniform highp sampler2D uBones; uniform int uBR;
+  const SKN = `layout(location=8) in vec4 aJ; layout(location=9) in vec4 aW; layout(location=10) in vec4 aK; uniform highp sampler2D uBones; uniform int uBR;
 mat3x4 bone(float j){int b=int(j)*3;return mat3x4(texelFetch(uBones,ivec2(b,uBR),0),texelFetch(uBones,ivec2(b+1,uBR),0),texelFetch(uBones,ivec2(b+2,uBR),0));}
 mat3x4 skm(){return bone(aJ.x)*aW.x+bone(aJ.y)*aW.y+bone(aJ.z)*aW.z+bone(aJ.w)*aW.w;}`;
   const skinVS = (vs, main) => vs.replace('void main(){', SKN + '\nvoid main(){mat3x4 SK=skm();vec3 sP=vec4(aP,1.)*SK,sN=vec4(aN,0.)*SK;').replace(main[0], main[1]);
-  const VSS = skinVS(VS, ['vec4 w=wpos(iM,aP,aN,iE.y);vW=w.xyz;vL=aP;', 'vec4 w=wpos(iM,sP,sN,iE.y);vW=w.xyz;vL=aP;']).replace('vN=normalize(m*(aN/', 'vN=normalize(m*(sN/');
+  const VSS = skinVS(VS, ['vec4 w=wpos(iM,aP,aN,iE.y);vW=w.xyz;vL=aP;', 'vec4 w=wpos(iM,sP,sN,iE.y);vW=w.xyz;vL=aP;']).replace('vN=normalize(m*(aN/', 'vN=normalize(m*(sN/').replace('vC=iC;', 'vC=iC*vec4(aK.rgb*aK.rgb,1.);');
   const VSDS = skinVS(VSD, ['gl_Position=uLVP*wpos(iM,aP,aN,iE.y);', 'gl_Position=uLVP*wpos(iM,sP,sN,iE.y);']);
   function prog(vs, fs, names) {
     const mk = (t, s) => { const sh = gl.createShader(t); gl.shaderSource(sh, s); gl.compileShader(sh); if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh)); return sh; };
@@ -405,25 +405,28 @@ mat3x4 skm(){return bone(aJ.x)*aW.x+bone(aJ.y)*aW.y+bone(aJ.z)*aW.z+bone(aJ.w)*a
   // ---- build 0039: real character models (see models.js). The mesh sits on the graphics card once; each frame only the pose is sent ----
   const models = {}, SKD = [], BR = 32; let boneTex = null, boneW = 0, boneData = null, boneRows = 0;
   function model(name, url) { let m = models[name]; if (m) return m.ready ? m : null; m = models[name] = { ready: false }; if (typeof fetch === 'undefined' || typeof CDM === 'undefined' || !gl || !pMainS) return null;
-    fetch(url).then(r => r.ok ? r.arrayBuffer() : Promise.reject(new Error('HTTP ' + r.status))).then(ab => { Object.assign(m, CDM.parse(ab)); upModel(m); m.ready = true; }).catch(e => { m.failed = true; console.warn('model ' + name + ' failed to load', e); }); return null; }
+    fetch(url).then(r => r.ok ? r.arrayBuffer() : Promise.reject(new Error('HTTP ' + r.status))).then(ab => { Object.assign(m, CDM.parse(ab)); gl.getError(); upModel(m); if (gl.getError() !== gl.NO_ERROR) throw new Error('graphics card refused the model'); m.ready = true; }).catch(e => { m.failed = true; console.warn('model ' + name + ' failed to load', e); }); return null; }
   function upModel(m) {
     const V = m.head.v, vao = gl.createVertexArray(); gl.bindVertexArray(vao);
     const vb = (data, loc, n, type, norm, st) => { const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, n, type, norm, st || 0, 0); };
     vb(m.pos, 0, 3, gl.FLOAT, false); vb(m.nrm, 1, 3, gl.BYTE, true, 4); vb(m.jn, 8, 4, gl.UNSIGNED_BYTE, false); vb(m.wt, 9, 4, gl.UNSIGNED_BYTE, true);
-    gl.bindVertexArray(null); m.vao = vao; m.pos = m.nrm = m.jn = m.wt = null; m.V = V;
+    if (m.col) vb(m.col, 10, 4, gl.UNSIGNED_BYTE, true); else { gl.disableVertexAttribArray(10); }
+    if (m.idx) { const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, m.idx, gl.STATIC_DRAW); m.itype = m.head.i32 ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT; m.isz = m.head.i32 ? 4 : 2; }
+    gl.bindVertexArray(null); m.vao = vao; m.hasIdx = !!m.idx; m.hasCol = !!m.col; m.pos = m.nrm = m.jn = m.wt = m.col = m.idx = null; m.V = V;
     const w = m.head.bones * 3; if (w > boneW) { boneW = w; if (boneTex) gl.deleteTexture(boneTex); boneTex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, boneTex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, boneW, BR, 0, gl.RGBA, gl.FLOAT, null); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST); boneData = new Float32Array(boneW * 4 * BR); }
   }
   // draw model m posed by layers ([[anim, time, loop, weight], ...]) at matrix B; look(gi, group) gives [colour, glow, material] for each colour group, or null to hide it
   function drawModel(m, B, layers, look) {
-    if (!m || !m.ready || boneRows >= BR) return false; CDM.pose(m, layers); const r = boneRows++, S = m.S, n = m.head.bones, o = r * boneW * 4;
+    if (!m || !m.ready || !skinOK || boneRows >= BR) return false; CDM.pose(m, layers); const r = boneRows++, S = m.S, n = m.head.bones, o = r * boneW * 4;
     for (let b = 0; b < n; b++) { const s = b * 12, d = o + b * 12; for (let k = 0; k < 3; k++) { boneData[d + k * 4] = S[s + k]; boneData[d + k * 4 + 1] = S[s + 3 + k]; boneData[d + k * 4 + 2] = S[s + 6 + k]; boneData[d + k * 4 + 3] = S[s + 9 + k]; } }
     const groups = m.head.groups; for (let gi = 0; gi < groups.length; gi++) { const L = look ? look(gi, groups[gi]) : [groups[gi].col, 0, groups[gi].mat]; if (!L) continue; SKD.push({ m, r, start: groups[gi].start, count: groups[gi].count, M: Float32Array.from(B), c: L[0], em: L[1] || 0, mat: L[2] || 0 }); }
     return true;
   }
+  let skinOK = true;
   function drawSkinned(P) {
-    if (!SKD.length) return; gl.useProgram(P.p); gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D, boneTex); gl.uniform1i(P.u.uBones, 4); gl.activeTexture(gl.TEXTURE0);
-    for (const d of SKD) { gl.bindVertexArray(d.m.vao); gl.uniform1i(P.u.uBR, d.r); for (let i = 0; i < 4; i++) gl.vertexAttrib4f(2 + i, d.M[i * 4], d.M[i * 4 + 1], d.M[i * 4 + 2], d.M[i * 4 + 3]); gl.vertexAttrib4f(6, d.c[0], d.c[1], d.c[2], 1); gl.vertexAttrib2f(7, d.em, d.mat); env.verts += d.count; gl.drawArrays(gl.TRIANGLES, d.start, d.count); }
-    gl.bindVertexArray(null);
+    if (!SKD.length || !skinOK) return; try { gl.useProgram(P.p); gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D, boneTex); gl.uniform1i(P.u.uBones, 4); gl.activeTexture(gl.TEXTURE0);
+    for (const d of SKD) { gl.bindVertexArray(d.m.vao); gl.uniform1i(P.u.uBR, d.r); for (let i = 0; i < 4; i++) gl.vertexAttrib4f(2 + i, d.M[i * 4], d.M[i * 4 + 1], d.M[i * 4 + 2], d.M[i * 4 + 3]); gl.vertexAttrib4f(6, d.c[0], d.c[1], d.c[2], 1); gl.vertexAttrib2f(7, d.em, d.mat); if (!d.m.hasCol) gl.vertexAttrib4f(10, 1, 1, 1, 1); env.verts += d.count; if (d.m.hasIdx) gl.drawElements(gl.TRIANGLES, d.count, d.m.itype, d.start * d.m.isz); else gl.drawArrays(gl.TRIANGLES, d.start, d.count); }
+    } catch (e) { skinOK = false; console.warn('real models switched off', e); } gl.bindVertexArray(null);
   }
   function upBones() { if (!boneRows) return; gl.bindTexture(gl.TEXTURE_2D, boneTex); gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, boneW, boneRows, gl.RGBA, gl.FLOAT, boneData.subarray(0, boneW * 4 * boneRows)); }
   // shared uniforms for the skinned copy of a program, copied from the plain program's current values

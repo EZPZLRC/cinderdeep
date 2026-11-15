@@ -1,5 +1,10 @@
 // build 0039: turns glTF/GLB character files into the game's compact .cdm model
-// usage: node tools/model/build.mjs out.cdm --mesh a.glb [--mesh b.glb ...] --anims anims.glb [--keep Walk=walk,Attack=attack] [--attach hand_r,hand_l,head]
+// usage: node tools/model/build.mjs out.cdm --mesh a.glb [--mesh b.glb@bones=Head,neck_01] [--mesh c.gltf@nodes=Eyes] --anims anims.glb [--keep Walk=walk,Attack=attack] [--attach hand_r,hand_l,head]
+//        [--kinds 'Boots|Bracer=leather,Hair=hair'] [--sat .55] [--drop 'Belt_1.001']
+// - a mesh file can be filtered: @bones= keeps triangles whose vertices all lean on those bones (e.g. just the head of a full body),
+//   @nodes= keeps only those mesh nodes; --drop removes nodes whose names match
+// - every vertex keeps the texture colour under it (shrunk, with the ambient-occlusion map baked in), toned down by --sat for the Ashen Gothic look
+// - triangles are grouped by material kind (cloth, leather, metal, skin, hair) so the game lights each group right
 // - meshes are merged onto one skeleton (all files must share bone names)
 // - triangles are grouped by colour (material colour, or the texture colour under each triangle) so the game can light each group as cloth, leather, steel or skin
 // - animations are baked to skin matrices at 30 frames a second, so the game only blends matrices at run time
@@ -46,28 +51,44 @@ const worldOf = (json, local) => { const par = parentsOf(json), W = new Array(js
 
 function build() {
   // 1. skeleton from the first mesh file; bones are matched by name in the others
-  const files = opt.mesh.map(loadGltf), G0 = files[0], sk0 = G0.json.skins[0], bones = sk0.joints.map(j => G0.json.nodes[j].name);
-  const tris = []; // [p0,p1,p2] [n0,n1,n2] [j0..] [w0..] colour
-  for (const G of files) { const J = G.json, local = J.nodes.map(nodeLocal), W = worldOf(J, local);
-    J.nodes.forEach((node, ni) => { if (node.mesh === undefined) return; const skin = node.skin !== undefined ? J.skins[node.skin] : null, remap = skin ? skin.joints.map(j => { const k = bones.indexOf(J.nodes[j].name); if (k < 0) throw new Error('bone ' + J.nodes[j].name + ' is not in the first skeleton'); return k; }) : null;
+  const specs = opt.mesh.map(m => { const [f, ...fl] = m.split('@'), o = { f }; for (const x of fl) { const [k, v] = x.split('='); o[k] = v.split(','); } return o; });
+  const files = specs.map(s => loadGltf(s.f)), G0 = files[0], sk0 = G0.json.skins[0], bones = sk0.joints.map(j => G0.json.nodes[j].name);
+  const KIND = { cloth: 6, leather: 7, metal: 4, skin: 8, hair: 9, plain: 0 }, kindRules = (opt.kinds || '').split(',').filter(Boolean).map(r => { const [re, k] = r.split('='); return [new RegExp(re, 'i'), k]; });
+  const drop = opt.drop ? new RegExp(opt.drop) : null, sat = opt.sat === undefined ? 1 : opt.sat, small = new Map();
+  // shrink a texture to 256 px (box filter) so each vertex takes the average colour of its patch, not one stray texel
+  const shrink = im => { if (!im) return null; if (small.has(im)) return small.get(im); const S = Math.min(256, im.w), k = im.w / S, out = new Float32Array(S * S * 4);
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) { const a = [0, 0, 0, 0]; let n = 0; for (let yy = Math.floor(y * k); yy < Math.floor((y + 1) * k); yy++) for (let xx = Math.floor(x * k); xx < Math.floor((x + 1) * k); xx++) { const q = (yy * im.w + xx) * 4; for (let c = 0; c < 4; c++) a[c] += im.px[q + c]; n++; } for (let c = 0; c < 4; c++) out[(y * S + x) * 4 + c] = a[c] / n / 255; }
+    const r = { w: S, h: S, px: out }; small.set(im, r); return r; };
+  const samp = (t, u, v) => { u -= Math.floor(u); v -= Math.floor(v); const x = u * t.w - .5, y = v * t.h - .5, x0 = Math.floor(x), y0 = Math.floor(y), fx = x - x0, fy = y - y0, o = [0, 0, 0, 0];
+    for (const [dx, dy, w] of [[0, 0, (1 - fx) * (1 - fy)], [1, 0, fx * (1 - fy)], [0, 1, (1 - fx) * fy], [1, 1, fx * fy]]) { const xx = (x0 + dx + t.w) % t.w, yy = (y0 + dy + t.h) % t.h, q = (yy * t.w + xx) * 4; for (let c = 0; c < 4; c++) o[c] += t.px[q + c] * w; } return o; };
+  const tris = []; // {p:[3], n:[3], j:[3], w:[3], c:[3 colours], kind}
+  files.forEach((G, fi) => { const J = G.json, local = J.nodes.map(nodeLocal), W = worldOf(J, local), sp = specs[fi], keepB = sp.bones ? sp.bones.map(b => b.toLowerCase()) : null, pngCache = new Map();
+    const img = i => { if (!pngCache.has(i)) { const d = G.img(i); pngCache.set(i, shrink(d)); } return pngCache.get(i); };
+    J.nodes.forEach((node, ni) => { if (node.mesh === undefined) return; const nname = node.name || J.meshes[node.mesh].name || ''; if (sp.nodes && !sp.nodes.includes(nname)) return; if (drop && drop.test(nname)) return;
+      const skin = node.skin !== undefined ? J.skins[node.skin] : null, remap = skin ? skin.joints.map(j => { const k = bones.indexOf(J.nodes[j].name); if (k < 0) throw new Error('bone ' + J.nodes[j].name + ' is not in the first skeleton'); return k; }) : null;
       const ibm = skin && skin.inverseBindMatrices !== undefined ? G.acc(skin.inverseBindMatrices).a : null;
-      for (const pr of J.meshes[node.mesh].primitives) { if ((pr.mode ?? 4) !== 4) continue; const P = G.acc(pr.attributes.POSITION), N = pr.attributes.NORMAL !== undefined ? G.acc(pr.attributes.NORMAL) : null, UV = pr.attributes.TEXCOORD_0 !== undefined ? G.acc(pr.attributes.TEXCOORD_0) : null, JN = pr.attributes.JOINTS_0 !== undefined ? G.acc(pr.attributes.JOINTS_0) : null, WT = pr.attributes.WEIGHTS_0 !== undefined ? G.acc(pr.attributes.WEIGHTS_0) : null;
+      for (const pr of J.meshes[node.mesh].primitives) { if ((pr.mode ?? 4) !== 4) continue; const at = pr.attributes, P = G.acc(at.POSITION), N = at.NORMAL !== undefined ? G.acc(at.NORMAL) : null, UV = at.TEXCOORD_0 !== undefined ? G.acc(at.TEXCOORD_0) : null, JN = at.JOINTS_0 !== undefined ? G.acc(at.JOINTS_0) : null, WT = at.WEIGHTS_0 !== undefined ? G.acc(at.WEIGHTS_0) : null;
         const ix = pr.indices !== undefined ? G.acc(pr.indices).a : Float64Array.from({ length: P.count }, (_, i) => i), mt = J.materials && pr.material !== undefined ? J.materials[pr.material] : {}, pbr = mt.pbrMetallicRoughness || {}, fac = pbr.baseColorFactor || [1, 1, 1, 1];
-        let tex = null; if (pbr.baseColorTexture) { const t = J.textures[pbr.baseColorTexture.index]; if (t && t.source !== undefined) tex = G.img(t.source); }
-        // bind pose: skinned meshes go through their own bind matrices into skeleton space; unskinned parts follow their node
+        const texOf = ti => { if (!ti) return null; const t = J.textures[ti.index]; return t && t.source !== undefined ? img(t.source) : null; };
+        const tex = texOf(pbr.baseColorTexture), mrName = pbr.metallicRoughnessTexture ? (J.images[J.textures[pbr.metallicRoughnessTexture.index].source].uri || '') : '', orm = /ORM/i.test(mrName) ? texOf(pbr.metallicRoughnessTexture) : null;
+        const label = nname + '/' + (J.meshes[node.mesh].name || '') + '/' + (mt.name || ''); let kind = null; for (const [re, k] of kindRules) if (re.test(label)) { kind = k; break; }
+        if (!kind) kind = /hair|brow|beard/i.test(label) ? 'hair' : /eye/i.test(label) ? 'plain' : /regular|superhero|skin|body_?skin/i.test(mt.name || '') ? 'skin' : 'cloth';
         const bindOf = k => { if (!skin) return W[ni]; let m = new Array(16).fill(0); for (let c = 0; c < 4; c++) { const w = WT.a[k * 4 + c]; if (!w) continue; const jl = JN.a[k * 4 + c], jm = mul(W[skin.joints[jl]], Array.from(ibm.subarray(jl * 16, jl * 16 + 16))); for (let i = 0; i < 16; i++) m[i] += jm[i] * w; } return m; };
         const pin = !skin ? (() => { let p = ni; const par = parentsOf(J); while (p >= 0 && bones.indexOf(J.nodes[p].name) < 0) p = par[p]; return p >= 0 ? bones.indexOf(J.nodes[p].name) : 0; })() : 0;
-        for (let t = 0; t < ix.length; t += 3) { const v = [ix[t], ix[t + 1], ix[t + 2]], tri = { p: [], n: [], j: [], w: [], mat: mt.name || '' };
-          for (const k of v) { const M = bindOf(k), p = xf(M, [P.a[k * 3], P.a[k * 3 + 1], P.a[k * 3 + 2]], 1); tri.p.push(p); if (N) { const n = xf(M, [N.a[k * 3], N.a[k * 3 + 1], N.a[k * 3 + 2]], 0), l = Math.hypot(...n) || 1; tri.n.push(n.map(x => x / l)); }
-            if (skin) { const jj = [], ww = []; for (let c = 0; c < 4; c++) { jj.push(remap[JN.a[k * 4 + c]]); ww.push(WT.a[k * 4 + c]); } tri.j.push(jj); tri.w.push(ww); } else { tri.j.push([pin, 0, 0, 0]); tri.w.push([1, 0, 0, 0]); } }
-          if (!N) { const e1 = tri.p[1].map((x, i) => x - tri.p[0][i]), e2 = tri.p[2].map((x, i) => x - tri.p[0][i]), c = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]], l = Math.hypot(...c) || 1; tri.n = [0, 1, 2].map(() => c.map(x => x / l)); }
-          let col = fac.slice(0, 3); if (tex && UV) { const u = (UV.a[v[0] * 2] + UV.a[v[1] * 2] + UV.a[v[2] * 2]) / 3, vv = (UV.a[v[0] * 2 + 1] + UV.a[v[1] * 2 + 1] + UV.a[v[2] * 2 + 1]) / 3, x = Math.min(tex.w - 1, Math.max(0, Math.floor((u - Math.floor(u)) * tex.w))), y = Math.min(tex.h - 1, Math.max(0, Math.floor((vv - Math.floor(vv)) * tex.h))), q = (y * tex.w + x) * 4; col = [0, 1, 2].map(i => Math.pow(tex.px[q + i] / 255, 2.2) * fac[i]); }
-          tri.c = col; tris.push(tri); } } }); }
-  // 2. group triangles by colour (a few clusters), named by material when the source names it
-  const keyOf = t => t.mat + '|' + t.c.map(x => Math.round(x * 12)).join(','); const groups = new Map(); for (const t of tris) { const k = keyOf(t); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(t); }
-  let gl = [...groups.values()].sort((a, b) => b.length - a.length); while (gl.length > opt.maxCol) { const s = gl.pop(); const avg = g => g[0].c; let bi = 0, bd = 1e9; gl.forEach((g, i) => { const d = avg(g).reduce((s2, x, k) => s2 + (x - avg(s)[k]) ** 2, 0); if (d < bd) { bd = d; bi = i; } }); gl[bi].push(...s); }
+        const vcache = new Map(), vert = k => { if (vcache.has(k)) return vcache.get(k); const M = bindOf(k), p = xf(M, [P.a[k * 3], P.a[k * 3 + 1], P.a[k * 3 + 2]], 1); let n = null; if (N) { n = xf(M, [N.a[k * 3], N.a[k * 3 + 1], N.a[k * 3 + 2]], 0); const l = Math.hypot(...n) || 1; n = n.map(x => x / l); }
+            let j = [pin, 0, 0, 0], w = [1, 0, 0, 0]; if (skin) { j = []; w = []; for (let c = 0; c < 4; c++) { j.push(remap[JN.a[k * 4 + c]]); w.push(WT.a[k * 4 + c]); } }
+            let c = fac.slice(0, 3); if (tex && UV) { const s2 = samp(tex, UV.a[k * 2], UV.a[k * 2 + 1]); c = c.map((x, i) => x * s2[i]); } let metal = 0; if (orm && UV) { const o = samp(orm, UV.a[k * 2], UV.a[k * 2 + 1]); c = c.map(x => x * (.35 + .65 * o[0])); metal = o[2]; }
+            const L = .3 * c[0] + .59 * c[1] + .11 * c[2]; c = c.map(x => L + (x - L) * sat); const r = { p, n, j, w, c, metal, key: fi + ':' + ni + ':' + k }; vcache.set(k, r); return r; };
+        for (let t = 0; t < ix.length; t += 3) { const vs = [vert(ix[t]), vert(ix[t + 1]), vert(ix[t + 2])];
+          if (keepB) { const ok = vs.every(v => { let bi = 0; for (let c = 1; c < 4; c++) if (v.w[c] > v.w[bi]) bi = c; return keepB.includes(bones[v.j[bi]].toLowerCase()); }); if (!ok) continue; }
+          let nrm = vs.map(v => v.n); if (!N) { const e1 = vs[1].p.map((x, i) => x - vs[0].p[i]), e2 = vs[2].p.map((x, i) => x - vs[0].p[i]), c = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]], l = Math.hypot(...c) || 1; nrm = [0, 1, 2].map(() => c.map(x => x / l)); }
+          const mk = (vs[0].metal + vs[1].metal + vs[2].metal) / 3 > .5 && kind !== 'skin' && kind !== 'hair' ? 'metal' : kind;
+          tris.push({ v: vs, n: nrm, kind: mk }); } } }); });
+  // 2. group triangles by material kind
+  const groups = new Map(); for (const t of tris) { if (!groups.has(t.kind)) groups.set(t.kind, []); groups.get(t.kind).push(t); }
+  const gl = [...groups.entries()].sort((a, b) => b[1].length - a[1].length);
   // 3. height and foot level, for scaling in game
-  let minY = 1e9, maxY = -1e9; for (const t of tris) for (const p of t.p) { minY = Math.min(minY, p[1]); maxY = Math.max(maxY, p[1]); }
+  let minY = 1e9, maxY = -1e9; for (const t of tris) for (const { p } of t.v) { minY = Math.min(minY, p[1]); maxY = Math.max(maxY, p[1]); }
   // 4. animations: sample every bone at fps, write skin matrices (world x inverse bind) and attach-bone world matrices
   const AJ = opt.anims ? loadGltf(opt.anims) : G0, J0 = G0.json, ibm0 = G0.acc(sk0.inverseBindMatrices).a, AJs = AJ.json, nameIdx = new Map(AJs.nodes.map((n, i) => [n.name, i]));
   const bindLocal = AJs.nodes.map(n => { const k = J0.nodes.findIndex(m => m.name === n.name); return k >= 0 ? nodeLocal(J0.nodes[k]) : nodeLocal(n); });
@@ -78,14 +99,18 @@ function build() {
       bones.forEach((bn, bi) => { const ni = nameIdx.get(bn), wm = ni !== undefined ? W[ni] : I4(), sm = mul(wm, Array.from(ibm0.subarray(bi * 16, bi * 16 + 16))), o = (f * bones.length + bi) * 12; for (let c = 0; c < 4; c++) for (let r = 0; r < 3; r++) skinM[o + c * 3 + r] = sm[c * 4 + r]; });
       opt.attach.forEach((an2, ai) => { const ni = [...nameIdx.keys()].find(k => k.toLowerCase().replace(/[^a-z]/g, '') === an2.toLowerCase().replace(/[^a-z]/g, '')); const wm = ni !== undefined ? W[nameIdx.get(ni)] : I4(), o = (f * opt.attach.length + ai) * 12; for (let c = 0; c < 4; c++) for (let r = 0; r < 3; r++) att[o + c * 3 + r] = wm[c * 4 + r]; }); }
     anims.push({ name: nm, frames: F, fps: opt.fps, skinM, att }); }
-  // 5. write
-  const V = tris.length * 3, pos = new Float32Array(V * 3), nrm = new Int8Array(V * 4), jn = new Uint8Array(V * 4), wt = new Uint8Array(V * 4), groupsOut = []; let v = 0;
-  for (const g of gl) { const start = v, c = g[0].c, mats = {}; for (const t of g) mats[t.mat] = (mats[t.mat] || 0) + 1; const mname = Object.entries(mats).sort((a, b) => b[1] - a[1])[0][0];
-    for (const t of g) for (let k = 0; k < 3; k++) { pos.set(t.p[k], v * 3); for (let i = 0; i < 3; i++) nrm[v * 4 + i] = Math.round(t.n[k][i] * 127); const s = t.w[k].reduce((a, b) => a + b, 0) || 1; let ws = t.w[k].map(x => Math.round(x / s * 255)); ws[0] += 255 - ws.reduce((a, b) => a + b, 0); for (let i = 0; i < 4; i++) { jn[v * 4 + i] = t.j[k][i]; wt[v * 4 + i] = Math.max(0, ws[i]); } v++; }
-    groupsOut.push({ start, count: v - start, col: c.map(x => +x.toFixed(4)), mat: mname, kind: opt.mats && opt.mats[mname] || null }); }
-  const parts = [pos, nrm, jn, wt, ...anims.flatMap(a => [a.skinM, a.att])], head = { v: V, bones: bones.length, boneNames: bones, groups: groupsOut, minY, maxY, attach: opt.attach, anims: anims.map(a => ({ name: a.name, frames: a.frames, fps: a.fps })) };
+  // 5. write: shared vertices + 32-bit-free index lists per group (16-bit when they fit)
+  const vmap = new Map(), verts = [], idx = [], groupsOut = [];
+  for (const [kind, g] of gl) { const start = idx.length;
+    for (const t of g) for (let k = 0; k < 3; k++) { const v = t.v[k], n = t.n[k], key = v.key + '|' + n.map(x => Math.round(x * 127)).join(','); let id = vmap.get(key); if (id === undefined) { id = verts.length; vmap.set(key, id); verts.push({ v, n }); } idx.push(id); }
+    groupsOut.push({ start, count: idx.length - start, col: [1, 1, 1], mat: KIND[kind] ?? 6, kind }); }
+  const V = verts.length, pos = new Float32Array(V * 3), nrm = new Int8Array(V * 4), jn = new Uint8Array(V * 4), wt = new Uint8Array(V * 4), col = new Uint8Array(V * 4), I = V > 65535 ? new Uint32Array(idx) : new Uint16Array(idx);
+  verts.forEach(({ v, n }, i) => { pos.set(v.p, i * 3); for (let c = 0; c < 3; c++) nrm[i * 4 + c] = Math.round(n[c] * 127); const s = v.w.reduce((a, b) => a + b, 0) || 1; const ws = v.w.map(x => Math.round(x / s * 255)); ws[0] += 255 - ws.reduce((a, b) => a + b, 0);
+    for (let c = 0; c < 4; c++) { jn[i * 4 + c] = v.j[c]; wt[i * 4 + c] = Math.max(0, ws[c]); } for (let c = 0; c < 3; c++) col[i * 4 + c] = Math.max(0, Math.min(255, Math.round(Math.pow(Math.max(0, v.c[c]), 1) * 255))); col[i * 4 + 3] = 255; });
+  const ib = Buffer.from(I.buffer), ipad = Buffer.alloc((4 - ib.length % 4) % 4);
+  const parts = [pos, nrm, jn, wt, col, ib, ipad, ...anims.flatMap(a => [a.skinM, a.att])], head = { v: V, i: idx.length, i32: V > 65535, bones: bones.length, boneNames: bones, parents: bones.map(bn => { const J = G0.json, ni = J.nodes.findIndex(n => n.name === bn); let pi = J.nodes.findIndex(n => (n.children || []).includes(ni)); while (pi >= 0 && bones.indexOf(J.nodes[pi].name) < 0) pi = J.nodes.findIndex(n => (n.children || []).includes(pi)); return pi >= 0 ? bones.indexOf(J.nodes[pi].name) : -1; }), groups: groupsOut, minY, maxY, attach: opt.attach, anims: anims.map(a => ({ name: a.name, frames: a.frames, fps: a.fps })) };
   let hj = Buffer.from(JSON.stringify(head)); const pad = (4 - (hj.length % 4)) % 4; hj = Buffer.concat([hj, Buffer.alloc(pad, 32)]);
-  const hdr = Buffer.alloc(8); hdr.write('CDM1', 0); hdr.writeUInt32LE(hj.length, 4); fs.writeFileSync(out, Buffer.concat([hdr, hj, ...parts.map(p => Buffer.from(p.buffer, p.byteOffset, p.byteLength))]));
-  console.log(out, (fs.statSync(out).size / 1024).toFixed(0) + ' KB', V / 3 + ' triangles', bones.length + ' bones', groupsOut.length + ' colour groups', anims.map(a => a.name + ':' + a.frames).join(' '));
+  const hdr = Buffer.alloc(8); hdr.write('CDM2', 0); hdr.writeUInt32LE(hj.length, 4); fs.writeFileSync(out, Buffer.concat([hdr, hj, ...parts.map(p => Buffer.isBuffer(p) ? p : Buffer.from(p.buffer, p.byteOffset, p.byteLength))]));
+  console.log(out, (fs.statSync(out).size / 1024).toFixed(0) + ' KB', idx.length / 3 + ' triangles', V + ' vertices', bones.length + ' bones', groupsOut.map(g => g.kind + ':' + g.count / 3).join(' '), anims.map(a => a.name + ':' + a.frames).join(' '));
 }
 if (process.argv[1] && process.argv[1].endsWith('build.mjs')) build();
