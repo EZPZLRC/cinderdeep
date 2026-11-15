@@ -135,3 +135,4 @@ body:has(#menu.ka:not(.hide)) #mute{top:calc(13px + env(safe-area-inset-top));ri
 @media (max-width:760px){#kaNav .kaWrap{padding-right:64px}#menu.ka>#embers{opacity:.45}#menu.ka #oName{flex:1 1 100%}#menu.ka #oRoom{flex:1 1 150px}}
 
 body:has(#menu.ka:not(.hide)) #build{display:none}
+@media (max-width:760px){#menu.ka #classes{scrollbar-width:none}#menu.ka #classes::-webkit-scrollbar{display:none}}
