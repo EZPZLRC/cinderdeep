@@ -1,0 +1,42 @@
+OathByte sound effects and fight music: credits and licences
+=============================================================
+
+Every sound in this folder comes from a free pack released under CC0 1.0
+(public domain dedication, https://creativecommons.org/publicdomain/zero/1.0/).
+CC0 allows use in any game, free or paid, with no credit required. We credit
+the creators anyway. The files were trimmed, made mono, levelled and saved as
+MP3 (tools/sfx/build_sfx.py lists which source file each sound comes from).
+
+Kenney (https://www.kenney.nl), CC0 1.0. Each pack's License.txt reads
+"License: (Creative Commons Zero, CC0)".
+- RPG Audio        https://kenney.nl/assets/rpg-audio
+    st_dirt1-3, cloth1, cloth2, leather, coins3
+- Impact Sounds    https://kenney.nl/assets/impact-sounds
+    hit_p1-3, crit_m, thud1-2, hurt2-3, block3, stone2, toll, bell_hi,
+    bell_lo, bell_sm, st_grass1-3, st_stone1-3, st_snow1-2
+- Sci-Fi Sounds    https://kenney.nl/assets/sci-fi-sounds
+    cast_arc2, cast_zap1, boom, swell, warp_ff, gate_hum
+- Earlier Kenney CC0 sounds (build 0051): hit, impact, kill, big_kill, boss,
+  hurt, coin, step, land, dash
+
+rubberduck, "80 CC0 RPG SFX", CC0 1.0
+  https://opengameart.org/content/80-cc0-rpg-sfx
+    cast_fire1-3, cast_cold1-2, shimmer, blade1-3, growl1-4, death_big,
+    roar1-2, wind_up, block1-2, stone1, coins1-2, coins_big, gem1, gem3, gem4
+
+artisticdude, "RPG Sound Pack", CC0 1.0
+  https://opengameart.org/content/rpg-sound-pack
+    cast_blade1-3, cast_arc1, cloth3, bottle, bubble
+
+cynicmusic, "Battle Theme A", CC0 1.0
+  https://opengameart.org/content/battle-theme-a
+    battle
+
+Where the files came from: the creators' sites could not be reached from the
+build machine, so the packs were taken from public GitHub copies of the
+original archives: Kenney's packs from the Godot ports
+(github.com/Boyquotes/kenney-*-for-godot, original files and CC0 licence),
+rubberduck's and artisticdude's packs from game repositories that keep the
+original files. For the two OpenGameArt packs, ten of the files were checked
+byte for byte (SHA-256) against hashes of the original archives recorded by
+an independent project, and all ten matched.
