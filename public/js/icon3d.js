@@ -80,7 +80,7 @@ const ICON3D = (() => {
     const b1 = blur(blur(A, 5), 5), ls = blur(blur(Lm, 1), 1), lb = blur(blur(Lm, 4), 4), h = new Uint8Array(n); // detail from shapes, not from the fine grain of the material
     for (let i = 0; i < n; i++) { if (A[i] < .5) continue; const bev = Math.min(1, Math.max(0, (b1[i] - .5) * 2.4)); const det = Math.max(-.05, Math.min(.05, (ls[i] - lb[i]) * .4)); h[i] = Math.max(140, Math.min(255, Math.round(255 * (.6 + .32 * Math.sqrt(bev) + det)))); }
     const c = new Uint8Array(n * 4); for (let i = 0; i < n; i++) if (A[i] >= .5) { c[i * 4] = px[i * 4]; c[i * 4 + 1] = px[i * 4 + 1]; c[i * 4 + 2] = px[i * 4 + 2]; c[i * 4 + 3] = 255; }
-    for (let k = 0; k < 4; k++) { const c2 = c.slice(); for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) { const i = y * T + x; if (c[i * 4 + 3]) continue; for (const j of [i - 1, i + 1, i - T, i + T]) { if (j < 0 || j >= n || !c[j * 4 + 3]) continue; c2[i * 4] = c[j * 4]; c2[i * 4 + 1] = c[j * 4 + 1]; c2[i * 4 + 2] = c[j * 4 + 2]; c2[i * 4 + 3] = 255; break; } } c.set(c2); }
+    const c2 = new Uint8Array(n * 4); for (let k = 0; k < 4; k++) { c2.set(c); for (let i = T; i < n - T; i++) { if (c[i * 4 + 3]) continue; const j = c[(i - 1) * 4 + 3] ? i - 1 : c[(i + 1) * 4 + 3] ? i + 1 : c[(i - T) * 4 + 3] ? i - T : c[(i + T) * 4 + 3] ? i + T : -1; if (j < 0) continue; c2[i * 4] = c[j * 4]; c2[i * 4 + 1] = c[j * 4 + 1]; c2[i * 4 + 2] = c[j * 4 + 2]; c2[i * 4 + 3] = 255; } c.set(c2); }
     return { h, c, kind };
   }
   const YAW = -.34, PITCH = -.36; // three-quarter view: the piece leans back and turns a little, light from the top left
