@@ -627,7 +627,7 @@ function enterZone(net) {
   const h = G.hero, lvl = net ? net.lvl : h.level, dpt = net ? net.d | 0 : (h.depth === undefined ? (h.depth = h.runs) : h.depth), zd = zoneFor(dpt); const def = { type: 'zone', theme: net && net.theme ? net.theme : zd.theme, lvl, seed: net ? net.seed : (Math.random() * 1e9) | 0, name: zd.name, depth: dpt + 1 };
   { const isRift = net ? net.rift !== undefined : !!G.riftNext; G.riftNext = false; G.riftDone = 0; if (isRift) { if (!net) { def.lvl += 2; def.theme = pick(Object.keys(THEMES).filter(k => k !== 'town')); } def.rift = 1; def.name = 'Rift · ' + def.theme[0].toUpperCase() + def.theme.slice(1); G.riftT0 = G.time - (net && net.rift > 0 ? net.rift / 1000 : 0); if (net && net.rift === -1) G.riftDone = 1; } } // timed rift (build 0021)
   G.zone = genZone(def); const Z = G.zone; G.ents.length = 0; G.projs.length = 0; G.pp.length = 0; G.areas.length = 0; G.drops.length = 0; G.fx.length = 0; G.texts.length = 0; G.timers.length = 0; G.boss = null; G.streak = 0;
-  P.buffs = []; computeStats(); buildStatic(Z); if (net) { for (const i of net.ents) addReplica(i); } else spawnAll(Z); BOT.path = null; questZone(Z); if (typeof GPS !== 'undefined') GPS.t = 0; /* quest text refreshes at once on a new floor */
+  P.buffs = []; computeStats(); buildStatic(Z); if (net) { for (const i of net.ents) addReplica(i); } else spawnAll(Z); BOT.path = null; questZone(Z); stZone(Z); if (typeof GPS !== 'undefined') GPS.t = 0; /* quest text refreshes at once on a new floor */
   P.x = Z.start[0]; P.z = Z.start[1]; P.y = 0; P.act = P.spin = P.dash = P.move = P.atk = P.inter = P.pick = null; P.dead = false; P.lastHit = -9; P.flaskCd = 0; P.buffs = []; P.cds = {}; computeStats(); P.hp = P.stats.maxLife; P.mana = CLASSES[h.cls].res.regen ? P.stats.maxMana : 0; P.flaskCd = 0; P.lastHit = -9;
   setEnv(Z); if (net && net.sync && net.pos) { P.x = net.pos[0]; P.z = net.pos[1]; }
   G.state = 'play'; if (typeof UI !== 'undefined') UI.zoneBanner(def.name, 'Floor ' + def.depth + ' · monster level ' + lvl); { const dw = h.dangerSeen || 0; if (def.depth >= 4 && dw < 2) { h.dangerSeen = 2; hint('The deep turns deadly from here. Step out of red circles, dodge (Space on PC) and keep a potion ready.'); } else if (def.depth >= 2 && dw < 1) { h.dangerSeen = 1; hint('Monsters hit harder on every floor. Watch for red circles on the ground: they mark a heavy blow.'); } } /* build 0035 */ saveGame();
@@ -861,7 +861,7 @@ function killEnemy(e) {
   if (e.boss) {
     if (G.zone.def.rift && !G.riftDone && !G.online) riftDone((G.time - G.riftT0) * 1000, G.zone.def.lvl);
     if (typeof GPS !== 'undefined') GPS.t = 0; G.zone.cleared = true; G.shake = .9; ring(e.x, e.z, 0, 16, 1.1, e.md.e); burst(e.x, 2, e.z, e.md.e, 60, 11); SFX.play('level'); h.runs++; h.maxClear = Math.max(h.maxClear || 0, G.zone.def.depth || 1); /* deepest floor you have completed, for the leaderboard */
-    G.zone.objs.push({ kind: 'portal', x: e.x, z: e.z, name: 'Next floor', used: false }); h.depthMax = Math.max(h.depthMax || 0, G.zone.def.depth || 1); if (!G.zone.def.rift) UI.zoneBanner('Guardian slain', (G.bossXp ? '+' + G.bossXp.toLocaleString() + ' XP · ' : '') + 'a great gate opens to the next floor'); ring(e.x, e.z, 0, 16, 1.2, 0x7ad0ff); ring(e.x, e.z, 0, 9, .8, 0xb48cff); burst(e.x, 2, e.z, 0x7ad0ff, 60, 12); G.shake = .9; SFX.play('shrine'); saveGame();
+    G.zone.objs.push({ kind: 'portal', x: e.x, z: e.z, name: 'Next floor', used: false }); h.depthMax = Math.max(h.depthMax || 0, G.zone.def.depth || 1); if (!G.zone.def.rift) UI.zoneBanner('Guardian slain', (G.bossXp ? '+' + G.bossXp.toLocaleString() + ' XP · ' : '') + 'a great gate opens to the next floor'); ring(e.x, e.z, 0, 16, 1.2, 0x7ad0ff); ring(e.x, e.z, 0, 9, .8, 0xb48cff); burst(e.x, 2, e.z, 0x7ad0ff, 60, 12); G.shake = .9; SFX.play('shrine'); saveGame(); if (!G.zone.def.rift) stBoss(G.zone.def.depth || 1);
   }
 }
 // ---- first steps ----
@@ -939,6 +939,7 @@ function fireSkill(a) {
 const GPS = { t: 0, pts: [], goal: null, text: '' };
 function questTarget() {
   const Z = G.zone; if (!Z) return null; const h = G.hero, cq = tqCur ? tqCur() : null;
+  if (G.inTown) { const sc = stCur(), sn = sc && sc.k === 'talk' && Z.objs.find(o => o.kind === 'npc' && o.id === sc.by); if (sn) { const at = sn.st || sn; return { x: at.x, z: at.z, text: sc.goal }; } } /* build 0068: the story path */
   if (G.inTown) { /* build 0025: the path leads to whoever is waiting for you first */ const who = cq ? (h.tq.n >= cq.goal.n ? cq.by : null) : (tqNext() ? tqNext().by : null), npc = who && Z.objs.find(o => o.kind === 'npc' && o.id === who);
     if (npc) { const at = npc.st || npc; return { x: at.x, z: at.z, text: (cq ? 'Collect your reward from ' : 'Talk to ') + FOLK[who].n + (cq ? '' : ': they have a job for you') }; }
     const o = Z.objs.find(o => o.kind === 'tportal'); return { x: o.x, z: o.z, text: cq ? 'Take the portal back out to work on ' + cq.t : 'Take the portal back to ' + (G.away && G.away.zone ? G.away.zone.def.name : 'the floor') }; }
@@ -1187,7 +1188,7 @@ function drawTownLife() {
   // the townsfolk, each by their home, with a mark over their head when they have work for you
   for (const o of Z.objs) { if (o.kind !== 'npc') continue; const f = FOLK[o.id]; if (!o.st) o.st = { x: o.x, z: o.z, y: 0, rot: Math.atan2(cx - o.x, cz - o.z), walk: 0, mv: 0, hurt: 0, act: null, swing: 0, spin: null, dash: false, buffs: null, flaskT: 0, cls: f.look, hair: f.hair, beard: f.beard, gear: FOLKGEAR[o.id] };
     const st = o.st, near = Math.hypot(P.x - o.x, P.z - o.z) < 7, want = near ? Math.atan2(P.x - o.x, P.z - o.z) : Math.atan2(cx - o.x, cz - o.z); let da = want - st.rot; while (da > Math.PI) da -= 6.2832; while (da < -Math.PI) da += 6.2832; st.rot += da * Math.min(1, dt * 4); drawHero(st, false);
-    const mk = tqMark(o.id), y = 3.15 + Math.sin(t * 3 + o.x) * .12; if (mk === '!') { const c = col(0xffd84a); GLX.obj('glow', 'box', o.x, y + .25, o.z, 0, .16, .55, .16, c, 2, 1); GLX.obj('glow', 'sphere', o.x, y - .22, o.z, 0, .18, .18, .18, c, 2, 1); GLX.halo(o.x, y, o.z, 1.6, c, .5); }
+    const mk = stMark(o.id) || tqMark(o.id), y = 3.15 + Math.sin(t * 3 + o.x) * .12; if (mk === '!') { const c = col(0xffd84a); GLX.obj('glow', 'box', o.x, y + .25, o.z, 0, .16, .55, .16, c, 2, 1); GLX.obj('glow', 'sphere', o.x, y - .22, o.z, 0, .18, .18, .18, c, 2, 1); GLX.halo(o.x, y, o.z, 1.6, c, .5); }
     else if (mk === '?') { const c = col(0x8affc0); GLX.obj('glow', 'gem', o.x, y + .1, o.z, t * 2, .34, .5, .34, c, 2, 1); GLX.halo(o.x, y, o.z, 1.8, c, .6); GLX.obj('glow', 'ring', o.x, .06, o.z, t, 2.6, 1, 2.6, c, 1, .5, -1); }
     else if (mk === '.') for (let k = -1; k <= 1; k++) GLX.obj('glow', 'sphere', o.x + k * .22, y, o.z, 0, .09, .09, .09, col(0xc8c0b0), 1, .7); }
 }
@@ -1244,6 +1245,36 @@ function tqAdd(kind, amt) { const h = G.hero, q = tqCur(); if (!q || q.goal.k !=
 function tqAccept() { const h = G.hero, q = tqNext(); if (!q) return; h.tq = { id: q.id, n: 0 }; saveGame(); SFX.play('pickup'); hint('New quest: ' + q.t + '. ' + tqHow(q)); UI.zoneBanner && UI.zoneBanner('New quest: ' + q.t, tqStep(q).t); if (typeof GPS !== 'undefined') GPS.t = 0; }
 function tqClaim() { const h = G.hero, q = tqCur(); if (!q || h.tq.n < q.goal.n) return null; const r = tqReward(q); h.gold += r.gold; h.shards = (h.shards || 0) + r.shards; const it = makeItem(h.level, null, r.rar); if (!addItem(it)) dropItem(P.x, P.z, it);
   h.tqd = h.tqd || []; if (!q.repeat && !h.tqd.includes(q.id)) h.tqd.push(q.id); h.tq = null; saveGame(); UI.invDirty = true; SFX.play('level'); ring(P.x, P.z, 0, 8, .8, 0xffd84a); burst(P.x, 1.5, P.z, 0xffd84a, 30, 7); if (G.inTown) buildStatic(G.zone); return { r, it, q }; }
+// ---- story campaign (build 0068, Lee Nov 15): one story per hero. Guardians carry Vaeloth's brand, townsfolk tell what it means, and each act opens with a title. Steps give no extra loot or XP ----
+function stState() { const h = G.hero; if (!h || typeof STORY === 'undefined') return null; if (!h.story) stInit(h); return h.story; }
+function stAct() { const st = stState(); return st ? STORY[st.a] || null : null; }
+function stCur() { const A = stAct(); return A ? A.steps[G.hero.story.s] || null : null; }
+function stDepth(h) { return Math.max(h.depthMax || 0, h.maxClear || 0); }
+function stInit(h) { h.story = { a: 0, s: 0, open: 0 }; const A = STORY[0], dm = stDepth(h); let last = -1; A.steps.forEach((x, i) => { if (x.k === 'boss' && x.d <= dm) last = i; }); /* heroes already past a guardian get the story so far instead */
+  if (last >= 0) { h.story.s = last + 1; h.story.open = 1; h.story.recap = A.steps.slice(0, last + 1).map(x => x.recap).filter(Boolean); } }
+function stNext() { const st = stState(); if (!st) return; const A = STORY[st.a]; st.s++; if (A && st.s >= A.steps.length) { st.a++; st.s = 0; st.open = 0; } }
+function stCatch() { const h = G.hero, out = []; let c; while ((c = stCur()) && c.k === 'boss' && c.d <= stDepth(h)) { if (c.recap) out.push(['', c.recap]); stNext(); } return out; }
+function stGoalBanner() { const A = stAct(), c = stCur(); if (!UI.zoneBanner) return; if (!A) UI.zoneBanner(STORY[STORY.length - 1].n + ' complete', 'The story continues in the next update'); else if (c) UI.zoneBanner(A.n + ' · ' + A.t, c.goal); }
+function stAfter(lines) { lines = (lines || []).concat(stCatch()); const st = stState(); saveGame(); if (typeof GPS !== 'undefined') GPS.t = 0;
+  const fin = () => { if (STORY[st.a] && !st.open) stOpen(); else stGoalBanner(); }; if (lines.length && UI.scene) UI.scene(lines, fin); else fin(); }
+function stOpen() { const st = stState(), A = st && STORY[st.a]; if (!A || st.open) return; st.open = 1; saveGame(); const c = A.steps[st.s]; if (typeof setTimeout !== 'function') return; /* after the floor's own name has had its moment */
+  setTimeout(() => { if (UI.zoneBanner) UI.zoneBanner(A.n + ' · ' + A.t, A.sub); SFX.play('shrine'); }, 2600); setTimeout(() => { if (c && c.open && UI.scene) UI.scene(c.open, stGoalBanner); else stGoalBanner(); }, 5600); }
+function stZone(Z) { const h = G.hero; if (!h || !Z || !Z.def || Z.def.rift || typeof document === 'undefined' || typeof setTimeout !== 'function') return; const st = stState(); if (!st) return;
+  if (st.recap && st.recap.length) { const r = st.recap; delete st.recap; saveGame(); setTimeout(() => UI.scene && UI.scene([['', 'The story so far.']].concat(r.map(t => ['', t])), stGoalBanner), 2200); return; }
+  if (Z.def.type !== 'town' && !st.open && STORY[st.a]) stOpen(); }
+function stBoss(depth) { const c = stCur(); if (!c || c.k !== 'boss' || depth < c.d) return; const lines = depth === c.d ? (c.done || []) : (c.recap ? [['', c.recap]] : []); stNext(); saveGame(); if (typeof setTimeout === 'function') setTimeout(() => stAfter(lines), 2200); }
+function stTalk(id) { const c = stCur(); if (!c || c.k !== 'talk' || c.by !== id || !UI.scene) return false; UI.scene(c.lines, () => { stNext(); stAfter([]); }); return true; }
+function stMark(id) { const c = stCur(); return c && c.k === 'talk' && c.by === id ? '!' : ''; }
+function stBrand(e) { const Z = G.zone; if (!e || !e.boss || !Z || !Z.def || Z.def.rift || Z.def.type === 'town' || typeof STORY === 'undefined') return false; const d = Z.def.depth || 1; return STORY.some(A => A.steps.some(x => x.k === 'boss' && x.d === d)); }
+function drawBrand() { /* Vaeloth's brand under a guardian who serves him: an eye in a crown of fire, slowly turning */
+  const b = G.boss; if (!b || !b.alive || !stBrand(b)) return; const col = GLX.col, t = G.time, c = col(0xff6a1a), c2 = col(0xffc04a), R = (b.r || 1.5) * 1.6 + 1.6, p = b.awake ? 1 : .6, x = b.x, z = b.z;
+  GLX.obj('glow', 'ring', x, .08, z, t * .3, R, 1, R, c, 1.3, .5 * p, -1); GLX.obj('glow', 'ring', x, .085, z, -t * .45, R * .8, 1, R * .8, c2, 1.1, .3 * p, -1);
+  for (let k = 0; k < 7; k++) { const a = k / 7 * 6.2832 + t * .3; GLX.obj('glow', 'box', x + Math.sin(a) * R * .9, .09, z + Math.cos(a) * R * .9, a, .07, .02, .5, c2, 1.3, .55 * p); }
+  GLX.obj('glow', 'ring', x, .09, z, 0, R * .42, 1, R * .2, c2, 1.4, .6 * p, -1); GLX.obj('glow', 'disc', x, .095, z, 0, R * .1, 1, R * .1, c, 1.6, .75 * p, 1);
+  for (let k = 0; k < 5; k++) { const ox = (k - 2) * R * .13; GLX.obj('glow', 'box', x + ox, .09, z - R * .26 - (k % 2 ? 0 : R * .08), 0, .05, .02, R * (k % 2 ? .1 : .17), c, 1.3, .6 * p); }
+  GLX.light(x, 1.2, z, R * 2, c, .5 * p, 3);
+  if (!LOWQ && Math.random() < .3) G.fx.push({ ember: 1, x: x + rnd(-R, R) * .8, y: .2, z: z + rnd(-R, R) * .8, vx: rnd(-.2, .2), vy: rnd(1.2, 2.4), vz: rnd(-.2, .2), life: rnd(.8, 1.4), max: 1.4, size: rnd(.04, .08), c: GLX.col(Math.random() < .5 ? 0xff6a1a : 0xffc04a) });
+}
 function questZone(Z) { // the rescue quest puts Pip somewhere far out on the next floor you visit
   if (!Z || !Z.def || Z.def.type === 'town') return; const q = tqCur(); if (q && q.goal.k === 'floor' && (Z.def.depth || 1) > G.hero.tq.n) tqAdd('floor', (Z.def.depth || 1) - G.hero.tq.n); if (!q || q.goal.k !== 'rescue' || G.hero.tq.n >= q.goal.n || Z.objs.some(o => o.kind === 'lost')) return;
   let best = null; for (let i = 0; i < GW * GW; i++) { if (Z.cell[i]) continue; const dd = Z.dist ? Z.dist[i] : -1; if (dd < 10) continue; const sc = Math.abs(dd - 22) + Math.random() * 4; if (!best || sc < best[1]) best = [i, sc]; }
@@ -1374,7 +1405,7 @@ function drawTele(a, c, k, fl) { const cw = GLX.col(0xffd0a0), L = areaLines(a);
 function update(dt) {
   if (typeof UI !== 'undefined' && UI.panelOpen && UI.panelOpen()) { if (!G.online) return; G.menuHold = true; P.iframes = Math.max(P.iframes || 0, .4); P.move = P.atk = null; } else G.menuHold = false; // menus pause the game; online, where the world cannot stop, they shield you instead
   if (G.cine) { const c = G.cine; c.t += dt; if (c.t >= c.dur) G.cine = null; else if (!G.online) dt *= c.kind === 'intro' ? .3 : .15 + .85 * Math.pow(c.t / c.dur, 2); } /* build 0053: boss moments slow the world (solo only, so online play stays in step) */
-  if (G.boss && G.boss.alive && G.boss.awake && !G.inTown && !G.cine) { const bk = G.zone && G.zone.def ? G.zone.def.seed + ':' + (G.zone.def.depth || 0) : ''; if (G.cineKey !== bk) { G.cineKey = bk; const b = G.boss; G.cine = { kind: 'intro', t: 0, dur: 2.6, x: b.x, z: b.z, e: b }; ring(b.x, b.z, .5, 9, .9, (b.md && b.md.e) || 0xff5a2a); burst(b.x, 1.5, b.z, (b.md && b.md.c2) || 0x6a4a2a, 24, 8); G.shake = Math.min(.7, (G.shake || 0) + .4); } }
+  if (G.boss && G.boss.alive && G.boss.awake && !G.inTown && !G.cine) { const bk = G.zone && G.zone.def ? G.zone.def.seed + ':' + (G.zone.def.depth || 0) : ''; if (G.cineKey !== bk) { G.cineKey = bk; const b = G.boss; G.cine = { kind: 'intro', t: 0, dur: 2.6, x: b.x, z: b.z, e: b }; if (stBrand(b) && UI.zoneBanner) UI.zoneBanner(b.name, 'Bound to ' + STORY_VILLAIN); ring(b.x, b.z, .5, 9, .9, (b.md && b.md.e) || 0xff5a2a); burst(b.x, 1.5, b.z, (b.md && b.md.c2) || 0x6a4a2a, 24, 8); G.shake = Math.min(.7, (G.shake || 0) + .4); } }
   if (G.hitStop > 0) { G.hitStop -= dt; dt *= .12; } // a heavy blow lands: the world holds its breath for a few frames
   if (G.auto && G.hero && G.hero.picks) { const i = pendingPick(G.hero); if (i >= 0) pickSkill(i, skillTiers(G.hero.cls)[i][Math.random() * 2 | 0]); }
   SFX.ambTick(dt); SFX.fight(fightHeat(dt), dt); updAlly(dt); G.time += dt; if (G.shake > 0) G.shake = Math.max(0, G.shake - dt * 1.8);
@@ -1970,7 +2001,7 @@ function drawWorld() {
     if (P.buffs && P.buffs.length) { const c = GLX.col(0xffd84a); for (let q = 0; q < 2; q++) GLX.obj('glow', 'ring', P.x, .3 + q * 1.1 + Math.sin(t * 2 + q) * .2, P.z, t * (q ? -1.5 : 1.5), 1.7 - q * .3, 1, 1.7 - q * .3, c, 1.2, .45, -1); for (let q = 0; q < 6; q++) { const an = t * 1.4 + q * 1.047, y = (t * 1.2 + q * .4) % 2.4; GLX.obj('glow', 'sphere', P.x + Math.cos(an) * .8, .2 + y, P.z + Math.sin(an) * .8, 0, .07, .07, .07, c, 2.4, 1 - y / 2.4); } }
     if (P.dash) { const c = hc(P.dash.sk && P.dash.sk.el), dx = P.x - P.dash.x0, dz = P.z - P.dash.z0; for (let q = 1; q <= 5; q++) { const u = q / 6; GLX.obj('glow', 'cap', P.x - dx * u * .8, 1.1, P.z - dz * u * .8, P.rot, .55 * (1 - u * .5), 1.6 * (1 - u * .4), .4, c, 1.2, .35 * (1 - u)); } }
   }
-  drawHero(P, true); if (G.online && !G.inTown) for (const id in NET.peers) { const q = NET.peers[id]; if (!q.dead) drawHero(q, false); }
+  drawBrand(); drawHero(P, true); if (G.online && !G.inTown) for (const id in NET.peers) { const q = NET.peers[id]; if (!q.dead) drawHero(q, false); }
   G._mN = 0; for (const e of G.ents) { if (Math.abs(e.x - P.x) > 34 || Math.abs(e.z - P.z) > 34) continue; drawEnemy(e); }
   for (const L of Z.lamps) { const d = Math.hypot(L.x - P.x, L.z - P.z); if (d > 32) continue; const c = col(L.big ? 0xff9a3a : Z.th.lamp), fl = fireFl(G.time, L.x + L.z); GLX.light(L.x, L.big ? 2.2 : 1.2, L.z, L.big ? 13 : 7, c, (L.big ? 1.3 : .8) * fl); GLX.halo(L.x, L.big ? 1.6 : .5, L.z, L.big ? 3.2 : 1.8, c, .4 * fl); }
   for (const o of Z.objs) {
