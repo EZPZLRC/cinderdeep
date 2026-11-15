@@ -68,6 +68,28 @@
 #menu.ka .ccard .cn{position:absolute;left:12px;bottom:25px;z-index:1;margin:0;font:700 15px/1 var(--ob-head);letter-spacing:.08em;color:#fff}
 #menu.ka .ccard .ct{position:absolute;left:12px;bottom:9px;z-index:1;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:none}
 #menu.ka .ccard .cl{position:absolute;top:8px;right:8px;z-index:1;margin:0;padding:3px 7px;border:1px solid var(--ka-line2);border-radius:2px;background:rgba(0,0,0,.65);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#fff}
+/* build 0089: animated hero tiles: slow breathing portrait, rising embers in the hero's colour, lift and glow on hover, soft pulse on the chosen hero */
+#menu.ka .ccard{isolation:isolate;transition:transform .35s cubic-bezier(.2,.8,.2,1),border-color .25s,box-shadow .35s}
+#menu.ka .ccard::after{z-index:-1}
+#menu.ka .ccard .cpic{position:absolute;inset:-5%;z-index:-2;background-size:cover;background-position:center 22%;background-repeat:no-repeat;filter:brightness(.8) saturate(.9);transform-origin:50% 35%;animation:kaBreath 9s ease-in-out infinite alternate;will-change:transform;transition:filter .35s}
+#menu.ka .ccard:nth-child(2) .cpic{animation-duration:10s;animation-delay:-4s}
+#menu.ka .ccard:nth-child(3) .cpic{animation-duration:8.5s;animation-delay:-2s}
+#menu.ka .ccard:nth-child(4) .cpic{animation-duration:9.5s;animation-delay:-6s}
+#menu.ka .ccard:nth-child(5) .cpic{animation-duration:10.5s;animation-delay:-1s}
+#menu.ka .ccard .cfx{position:absolute;left:0;right:0;top:0;height:200%;z-index:0;pointer-events:none;opacity:.28;mix-blend-mode:screen;background:radial-gradient(circle at 18% 22%,var(--cc) 0 1px,transparent 2.6px),radial-gradient(circle at 64% 8%,#ffb26a 0 .8px,transparent 2.2px),radial-gradient(circle at 82% 38%,var(--cc) 0 1.2px,transparent 3px),radial-gradient(circle at 38% 46%,#ffd29a 0 .7px,transparent 2px),radial-gradient(circle at 52% 30%,var(--cc) 0 .6px,transparent 1.8px);background-size:100% 50%;animation:kaRise 6s linear infinite;transition:opacity .4s}
+#menu.ka .ccard:nth-child(2n) .cfx{animation-duration:7.5s;animation-delay:-3s;transform:scaleX(-1)}
+#menu.ka .ccard:nth-child(3n) .cfx{animation-duration:5.5s;animation-delay:-1.5s}
+#menu.ka .ccard.on .cpic{filter:brightness(1.08) saturate(1.15)}
+#menu.ka .ccard.on .cfx{opacity:.95}
+#menu.ka .ccard.on{transform:translateY(-6px);animation:kaPulse 2.6s ease-in-out infinite}
+#menu.ka .ccard.on .cn{text-shadow:0 0 12px var(--cc),0 1px 3px #000}
+#menu.ka .ccard:focus-visible{transform:translateY(-6px);border-color:var(--cc)}
+#menu.ka .ccard:focus-visible .cpic{filter:brightness(1.02) saturate(1.1)}
+@media (hover:hover){#menu.ka .ccard:hover{transform:translateY(-6px);border-color:var(--cc);box-shadow:0 0 0 1px var(--cc),0 0 24px -6px var(--cc),0 18px 32px -12px #000}#menu.ka .ccard:hover .cpic{filter:brightness(1.02) saturate(1.1)}#menu.ka .ccard:hover .cfx{opacity:.8}}
+#menu.ka .ccard:active{transform:translateY(-2px) scale(.97);transition-duration:.08s}
+@keyframes kaBreath{0%{transform:scale(1) translate3d(0,0,0)}100%{transform:scale(1.08) translate3d(-1.5%,-1.5%,0)}}
+@keyframes kaRise{0%{translate:0 0}100%{translate:0 -50%}}
+@keyframes kaPulse{0%,100%{box-shadow:0 0 0 1px var(--cc),0 0 16px -6px var(--cc),0 14px 30px -10px #000}50%{box-shadow:0 0 0 2px var(--cc),0 0 34px -2px var(--cc),0 14px 30px -10px #000}}
 
 /* sections under the fold */
 #menu.ka>.kaSec{z-index:1;padding:96px 0;border-top:1px solid var(--ka-line);background:var(--ka-bg)}
@@ -125,7 +147,8 @@
   #menu.ka .ccard .cn{left:0;right:0;bottom:7px;padding:0 2px;text-align:center;font:600 clamp(8px,2.45vw,12px)/1 var(--ka-ui);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:clip}
   #menu.ka .ccard .ct{display:none}
   #menu.ka .ccard .cl{top:4px;right:4px;padding:2px 4px;font-size:8px;letter-spacing:.04em}
-  #menu.ka .ccard.on,#menu.ka .ccard:hover{transform:translateY(-2px)}
+  #menu.ka .ccard.on,#menu.ka .ccard:hover,#menu.ka .ccard:focus-visible{transform:translateY(-3px)}
+  #menu.ka .ccard .cfx{background-size:140% 50%}
   #menu.ka>.kaSec{padding:64px 0}
   .kaFeats{grid-template-columns:1fr 1fr;gap:14px}.kaFeats>div{padding:20px 16px}
   .kaGal{grid-template-columns:1fr 1fr;grid-template-rows:160px 120px 120px}.kaGal i:first-child{grid-column:span 2;grid-row:auto}
@@ -133,7 +156,7 @@
   #kaFoot .kaWrap{grid-template-columns:1fr}.kaSmall{flex-direction:column;gap:6px}
 }
 @media (max-height:520px) and (min-width:761px){#kaLeft{padding-top:12px}#menu.ka .obLogo{width:min(380px,60vh)!important}#menu.ka #menuMsg{margin:10px auto 14px}#kaGo{margin:12px 0}}
-@media (prefers-reduced-motion:reduce){.kaArt,#menu.ka #btnNew::after{animation:none!important}#menu.ka{scroll-behavior:auto}}
+@media (prefers-reduced-motion:reduce){.kaArt,#menu.ka #btnNew::after,#menu.ka .ccard,#menu.ka .ccard .cpic,#menu.ka .ccard .cfx{animation:none!important}#menu.ka{scroll-behavior:auto}}
 body:has(#menu.ka:not(.hide)) #mute{top:calc(13px + env(safe-area-inset-top));right:calc(26px + env(safe-area-inset-right));width:38px;height:38px;background:rgba(10,10,14,.55);border-color:rgba(255,255,255,.16)}
 #kaNav .kaWrap{padding-right:max(var(--ka-pad),84px)}
 @media (max-width:760px){body:has(#menu.ka:not(.hide)) #mute{top:calc(12px + env(safe-area-inset-top));right:calc(14px + env(safe-area-inset-right));width:32px;height:32px}#kaNav .kaWrap{padding-right:60px}}
