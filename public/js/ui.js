@@ -601,12 +601,33 @@ const UI = (() => {
   try { const q = new URLSearchParams(location.search), rm = (q.get('room') || '').replace(/[^\w-]/g, '').slice(0, 16); if (rm) { $('oRoom').value = rm; $('soloChk').checked = false; const who = (q.get('from') || '').replace(/[^\w -]/g, '').trim().slice(0, 16); const b = document.createElement('div'); b.id = 'invBan'; b.textContent = (who ? who + ' invited you to their party.' : 'You were invited to a party.') + ' Pick a hero and press Play to join them.'; const on = $('online'); on.parentNode.insertBefore(b, on); } } catch (e) { } // build 0037: an invite link says who sent it and Play drops you into their party
   const menuGear = {}, menuHero = {}; let menuBuilt = false;
 
-  // hero portrait in the top-left corner: a small painted bust in the class colours
+  // build 0067: the corner portrait is a close-up of your real hero, drawn by the game's own renderer, so it shows your hero's model, outfit and colours.
+  // It is redrawn when the class or gear changes, a few times while the models load, then now and then. The old painted bust stays as a fallback.
+  const portImg = document.createElement('canvas'); portImg.width = portImg.height = 112; let portSig = '', portAt = -99, portN = 0, portOK = false, portVer = 0, portBad = 0;
+  function portWant() { if (portBad > 2 || !G.hero || P.dead || G.cine || !$('gl')) return false; const now = performance.now() / 1000, sig = G.hero.cls + '|' + (P.gc || '') + '|' + (P.hair || '') + (P.beard ? 1 : 0) + '|' + GLX.env.q;
+    if (sig !== portSig) return true; return now - portAt > (portN < 10 ? 2.5 : 120); }
+  function portSnap() {
+    const cv = $('gl'), e = GLX.env, keep = { player: e.player, fog: e.fog, dof: e.dof, pt: e.pt }, cls = G.hero.cls, sc = (P.sc || 1.08) / 1.08, x0 = P.x, z0 = P.z;
+    portSig = G.hero.cls + '|' + (P.gc || '') + '|' + (P.hair || '') + (P.beard ? 1 : 0) + '|' + e.q; portAt = performance.now() / 1000; portN++;
+    const o = Object.assign({}, P, { act: null, dash: null, swing: 0, mv: 0, walk: 0, hurt: 0, dead: false, spin: null, talk: false, rot: .35, y: 0, lstep: undefined, _bm: null, _lt: undefined, actW: 0, _aT: undefined, _jl: undefined, _rT0: undefined, _hv: 0, fallT0: undefined, gear: Object.assign({}, P.gear || DEFGEAR, { weapon: null, offhand: null }) });
+    try {
+      const cc = GLX.col(CLASS_COL[cls] || 0xd8a040); e.player = [x0, 0, z0]; e.pt = null; e.dof = 0; e.fog = [cc[0] * .16 + .012, cc[1] * .16 + .01, cc[2] * .16 + .01]; e.solo = true;
+      GLX.begin(); drawHero(o, false);
+      GLX.light(x0 + 1.4, 3.3 * sc, z0 + 2.6, 8, GLX.col(0xffe2bc), 1.25, 9); GLX.light(x0 - 1.3, 2.9 * sc, z0 - 1.5, 6, cc, 1.1, 8);
+      const w = cv.width || 1, h = cv.height || 1, side = Math.min(w, h), fov = 2 * Math.atan(Math.tan(.21) * h / side);
+      GLX.setCamera([x0 + .45 * sc, 2.5 * sc, z0 + 2.5 * sc], [x0, 2.22 * sc, z0], fov); GLX.render();
+      const W = cv.width, H = cv.height, sd = Math.min(W, H), x = portImg.getContext('2d'); x.clearRect(0, 0, 112, 112); x.drawImage(cv, (W - sd) / 2, (H - sd) / 2, sd, sd, 0, 0, 112, 112);
+      portOK = true; portVer++; portBad = 0;
+    } catch (err) { portBad++; console.warn('portrait', err); }
+    finally { e.solo = false; Object.assign(e, keep); }
+  }
   let portKey = '';
   function drawPortrait(cls) {
-    const cv = $('port'); if (!cv) return; const hurt = P.dead ? 2 : P.hurt > 0 ? 1 : 0, key = cls + hurt; if (key === portKey) return; portKey = key;
+    const cv = $('port'); if (!cv) return; const hurt = P.dead ? 2 : P.hurt > 0 ? 1 : 0, key = cls + hurt + (portOK ? '|' + portVer : ''); if (key === portKey) return; portKey = key;
     const x = cv.getContext('2d'), S = cv.width, hex = n => '#' + n.toString(16).padStart(6, '0'), cc = hex(CLASS_COL[cls] || 0xd8a040), L = LOOK[cls] || LOOK.warden;
     x.clearRect(0, 0, S, S); x.save(); x.beginPath(); x.arc(S / 2, S / 2, S / 2 - 3, 0, 7); x.clip();
+    if (portOK) { x.drawImage(portImg, 0, 0, S, S); const vg = x.createRadialGradient(S / 2, S * .42, S * .22, S / 2, S / 2, S * .54); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.6)'); x.fillStyle = vg; x.fillRect(0, 0, S, S); }
+    else {
     let gr = x.createRadialGradient(S / 2, S * .38, 2, S / 2, S / 2, S * .6); gr.addColorStop(0, cc); gr.addColorStop(1, '#0a0806'); x.fillStyle = gr; x.fillRect(0, 0, S, S);
     const cx = S / 2, hy = S * .44, hr = S * .17;
     x.fillStyle = hex(L.a); x.beginPath(); x.ellipse(cx, S * 1.02, S * .44, S * .34, 0, 0, 7); x.fill(); // shoulders
@@ -622,6 +643,7 @@ const UI = (() => {
     const ey = hy - hr * .05, eyeC = cls === 'arcanist' ? '#b080ff' : cls === 'elementalist' ? '#ff9a3a' : cls === 'ranger' ? '#3a7a3a' : '#3a5a8a';
     for (const sd of [-1, 1]) { x.fillStyle = '#f2eee2'; x.beginPath(); x.ellipse(cx + sd * hr * .38, ey, hr * .2, hr * .13, 0, 0, 7); x.fill(); x.fillStyle = eyeC; x.beginPath(); x.arc(cx + sd * hr * .38, ey, hr * .1, 0, 7); x.fill(); x.fillStyle = '#2a1a12'; x.fillRect(cx + sd * hr * .38 - hr * .22, ey - hr * .3, hr * .44, hr * .08); }
     x.fillStyle = '#6a322c'; x.fillRect(cx - hr * .22, hy + hr * .5, hr * .44, hr * .07);
+    }
     if (hurt) { x.fillStyle = hurt === 2 ? 'rgba(20,0,0,.6)' : 'rgba(200,20,10,.35)'; x.fillRect(0, 0, S, S); }
     x.restore(); x.lineWidth = 3; x.strokeStyle = cc; x.beginPath(); x.arc(S / 2, S / 2, S / 2 - 2, 0, 7); x.stroke(); x.lineWidth = 1; x.strokeStyle = '#1a140c'; x.beginPath(); x.arc(S / 2, S / 2, S / 2 - 4, 0, 7); x.stroke();
   }
@@ -687,7 +709,7 @@ const UI = (() => {
     if (G.state === 'play') {
       if (G.camReady && IN.sx > -9000) { const g = GLX.groundAt(IN.sx, IN.sy); if (isFinite(g[0]) && isFinite(g[1])) { IN.gx = g[0]; IN.gz = g[1]; } }
       const steps = G.online ? 1 : G.speed; let sdt = dt; if (G.slowT > 0) { G.slowT -= dt; if (!G.online) sdt = dt * .3; } /* build 0027: jackpot slow-motion beat (offline only: the online world never slows) */ for (let i = 0; i < steps && G.state === 'play'; i++) update(sdt);
-      GLX.begin(); drawWorld(); G.camReady = true; GLX.render(); hud(dt);
+      if (G.camReady && portWant()) portSnap(); GLX.begin(); drawWorld(); G.camReady = true; GLX.render(); hud(dt);
     } else if (!$('menu').classList.contains('hide')) menuScene(t / 1000);
     drawOv(); if (MODELS_BADGE && ++mbN % 15 === 1) modelBadge();
   }
