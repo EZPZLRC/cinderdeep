@@ -572,7 +572,7 @@ function buildStatic(Z) { Z.torches = [];
   if (Z.def.type === 'town') {
     GLX.statChunk('all', 0, 0, true); const wood = col(0x5a4028), cloth = col(0x7a2a22), canvas2 = col(0xb8a888), stn = col(0x6a6a6e); townDecor(Z);
     for (const o of Z.objs) {
-      if (o.kind === 'vendor') { for (const sx of [-1.6, 1.6]) for (const sz of [-1.2, 1.2]) GLX.obj('stat', 'cyl', o.x + sx, 1.4, o.z + sz - 1.6, 0, .16, 2.8, .16, wood, 0, 1, 3); GLX.obj('stat', 'box', o.x, 2.9, o.z - 1.6, 0, 4, .12, 3.2, cloth); GLX.obj('stat', 'box', o.x, .5, o.z - .2, 0, 3.4, 1, .9, wood, 0, 1, 3); GLX.obj('stat', 'box', o.x - 1, 1.15, o.z - .2, .3, .5, .3, .5, canvas2); GLX.obj('stat', 'sphere', o.x + .9, 1.2, o.z - .2, 0, .4, .4, .4, col(0xc9a030), 0, 1, 4); GLX.obj('stat', 'box', o.x - 2.6, .5, o.z - 2, .4, 1, 1, 1, wood, 0, 1, 3); }
+      if (o.kind === 'vendor') { for (const sx of [-1.6, 1.6]) for (const sz of [-1.2, 1.2]) GLX.obj('stat', 'cyl', o.x + sx, 1.4, o.z + sz - 1.6, 0, .16, 2.8, .16, wood, 0, 1, 3); /* build 0098: the roof is drawn each frame so it can turn see-through over the hero */ GLX.obj('stat', 'box', o.x, .5, o.z - .2, 0, 3.4, 1, .9, wood, 0, 1, 3); GLX.obj('stat', 'box', o.x - 1, 1.15, o.z - .2, .3, .5, .3, .5, canvas2); GLX.obj('stat', 'sphere', o.x + .9, 1.2, o.z - .2, 0, .4, .4, .4, col(0xc9a030), 0, 1, 4); GLX.obj('stat', 'box', o.x - 2.6, .5, o.z - 2, .4, 1, 1, 1, wood, 0, 1, 3); }
       else if (o.kind === 'stash') { GLX.obj('stat', 'box', o.x, .7, o.z, 0, 2.6, 1.4, 1.5, wood, 0, 1, 3); GLX.obj('stat', 'cyl', o.x, 1.4, o.z, 0, 2.6, .5, 1.5, wood, 0, 1, 3); for (const sx of [-1, 0, 1]) GLX.obj('stat', 'box', o.x + sx * 1.1, .9, o.z, 0, .18, 1.9, 1.56, col(0x8a6a2a), 0, 1, 4); GLX.obj('stat', 'box', o.x, .9, o.z + .78, 0, .4, .5, .08, col(0xc9a030), .1, 1, 4); }
       else if (o.kind === 'altar') { GLX.obj('stat', 'cyl', o.x, .15, o.z, 0, 3.4, .3, 3.4, stn, 0, 1, 3); GLX.obj('stat', 'taper', o.x, .9, o.z, 0, 1.6, 1.2, 1.6, stn, 0, 1, 3); GLX.obj('stat', 'cyl', o.x, 1.56, o.z, 0, 1.9, .14, 1.9, col(0x4a4a50), 0, 1, 4); GLX.obj('stat', 'cyl', o.x, 1.7, o.z, 0, 1.2, .2, 1.2, col(0xc9a030), .2, 1, 4); }
     }
@@ -1182,6 +1182,7 @@ function updAlly(dt) {
 }
 function aiNet() { return ALLIES.map(a => [Math.max(0, AI_ORDER.indexOf(a.cls)), Math.round(a.x * 100) / 100, Math.round(a.z * 100) / 100, Math.round(a.rot * 100) / 100, a.mv ? 1 : 0, aiTier(), a.act ? 1 : 0]); }
 function aiAll() { if (!ALLIES.length) return []; /* build 0087: no AI teammates, and none drawn for players on an older build */ const out = ALLIES.slice(); if (G.online && !G.inTown) for (const id in NET.peers) { const q = NET.peers[id]; if (q.aiH && (G.inTown ? q.town : !q.town)) out.push(...q.aiH); } return out; } // every AI teammate you can see
+const ROOF_C = GLX.col(0x7a2a22);
 const NPCV = { x: 0, y: 0, z: 0, rot: 0, walk: 0, mv: 0, hurt: 0, act: null, swing: 0, spin: null, dash: false, buffs: null, flaskT: 0, cls: 'vendor', hair: 0x5a4030, beard: 1, gear: { chest: [2, 0], pants: [1, 0], boots: [1, 0], belt: [1, 0] } }; // build 0042: the merchant is a townsman, not a Ranger
 function itemScore(it) { return it.dmg ? (it.dmg[0] + it.dmg[1]) / 2 * it.spd * (1 + it.aff.length * .06) : (it.armor || 0) + it.ilvl * (2 + it.aff.length * 2) + (it.power ? it.ilvl * 4 : 0); }
 function botField() {
@@ -1562,7 +1563,7 @@ function riftDone(ms, tier) { G.riftDone = 1; const s2 = Math.round(ms / 1000), 
 function pickupNear() { for (const d of G.drops.slice()) if (d.item && Math.hypot(d.x - P.x, d.z - P.z) < 5 && d.item.rar >= G.hero.filter) pickup(d); }
 function interact(o) {
   if (o.used) return;
-  if (o.kind === 'chest') { o.used = true; const lv = G.hero.level; dropItem(o.x, o.z, makeItem(lv, null, Math.max(1, rollRarity(1)))); /* build 0034: one item instead of two, and never a grey one */ dropGold(o.x, o.z, (10 + lv * 5) * rnd(.8, 1.5)); burst(o.x, 1, o.z, 0xffd84a, 20, 6); SFX.play('pickup'); }
+  if (o.kind === 'chest') { o.used = true; o.openT = G.time; const lv = G.hero.level; dropItem(o.x, o.z, makeItem(lv, null, Math.max(1, rollRarity(1)))); /* build 0034: one item instead of two, and never a grey one */ dropGold(o.x, o.z, (10 + lv * 5) * rnd(.8, 1.5)); burst(o.x, 1, o.z, 0xffd84a, 20, 6); SFX.play('pickup'); }
   else if (o.kind === 'gchest') { o.used = true; const lv = G.hero.level; for (let i = 0; i < 2; i++) dropItem(o.x, o.z, makeItem(lv, null, Math.max(2, rollRarity(2)))); dropGold(o.x, o.z, (20 + lv * 9) * rnd(.9, 1.4)); burst(o.x, 1, o.z, 0xffd84a, 30, 7); SFX.play('drop2'); if (G.zone.objs.filter(q => q.kind === 'gchest' && !q.used).length === 0) UI.zoneBanner('Treasure Vault emptied!', 'Every chest was yours'); }
   else if (o.kind === 'well') { o.used = true; const lv = G.hero.level; for (let i = 0; i < 3; i++) dropItem(o.x, o.z, makeItem(lv, null, i === 0 && Math.random() < .15 ? 3 : Math.max(2, rollRarity(2)))); for (let i = 0; i < 6; i++) dropGold(o.x, o.z, (12 + lv * 6) * rnd(.8, 1.3)); for (let i = 0; i < 3; i++) ring(o.x, o.z, 0, 4 + i * 3, .6 + i * .2, 0xffd84a); burst(o.x, 2, o.z, 0xffd84a, 60, 9); burst(o.x, 2, o.z, 0x9ad0ff, 30, 7); SFX.play('drop4'); UI.zoneBanner('Your wish is granted!', 'The Wishing Well showers you with treasure'); }
   else if (o.kind === 'shrine') { o.used = true; P.buffs.push({ s: o.sh.s, t: 45, n: o.sh.n }); computeStats(); ring(o.x, o.z, 0, 8, .7, o.sh.c); SFX.play('shrine'); hint(o.sh.n + ' empowers you for 45 seconds.'); }
@@ -1738,10 +1739,17 @@ function update(dt) {
   const Z = G.zone, pcx = Math.floor(P.x / CS), pcz = Math.floor(P.z / CS); for (let j = -7; j <= 7; j++) for (let i = -7; i <= 7; i++) { const x = pcx + i, y = pcz + j; if (x >= 0 && y >= 0 && x < GW && y < GW && i * i + j * j <= 49) Z.seen[y * GW + x] = 1; }
   computeHover();
 }
+const TOWN_USE = { vendor: 1, stash: 1, altar: 1, tportal: 1 };
+/* build 0098 (Lee's playtest): the whole Trader stall, roof included, and every service's floating name can be clicked */
+function hitTownObj(o, k) {
+  const lb = GLX.toScreen(o.x, 3.6, o.z); if (lb && Math.abs(lb[0] - IN.sx) < 70 * k && IN.sy > lb[1] - 16 * k && IN.sy < lb[1] + 28 * k) return true;
+  if (o.kind !== 'vendor') return false; const q = [[-2.1, -3.3], [2.1, -3.3], [2.1, .1], [-2.1, .1]].map(c => GLX.toScreen(o.x + c[0], 2.9, o.z + c[1])); if (q.some(v => !v)) return false;
+  let inside = false; for (let i = 0, j = 3; i < 4; j = i++) { const a = q[i], b = q[j]; if ((a[1] > IN.sy) !== (b[1] > IN.sy) && IN.sx < (b[0] - a[0]) * (IN.sy - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside; } return inside;
+}
 function computeHover() {
   const Z = G.zone, k = IN.touch ? 1.7 : 1; G.hover = null; G.hoverObj = null; let best = 1e9;
   for (const e of G.ents) { if (!e.alive || !e.awake) continue; const sp = GLX.toScreen(e.x, e.sc * .9, e.z); if (!sp) continue; const d = Math.hypot(sp[0] - IN.sx, sp[1] - IN.sy); if (d < (26 * e.sc + 14) * k && d < best) { best = d; G.hover = e; } }
-  if (!G.hover) for (const o of Z.objs) { if (o.used) continue; const sp = GLX.toScreen(o.x, 1, o.z); if (sp && Math.hypot(sp[0] - IN.sx, sp[1] - IN.sy) < 44 * k) G.hoverObj = o; }
+  if (!G.hover) for (const o of Z.objs) { if (o.used) continue; const sp = GLX.toScreen(o.x, 1, o.z); if (sp && Math.hypot(sp[0] - IN.sx, sp[1] - IN.sy) < 44 * k) G.hoverObj = o; else if (G.inTown && TOWN_USE[o.kind] && hitTownObj(o, k)) G.hoverObj = o; }
   /* build 0046: the floor's portal is easy to click or tap anywhere on its arch or glow */
   for (const o of Z.objs) { if (o.kind !== 'portal' && o.kind !== 'pback') continue; const c = GLX.toScreen(o.x, 2.6, o.z), e = GLX.toScreen(o.x + 3.2, 2.6, o.z); if (!c || !e) continue; const r = Math.max(50, Math.hypot(e[0] - c[0], e[1] - c[1])) * (IN.touch ? 1.15 : 1), d = Math.hypot((c[0] - IN.sx) * .9, (c[1] - IN.sy) * .62);
     if (d < r && (!G.hover || best > 22 * k)) { G.hover = null; G.hoverObj = o; } }
@@ -2295,8 +2303,8 @@ function drawWorld() {
   G._mN = 0; for (const e of G.ents) { if (Math.abs(e.x - P.x) > 34 || Math.abs(e.z - P.z) > 34) continue; drawEnemy(e); }
   for (const L of Z.lamps) { const d = Math.hypot(L.x - P.x, L.z - P.z); if (d > 32) continue; const c = col(L.big ? 0xff9a3a : Z.th.lamp), fl = fireFl(G.time, L.x + L.z); GLX.light(L.x, L.big ? 2.2 : 1.2, L.z, L.big ? 13 : 7, c, (L.big ? 1.3 : .8) * fl); GLX.halo(L.x, L.big ? 1.6 : .5, L.z, L.big ? 3.2 : 1.8, c, .4 * fl); }
   for (const o of Z.objs) {
-    if (Math.hypot(o.x - P.x, o.z - P.z) > 34) continue; const hov = G.hoverObj === o ? .5 : 0;
-    if (o.kind === 'vendor') { NPCV.x = o.x; NPCV.z = o.z - 1.1; NPCV.rot = Math.atan2(P.x - NPCV.x, P.z - NPCV.z); drawHero(NPCV, false); if (hov) GLX.obj('glow', 'ring', o.x, .07, o.z, G.time, 4.6, 1, 4.6, col(0xffd84a), 1, .5, -1); continue; }
+    if (Math.hypot(o.x - P.x, o.z - P.z) > (o.kind === 'vendor' ? 70 : 34)) continue; const hov = G.hoverObj === o ? .5 : 0;
+    if (o.kind === 'vendor') { const und = Math.abs(P.x - o.x) < 2.5 && P.z > o.z - 3.7 && P.z < o.z + .9; o.roofK = (o.roofK || 0) + ((und ? 1 : 0) - (o.roofK || 0)) * .2; if (o.roofK < .5) GLX.obj('dyn', 'box', o.x, 2.9, o.z - 1.6, 0, 4, .12, 3.2, ROOF_C); else GLX.obj('glow', 'box', o.x, 2.9, o.z - 1.6, 0, 4, .12, 3.2, ROOF_C, 1, .22 * o.roofK); NPCV.x = o.x; NPCV.z = o.z - 1.1; NPCV.rot = Math.atan2(P.x - NPCV.x, P.z - NPCV.z); drawHero(NPCV, false); if (hov) GLX.obj('glow', 'ring', o.x, .07, o.z, G.time, 4.6, 1, 4.6, col(0xffd84a), 1, .5, -1); continue; }
     if (o.kind === 'stash') { GLX.halo(o.x, 1.4, o.z + .8, 2 + hov * 2, col(0xffd84a), .3 + hov * .4); continue; }
     if (o.kind === 'altar') { const c = col(0xff7a2a), c2 = col(0xffd84a), t = G.time; GLX.obj('dyn', 'gem', o.x, 3 + Math.sin(t * 2) * .2, o.z, t, .8, 1.3, .8, c, 2.6); GLX.obj('glow', 'cyl', o.x, 9, o.z, t, .7, 16, .7, c, 1, .2); GLX.obj('glow', 'cyl', o.x, 9, o.z, -t, 1.8, 16, 1.8, c2, .6, .06);
       for (let k = 0; k < 6; k++) { const a = k * 1.0472 + .5, px = o.x + Math.cos(a) * 3.6, pz = o.z + Math.sin(a) * 3.6; GLX.obj('dyn', 'gem', px, 3.5 + Math.sin(t * 2 + k) * .12, pz, t + k, .26, .4, .26, k % 2 ? c2 : c, 2.2); GLX.halo(px, 3.5, pz, 1.4, c, .5); }
@@ -2309,6 +2317,7 @@ function drawWorld() {
     if (o.kind === 'well') { const st = col(0x6a6660), st2 = col(0x8a857c), wd = col(0x5a3a22), t = G.time, wc = o.used ? col(0x2a4a5a) : col(0xffd25a); GLX.obj('dyn', 'cyl', o.x, .45, o.z, 0, 2.6, .9, 2.6, st, hov, 1, 3); GLX.obj('dyn', 'cyl', o.x, .93, o.z, 0, 2.8, .14, 2.8, st2, hov, 1, 3); GLX.obj('glow', 'cyl', o.x, .82, o.z, t, 2.1, .04, 2.1, wc, o.used ? .3 : 1.6, o.used ? .5 : .9);
       for (const sd of [1, -1]) GLX.obj('dyn', 'box', o.x + sd * 1.2, 1.9, o.z, 0, .18, 2.2, .18, wd, hov, 1, 3); GLX.obj('dyn', 'taper', o.x, 3.25, o.z, .785, 2.4, .9, 1.6, col(0x6a2a1a), hov, 1, 3); GLX.obj('dyn', 'cyl', o.x, 2.6, o.z, 1.5708, .14, 2.3, .14, wd, hov, 1, 3);
       if (!o.used) { GLX.halo(o.x, 1.4, o.z, 4.2, wc, .5 + Math.sin(t * 2.4) * .12); GLX.light(o.x, 1.6, o.z, 9, wc, 1.1, 3); for (let k = 0; k < 8; k++) { const ph = (t * .45 + k / 8) % 1, an = k * .785 + t * .7; GLX.obj('glow', 'gem', o.x + Math.cos(an) * .8 * (1 - ph * .3), 1 + ph * 3.2, o.z + Math.sin(an) * .8 * (1 - ph * .3), t * 4 + k, .08, .14, .08, k & 1 ? col(0x9ad0ff) : wc, 2, 1 - ph); } } continue; }
+    if (o.kind === 'chest' && o.used && G.time - (o.openT === undefined ? -99 : o.openT) > 2.5) { if (o.openT !== undefined && !o.poof) { o.poof = 1; burst(o.x, .5, o.z, 0x8a6a4a, 12, 4); } continue; } /* build 0098: an opened chest used to look shut and could not be clicked again; now it pops open, then crumbles away */
     if (o.kind === 'chest') { const wd = col(0x6a4426), wd2 = col(0x4e3018), ir = col(0x3a3c44), gd = col(0xc9a030), ry = .4, cs = Math.cos(ry), sn = Math.sin(ry), at = (lx, lz) => [o.x + lx * cs + lz * sn, o.z - lx * sn + lz * cs];
       GLX.obj('dyn', 'box', o.x, .42, o.z, ry, 1.5, .84, .95, wd, hov, 1, 3); for (const lx of [-.5, 0, .5]) { const q = at(lx, 0); GLX.obj('dyn', 'box', q[0], .42, q[1], ry, .03, .86, .97, wd2, hov, 1, 3); }
       const ly = o.used ? 1.2 : .98; GLX.obj('dyn', 'box', o.x, ly, o.z - (o.used ? .35 : 0), ry, 1.56, .3, 1, wd, hov, 1, 3); GLX.obj('dyn', 'box', o.x, ly + .17, o.z - (o.used ? .35 : 0), ry, 1.4, .08, .84, wd2, hov, 1, 3);

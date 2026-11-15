@@ -437,6 +437,19 @@ body.isz1 .it .ar{width:18px;height:18px;font-size:11px}body.isz2 .it .ar{width:
 body.tj #dock #bInv,body.tj #dock #bSkl,body.tj #dock #bTown{display:none}
 @media (pointer:coarse){#dock{right:auto;bottom:auto;left:calc(8px + env(safe-area-inset-left));top:calc(46px + env(safe-area-inset-top))}#dock #bMore{min-width:0;width:40px;height:40px;padding:0;border-radius:50%;font-size:0;justify-content:center}#dock #bMore::before{font-size:18px;width:auto;height:auto}#more{right:auto;bottom:auto;left:calc(8px + env(safe-area-inset-left));top:calc(92px + env(safe-area-inset-top));max-height:calc(100vh - 110px);overflow:auto}#more button{padding:10px 12px;font-size:13px}}
 body.tj #dock{right:auto;bottom:auto;left:calc(8px + env(safe-area-inset-left));top:calc(46px + env(safe-area-inset-top))}body.tj #dock #bMore{min-width:0;width:40px;height:40px;padding:0;border-radius:50%;font-size:0;justify-content:center}body.tj #dock #bMore::before{font-size:18px;width:auto;height:auto}body.tj #more{right:auto;bottom:auto;left:calc(8px + env(safe-area-inset-left));top:calc(92px + env(safe-area-inset-top));max-height:calc(100vh - 110px);overflow:auto}
+#qfs{margin:0 0 6px;padding:0 0 5px;border-bottom:1px solid #6a5636}#qfs b{display:block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#ffd84a;font-weight:400}#qfs .now{color:#fff;font-weight:600}#qfs .how{color:#ffe9b0;font-size:.95em;margin-top:1px}
+@media (min-width:761px) and (min-height:481px){#questBox{width:200px}}
+#stats .smore{display:block;margin:4px 0 2px;padding:2px 8px;font-size:11px;letter-spacing:.06em;background:transparent;border:1px solid #5a4a2e;color:#d8c38a;border-radius:3px;cursor:pointer}#stats .smore:hover{border-color:#a8834a;color:#fff}
+#petl{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:45;width:min(380px,92vw);max-height:90vh;overflow:auto;background:rgba(14,12,9,.97);border:1px solid #8a6a3a;border-radius:6px;padding:14px;text-align:left}
+#petl label{display:flex;align-items:center;gap:10px;justify-content:space-between;margin:10px 0;font-size:14px;flex-wrap:wrap}
+#petl input[type=range]{width:100%}
+#petl input[type=checkbox]{width:20px;height:20px;order:-1}
+#petl label:has(input[type=checkbox]){justify-content:flex-start}
+#petl .box{background:var(--panel);border:1px solid #6b5533;box-shadow:0 0 0 1px #000,inset 0 1px 0 rgba(255,230,180,.08),0 10px 40px rgba(0,0,0,.85);border-radius:4px}
+#petl{z-index:46}
+/* build 0098 (Lee's playtest): the landing page shows name and Play; party code, Solo, Hardcore, Daily, Parties, Leaderboard and Settings wait behind More options */
+#kaLeft:not(.kaOpen) #oRoom,#kaLeft:not(.kaOpen) #soloWrap,#kaLeft:not(.kaOpen) #kaOpts>:not(#kaMore){display:none!important}
+#kaMore{background:none;border:0;box-shadow:none;color:#d8c38a;font-size:13px;letter-spacing:.06em;cursor:pointer;padding:4px 10px}#kaMore:hover{color:#fff}
 </style>
 <link rel="stylesheet" href="css/oathbyte.css?v=0097">
 <link rel="stylesheet" href="css/keyart.css?v=0097">
@@ -448,7 +461,7 @@ body.tj #dock{right:auto;bottom:auto;left:calc(8px + env(safe-area-inset-left));
   <div id="top"><canvas id="port" width="112" height="112"></canvas><div class="n" id="tName"></div><div class="g" id="tGold"></div><div class="z" id="tZone"></div><div id="pbonus" style="font-size:12px;color:#9fd8ff"></div></div>
   <canvas id="mini" width="170" height="170"></canvas>
   <div id="tutTip" class="hide"></div>
-<div id="questBox" class="hide"><div id="riftT" class="hide"></div><span>Quest</span><div id="quest"></div><div id="tq" class="hide"></div><div id="wbar" class="hide"><div id="wbT"></div><div class="wbB"><i id="wbF"></i></div></div></div>
+<div id="questBox" class="hide"><div id="qfs" class="hide"></div><div id="riftT" class="hide"></div><span>Quest</span><div id="quest"></div><div id="tq" class="hide"></div><div id="wbar" class="hide"><div id="wbT"></div><div class="wbB"><i id="wbF"></i></div></div></div>
 <div id="folk" class="hide"></div>
   <div id="goals" class="hide"></div>
   <div id="recon" class="hide"></div>
@@ -468,7 +481,7 @@ body.tj #dock{right:auto;bottom:auto;left:calc(8px + env(safe-area-inset-left));
   </div>
   <!-- build 0098 (playtest: the menu bar sat where you click to walk): the four buttons you use most sit in the bottom-right corner; the rest live under Menu -->
   <div id="dock"><button id="bInv" class="giv-inv" title="Bag (I)">Bag</button><button id="bSkl" class="giv-skl" title="Skills (S)">Skills</button><button id="bTown" class="giv-town" title="Town (T)">Town</button><button id="bMore" title="Menu (Esc)">Menu</button></div>
-  <div id="more" class="hide"><button id="bSet" class="giv-set">Settings</button><button id="bParty" class="giv-party">Parties</button><button id="bInvite" class="giv-invite">Invite a friend</button><button id="bLeave" class="hide giv-leave">Leave party</button><button id="bLb" class="giv-lb">Leaderboard</button><button id="bAch" class="giv-ach">Badges</button><button id="bAuto" class="giv-auto">Auto-play: off</button><button id="bSpd" class="giv-spd">Speed 1×</button><button id="bMenu" class="giv-exit">Exit to title</button></div>
+  <div id="more" class="hide"><button id="bSet" class="giv-set">Settings</button><button id="bPL" class="giv-loot">Pet and loot</button><button id="bParty" class="giv-party">Parties</button><button id="bInvite" class="giv-invite">Invite a friend</button><button id="bLeave" class="hide giv-leave">Leave party</button><button id="bLb" class="giv-lb">Leaderboard</button><button id="bAch" class="giv-ach">Badges</button><button id="bAuto" class="giv-auto">Auto-play: off</button><button id="bSpd" class="giv-spd">Speed 1×</button><button id="bMenu" class="giv-exit">Exit to title</button></div>
   <div id="party" class="hide"></div><div id="onl" class="hide"></div><div id="chatlog" class="hide"></div>
   <div id="chatRow" class="hide"><button id="chatCh">Global</button><input id="chat" maxlength="140"><button id="chatX" class="xb" aria-label="Close chat">×</button></div>
   <div id="tbtns"><button id="tChat" class="hide giv-chat">Chat</button><button id="tTown" class="giv-town">Town</button><button id="tLoot" class="giv-loot">Loot</button><button id="tSkl" class="giv-skl">Skills</button><button id="tBag" class="giv-inv">Bag</button></div>
@@ -480,6 +493,7 @@ body.tj #dock{right:auto;bottom:auto;left:calc(8px + env(safe-area-inset-left));
 </div>
 <div id="build"></div><button id="mute" type="button" aria-label="Mute sound" aria-pressed="false" title="Sound on (M to mute)"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="spk" d="M4 9h4l5-4v14l-5-4H4z"/><path class="wav" d="M16 8.5a5 5 0 0 1 0 7M18.6 6a8.5 8.5 0 0 1 0 12"/><path class="x" d="M16 9l6 6M22 9l-6 6"/></svg></button>
 <div id="set" class="hide"></div>
+<div id="petl" class="hide"></div>
 <div id="lb" class="hide"></div>
 <div id="parties" class="hide"></div>
 <div id="tip" class="hide"></div>
@@ -494,7 +508,7 @@ body.tj #dock{right:auto;bottom:auto;left:calc(8px + env(safe-area-inset-left));
     <p id="menuMsg">Descend the Blighted Hollow, face the Ashen Tyrant, and keep your oath. Free in your browser, alone or with friends.</p>
     <div id="online" class="hide"><input id="oName" maxlength="16" placeholder="Your name"><input id="oRoom" maxlength="12" placeholder="Party code (optional)" title="Leave blank to join other players"><label id="soloWrap" title="Play by yourself. Strangers can't join you; only friends you send an invite link to."><input type="checkbox" id="soloChk"> Solo</label><div id="onlineN"></div></div>
     <div id="kaGo"><button class="big" id="btnNew">Play</button><div id="kaMeta"><b></b><span>Free · No download</span></div></div>
-    <div id="kaOpts"><button id="mDaily" title="Same floors for every player today. Type a party code to run it with friends."><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="1.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Daily challenge</button><button id="mParty" title="See every party that is playing right now and join one"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2 20a6 6 0 0 1 12 0M10 20a6 6 0 0 1 12 0"/></svg>Parties</button><button id="mLb"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8M9 17h6"/></svg>Leaderboard</button><button id="mSet"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>Settings</button><label id="hcWrap" class="hide" title="One life only. If this hero dies it is gone for good, and its leaderboard entry gets a skull."><input type="checkbox" id="hcChk"> ☠ Hardcore</label><button id="btnReset" class="hide">Reset this hero</button></div>
+    <div id="kaOpts"><button id="kaMore" aria-expanded="false">More options ▾</button><button id="mDaily" title="Same floors for every player today. Type a party code to run it with friends."><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="1.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Daily challenge</button><button id="mParty" title="See every party that is playing right now and join one"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2 20a6 6 0 0 1 12 0M10 20a6 6 0 0 1 12 0"/></svg>Parties</button><button id="mLb"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8M9 17h6"/></svg>Leaderboard</button><button id="mSet"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>Settings</button><label id="hcWrap" class="hide" title="One life only. If this hero dies it is gone for good, and its leaderboard entry gets a skull."><input type="checkbox" id="hcChk"> ☠ Hardcore</label><button id="btnReset" class="hide">Reset this hero</button></div>
   </div>
   <div id="kaRail"><h4>Choose your hero <em id="kaDesc"></em></h4><div id="classes"></div></div></div>
   </section>
