@@ -68,10 +68,14 @@ function onMessage(p, m) {
     case 'give': { const q = room.players.get(m.to | 0); if (q && m.item && typeof m.item === 'object' && JSON.stringify(m.item).length < 2000) q.conn.send({ t: 'give', from: p.id, n: p.name, item: m.item, back: !!m.back }); break; }
   }
 }
+// build 0072 (Lee's playtest): a steady players-online count. A hero who drops and comes back (a reconnect, a
+// new floor, a server wake) is still counted for 45 seconds, so the number no longer jumps around.
+const seenAt = new Map();
+function onlineCount() { const now = Date.now(); for (const r of rooms.values()) for (const p of r.players.values()) seenAt.set((p.name || '') + '|' + (p.cls || '') + '|' + (p.name ? '' : p.id), now); let n = 0; for (const [k, t] of seenAt) { if (now - t > 45000) seenAt.delete(k); else n++; } return n; }
 // ---- game loop ----
 let last = Date.now(), tickN = 0;
 setInterval(() => {
-  const now = Date.now(), dt = Math.min(.1, (now - last) / 1000); last = now; tickN++; let online = 0; for (const r of rooms.values()) online += r.players.size;
+  const now = Date.now(), dt = Math.min(.1, (now - last) / 1000); last = now; tickN++; const online = onlineCount();
   for (const [code, room] of rooms) {
     if (!room.players.size) { if (now - room.emptyAt > 60000) rooms.delete(code); continue; }
     try { room.ctx.srvTick(dt); if (tickN % 2 === 0) cast(room, { t: 's', o: online, e: room.ctx.srvSnap(), p: [...room.players.values()].filter(p => p.st).map(p => p.st) }); }
@@ -96,7 +100,7 @@ function lbNote(p, pl, dp, room, fc) {
 // ---- http + websocket ----
 const server = http.createServer((req, res) => {
   let u = decodeURIComponent(req.url.split('?')[0]);
-  if (u === '/cinderdeep-server') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ cinderdeep: 1, build: BUILD, players: [...rooms.values()].reduce((n, r) => n + r.players.size, 0) })); return; }
+  if (u === '/cinderdeep-server') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ cinderdeep: 1, build: BUILD, players: onlineCount() })); return; }
   if (u === '/parties') { const list = []; for (const [code, r] of rooms) { if (!r.players.size || /^solo/.test(code)) continue; const pl = [...r.players.values()].map(q => ({ n: q.name, c: q.cls, l: q.lvl | 0 })); list.push({ code, players: pl, floor: r.ctx.srvFloor ? r.ctx.srvFloor() : 1, daily: !!r.daily }); } list.sort((a, b) => b.players.length - a.players.length); res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ parties: list.slice(0, 40), max: PARTY_MAX })); return; } // party browser (build 0021)
   if (u === '/leaderboard') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ build: BUILD, lvl: LB.lvl, deep: LB.deep, rift: LB.rift || [], daily: LB.dlyDate === lbToday() ? LB.dly || [] : [], today: lbToday() })); return; }
   if (u === '/favicon.ico') { res.writeHead(204); res.end(); return; }

@@ -35,7 +35,7 @@ eShoot = function (e, ang, spd, dmgM, el) {
   G.projs.push(p); __emit(null, { t: 'proj', x: r2(p.x), z: r2(p.z), vx: r2(p.vx), vz: r2(p.vz), c: e.md.e });
 };
 killEnemy = function (e) {
-  if (!e.alive) return; e.alive = false; e.deadT = .45; __emit(null, { t: 'die', id: e.id });
+  if (!e.alive) return; e.alive = false; e.deadT = .45; __emit(null, { t: 'die', id: e.id, l: e.lvl, xm: (e.a && e.a.xp) || 1, el: e.elite | 0 });
   if (e.volatile) addArea({ x: e.x, z: e.z, r: 3.2, delay: 1, owner: 'e', dmg: e.dmg * 1.8, el: 'fire', c: 0xff5a2a });
   if (e.molten) addArea({ x: e.x, z: e.z, r: 2.6, delay: .7, owner: 'e', dmg: e.dmg * 1.3, el: 'fire', c: 0xff7a2a });
   if (e.boss) { G.zone.cleared = true; if (rift && !rift.done) { rift.done = true; __emit(null, { t: 'riftDone', ms: Date.now() - rift.t0, tier: rift.tier }); } }

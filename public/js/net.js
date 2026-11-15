@@ -39,7 +39,7 @@ const NET = (() => {
       }
       case 'spawn': for (const i of m.ents) { addReplica(i); const e = find(i.id); if (e) ring(e.x, e.z, 0, 2, .4, e.md.e); } break;
       case 'riftDone': if (G.zone && G.zone.def.rift && !G.riftDone) riftDone(+m.ms || 0, m.tier | 0); break;
-      case 'die': { const e = find(m.id); if (e && e.alive) { e.hp = 0; killEnemy(e); } break; }
+      case 'die': { const e = find(m.id); if (e && e.alive) { e.hp = 0; killEnemy(e); } else if (!e && m.l > 0 && G.hero && !G.inTown) { const xp = xpFor(Math.min(99, m.l | 0), Math.min(4, Math.max(0, +m.xm || 1)), m.el | 0); if (xp > 0) { G.hero.kills++; gainXp(xp); } } break; } /* build 0072: a party kill always pays XP, even if this screen never saw that monster */
       case 'dmg': dmgPlayer(+m.v || 0, m.el === 'fire' || m.el === 'cold' || m.el === 'light' ? m.el : 'phys', m.src ? find(m.src) : null, Math.min(.5, Math.max(0, +m.hv || 0))); break;
       case 'area': { const sh = m.sh === 'cone' || m.sh === 'line' || m.sh === 'cross' || m.sh === 'rays' ? m.sh : undefined; addArea({ x: +m.x, z: +m.z, r: +m.r || 0, delay: +m.delay, owner: 'e', vis: 1, dmg: 0, el: 'phys', c: m.c | 0, sh, ang: +m.ang || 0, arc: Math.min(1.6, +m.arc || 0), len: Math.min(40, +m.len || 0), w: Math.min(8, +m.w || 0), n: Math.min(12, m.n | 0), hvy: Math.min(.5, Math.max(0, +m.hv || 0)) }); break; }
       case 'proj': G.projs.push({ x: +m.x, z: +m.z, vx: +m.vx, vz: +m.vz, life: 3, r: .45, dmg: 0, el: 'phys', vis: 1, c: GLX.col(m.c | 0) }); break;
