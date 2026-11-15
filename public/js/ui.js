@@ -304,7 +304,7 @@ const UI = (() => {
     el.onclick = e => { if (!e.target.closest('[data-f]')) return; i++; if (i < lines.length) { show(); SFX.play('pickup'); } else { el.classList.add('hide'); el.onclick = null; if (done) done(); } }; }
   U.scene = scene;
   // build 0068: the story goal in the quest box
-  function storyHud() { if (typeof stCur !== 'function' || G.zone && G.zone.def && G.zone.def.rift) return ''; const c = stCur(), A = stAct(); if (!A) return typeof STORY !== 'undefined' && G.hero && G.hero.story ? '<div class="tqH">' + 'The story is complete. Push deeper, or test yourself in the Rifts at the Rift Stone in Emberwatch.</div>' : ''; if (!c) return '';
+  function storyHud() { if (typeof stCur !== 'function' || G.zone && G.zone.def && G.zone.def.rift) return ''; const c = stCur(), A = stAct(); if (!A) return typeof STORY !== 'undefined' && G.hero && G.hero.story ? '<div class="tqH">' + 'The story is complete. Push deeper: every floor is tougher than the last.</div>' : ''; if (!c) return '';
     return '<div class="tqT"><em>' + A.n + ' · ' + A.t + '</em>' + (c.k === 'hunt' ? '<b>' + Math.min(c.n, G.hero.story.n || 0) + ' / ' + c.n + '</b>' : '') + '</div><div class="tqH' + (c.k === 'talk' ? ' new' : '') + '">' + (c.k === 'talk' && !G.inTown ? 'Go to town: ' : '') + c.goal + ((c.k === 'rescue' || c.k === 'hunt') && !G.inTown && G.zone && G.zone.def && (G.zone.def.depth || 1) < c.d ? ' (floor ' + c.d + ')' : '') + '</div>' + (c.k === 'hunt' ? '<div class="tqB"><i style="width:' + Math.round(100 * Math.min(1, (G.hero.story.n || 0) / c.n)) + '%"></i></div>' : ''); }
   // build 0028: the Town Planner, spend gold and shards to grow Emberwatch
   function openPlanner() {
@@ -432,7 +432,7 @@ const UI = (() => {
       ctx.fillStyle = 'rgba(0,0,0,.7)'; ctx.fillRect(sp[0] - bw / 2 - 1, sp[1] - bh / 2 - 1, bw + 2, bh + 2); ctx.fillStyle = e.elite === 2 ? '#ffd84a' : e.elite === 1 ? '#6a9cff' : '#e0482a'; ctx.fillRect(sp[0] - bw / 2, sp[1] - bh / 2, bw * clamp(e.hp / e.maxHp, 0, 1), bh);
       if (num) txt(hpNum(e.hp) + ' / ' + hpNum(e.maxHp), sp[0], sp[1] + .5, '#fff', '700 10px system-ui,sans-serif');
       if (e.elite || G.hover === e) txt(e.name, sp[0], sp[1] - bh / 2 - 10, e.elite === 2 ? '#ffd84a' : e.elite === 1 ? '#8fb4ff' : '#e8e2d4', '600 12px system-ui,sans-serif');
-      if (G.hover === e) { const eh = expHit() * (e.armored ? .6 : 1); if (eh > 0) txt('Swings to kill: ' + Math.max(1, Math.ceil(e.maxHp / eh)), sp[0], sp[1] - bh / 2 - 24, '#cfc4ff', '600 11px system-ui,sans-serif'); } /* Sprint 1 */
+      /* build 0098 (Lee): the Swings to kill line is gone; the life numbers say it */
     }
     const ls = [];
     for (const dr of G.drops) { if (!dr.item || dr.item.rar < G.hero.filter || Math.hypot(dr.x - P.x, dr.z - P.z) > 30) continue; const sp = GLX.toScreen(dr.x, 1, dr.z); if (sp) ls.push({ d: dr, x: sp[0], y: sp[1] - 16 }); }
@@ -627,7 +627,7 @@ const UI = (() => {
     fetch('leaderboard', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null).then(j => {
       if (el.classList.contains('hide')) return; if (!j) { el.innerHTML = '<h2>LEADERBOARD</h2><div class="sub">The leaderboard needs the game server. Play online to get on it.</div><button class="x" id="lbX">Close</button>'; $('lbX').onclick = openLb; return; }
       const none = '<li><span class="nm" style="color:#8a7a5a">Nobody yet. Be the first!</span></li>';
-      el.innerHTML = `<h2>LEADERBOARD</h2><div class="sub">Build ${esc(j.build)}</div><div class="cols"><div><h3>HIGHEST LEVEL</h3><ol>${j.lvl.map((e, i) => row(e, i, 'Lv ' + e.l + (e.l >= MAX_LEVEL && e.p ? ' · P' + e.p : ''))).join('') || none}</ol></div><div><h3>FLOORS CLEARED</h3><ol>${j.deep.map((e, i) => row(e, i, e.d + (e.d === 1 ? ' floor' : ' floors'))).join('') || none}</ol></div><div><h3>FASTEST RIFT</h3><ol>${(j.rift || []).map((e, i) => row(e, i, (s2 => Math.floor(s2 / 60) + ':' + String(s2 % 60).padStart(2, '0'))(Math.round(e.ms / 1000)) + ' · ml ' + e.d)).join('') || none}</ol></div><div><h3>TODAY'S DAILY</h3><ol>${(j.daily || []).map((e, i) => row(e, i, e.d + (e.d === 1 ? ' floor' : ' floors'))).join('') || none}</ol></div></div><button class="x" id="lbX">Close</button>`; $('lbX').onclick = openLb;
+      el.innerHTML = `<h2>LEADERBOARD</h2><div class="sub">Build ${esc(j.build)}</div><div class="cols"><div><h3>HIGHEST LEVEL</h3><ol>${j.lvl.map((e, i) => row(e, i, 'Lv ' + e.l + (e.l >= MAX_LEVEL && e.p ? ' · P' + e.p : ''))).join('') || none}</ol></div><div><h3>FLOORS CLEARED</h3><ol>${j.deep.map((e, i) => row(e, i, e.d + (e.d === 1 ? ' floor' : ' floors'))).join('') || none}</ol></div><div><h3>TODAY'S DAILY</h3><ol>${(j.daily || []).map((e, i) => row(e, i, e.d + (e.d === 1 ? ' floor' : ' floors'))).join('') || none}</ol></div></div><button class="x" id="lbX">Close</button>`; $('lbX').onclick = openLb;
     });
   }
   for (const ev of ['pointerdown', 'keydown']) addEventListener(ev, () => SFX.unlock(), { once: true, passive: true });
