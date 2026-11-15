@@ -8,15 +8,21 @@ function entInfo(e) { return { id: e.id, md: e.md, arch: e.arch, x: r2(e.x), z: 
 let depth = 0, rift = null; // rift (build 0021): a timed floor; the party races to slay its guardian
 function srvNewZone(lvl, nPlayers, next) {
   const wasRift = !!rift; if (next === 'rift') rift = { t0: Date.now(), tier: Math.max(1, lvl | 0) + 2 }; else { rift = null; if (next === 'prev') depth = Math.max(0, depth - 1); else if (next && !wasRift) depth++; }
-  const zd = rift ? zoneFor((Math.random() * 12) | 0) : zoneFor(depth), def = { type: 'zone', theme: zd.theme, rift: rift ? 1 : 0, lvl: rift ? rift.tier : Math.max(1, lvl | 0), seed: !rift && typeof DAILY === 'number' ? (Math.imul(DAILY ^ (depth + 1), 2654435761) >>> 0) % 1000000000 : (Math.random() * 1e9) | 0, name: rift ? 'Rift · ' + zd.name : zd.name, depth: depth + 1 };
+  const zd = rift ? zoneFor(((r12) => r12 === 9 ? 8 : r12)((Math.random() * 12) | 0)) /* build 0074: floor 10 is the Heart, so a rift rolls the Voidscar there instead */ : zoneFor(depth), def = { type: 'zone', theme: zd.theme, rift: rift ? 1 : 0, lvl: rift ? rift.tier : Math.max(1, lvl | 0), seed: !rift && forceSeed ? forceSeed : !rift && typeof DAILY === 'number' ? (Math.imul(DAILY ^ (depth + 1), 2654435761) >>> 0) % 1000000000 : (Math.random() * 1e9) | 0, name: rift ? 'Rift · ' + zd.name : zd.name, depth: depth + 1 };
   G.zone = genZone(def); G.ents.length = 0; G.projs.length = 0; G.areas.length = 0; G.boss = null; spawnAll(G.zone);
   const k = partyK(nPlayers); curK = k; known = new Set();
   for (const e of G.ents) { e.maxHp = Math.round(e.maxHp * k); e.hp = e.maxHp; known.add(e.id); }
-  { const w = wbAdd(); if (w) known.add(w.id); } /* build 0070: the world boss is on every new floor while it lives */
+  { const w = wbAdd(); if (w) known.add(w.id); } /* build 0074: the world boss is on every new floor while it lives */
   return { t: 'zone', seed: def.seed, lvl: def.lvl, d: depth, theme: def.theme, rift: rift ? Date.now() - rift.t0 : undefined, ents: G.ents.map(entInfo) };
 }
 // build 0062 (playtest): a party that reconnects after a server update gets a fresh floor at the depth it was on, not floor 1
-function srvResume(lvl, nPlayers, d) { rift = null; depth = Math.max(0, Math.min(500, (d | 0) - 1)); return srvNewZone(lvl, nPlayers, false); }
+var forceSeed = 0;
+// build 0070 (Lee's playtest): after a dropped connection or a server restart the floor comes back with the same layout, so the hero keeps their exact spot.
+// Monsters right around that spot are not put back, and a guardian already slain stays slain.
+function srvResume(lvl, nPlayers, d, seed, x, z, clr) { rift = null; depth = Math.max(0, Math.min(500, (d | 0) - 1)); forceSeed = seed > 0 && seed < 1e9 ? seed | 0 : 0; let m; try { m = srvNewZone(lvl, nPlayers, false); } finally { forceSeed = 0; }
+  if (m.seed !== (seed | 0)) return m; const near = e => isFinite(x) && isFinite(z) && Math.hypot(e.x - x, e.z - z) < 12;
+  for (let i = G.ents.length - 1; i >= 0; i--) { const e = G.ents[i]; if ((!e.boss && near(e)) || (e.boss && clr)) G.ents.splice(i, 1); } if (clr) { G.zone.cleared = true; G.boss = null; }
+  return srvState(); }
 // TODO (Sprint 1, server side): switch to partyHpK(n) from data.js, about 1.7x monster life for a full group. Not changed in build 0028.
 function partyK(n) { return 1 + .5 * Math.max(0, n - 1); }
 // someone joined or left: scale the life of every monster on the floor to the new party size, keeping how hurt it is (build 0022)
@@ -30,15 +36,20 @@ eShoot = function (e, ang, spd, dmgM, el) {
   G.projs.push(p); __emit(null, { t: 'proj', x: r2(p.x), z: r2(p.z), vx: r2(p.vx), vz: r2(p.vz), c: e.md.e });
 };
 killEnemy = function (e) {
-  if (!e.alive) return; e.alive = false; e.deadT = .45; __emit(null, { t: 'die', id: e.id }); if (!e.wb && !e.noLoot && typeof __kill === 'function') __kill(); /* build 0070: every real kill feeds the server-wide world boss count */
+  if (!e.alive) return; e.alive = false; e.deadT = .45; __emit(null, { t: 'die', id: e.id, l: e.lvl, xm: (e.a && e.a.xp) || 1, el: e.elite | 0 }); if (!e.wb && !e.noLoot && typeof __kill === 'function') __kill(); /* build 0074: every real kill feeds the server-wide world boss count */
   if (e.volatile) addArea({ x: e.x, z: e.z, r: 3.2, delay: 1, owner: 'e', dmg: e.dmg * 1.8, el: 'fire', c: 0xff5a2a });
   if (e.molten) addArea({ x: e.x, z: e.z, r: 2.6, delay: .7, owner: 'e', dmg: e.dmg * 1.3, el: 'fire', c: 0xff7a2a });
   if (e.boss && !e.wb) { G.zone.cleared = true; if (rift && !rift.done) { rift.done = true; __emit(null, { t: 'riftDone', ms: Date.now() - rift.t0, tier: rift.tier }); } }
 };
 function srvHit(pid, m) {
   const e = G.ents.find(x => x.id === m.id); if (!e || !e.alive) return; const p = SP[pid];
+  // build 0074 (security): a hit has to come from near the monster, and no single hit or burst of hits can do more than the game itself allows.
+  // A cull or an execute is at most twice a monster's life. A guardian takes at most 8% of its life from one hit and 12% a second from one player.
+  if (!p || p.dead || Math.hypot(e.x - p.x, e.z - p.z) > 36) return;
   if (e.wb) { const v = Math.max(0, Math.min(+m.v || 0, e.maxHp * WB_HIT)); wake(e); if (m.el === 'cold') e.chill = 2.5; else if (m.el === 'light') e.shock = 3; if (WBS && v > 0 && typeof __wb === 'function') __wb(v / e.maxHp, pid); return; } /* the world boss has one life shared by the whole server: the host keeps it */
-  const v = Math.max(0, Math.min(+m.v || 0, e.maxHp * 3)); e.hp -= v; wake(e);
+  let v = Math.max(0, Math.min(+m.v || 0, e.boss ? e.maxHp * .08 : e.maxHp * 2)); if (!isFinite(v)) return;
+  if (e.boss) { const now = Date.now(), b = p.bossDmg || (p.bossDmg = { t: now, v: 0 }); b.v = Math.max(0, b.v - (now - b.t) / 1000 * e.maxHp * .12); b.t = now; const room = e.maxHp * .12 - b.v; if (room <= 0) return; v = Math.min(v, room); b.v += v; }
+  e.hp -= v; wake(e);
   if (m.el === 'fire') { e.burn = Math.max(e.burn, v * .15); e.burnT = 3; } else if (m.el === 'cold') e.chill = 2.5; else if (m.el === 'light') e.shock = 3;
   if (m.fz && !e.boss) e.frozen = Math.min(3, +m.fz || 0);
   if (p && !e.boss && e.arch !== 'brute') { const dx = e.x - p.x, dz = e.z - p.z, l = Math.hypot(dx, dz) || 1; moveEnt(e, dx / l * .4, dz / l * .4, e.r); }
@@ -47,7 +58,7 @@ function srvHit(pid, m) {
 function srvTick(dt) {
   G.time += dt; const all = Object.values(SP), pl = all.filter(p => !p.dead);
   repop(dt, all.filter(p => p.x > -900)); // monsters slowly repopulate the floor, far from every player
-  if (all.length && !pl.length) { const rs = []; for (const e of G.ents) if (e.alive && e.awake) { e.awake = false; e.st = 'chase'; if (e.boss && !e.wb) { e.hp = e.maxHp; e.x = G.zone.bossAt[0]; e.z = G.zone.bossAt[1]; } rs.push([e.id, r2(e.x), r2(e.z), Math.round(e.hp)]); } if (rs.length) __emit(null, { t: 'rest', e: rs }); } /* build 0070: tell the players, so their screens match */
+  if (all.length && !pl.length) { const rs = []; for (const e of G.ents) if (e.alive && e.awake) { e.awake = false; e.st = 'chase'; if (e.boss && !e.wb) { e.hp = e.maxHp; e.x = G.zone.bossAt[0]; e.z = G.zone.bossAt[1]; } rs.push([e.id, r2(e.x), r2(e.z), Math.round(e.hp)]); } if (rs.length) __emit(null, { t: 'rest', e: rs }); } /* build 0074: tell the players, so their screens match */
   const act = [];
   for (const e of G.ents) {
     if (!e.alive) { e.deadT -= dt; continue; }
@@ -72,9 +83,10 @@ function srvTick(dt) {
   const ns = []; for (const e of G.ents) if (!known.has(e.id)) { known.add(e.id); if (!e.boss) { e.maxHp = Math.round(e.maxHp * curK); e.hp = e.maxHp; } ns.push(entInfo(e)); } if (ns.length) __emit(null, { t: 'spawn', ents: ns });
 }
 function srvSnap() { const o = []; for (const e of G.ents) if (e.alive && e.awake) o.push([e.id, r2(e.x), r2(e.z), r2(e.rot), Math.max(0, Math.round(e.hp)), ST[e.st] | 0]); return o; }
+function srvIsRift() { return !!(G.zone && G.zone.def && G.zone.def.rift); }
 function srvCleared() { return !!(G.zone && G.zone.cleared); }
 
-// ---- build 0070 (Lee, Nov 15): the world boss ----
+// ---- build 0074 (Lee, Nov 15): the world boss ----
 // Every kill by every player on the server fills one shared count (kept by server.js). When it is full, the same boss rises on every party's floor.
 // It has one life shared by the whole server: each hit takes the same share off it whatever floor or level the hitter is on.
 var WBS = null; // set by the host while the boss lives: { f: share of life left (1 to 0), k: life scale for how many players were online }

@@ -1,5 +1,10 @@
 'use strict';
-// Cinderdeep dedicated server. No dependencies: plain Node 18+.
+const STARTED = Date.now(); // build 0073 (Lee): the build label says how long ago this build went live
+// A fresh deploy starts the server within minutes of the push, so its start time is when the build went live. If the server only
+// started much later (it slept and woke up), fall back to the push time plus a typical deploy, so the label never resets to "just now".
+const BUILT_AT = +((/const BUILT_AT = (\d+)/.exec(require('fs').readFileSync(require('path').join(__dirname, 'public', 'js', 'data.js'), 'utf8')) || [])[1] || 0);
+const LIVE_AT = BUILT_AT && STARTED - BUILT_AT > 20 * 60000 ? BUILT_AT + 4 * 60000 : STARTED;
+// Oathbyte dedicated server. No dependencies: plain Node 18+.
 // Serves the game from ./public and runs one shared world per party over WebSockets at /ws.
 const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto'), vm = require('vm');
 const PORT = process.env.PORT || 3000, PUB = process.env.PUBLIC_DIR || path.join(__dirname, 'public');
@@ -8,7 +13,7 @@ const simSrc = ['js/data.js', 'js/game.js'].map(f => new vm.Script(fs.readFileSy
 simSrc.push(new vm.Script(fs.readFileSync(path.join(__dirname, 'sim', 'simsrv.js'), 'utf8'), { filename: 'simsrv.js' }));
 const BUILD = (/const BUILD = '([^']+)'/.exec(fs.readFileSync(path.join(PUB, 'js/data.js'), 'utf8')) || [])[1] || '?';
 const rooms = new Map(); let nextId = 1;
-// ---- build 0070 (Lee, Nov 15): the world boss. One kill count shared by everyone on the server; when it is full the boss rises on every party's floor ----
+// ---- build 0074 (Lee, Nov 15): the world boss. One kill count shared by everyone on the server; when it is full the boss rises on every party's floor ----
 const WB_NEED = Math.max(1, +process.env.WB_NEED || +((/const WB_NEED = (\d+)/.exec(fs.readFileSync(path.join(PUB, 'js/data.js'), 'utf8')) || [])[1]) || 1000);
 const WB_FILE = path.join(process.env.LB_DIR || require('os').tmpdir(), 'cinderdeep-worldboss.json');
 const WB = { k: 0, n: 0, on: null }; // k: kills counted so far, n: world bosses slain, on: the living boss { f: share of life left, k: life scale, hit: names of everyone who hit it }
@@ -41,11 +46,13 @@ function rescale(room, except) { const r = room.ctx.srvScale(room.players.size);
 // build 0034: up to three AI teammates ride on the party host's position update: [class, x, z, rot, moving, gear tier, attacking]
 function cleanAi(a) { if (!Array.isArray(a)) return []; const out = []; for (const t of a.slice(0, 3)) { if (!Array.isArray(t)) continue; const n = t.slice(0, 7).map(v => +v || 0); if (!n.every(isFinite)) continue; out.push([Math.max(0, Math.min(4, n[0] | 0)), Math.round(n[1] * 100) / 100, Math.round(n[2] * 100) / 100, Math.round(n[3] * 100) / 100, n[4] ? 1 : 0, Math.max(1, Math.min(4, n[5] | 0)), n[6] ? 1 : 0]); } return out; }
 function clean(s, n) { return String(s == null ? '' : s).replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, n); }
+// build 0074 (security): every connection gets a message budget. A normal client sends well under it; a flood is dropped, and a big one closes the connection.
+function budget(p) { const now = Date.now(); if (p.bT === undefined) { p.bT = now; p.b = 240; } p.b = Math.min(240, p.b + (now - p.bT) * .15); p.bT = now; p.b--; if (p.b < -400) { p.conn.close(); return false; } return p.b >= 0; }
 function onMessage(p, m) {
-  if (!m || typeof m.t !== 'string') return;
+  if (!m || typeof m.t !== 'string') return; if (!budget(p)) return;
   if (m.t === 'join') {
     if (p.room) return; p.name = clean(m.name, 16) || 'Warden';
-    // build 0070 (party sync): a dropped connection that comes back used to leave its old self standing on the floor for up to a minute. Monsters kept chasing that ghost and the party looked out of step. The same browser coming back now replaces its old connection at once
+    // build 0074 (party sync): a dropped connection that comes back used to leave its old self standing on the floor for up to a minute. Monsters kept chasing that ghost and the party looked out of step. The same browser coming back now replaces its old connection at once
     p.sid = clean(m.sid, 32); if (p.sid) for (const r of rooms.values()) for (const q of [...r.players.values()]) if (q !== p && q.sid === p.sid) q.conn.close(); let code = (clean(m.room, 12) || 'public').toLowerCase(); p.lvl = Math.max(1, Math.min(60, m.lvl | 0)); p.cls = clean(m.cls, 14) || 'warden';
     // the kill count lives in memory, and a new build restarts the server: a returning player hands back the count they last saw, so an update does not wipe everyone's progress toward the boss
     if (Array.isArray(m.wb) && !WB.on) { const k = Math.max(0, Math.min(WB_NEED, m.wb[0] | 0)), n = Math.max(0, Math.min(999999, m.wb[1] | 0)); if (n > WB.n || (n === WB.n && k > WB.k)) { WB.n = n; WB.k = k; wbDirty = true; } }
@@ -62,13 +69,13 @@ function onMessage(p, m) {
     if (room.players.size >= PARTY_MAX) { p.conn.send({ t: 'error', m: 'That party is full (' + PARTY_MAX + ' players).' }); return; }
     p.room = room; room.players.set(p.id, p); room.emptyAt = 0; p.st = null;
     p.conn.send({ t: 'hello', id: p.id, room: code });
-    if (fresh) p.conn.send((m.dep | 0) > 1 && typeof room.ctx.srvResume === 'function' ? room.ctx.srvResume(p.lvl, 1, m.dep | 0) : room.ctx.srvNewZone(p.lvl, 1)); else { rescale(room, p.id); p.conn.send(room.ctx.srvState()); }
+    if (fresh) p.conn.send(((m.dep | 0) > 1 || (m.sd > 0 && (m.dep | 0) >= 1)) && typeof room.ctx.srvResume === 'function' ? room.ctx.srvResume(p.lvl, 1, m.dep | 0, +m.sd || 0, +m.px, +m.pz, !!m.clr) : room.ctx.srvNewZone(p.lvl, 1)); else { rescale(room, p.id); p.conn.send(room.ctx.srvState()); }
     room.ctx.SP[p.id] = { id: p.id, x: -999, z: -999, dead: true, lvl: p.lvl };
     cast(room, { t: 'join', id: p.id, name: p.name }, p.id); cast(room, roster(room)); if (!WB.on && WB.k >= WB_NEED) wbStart(); return;
   }
   const room = p.room; if (!room) return;
   switch (m.t) {
-    case 'p': { const x = +m.x, z = +m.z; if (!isFinite(x) || !isFinite(z)) return; const sp = room.ctx.SP[p.id]; sp.x = x; sp.z = z; sp.dead = !!m.dead; sp.lvl = p.lvl = Math.max(1, Math.min(60, m.lvl | 0)); p.lastP = Date.now(); p.st = [p.id, x, z, +m.r || 0, m.mv ? 1 : 0, m.a | 0, Math.max(0, Math.min(100, m.hp | 0)), p.lvl, m.dead ? 1 : 0, clean(m.g, 24), cleanAi(m.ai), m.tw ? 1 : 0]; p.hc = !!m.hc; if (m.dead && p.hc) p.hcDead = true; lbNote(p, m.pl, m.dp, room, m.fc); break; }
+    case 'p': { const x = +m.x, z = +m.z; if (!isFinite(x) || !isFinite(z)) return; const sp = room.ctx.SP[p.id]; sp.x = x; sp.z = z; sp.dead = !!m.dead; { const want = Math.max(1, Math.min(60, m.lvl | 0)), now = Date.now(); if (want > p.lvl) { if (now - (p.lvlT || 0) > 10000) { p.lvlT = now; p.lvlUp = 0; } const room0 = Math.max(0, 3 - (p.lvlUp || 0)), step = Math.min(want - p.lvl, room0); p.lvlUp = (p.lvlUp || 0) + step; p.lvl += step; } else p.lvl = want; sp.lvl = p.lvl; } /* build 0074: a level can only climb a few steps at a time, so a hero cannot jump to 60 mid-game */ p.lastP = Date.now(); p.st = [p.id, x, z, +m.r || 0, m.mv ? 1 : 0, m.a | 0, Math.max(0, Math.min(100, m.hp | 0)), p.lvl, m.dead ? 1 : 0, clean(m.g, 24), cleanAi(m.ai), m.tw ? 1 : 0]; p.hc = !!m.hc; if (m.dead && p.hc) p.hcDead = true; lbNote(p, m.pl, m.dp, room, m.fc); break; }
     case 'hit': room.ctx.srvHit(p.id, m); break;
     case 'fx': cast(room, { t: 'fx', k: clean(m.k, 2), x: +m.x || 0, z: +m.z || 0, rot: +m.rot || 0, r: Math.min(80, +m.r || 0), arc: +m.arc || 0, c: m.c | 0 }, p.id); break;
     case 'found': { const s = clean(m.item, 60), now = Date.now(); if (!s || (m.r !== 3 && m.r !== 4) || now - (p.lastFound || 0) < 4000) break; p.lastFound = now; const raw = JSON.stringify({ t: 'found', n: p.name, item: s, r: m.r }); for (const r of rooms.values()) for (const q of r.players.values()) q.conn.sendRaw(raw); break; }
@@ -81,16 +88,20 @@ function onMessage(p, m) {
       { const busy = [...room.players.values()].filter(q => q.id !== p.id && room.ctx.SP[q.id] && !room.ctx.SP[q.id].dead).map(q => q.name); if (busy.length) { p.conn.send({ t: 'note', m: (busy.length === 1 ? busy[0] + ' is' : busy.length + ' party members are') + ' still fighting on the floor. The rift opens when everyone is back in town.' }); break; } }
       room.riftT = now; let lv = 1; for (const q of room.players.values()) lv = Math.max(lv, q.lvl); cast(room, room.ctx.srvNewZone(lv, room.players.size, 'rift')); break; } // open a timed rift for the whole party
     case 'next': if (room.ctx.srvCleared()) { let lv = 1; for (const q of room.players.values()) lv = Math.max(lv, q.lvl); cast(room, room.ctx.srvNewZone(lv, room.players.size, true)); } break;
-    case 'give': { const q = room.players.get(m.to | 0); if (q && m.item && typeof m.item === 'object' && JSON.stringify(m.item).length < 2000) q.conn.send({ t: 'give', from: p.id, n: p.name, item: m.item, back: !!m.back }); break; }
+    case 'give': { const q = room.players.get(m.to | 0), now = Date.now(); if (!q || !m.item || typeof m.item !== 'object' || JSON.stringify(m.item).length >= 2000) break; if (now - (p.giveT || 0) < 400 || !room.ctx.itemLegit(m.item, p.lvl + 5)) { if (!m.back) p.conn.send({ t: 'give', from: p.id, n: 'The server', item: m.item, back: true }); break; } p.giveT = now; q.conn.send({ t: 'give', from: p.id, n: p.name, item: m.item, back: !!m.back }); break; } /* build 0074: only an item that could really drop at the giver's level can be given */
   }
 }
+// build 0072 (Lee's playtest): a steady players-online count. A hero who drops and comes back (a reconnect, a
+// new floor, a server wake) is still counted for 45 seconds, so the number no longer jumps around.
+const seenAt = new Map();
+function onlineCount() { const now = Date.now(); for (const r of rooms.values()) for (const p of r.players.values()) seenAt.set((p.name || '') + '|' + (p.cls || '') + '|' + (p.name ? '' : p.id), now); let n = 0; for (const [k, t] of seenAt) { if (now - t > 45000) seenAt.delete(k); else n++; } return n; }
 // ---- game loop ----
 let last = Date.now(), tickN = 0;
 setInterval(() => {
-  const now = Date.now(), dt = Math.min(.1, (now - last) / 1000); last = now; tickN++; let online = 0; for (const r of rooms.values()) online += r.players.size;
+  const now = Date.now(), dt = Math.min(.1, (now - last) / 1000); last = now; tickN++; const online = onlineCount();
   for (const [code, room] of rooms) {
     if (!room.players.size) { if (now - room.emptyAt > 60000) rooms.delete(code); continue; }
-    // build 0070 (party sync): a player whose game has gone quiet (phone locked, tab in the background) stops counting as a target, so monsters do not stand around a frozen hero
+    // build 0074 (party sync): a player whose game has gone quiet (phone locked, tab in the background) stops counting as a target, so monsters do not stand around a frozen hero
     for (const q of room.players.values()) { if (q.st && q.lastP && now - q.lastP > 4000 && !q.st[8]) { q.st[8] = 1; const sp = room.ctx.SP[q.id]; if (sp) sp.dead = true; } }
     try { if (WB.on) room.ctx.srvWbSync(Math.max(0, WB.on.f), WB.on.k); room.ctx.srvTick(dt); if (tickN % 2 === 0) cast(room, { t: 's', o: online, w: wbInfo(), e: room.ctx.srvSnap(), p: [...room.players.values()].filter(p => p.st).map(p => p.st) }); }
     catch (err) { console.error('room', code, err); }
@@ -107,14 +118,15 @@ function lbPut(list, e, score) { const k = e.n + '|' + e.c, i = list.findIndex(q
 function lbRift(room, msg) { LB.rift = LB.rift || []; for (const q of room.players.values()) { if (!q.name) continue; lbPut(LB.rift, { n: q.name, c: q.cls, l: q.lvl | 0, d: msg.tier, ms: msg.ms }, 1e9 - msg.ms); } } // fastest rift clears
 function lbToday() { const d = new Date(); return String(d.getUTCFullYear()).slice(2) + String(d.getUTCMonth() + 1).padStart(2, '0') + String(d.getUTCDate()).padStart(2, '0'); }
 function lbNote(p, pl, dp, room, fc) {
-  if (!p.name) return; const lvl = p.lvl | 0, par = Math.max(0, Math.min(99999, pl | 0)), d = Math.max(1, Math.min(9999, dp | 0)), cl = Math.max(0, Math.min(9999, fc | 0)), e = { n: p.name, c: p.cls, l: lvl, p: par, d: cl, h: p.hc ? 1 : 0, x: p.hcDead ? 1 : 0 }; /* the floors board counts floors completed (Lee, Nov 13) */
+  if (!p.name) return; const fl = room && room.ctx.srvFloor ? room.ctx.srvFloor() | 0 : 0; if (room && room.ctx.srvCleared && room.ctx.srvCleared() && !(room.ctx.srvIsRift && room.ctx.srvIsRift())) p.best = Math.max(p.best || 0, fl); /* build 0074: the boards only count floors this server saw you clear */
+  const lvl = p.lvl | 0, par = Math.max(0, Math.min(99999, pl | 0)), d = Math.max(1, Math.min(9999, dp | 0, fl || 9999)), cl = Math.max(0, Math.min(9999, fc | 0, p.best || 0)), e = { n: p.name, c: p.cls, l: lvl, p: par, d: cl, h: p.hc ? 1 : 0, x: p.hcDead ? 1 : 0 }; /* the floors board counts floors completed (Lee, Nov 13) */
   lbPut(LB.lvl, e, lvl * 100000 + (lvl >= 60 ? par : 0)); if (cl > 0) lbPut(LB.deep, e, cl);
   if (room && room.daily) { const td = lbToday(); if (room.daily === td) { if (LB.dlyDate !== td) { LB.dlyDate = td; LB.dly = []; } if (d > 1) lbPut(LB.dly, Object.assign({}, e, { d: d - 1 }), d - 1); } }
 }
 // ---- http + websocket ----
 const server = http.createServer((req, res) => {
   let u = decodeURIComponent(req.url.split('?')[0]);
-  if (u === '/cinderdeep-server') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ cinderdeep: 1, build: BUILD, players: [...rooms.values()].reduce((n, r) => n + r.players.size, 0), worldBoss: { kills: WB.on ? WB_NEED : WB.k, need: WB_NEED, up: !!WB.on, slain: WB.n } })); return; }
+  if (u === '/cinderdeep-server') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ cinderdeep: 1, build: BUILD, players: onlineCount(), upAgo: Date.now() - LIVE_AT, worldBoss: { kills: WB.on ? WB_NEED : WB.k, need: WB_NEED, up: !!WB.on, slain: WB.n } })); /* build 0073: how long this build has been live, by the server's own clock */ return; }
   if (u === '/parties') { const list = []; for (const [code, r] of rooms) { if (!r.players.size || /^solo/.test(code)) continue; const pl = [...r.players.values()].map(q => ({ n: q.name, c: q.cls, l: q.lvl | 0 })); list.push({ code, players: pl, floor: r.ctx.srvFloor ? r.ctx.srvFloor() : 1, daily: !!r.daily }); } list.sort((a, b) => b.players.length - a.players.length); res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ parties: list.slice(0, 40), max: PARTY_MAX })); return; } // party browser (build 0021)
   if (u === '/leaderboard') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ build: BUILD, lvl: LB.lvl, deep: LB.deep, rift: LB.rift || [], daily: LB.dlyDate === lbToday() ? LB.dly || [] : [], today: lbToday() })); return; }
   if (u === '/favicon.ico') { res.writeHead(204); res.end(); return; }
@@ -140,7 +152,7 @@ class Conn {
       if (len > 65536 || !masked) return this.close(); if (b.length < off + 4 + len) return;
       const mask = b.subarray(off, off + 4), data = Buffer.from(b.subarray(off + 4, off + 4 + len)); for (let i = 0; i < len; i++) data[i] ^= mask[i & 3]; this.buf = b.subarray(off + 4 + len);
       if (op === 8) return this.close(); if (op === 9) { this.ctl(10, data.subarray(0, 125)); continue; } if (op === 10) { this.alive = true; continue; }
-      if (op === 1 || op === 0) { this.frag.push(data); if (fin) { const s = Buffer.concat(this.frag).toString('utf8'); this.frag = []; let m = null; try { m = JSON.parse(s); } catch (e) { } if (m && this.onmsg) this.onmsg(m); } }
+      if (op === 1 || op === 0) { this.fragN = (this.fragN || 0) + data.length; if (this.fragN > 65536) return this.close(); this.frag.push(data); if (fin) this.fragN = 0; if (fin) { const s = Buffer.concat(this.frag).toString('utf8'); this.frag = []; let m = null; try { m = JSON.parse(s); } catch (e) { } if (m && this.onmsg) this.onmsg(m); } }
     }
   }
 }
@@ -154,8 +166,11 @@ server.on('upgrade', (req, sock) => {
   conn.onclose = () => { conns.delete(conn); leave(p); };
   sock.on('data', d => conn.feed(d)); sock.on('close', () => conn.close()); sock.on('error', () => conn.close());
 });
-setInterval(() => { for (const c of conns) { if (!c.alive) { c.close(); continue; } c.alive = false; c.ctl(9); } }, 12000); /* build 0070: a dead connection is noticed in about 20 seconds instead of about 50 */
-server.listen(PORT, () => console.log('Cinderdeep server build ' + BUILD + ' listening on port ' + PORT));
+setInterval(() => { for (const c of conns) { if (!c.alive) { c.close(); continue; } c.alive = false; c.ctl(9); } }, 12000); /* build 0074: a dead connection is noticed in about 20 seconds instead of about 50 */
+// build 0070: when the host restarts the server for an update, tell everyone first so they reconnect at once to the new one, on the same floor and spot
+let closing = false; function shutdown() { if (closing) return; closing = true; const bye = JSON.stringify({ t: 'bye' }); for (const c of conns) c.sendRaw(bye); setTimeout(() => { for (const c of conns) c.close(); process.exit(0); }, 800); }
+process.on('SIGTERM', shutdown); process.on('SIGINT', shutdown);
+server.listen(PORT, () => console.log('Oathbyte server build ' + BUILD + ' listening on port ' + PORT));
 // Keep the free host awake (Lee approved a 10-minute ping, Nov 12). GitHub's scheduled ping only ran a few times a day,
 // so the server also calls its own public address every 10 minutes. Render sets RENDER_EXTERNAL_URL; locally SELF_PING_URL can be used.
 const SELF_URL = process.env.SELF_PING_URL || process.env.RENDER_EXTERNAL_URL;

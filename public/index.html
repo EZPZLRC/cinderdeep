@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#07090a">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Cinderdeep</title>
-<meta name="description" content="Cinderdeep: a free online action RPG you can play in your browser or on your phone. Five classes, loot, and co-op parties.">
-<meta property="og:title" content="Cinderdeep"><meta property="og:description" content="A free online action RPG in your browser. Five classes, loot, and co-op parties."><meta property="og:type" content="website">
+<title>Oathbyte</title>
+<meta name="description" content="Oathbyte: a free online action RPG you can play in your browser or on your phone. Five classes, loot, and co-op parties.">
+<meta property="og:title" content="Oathbyte"><meta property="og:description" content="A free online action RPG in your browser. Five classes, loot, and co-op parties."><meta property="og:type" content="website">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;background:#07090a;color:#e8e2d4;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:14px;user-select:none;-webkit-user-select:none}
@@ -94,6 +94,7 @@ input{font:inherit;color:#f3ead6;background:#14110c;border:1px solid #8a6a3a;bor
 @media (max-width:760px){#questBox{top:122px;right:12px;width:104px;font-size:11px;padding:4px 6px}}@media (max-height:480px){#questBox{top:128px;width:110px;font-size:11px}}
 #menu{background:linear-gradient(rgba(3,4,3,.9),rgba(3,4,3,.12) 16%,rgba(3,4,3,.12) 44%,rgba(3,4,3,.93) 56%)}#stage{height:30vh;min-height:150px;flex:none;pointer-events:none}#menu h1{font-size:38px;margin:0}#menuMsg{margin:0;text-shadow:0 1px 4px #000}
 @media (max-width:760px){#stage{height:24vh}}@media (max-height:480px){#stage{height:34vh;min-height:110px}}
+#mute{position:fixed;top:calc(12px + env(safe-area-inset-top));right:calc(12px + env(safe-area-inset-right));z-index:45;width:34px;height:34px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(10,9,7,.78);border:1px solid #6b5533;box-shadow:0 2px 8px #000;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}#mute svg{width:20px;height:20px;fill:none;stroke:#e8d6a8;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}#mute .spk{fill:#e8d6a8}#mute .x{display:none;stroke:#ff8a7a}#mute.off .wav{display:none}#mute.off .x{display:inline}#mute.off{border-color:#7a3a30}#mute:hover{border-color:#c9a45a}@media (max-width:760px),(max-height:480px){#mute{width:30px;height:30px}#mute svg{width:17px;height:17px}}
 #build{position:fixed;right:8px;bottom:6px;z-index:35;font-size:11px;color:#8a826e;pointer-events:none;text-shadow:0 1px 2px #000}
 .pgbox{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:10px}.pgbox .hl{grid-column:1 / -1}.pgbox .hl span{color:#7ad0ff}.pgbox button{padding:5px 6px;font-size:11.5px;text-align:left;line-height:1.3}.pgbox button b{color:#7ad0ff}.pgbox button span{display:block;color:#9a917c;font-size:10.5px}
 #death{background:rgba(40,0,0,.6)}#death h1{color:#ff5a4a;font-size:48px}
@@ -256,7 +257,6 @@ body{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webki
 #town.alt1 .arow button{flex:none;min-width:118px;padding:8px 10px;font-size:14px;line-height:1.2}#town.alt1 .arow button small{display:block;font-size:10.5px;font-weight:400;opacity:.85;margin-top:2px}#town.alt1 .arow .amax{flex:none;min-width:118px;text-align:center;color:#ffd84a;font-size:12px}
 @media (orientation:landscape) and (max-height:500px){#town.alt1{left:calc(8px + env(safe-area-inset-left))!important;right:calc(8px + env(safe-area-inset-right))!important;top:6px!important;max-height:calc(100vh - 12px)!important}}
 .pfoot{margin-top:6px}#petBox{border:1px dashed #c98a3a;border-radius:4px;padding:6px 10px;color:#ffcf8a;font-size:12px;flex:1 1 auto}.pfoot button.big{padding:6px 12px;font-size:12.5px}
-@media (min-width:761px) and (min-height:501px){#streak{right:204px}}
 #gateAsk{position:fixed;inset:0;z-index:28;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45)}#gateAsk .box{background:var(--panel);border:1px solid #6b5533;border-radius:4px;padding:18px 22px;text-align:center;box-shadow:0 10px 40px #000;max-width:90vw}#gateAsk h3{margin:0 0 6px;font-size:18px;letter-spacing:.08em;color:var(--gold2)}#gateAsk .row{display:flex;gap:10px;justify-content:center;margin-top:14px}#gateAsk button{min-width:110px;padding:10px 16px}
 .allywrap{display:flex;gap:14px;align-items:flex-start;margin-top:6px}#adoll{display:grid;grid-template-columns:repeat(3,calc(var(--d) + 8px));grid-auto-rows:var(--d);gap:4px;flex:none;--d:30px}#adoll .it{min-width:0;min-height:0}#adoll .it,#adoll .ds{width:100%;height:100%}.allyhelp{line-height:1.45}
 
@@ -457,7 +457,7 @@ body.isz1 .it .ar{width:18px;height:18px;font-size:11px}body.isz2 .it .ar{width:
   <div id="town" class="hide"></div>
   <div id="inv" class="hide"></div>
 </div>
-<div id="build"></div>
+<div id="build"></div><button id="mute" type="button" aria-label="Mute sound" aria-pressed="false" title="Sound on (M to mute)"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="spk" d="M4 9h4l5-4v14l-5-4H4z"/><path class="wav" d="M16 8.5a5 5 0 0 1 0 7M18.6 6a8.5 8.5 0 0 1 0 12"/><path class="x" d="M16 9l6 6M22 9l-6 6"/></svg></button>
 <div id="set" class="hide"></div>
 <div id="lb" class="hide"></div>
 <div id="parties" class="hide"></div>
@@ -466,7 +466,7 @@ body.isz1 .it .ar{width:18px;height:18px;font-size:11px}body.isz2 .it .ar{width:
 <div id="death" class="ov hide"><h1>You have fallen</h1><div id="deathBy"></div><div id="deathTip"></div><button class="big" id="revive">Rise again · with a second wind</button><button id="deathMenu">Exit to menu</button></div>
 <div id="menu" class="ov">
   <canvas id="embers" aria-hidden="true"></canvas>
-  <div id="logo"><svg id="sigil" viewBox="0 0 120 120" aria-hidden="true"><defs><linearGradient id="sgF" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#7a1e08"/><stop offset=".45" stop-color="#e8641c"/><stop offset=".8" stop-color="#ffc860"/><stop offset="1" stop-color="#fff6d8"/></linearGradient><radialGradient id="sgG"><stop offset="0" stop-color="#ff8a2a" stop-opacity=".55"/><stop offset="1" stop-color="#ff8a2a" stop-opacity="0"/></radialGradient></defs><circle cx="60" cy="60" r="58" fill="url(#sgG)"/><circle cx="60" cy="60" r="44" fill="none" stroke="#b08a3a" stroke-width="2"/><circle cx="60" cy="60" r="38" fill="none" stroke="#5a4320" stroke-width="1"/><g stroke="#d8b060" stroke-width="2"><line x1="60" y1="12" x2="60" y2="20" transform="rotate(0 60 60)"/><line x1="60" y1="12" x2="60" y2="20" transform="rotate(30 60 60)"/><line x1="60" y1="12" x2="60" y2="20" transform="rotate(60 60 60)"/><line x1="60" y1="12" x2="60" y2="20" transform="rotate(90 60 60)"/><line x1="60" y1="12" x2="60" y2="20" transform="rotate(120 60 60)"/><line x1="60" y1="12" x2="60" y2="20" transform="rotate(150 60 60)"/><line x1="60" y1="12" x2="60" y2="20" transform="rotate(180 60 60)"/><line x1="60" y1="12" x2="60" y2="20" transform="rotate(210 60 60)"/><line x1="60" y1="12" x2="60" y2="20" transform="rotate(240 60 60)"/><line x1="60" y1="12" x2="60" y2="20" transform="rotate(270 60 60)"/><line x1="60" y1="12" x2="60" y2="20" transform="rotate(300 60 60)"/><line x1="60" y1="12" x2="60" y2="20" transform="rotate(330 60 60)"/></g><path d="M60 22 C70 38 80 46 76 64 C74 74 68 80 60 84 C52 80 46 74 44 64 C41 52 50 46 52 36 C56 44 58 46 60 48 C62 40 62 32 60 22 Z" fill="url(#sgF)"/><path d="M60 52 C65 60 68 66 64 74 C62 77 61 78 60 79 C59 78 58 77 56 74 C53 67 57 61 60 52 Z" fill="#fff2c8" opacity=".85"/><path d="M60 90 L67 98 L60 108 L53 98 Z" fill="url(#sgF)"/></svg><h1>Cinderdeep</h1><div class="tag"><i></i>An online action RPG<i></i></div></div><div id="menuOn">Waking the server. This can take up to a minute…</div>
+  <div id="logo"><svg id="sigil" viewBox="0 0 120 120" aria-hidden="true"><defs><linearGradient id="sgF" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#7a1e08"/><stop offset=".45" stop-color="#e8641c"/><stop offset=".8" stop-color="#ffc860"/><stop offset="1" stop-color="#fff6d8"/></linearGradient><radialGradient id="sgG"><stop offset="0" stop-color="#ff8a2a" stop-opacity=".55"/><stop offset="1" stop-color="#ff8a2a" stop-opacity="0"/></radialGradient></defs><circle cx="60" cy="60" r="58" fill="url(#sgG)"/><circle cx="60" cy="60" r="44" fill="none" stroke="#b08a3a" stroke-width="2"/><circle cx="60" cy="60" r="38" fill="none" stroke="#5a4320" stroke-width="1"/><g stroke="#d8b060" stroke-width="2"><line x1="60" y1="12" x2="60" y2="20" transform="rotate(0 60 60)"/><line x1="60" y1="12" x2="60" y2="20" transform="rotate(30 60 60)"/><line x1="60" y1="12" x2="60" y2="20" transform="rotate(60 60 60)"/><line x1="60" y1="12" x2="60" y2="20" transform="rotate(90 60 60)"/><line x1="60" y1="12" x2="60" y2="20" transform="rotate(120 60 60)"/><line x1="60" y1="12" x2="60" y2="20" transform="rotate(150 60 60)"/><line x1="60" y1="12" x2="60" y2="20" transform="rotate(180 60 60)"/><line x1="60" y1="12" x2="60" y2="20" transform="rotate(210 60 60)"/><line x1="60" y1="12" x2="60" y2="20" transform="rotate(240 60 60)"/><line x1="60" y1="12" x2="60" y2="20" transform="rotate(270 60 60)"/><line x1="60" y1="12" x2="60" y2="20" transform="rotate(300 60 60)"/><line x1="60" y1="12" x2="60" y2="20" transform="rotate(330 60 60)"/></g><path d="M60 22 C70 38 80 46 76 64 C74 74 68 80 60 84 C52 80 46 74 44 64 C41 52 50 46 52 36 C56 44 58 46 60 48 C62 40 62 32 60 22 Z" fill="url(#sgF)"/><path d="M60 52 C65 60 68 66 64 74 C62 77 61 78 60 79 C59 78 58 77 56 74 C53 67 57 61 60 52 Z" fill="#fff2c8" opacity=".85"/><path d="M60 90 L67 98 L60 108 L53 98 Z" fill="url(#sgF)"/></svg><h1>Oathbyte</h1><div class="tag"><i></i>An online action RPG<i></i></div></div><div id="menuOn">Waking the server. This can take up to a minute…</div>
   <div id="stage"></div>
   <p id="menuMsg">Pick a hero, carve through the Blighted Hollow, slay its guardian, and take the portal deeper.</p>
   <div id="classes"></div>
@@ -500,12 +500,12 @@ body.isz1 .it .ar{width:18px;height:18px;font-size:11px}body.isz2 .it .ar{width:
   <div id="news"></div>
   <div id="mfoot"><button id="mInvite" class="hide">Share the game</button><button id="mTip" class="hide">♥ Support the game</button><button id="mFeed" class="hide">Send feedback</button></div>
 </div>
-<script src="js/models.js?v=0070"></script>
-<script src="js/gl.js?v=0070"></script>
-<script src="js/data.js?v=0070"></script>
-<script src="js/icons.js?v=0070"></script>
-<script src="js/game.js?v=0070"></script>
-<script src="js/net.js?v=0070"></script>
-<script src="js/ui.js?v=0070"></script>
+<script src="js/models.js?v=0074"></script>
+<script src="js/gl.js?v=0074"></script>
+<script src="js/data.js?v=0074"></script>
+<script src="js/icons.js?v=0074"></script>
+<script src="js/game.js?v=0074"></script>
+<script src="js/net.js?v=0074"></script>
+<script src="js/ui.js?v=0074"></script>
 <div id="mtags"></div></body>
 </html>
