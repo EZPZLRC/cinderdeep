@@ -41,6 +41,9 @@ const SFX = (() => {
         case 'swing': noise(.12, .07, 2600); break;
         case 'hit': if (smp('hit', .55)) tone(140, .08, 'triangle', .05, .5); else { noise(.09, .16, 900); tone(140, .1, 'triangle', .12, .5); } break;
         case 'crit': if (smp('impact', .65, 1.15)) { smp('hit', .45, 1.25); noise(.07, .08, 3200); } else { noise(.14, .22, 1800); tone(220, .16, 'square', .07, .4); } break;
+        case 'taunt': if (!smp('impact', .35, .7)) tone(140, .25, 'square', .08, .6); tone(90, .3, 'sawtooth', .05, .7); break;
+        case 'block': if (!smp('hit', .22, .62)) tone(240, .08, 'square', .05, .6); break;
+        case 'mend': tone(520, .35, 'sine', .07, 1.5); tone(780, .45, 'sine', .05, 1.25, .08); tone(1040, .5, 'sine', .03, 1.1, .16); break;
         case 'hurt': if (!smp('hurt', .5)) tone(110, .2, 'sawtooth', .12, .5); break;
         case 'kill': if (smp('kill', .55)) tone(90, .16, 'triangle', .06, .4); else { tone(90, .22, 'triangle', .14, .4); noise(.16, .1, 500); } break;
         case 'bigkill': if (smp('big_kill', .5)) smp('kill', .55, .85); else { tone(70, .5, 'triangle', .16, .4); noise(.3, .14, 400); } break;
@@ -763,11 +766,12 @@ function dummyHit(e, v) { if (G.time - e.lastT > 4) { e.t0 = G.time; e.tot = 0; 
 function dummyDps(e) { if (!e.tot) return 0; const live = G.time - e.lastT <= 4, span = (live ? G.time : e.lastT) - e.t0; return e.tot / Math.max(1, span); }
 function hitEnemy(e, sk, mult, noProc) { if (e && e.alive && e.arch === 'goblin' && typeof UI !== 'undefined' && Math.random() < .55) dropGold(e.x, e.z, (4 + (G.hero ? G.hero.level : 1) * 2) * rnd(.8, 1.3)); /* build 0027: coins fly out with every hit */
   if (!e.alive) return; const s = P.stats, d = rollDmg(sk, mult); let v = d.v; if (e.armored) v *= .6; if (e.shock > 0) v *= 1.15; if (!e.boss && !e.elite && e.hp > e.maxHp * .95) v = Math.min(v, e.maxHp * .65); v = Math.max(1, Math.round(v)); // house rule: ordinary monsters always take at least 2 hits
+  if (sk.type === 'ally' && !e.dummy) { const cap = Math.floor(e.hp - e.maxHp * .12); if (cap < 1) { e.flash = .06; wake(e); return; } v = Math.min(v, cap); } // build 0054: teammates soften monsters up, the hero lands the kill
   const over = v > 3 * Math.max(1, e.hp); /* Sprint 1: overkill, more than three times the life it had left */ meterHit(v); if (e.dummy) dummyHit(e, v);
   e.hp -= v; e.flash = .13; wake(e); P.lastHit = G.time; if (sk.gen) P.mana = Math.min(s.maxMana, P.mana + sk.gen);
   floatText(e.x, 1.6 * e.sc + .6, e.z, (d.crit ? '✦' : '') + v, d.crit ? '#ffe14a' : EL_CSS[sk.el], d.crit ? 1.1 : .8, d.crit ? 21 : 15);
   if (sk.freeze && !e.boss) e.frozen = sk.freeze;
-  if (sk.el === 'fire') { e.burn = Math.max(e.burn, v * .15); e.burnT = 3; } else if (sk.el === 'cold') e.chill = 2.5; else if (sk.el === 'light') e.shock = 3;
+  if (sk.el === 'fire' && sk.type !== 'ally') { e.burn = Math.max(e.burn, v * .15); e.burnT = 3; } else if (sk.el === 'cold') e.chill = 2.5; else if (sk.el === 'light') e.shock = 3;
   if (s.lifeOnHit) P.hp = Math.min(s.maxLife, P.hp + s.lifeOnHit); if (s.leech) P.hp = Math.min(s.maxLife, P.hp + v * s.leech / 100);
   { const heavy = sk.type === 'melee' || !!sk.land || sk.type === 'nova', dx = e.x - P.x, dz = e.z - P.z, l = Math.hypot(dx, dz) || 1, wt = e.boss ? .15 : e.arch === 'brute' || e.elite ? .45 : e.arch === 'swarm' ? 1.3 : 1, pw = (heavy ? 1 : .45) * (d.crit ? 1.5 : 1) * wt; // build 0048: hits have weight. Every hit makes the monster flinch and lean back, heavy hits and crits shove it, and a heavy blow breaks a wind-up
     e.hdx = dx / l; e.hdz = dz / l; e.hf = .22; e.hp0 = pw; e.lheavy = heavy || d.crit;
@@ -908,11 +912,12 @@ function aiGear(cls, r) { // a fixed outfit per class, trimmed by how far you ha
   return gearDecode(c);
 }
 function aiTier() { const l = G.hero ? G.hero.level : 1; return l < 8 ? 1 : l < 20 ? 2 : 3; }
-function aiPick(n) { const mine = G.hero ? G.hero.cls : 'warden'; return AI_ORDER.filter(c => c !== mine).slice(0, n); }
+function aiPick(n) { const mine = G.hero ? G.hero.cls : 'warden', tank = mine !== 'warden' ? 'warden' : 'brawler', heal = mine !== 'arcanist' ? 'arcanist' : 'elementalist'; return [tank, heal, ...AI_ORDER.filter(c => c !== mine && c !== tank && c !== heal)].slice(0, n); } /* build 0054: a tank, a healer, then a damage dealer */
+const AI_ROLE = ['tank', 'heal', 'dps'];
 function aiHumans() { return G.online ? Object.keys(NET.names).filter(i => +i !== NET.id).length : 0; }
 function aiHost() { if (!G.online) return true; const ids = Object.keys(NET.names).map(Number); return !ids.length || NET.id <= Math.min(...ids); } // the lowest id in the party runs the AI
 function aiWant() { if (G.set.ally === false || G.inTown || P.dead || G.state !== 'play' || !aiHost()) return 0; return Math.max(0, AI_MAX - aiHumans()); }
-function mkAlly(cls, i) { const a = { x: P.x - 1.5 + i, y: 0, z: P.z + 1.5 - i * .6, rot: 0, walk: 0, mv: 0, hurt: 0, act: null, swing: 0, spin: null, dash: false, buffs: null, flaskT: 0, cls, on: true, cd: rnd(.2, 1), spT: 3 + i * 2.2, name: AI_ROSTER[cls].name, ai: 1, gear: aiGear(cls, aiTier()), sk: { n: AI_ROSTER[cls].name, type: 'ally', el: AI_ROSTER[cls].el, m: aiEach() } }; return a; }
+function mkAlly(cls, i) { const a = { x: P.x - 1.5 + i, y: 0, z: P.z + 1.5 - i * .6, rot: 0, walk: 0, mv: 0, hurt: 0, act: null, swing: 0, spin: null, dash: false, buffs: null, flaskT: 0, cls, on: true, cd: rnd(.2, 1), spT: 3 + i * 2.2, name: AI_ROSTER[cls].name, ai: 1, role: AI_ROLE[i] || 'dps', tauntT: 1 + i, healT: 2, gear: aiGear(cls, aiTier()), sk: { n: AI_ROSTER[cls].name, type: 'ally', el: AI_ROSTER[cls].el, m: aiEach() } }; return a; }
 function aiSpecial(a, tg) { // each AI hero has one signature move, used every few seconds
   const R = AI_ROSTER[a.cls], m = aiEach() * 2.2;
   if (R.sp === 'volley') { const near = G.ents.filter(e => e.alive && e.awake && Math.hypot(e.x - a.x, e.z - a.z) < 11).slice(0, 3); for (const e of near) { G.fx.push({ bolt: 1, x1: a.x, z1: a.z, x2: e.x, z2: e.z, life: .14, max: .14, c: GLX.col(0xd8ff9a) }); hitEnemy(e, { n: R.name, type: 'ally', el: 'phys', m: m * .6 }, 1, true); } return; }
@@ -920,6 +925,14 @@ function aiSpecial(a, tg) { // each AI hero has one signature move, used every f
   if (R.sp === 'orb' || R.sp === 'meteor') G.fx.push({ bolt: 1, x1: a.x, z1: a.z, x2: at[0], z2: at[1], life: .18, max: .18, c: GLX.col(col) });
   addArea({ x: at[0], z: at[1], r: rr, delay: R.sp === 'meteor' ? .55 : .25, owner: 'p', sk: { n: R.name, type: 'ally', el: R.el, m }, c: col, proc: 1 });
 }
+// build 0054 (Lee Nov 15): teammates tank and heal, and leave the killing blow to you
+function aiTaunt(A, dt) { A.tauntT -= dt; if (A.tauntT > 0 || G.online) return; let n = 0;
+  for (const e of G.ents) { if (!e.alive || !e.awake || e.boss || e.dummy || e.arch === 'goblin') continue; if (Math.hypot(e.x - A.x, e.z - A.z) < 7 && Math.hypot(e.x - P.x, e.z - P.z) < 14) { e.tnt = { a: A, t: e.elite ? 3 : 4.5 }; n++; } }
+  if (!n) { A.tauntT = .5; return; } A.tauntT = 5; A.swing = 1; A.act = { t: 0, d: .45, sk: { type: 'nova' } }; ring(A.x, A.z, 0, 7, .5, 0xffa040); burst(A.x, 1.6, A.z, 0xffa040, 14, 4); floatText(A.x, 2.8, A.z, 'Taunt', '#ffb060', .8, 13); SFX.play('taunt'); }
+function tankHit(A, e) { A.hurt = .25; burst(A.x, 1.3, A.z, 0xc8c0b0, 5, 4); if (Math.random() < .35) floatText(A.x, 2.6, A.z, 'Blocked', '#d8d0c0', .6, 12); if (G.time - (G.hitSfx || 0) > .08) { G.hitSfx = G.time; SFX.play('block'); } }
+function aiMend(A, dt) { A.healT -= dt; const s = P.stats, f = P.hp / s.maxLife; if (A.healT > 0 || P.dead || f > .7) return false; if (Math.hypot(A.x - P.x, A.z - P.z) > 11) return false;
+  const big = f < .4, v = Math.round(s.maxLife * (big ? .22 : .14)); P.hp = Math.min(s.maxLife, P.hp + v); A.healT = big ? 6 : 4.5; A.rot = Math.atan2(P.x - A.x, P.z - A.z); A.swing = 1; A.act = { t: 0, d: .5, sk: { type: 'ally' } }; A.mv = 0;
+  G.fx.push({ bolt: 1, x1: A.x, z1: A.z, x2: P.x, z2: P.z, life: .3, max: .3, c: GLX.col(0x9affb0) }); ring(P.x, P.z, 0, 2.4, .5, 0x7aff9a); burst(P.x, 1.4, P.z, 0x9affb0, 16, 4); floatText(P.x, 2.9, P.z, '+' + v, '#8aff9a', .9, 16); SFX.play('mend'); return true; }
 function updAlly(dt) {
   const want = aiWant();
   if (ALLIES.length !== want) {
@@ -928,13 +941,14 @@ function updAlly(dt) {
     else if (want === 0 && before && hum) hint(aiHost() ? 'Your AI teammates stepped aside: your party is full of real players.' : 'Your AI teammates stepped aside: the party leader brings theirs.');
     if (want > before && G.aiSeen && G.aiHum > hum) hint(aiPick(want).slice(before).map(c => AI_ROSTER[c].name).join(' and ') + ' rejoined your party.');
     if (!want) ALLIES.length = 0; else { const cl = aiPick(want); ALLIES.length = Math.min(ALLIES.length, want); for (let i = ALLIES.length; i < want; i++) ALLIES.push(mkAlly(cl[i], i)); }
-    if (want && !G.aiSeen) { G.aiSeen = 1; hint(ALLIES.map(a => a.name).join(', ').replace(/, ([^,]*)$/, ' and $1') + ' joined your party. AI teammates step aside when real players join you.'); }
+    if (want && !G.aiSeen) { G.aiSeen = 1; hint(ALLIES.map(a => a.name).join(', ').replace(/, ([^,]*)$/, ' and $1') + ' joined your party. ' + ALLIES.map(a => a.role === 'tank' ? a.name + ' draws monsters off you' : a.role === 'heal' ? a.name + ' heals you' : '').filter(Boolean).join(' and ') + ', and the killing blows are yours. AI teammates step aside when real players join you.'); }
     if (want || !G.inTown) G.aiHum = hum;
   }
   for (let i = 0; i < ALLIES.length; i++) {
     const A = ALLIES[i], R = AI_ROSTER[A.cls], melee = R.range < 4, range = R.range;
     if (Math.hypot(A.x - P.x, A.z - P.z) > 26) { A.x = P.x - 1.5 + i; A.z = P.z + 1.5 - i * .6; } // they keep up with you across the floor
-    A.sk.m = aiEach(); let tg = null, bd = 13; for (const e of G.ents) { if (!e.alive || !e.awake) continue; const d = Math.hypot(e.x - A.x, e.z - A.z); if (d < bd && Math.hypot(e.x - P.x, e.z - P.z) < 16) { bd = d; tg = e; } }
+    A.sk.m = aiEach() * (A.role === 'heal' ? .55 : A.role === 'tank' ? .8 : 1); if (A.role === 'tank') aiTaunt(A, dt); else if (A.role === 'heal' && aiMend(A, dt)) continue;
+    let tg = null, bd = 13; for (const e of G.ents) { if (!e.alive || !e.awake) continue; const d = Math.hypot(e.x - A.x, e.z - A.z); if (d < bd && Math.hypot(e.x - P.x, e.z - P.z) < 16) { bd = d; tg = e; } }
     A.cd -= dt; A.spT -= dt; if (A.swing > 0) A.swing -= dt * 3; let tx = null, tz = null;
     if (tg) { A.rot = Math.atan2(tg.x - A.x, tg.z - A.z); if (bd > range + tg.r) { tx = tg.x; tz = tg.z; } else if (A.spT <= 0) { A.spT = rnd(6, 8.5); A.swing = 1; A.act = { t: 0, d: .45, sk: { type: melee ? 'nova' : 'ally' } }; aiSpecial(A, tg); } else if (A.cd <= 0) { A.cd = rnd(1.05, 1.3); A.swing = 1; A.act = { t: 0, d: .35, sk: A.sk }; if (!melee) G.fx.push({ bolt: 1, x1: A.x, z1: A.z, x2: tg.x, z2: tg.z, life: .12, max: .12, c: GLX.col(R.c) }); hitEnemy(tg, A.sk, 1, true); } }
     else { // fall in around you: each teammate keeps its own spot
@@ -1243,8 +1257,10 @@ function updEnemy(e, dt) {
   if (e.flash > 0) e.flash -= dt; if (e.atk > 0) e.atk -= dt * 3; if (e.chill > 0) e.chill -= dt; if (e.shock > 0) e.shock -= dt;
   if (e.kvx || e.kvz) { if (!moveEnt(e, e.kvx * dt, e.kvz * dt, e.r * .8)) e.kvx = e.kvz = 0; const f = Math.max(0, 1 - dt * 9); e.kvx *= f; e.kvz *= f; if (Math.abs(e.kvx) + Math.abs(e.kvz) < .2) e.kvx = e.kvz = 0; } // build 0048: the shove slides out instead of snapping
   if (e.burnT > 0) { e.burnT -= dt; e.hp -= e.burn * dt; if (e.hp <= 0) { killEnemy(e); return; } }
-  const dx = P.x - e.x, dz = P.z - e.z, d = Math.hypot(dx, dz) || .001;
-  if (!e.awake) { if (d < (e.boss ? 17 : 14) && !P.dead) wake(e); else return; }
+  if (e.tnt) { e.tnt.t -= dt; if (e.tnt.t <= 0 || !ALLIES.includes(e.tnt.a) || G.online) e.tnt = null; } // build 0054: a taunted monster turns on the tank
+  const T = e.tnt ? e.tnt.a : P, dx = T.x - e.x, dz = T.z - e.z, d = Math.hypot(dx, dz) || .001;
+  const hitT = (v, el) => T === P ? dmgPlayer(v, el, e) : tankHit(T, e);
+  if (!e.awake) { if (Math.hypot(P.x - e.x, P.z - e.z) < (e.boss ? 17 : 14) && !P.dead) wake(e); else return; }
   if (P.dead) return; if (e.frozen > 0) { e.frozen -= dt; return; }
   const slow = e.chill > 0 ? .6 : 1, sp = e.spd * slow, a = e.a; e.cd -= dt * slow; e.t -= dt * slow;
   if (e.arch === 'goblin') { e.escT = (e.escT || 0) + dt; if (e.escT > 30) { e.alive = false; e.deadT = .45; e.escaped = 1; if (typeof __emit === 'function') __emit(null, { t: 'gone', id: e.id }); else goblinGone(e); return; }
@@ -1254,11 +1270,11 @@ function updEnemy(e, dt) {
   if (e.storm) { e.modT -= dt; if (e.modT <= 0) { e.modT = 3.2; addArea({ x: P.x, z: P.z, r: 2.4, delay: .9, owner: 'e', dmg: e.dmg * 1.2, el: 'light', c: 0xfff07a, src: e }); } }
   const face = () => { let da = Math.atan2(dx, dz) - e.rot; while (da > Math.PI) da -= 6.2832; while (da < -Math.PI) da += 6.2832; e.rot += da * Math.min(1, dt * 10); };
   const go = (dir, k) => { const st = sp * dt * (k || 1); moveEnt(e, dx / d * st * dir, dz / d * st * dir, e.r * .8); e.walk += st * 1.6; };
-  if (e.st === 'charge') { const st = 24 * dt; if (!moveEnt(e, Math.sin(e.cdir) * st, Math.cos(e.cdir) * st, e.r)) e.t = 0; e.rot = e.cdir; e.walk += st; if (!e.chit && d < e.r + 1.2) { e.chit = true; dmgPlayer(e.dmg * 1.8, 'phys', e); } if (e.t <= 0) { e.st = 'rec'; e.t = .6; } return; }
+  if (e.st === 'charge') { const st = 24 * dt; if (!moveEnt(e, Math.sin(e.cdir) * st, Math.cos(e.cdir) * st, e.r)) e.t = 0; e.rot = e.cdir; e.walk += st; if (!e.chit && d < e.r + 1.2) { e.chit = true; hitT(e.dmg * 1.8, 'phys'); } if (e.t <= 0) { e.st = 'rec'; e.t = .6; } return; }
   if (e.cd2 > 0) e.cd2 -= dt;
   if (e.st === 'hwind') { face(); if (e.t <= 0) { e.atk = 1; e.st = 'rec'; e.t = a.rec; } return; } // build 0035: a champion's heavy blow lands where the red circle was
   if (e.st === 'cwind') { if (e.t <= 0) { e.st = 'charge'; e.t = .5; e.chit = false; } return; } // rush telegraphed: it has locked its line
-  if (e.st === 'wind') { face(); if (e.t <= 0) { e.atk = 1; if (e.arch === 'caster' && e.md.v === 'lob') addArea({ x: e.lx, z: e.lz, r: 2.3, delay: .75, owner: 'e', dmg: e.dmg * 1.1, el: G.zone.th.elem, c: e.md.e, src: e }); else if (e.arch === 'caster') eShoot(e, Math.atan2(dx, dz), 12, 1, G.zone.th.elem); else if (e.arch === 'bomber') { addArea({ x: e.x, z: e.z, r: 3.3, delay: .05, owner: 'e', dmg: e.dmg, el: 'fire', c: 0xff7a2a }); e.noXp = true; killEnemy(e); return; } else if (e.arch !== 'brute' && d <= a.reach + e.r + .9) dmgPlayer(e.dmg, 'phys', e); e.st = 'rec'; e.t = a.rec / (e.hasted ? 1.3 : 1); } return; }
+  if (e.st === 'wind') { face(); if (e.t <= 0) { e.atk = 1; if (e.arch === 'caster' && e.md.v === 'lob') addArea({ x: e.lx, z: e.lz, r: 2.3, delay: .75, owner: 'e', dmg: e.dmg * 1.1, el: G.zone.th.elem, c: e.md.e, src: e }); else if (e.arch === 'caster') eShoot(e, Math.atan2(dx, dz), 12, 1, G.zone.th.elem); else if (e.arch === 'bomber') { addArea({ x: e.x, z: e.z, r: 3.3, delay: .05, owner: 'e', dmg: e.dmg, el: 'fire', c: 0xff7a2a }); e.noXp = true; killEnemy(e); return; } else if (e.arch !== 'brute' && d <= a.reach + e.r + .9) hitT(e.dmg, 'phys'); e.st = 'rec'; e.t = a.rec / (e.hasted ? 1.3 : 1); } return; }
   if (e.st === 'rec') { if (e.t <= 0) e.st = 'chase'; return; }
   face();
   if (e.boss) {
@@ -1269,15 +1285,15 @@ function updEnemy(e, dt) {
   }
   if (e.arch === 'caster') { if (d > 11) go(1); else if (d < 6) go(-1, .8); else { const sd = Math.sin(G.time * .5 + e.id) > 0 ? 1 : -1, st = sp * dt * .55; moveEnt(e, dz / d * st * sd, -dx / d * st * sd, e.r * .8); e.walk += st * 1.6; } // keeps moving sideways so it is harder to line up
     if (!e.elite && e.md.v !== 'lob') { e.sgT = (e.sgT === undefined ? rnd(2, 5) : e.sgT) - dt; if (e.sgT <= 0 && d < 13) { const an = Math.atan2(dx, dz), o = eTele({ x: e.x, z: e.z, sh: 'line', ang: an, len: 15, w: 1.5, delay: 1.15, owner: 'e', dmg: e.dmg * 1.5, el: G.zone.th.elem, c: e.md.e, src: e, hvy: heavyK(.9) }); if (o) { e.sgT = rnd(8, 11); e.st = 'hwind'; e.t = o.delay; e.rot = an; return; } e.sgT = .5; } } // build 0048: casters also charge a beam along a marked line
-    if (e.cd <= 0 && d < 14) { e.cd = 2.4; e.st = 'wind'; e.t = a.wind; e.lx = P.x; e.lz = P.z; } return; }
+    if (e.cd <= 0 && d < 14) { e.cd = 2.4; e.st = 'wind'; e.t = a.wind; e.lx = T.x; e.lz = T.z; } return; }
   if (e.md.v === 'charge' && !e.boss && d > 4.5 && d < 10 && !(e.cd2 > 0)) { e.cd2 = 5.5; e.st = 'cwind'; e.t = .7; e.cdir = Math.atan2(dx, dz); e.rot = e.cdir; for (const k of [3, 6, 9]) addArea({ x: e.x + Math.sin(e.cdir) * k, z: e.z + Math.cos(e.cdir) * k, r: 1.1, delay: .7, owner: 'e', vis: true, dmg: 0, el: 'phys', c: 0xff4a2a }); return; }
-  if (e.elite && d < 7 && e.arch !== 'bomber' && e.arch !== 'goblin') { e.hsT = (e.hsT === undefined ? rnd(2, 4) : e.hsT) - dt; if (e.hsT <= 0) { e.hsT = rnd(5, 7); e.st = 'hwind'; e.t = .95; addArea({ x: P.x, z: P.z, r: 2.8, delay: .95, owner: 'e', dmg: e.dmg * 2.2, el: 'phys', c: 0xff4a2a, src: e, hvy: heavyK(1.25) }); return; } } // build 0035: champions wind up a heavy blow; step out of the red circle or dodge
+  if (e.elite && d < 7 && e.arch !== 'bomber' && e.arch !== 'goblin') { e.hsT = (e.hsT === undefined ? rnd(2, 4) : e.hsT) - dt; if (e.hsT <= 0) { e.hsT = rnd(5, 7); e.st = 'hwind'; e.t = .95; addArea({ x: T.x, z: T.z, r: 2.8, delay: .95, owner: 'e', dmg: e.dmg * 2.2, el: 'phys', c: 0xff4a2a, src: e, hvy: heavyK(1.25) }); return; } } // build 0035: champions wind up a heavy blow; step out of the red circle or dodge
   if (!e.elite && (e.arch === 'grunt' && e.md.v !== 'charge' || e.arch === 'brute')) { e.sgT = (e.sgT === undefined ? rnd(1, 3.5) : e.sgT) - dt; if (e.sgT <= 0) { const an = Math.atan2(dx, dz); let o = null; // build 0048: every grunt and brute has a marked heavy blow
       if (e.arch === 'grunt' && d < 3.6) o = eTele({ x: e.x, z: e.z, sh: 'cone', ang: an, arc: .8, r: 3.8 + e.r * .5, delay: .85, owner: 'e', dmg: e.dmg * 1.6, el: 'phys', c: 0xff4a2a, src: e, hvy: heavyK(1) });
       else if (e.arch === 'brute' && d > 2.5 && d < 10) o = eTele({ x: e.x, z: e.z, sh: 'line', ang: an, len: 11, w: 2.4, delay: 1, owner: 'e', dmg: e.dmg * 1.8, el: 'phys', c: 0xff5a2a, src: e, hvy: heavyK(1.15) });
       if (o) { e.sgT = rnd(6, 9); e.st = 'hwind'; e.t = o.delay; e.rot = an; return; } e.sgT = .5; } }
   const reach = a.reach + e.r * .5;
-  if (d > reach) { if (d > 3.2 && !e.boss && e.arch !== 'brute') { if (e.fl === undefined) e.fl = ((e.id * 7919 % 100) / 100 - .5) * 6; const fx = P.x - dz / d * e.fl - e.x, fz = P.z + dx / d * e.fl - e.z, fd = Math.hypot(fx, fz) || 1, st = sp * dt; moveEnt(e, fx / fd * st, fz / fd * st, e.r * .8); e.walk += st * 1.6; } else go(1); } // the pack fans out to surround instead of queueing up
+  if (d > reach) { if (d > 3.2 && !e.boss && e.arch !== 'brute') { if (e.fl === undefined) e.fl = ((e.id * 7919 % 100) / 100 - .5) * 6; const fx = T.x - dz / d * e.fl - e.x, fz = T.z + dx / d * e.fl - e.z, fd = Math.hypot(fx, fz) || 1, st = sp * dt; moveEnt(e, fx / fd * st, fz / fd * st, e.r * .8); e.walk += st * 1.6; } else go(1); } // the pack fans out to surround instead of queueing up
   else if (e.cd <= 0) {
     e.cd = .3; e.st = 'wind'; e.t = a.wind / (e.hasted ? 1.3 : 1);
     if (e.arch === 'brute') addArea({ x: e.x + dx / d * 2, z: e.z + dz / d * 2, r: 3, delay: e.t, owner: 'e', dmg: e.dmg, el: 'phys', c: 0xff4a2a, src: e });
