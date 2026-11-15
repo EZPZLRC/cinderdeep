@@ -781,6 +781,23 @@ const UI = (() => {
       cx.globalCompositeOperation = 'source-over'; };
     requestAnimationFrame(loop); }
   $('classes').onclick = e => { const c = e.target.closest('.ccard'); if (c) { selCls = c.dataset.c; try { localStorage.setItem('cinderdeep_class', selCls); } catch (_) { } renderClasses(); } };
+  { /* build 0089: screenshots on the title screen open larger in a lightbox; arrows, swipe, Esc, click outside */
+    const gal = document.querySelector('#menu .kaGal'), dlg = $('kaLb');
+    if (gal && dlg && typeof dlg.showModal === 'function') {
+      const shots = [...gal.querySelectorAll('.kaShot')], img = dlg.querySelector('img'), cap = dlg.querySelector('.kaLbCap'); let at = 0, opener = null, sx = null, sy = 0, swiped = false;
+      const pre = i => { const s = shots[(i + shots.length) % shots.length]; if (s && !s._pre) { s._pre = new Image(); s._pre.src = s.dataset.lg; } };
+      const show = i => { at = (i + shots.length) % shots.length; const s = shots[at]; img.classList.add('ld'); img.onload = () => img.classList.remove('ld'); img.src = s.dataset.lg; img.alt = s.dataset.cap; cap.textContent = s.dataset.cap + ' · ' + (at + 1) + ' of ' + shots.length; pre(at + 1); pre(at - 1); };
+      gal.addEventListener('click', e => { const s = e.target.closest('.kaShot'); if (!s) return; opener = s; show(shots.indexOf(s)); dlg.showModal(); });
+      gal.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation(); }); /* keep Enter from starting the game */
+      dlg.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'ArrowRight') { e.preventDefault(); show(at + 1); } else if (e.key === 'ArrowLeft') { e.preventDefault(); show(at - 1); } });
+      dlg.querySelector('.kaLbX').onclick = () => dlg.close();
+      dlg.querySelector('.kaLbPrev').onclick = () => show(at - 1);
+      dlg.querySelector('.kaLbNext').onclick = () => show(at + 1);
+      dlg.addEventListener('click', e => { if (swiped) { swiped = false; return; } if (e.target === dlg) dlg.close(); });
+      dlg.addEventListener('pointerdown', e => { if (e.target.closest('button')) return; sx = e.clientX; sy = e.clientY; });
+      dlg.addEventListener('pointerup', e => { if (sx === null) return; const dx = e.clientX - sx, dy = e.clientY - sy; sx = null; if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.3) { swiped = true; setTimeout(() => { swiped = false; }, 350); show(at + (dx < 0 ? 1 : -1)); } });
+      dlg.addEventListener('close', () => { sx = null; swiped = false; if (opener && document.contains(opener)) opener.focus(); });
+    } }
   $('classes').onkeydown = e => { const c = e.target.closest('.ccard'); if (c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.stopPropagation(); c.click(); } };
   { /* build 0078: title screen nav, footer links and the build label */ const mn = $('menu'), to = el => el && mn.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top - mn.getBoundingClientRect().top + mn.scrollTop - 70), behavior: 'smooth' });
     mn.addEventListener('click', e => { const a = e.target.closest('[data-go]'); if (!a) return; e.preventDefault(); const g = a.dataset.go;
