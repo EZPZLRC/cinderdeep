@@ -17,7 +17,7 @@ const imgs=Object.keys(C).map(id=>new Promise(r=>{const i=new Image();i.onload=i
 Promise.all([document.fonts.ready,...imgs]).then(()=>{
   cells.forEach((d,k)=>{const t=(f0+k)/FPS;const g=d.querySelector('#classes');getComputedStyle(g.lastChild).transform;
     if(t>=PICK){g.querySelector('[data-c=warden]').classList.remove('on');g.querySelector('[data-c=ranger]').classList.add('on');g.querySelectorAll('.ccard').forEach(c=>getComputedStyle(c).transform);}
-    d.getAnimations({subtree:true}).forEach(a=>{a.pause();const fresh=(a instanceof CSSTransition)||(t>=PICK&&a.animationName==='kaPulse');a.currentTime=(fresh?t-PICK:t)*1000;});
+    d.getAnimations({subtree:true}).forEach(a=>{a.pause();const fresh=(a instanceof CSSTransition)||(t>=PICK&&(a.animationName==='kaPulse'||a.animationName==='kaShine'));a.currentTime=(fresh?t-PICK:t)*1000;});
   });
   requestAnimationFrame(()=>requestAnimationFrame(()=>{document.title='ready '+f0;}));
 });
