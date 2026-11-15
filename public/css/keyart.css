@@ -1,6 +1,7 @@
 /* OathByte key art title screen (build 0078). Loaded after oathbyte.css; only touches the title screen (#menu.ka). */
 #menu.ka{--ka-bg:#07060a;--ka-bg2:#0d0c11;--ka-line:rgba(255,255,255,.09);--ka-line2:rgba(255,255,255,.16);--ka-tx:#ece8e1;--ka-tx2:#a9adb6;--ka-tx3:#6f747e;--ka-crim:#e5301f;--ka-ember:#ff6a3a;--ka-ui:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--ka-pad:clamp(20px,4vw,56px);--ka-nav:64px;
   display:block!important;padding:0!important;gap:0!important;text-align:left!important;overflow-x:hidden!important;overflow-y:auto!important;background:var(--ka-bg)!important;color:var(--ka-tx);font:15px/1.5 var(--ka-ui);-webkit-font-smoothing:antialiased;scroll-behavior:smooth}
+#menu.ka.hide{display:none!important} /* build 0083: the title screen's display:block!important outranked .hide, so after Play it stayed on top of the game showing "Connecting to the server…" */
 #menu.ka::before{display:none!important}
 #menu.ka>#embers{z-index:3;opacity:.75}
 #mtags{display:none!important}
