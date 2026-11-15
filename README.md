@@ -26,6 +26,7 @@ The server has no dependencies.
 - Real danger: monsters hit harder on every floor you go down (floor 4 hits about four and a half times as hard as floor 1, and it keeps climbing a little deeper). Champions wind up a heavy blow shown as a red circle on the ground, the screen pulses red below 30% life, and the first time you reach floors 2 and 4 a hint explains what to do. Hits to kill, drops and XP are unchanged.
 - Item size: bag and shop items are bigger by default. Settings has Item size (Normal, Large or Extra large); on phones the bag widens to fit the larger items.
 - Real materials (build 0036): hero cloth, leather, steel, skin and hair each get their own surface in the renderer (weave and folds, grain and wear, brushed and scratched steel with reflections, soft skin light, hair strands). Medium and High graphics only; Low draws heroes as before.
+- Smoother bodies (build 0037): heroes use sculpted lofted shapes for torso, arms, legs and head instead of stacked spheres and tapers. Invite links carry the inviter's name, show a banner on the menu and drop the friend into that party on Play. Leaderboard badges show how each is earned on hover or tap.
 - Monsters live on the server, so everyone in a party fights the same ones. Their life scales with party size.
 - Loot is personal: every player in a kill gets their own drops. Give an item to the nearest player from the bag.
 - Town is private to each player. The town portal returns you to your party. The Rift Stone in town opens a timed floor for the whole party.

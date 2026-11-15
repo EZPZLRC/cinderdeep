@@ -81,6 +81,28 @@ const GLX = (() => {
       if (tr > 0) v.push(0, .5, 0, 0, 1, 0, ...T0, 0, 1, 0, ...T1, 0, 1, 0);
     } return v;
   }
+  // build 0037: a smooth sculpted body part. rings run bottom to top as [y, half width, front depth, back depth, forward shift] in the unit box; the
+  // surface is smoothed between rings (Catmull-Rom) and closed at both ends, so torsos, limbs and heads read as one soft form instead of stacked balls
+  function gLoft(rings, S, sub) {
+    const cr = (a, b, c, d, t) => .5 * (2 * b + (c - a) * t + (2 * a - 5 * b + 4 * c - d) * t * t + (3 * b - a - 3 * c + d) * t * t * t), R = [];
+    for (let i = 0; i < rings.length - 1; i++) for (let k = 0; k < sub; k++) { const t = k / sub, a = rings[Math.max(0, i - 1)], b = rings[i], c = rings[i + 1], d = rings[Math.min(rings.length - 1, i + 2)]; R.push(b.map((_, j) => cr(a[j], b[j], c[j], d[j], t))); }
+    R.push(rings[rings.length - 1].slice());
+    const P = R.map(r => { const row = []; for (let i = 0; i <= S; i++) { const an = i / S * 6.28319, sn = Math.sin(an), dz = r[3] + (r[2] - r[3]) * (.5 + .5 * sn); row.push([Math.cos(an) * r[1], r[0], r[4] + sn * dz]); } return row; });
+    const sub3 = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], crs = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]], nrm = a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+    const N = P.map((row, j) => row.map((q, i) => { const up = P[Math.min(P.length - 1, j + 1)][i], dn = P[Math.max(0, j - 1)][i], rt = row[(i + 1) % S], lf = row[(i + S - 1) % S]; return nrm(crs(sub3(up, dn), sub3(rt, lf))); }));
+    const v = [], V = (j, i) => v.push(...P[j][i], ...N[j][i]);
+    for (let j = 0; j < P.length - 1; j++) for (let i = 0; i < S; i++) { V(j, i); V(j + 1, i + 1); V(j, i + 1); V(j, i); V(j + 1, i); V(j + 1, i + 1); }
+    for (const [j, up] of [[0, -1], [P.length - 1, 1]]) { const c = [0, P[j][0][1], R[j][4]]; for (let i = 0; i < S; i++) { const a = P[j][i], b = P[j][i + 1]; if (up > 0) v.push(...c, 0, 1, 0, ...b, 0, 1, 0, ...a, 0, 1, 0); else v.push(...c, 0, -1, 0, ...a, 0, -1, 0, ...b, 0, -1, 0); } }
+    return v;
+  }
+  const BODY = { // build 0037: hero body shapes
+    torso: [[-.5, .34, .3, .3, 0], [-.3, .36, .32, .32, 0], [-.1, .42, .38, .34, .01], [.1, .48, .44, .36, .02], [.25, .5, .42, .34, .01], [.36, .48, .34, .3, 0], [.44, .36, .24, .24, -.01], [.5, .16, .15, .15, 0]],
+    uarm: [[-.5, .2, .2, .2, 0], [-.42, .3, .3, .3, 0], [-.22, .34, .36, .34, 0], [.02, .38, .43, .36, .01], [.24, .44, .42, .42, 0], [.42, .42, .4, .4, 0], [.5, .22, .2, .2, 0]],
+    farm: [[-.5, .2, .18, .18, 0], [-.42, .27, .26, .26, 0], [-.18, .34, .32, .32, 0], [.15, .44, .42, .4, 0], [.4, .46, .44, .42, 0], [.5, .3, .28, .28, 0]],
+    thigh: [[-.5, .22, .22, .22, 0], [-.38, .32, .34, .3, 0], [-.1, .4, .43, .38, .01], [.2, .46, .48, .44, .01], [.42, .48, .46, .46, 0], [.5, .32, .3, .3, 0]],
+    calf: [[-.5, .2, .18, .18, 0], [-.36, .26, .26, .26, 0], [-.1, .36, .32, .42, -.02], [.18, .42, .36, .5, -.04], [.4, .4, .38, .38, 0], [.5, .24, .22, .22, 0]],
+    head: [[-.5, .1, .05, .05, .28], [-.43, .26, .12, .2, .17], [-.3, .36, .3, .3, .1], [-.15, .42, .36, .38, .06], [0, .46, .38, .44, .03], [.1, .47, .4, .46, .02], [.2, .48, .4, .48, 0], [.33, .44, .32, .44, -.02], [.43, .32, .22, .32, -.03], [.5, .1, .06, .08, -.03]]
+  };
   function gTuft(B) {
     const v = []; let s = 7; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
     for (let b = 0; b < B; b++) {
@@ -223,7 +245,7 @@ void main(){
     cv = canvas; gl = cv.getContext('webgl2', { antialias: true, alpha: false, powerPreference: 'high-performance' });
     if (!gl) return false;
     addGeo('box', gBox()); addGeo('cap', gCap(14, 10)); addGeo('rbox', gRBox(16, 12, .32)); addGeo('sphere', gSphere(20, 13)); addGeo('gem', gSphere(4, 2)); addGeo('cyl', gCyl(16, 1)); addGeo('cone', gCyl(14, 0)); addGeo('blade', gCyl(3, 0)); addGeo('tuft', gTuft(7));
-    addGeo('taper', gCyl(14, .6)); addGeo('blob', gSphere(10, 7)); addGeo('fol', gCyl(9, 0)); addGeo('trunk', gCyl(7, .6)); addGeo('disc', gDisc(28, 0)); addGeo('ring', gDisc(36, .86));
+    addGeo('taper', gCyl(14, .6)); for (const k in BODY) addGeo(k, gLoft(BODY[k], 20, 4)); addGeo('blob', gSphere(10, 7)); addGeo('fol', gCyl(9, 0)); addGeo('trunk', gCyl(7, .6)); addGeo('disc', gDisc(28, 0)); addGeo('ring', gDisc(36, .86));
     pMain = prog(VS, FS, ['uVP', 'uLVP', 'uSh', 'uSun', 'uSunC', 'uSky', 'uGnd', 'uFog', 'uEye', 'uPl', 'uFogR', 'uLR', 'uLP[0]', 'uLC[0]', 'uT', 'uQ', 'uWet', 'uMist', 'uRim', 'uOut']);
     pGlow = prog(VS, FSG, ['uVP', 'uLVP', 'uPl', 'uLR', 'uT']);
     pDepth = prog(VSD, FSD, ['uLVP', 'uT']); pPost = prog(VSQ, FSQ, ['uA', 'uB', 'uC', 'uD', 'uMode', 'uDir', 'uT', 'uPI', 'uFx']);
