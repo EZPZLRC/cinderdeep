@@ -254,6 +254,41 @@ mat3x4 skm(){return bone(aJ.x)*aW.x+bone(aJ.y)*aW.y+bone(aJ.z)*aW.z+bone(aJ.w)*a
   const skinVS = (vs, main) => vs.replace('void main(){', SKN + '\nvoid main(){mat3x4 SK=skm();vec3 sP=vec4(aP,1.)*SK,sN=vec4(aN,0.)*SK;').replace(main[0], main[1]);
   const VSS = skinVS(VS, ['vec4 w=wpos(iM,aP,aN,iE.y);vW=w.xyz;vL=aP;', 'vec4 w=wpos(iM,sP,sN,iE.y);vW=w.xyz;vL=aP;']).replace('vN=normalize(m*(aN/', 'vN=normalize(m*(sN/').replace('vC=iC;', 'vC=iC*vec4(aK.rgb*aK.rgb,1.);');
   const VSDS = skinVS(VSD, ['gl_Position=uLVP*wpos(iM,aP,aN,iE.y);', 'gl_Position=uLVP*wpos(iM,sP,sN,iE.y);']);
+  // ---- build 0046: textured scenery meshes (houses, props and trees from Lee's free packs). They get their own shaders, so if a graphics card refuses them the old scenery simply stays ----
+  const VSM = VS.replace('layout(location=7) in vec2 iE;', 'layout(location=7) in vec2 iE; layout(location=11) in vec2 aU; layout(location=12) in vec2 aM; out vec2 vU; flat out float vLy,vAl;')
+    .replace('vec4 w=wpos(iM,aP,aN,iE.y);', 'float mt=aM.y;vec4 w=iM*vec4(aP,1.);if(mt>1.5&&mt<2.5){float hg=max(aP.y,0.)*.3*length(iM[1].xyz);w.x+=sin(uT*1.3+w.x*.35+w.z*.27)*.05*hg;w.z+=cos(uT*1.1+w.x*.3)*.03*hg;}vU=aU;vLy=aM.x;vAl=(mt>1.5&&mt<2.5)?1.:0.;')
+    .replace('vC=iC;vE=iE;', 'vC=mt>9.5?vec4(1.,.56,.24,1.):iC;vE=vec2(iE.x+(mt>9.5?.9:0.),(mt>3.5&&mt<4.5)?4.:0.);');
+  const FSM = FS.replace('uniform vec4 uGr;', 'uniform vec4 uGr; uniform mediump sampler2DArray uTex; in vec2 vU; flat in float vLy,vAl;').replace('mat>1.5&&mat<3.5&&vW.y>2.3', 'vW.y>2.3')
+    .replace('vec3 n=normalize(vN);vec3 a=vC.rgb;', 'vec3 n=normalize(vN);vec4 tx=texture(uTex,vec3(vU,vLy));if(vAl>.5&&tx.a<.5)discard;vec3 tc=tx.rgb*tx.rgb;vec3 a=vC.rgb*mix(vec3(dot(tc,vec3(.3,.59,.11))),tc,.7)*1.15;if(!gl_FrontFacing)n=-n;');
+  const VSDM = `#version 300 es
+layout(location=0) in vec3 aP; layout(location=2) in mat4 iM; layout(location=11) in vec2 aU; layout(location=12) in vec2 aM; uniform mat4 uLVP; out vec2 vU; flat out float vLy,vAl;
+void main(){vU=aU;vLy=aM.x;vAl=(aM.y>1.5&&aM.y<2.5)?1.:0.;gl_Position=uLVP*(iM*vec4(aP,1.));}`;
+  const FSDM = `#version 300 es
+precision highp float; uniform mediump sampler2DArray uTex; in vec2 vU; flat in float vLy,vAl; void main(){if(vAl>.5&&texture(uTex,vec3(vU,vLy)).a<.5)discard;}`;
+  let pMesh = null, pDepthM = null, envTex = null; const ENVM = { state: 'off', why: 'not asked for yet', meshes: {} };
+  const envOn = () => ENVM.state === 'on';
+  function addMesh(name, d) { const mk = (t, a) => { const b = gl.createBuffer(); gl.bindBuffer(t, b); gl.bufferData(t, a, gl.STATIC_DRAW); return b; }; gl.bindVertexArray(null);
+    geo[name] = { mesh: true, vbo: mk(gl.ARRAY_BUFFER, d.P), nbo: mk(gl.ARRAY_BUFFER, d.N), ubo: mk(gl.ARRAY_BUFFER, d.U), lbo: mk(gl.ARRAY_BUFFER, d.L), ibo: mk(gl.ELEMENT_ARRAY_BUFFER, d.I), count: d.I.length, it: d.I instanceof Uint32Array ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT }; }
+  // the scenery pack: world.cde (meshes, 16-bit steps over each mesh's range) and two picture strips (colour, and cut-out masks for leaves)
+  function envLoad(base, ver) {
+    if (ENVM.p) return ENVM.p; if (!gl || !pMesh || typeof fetch === 'undefined' || typeof Image === 'undefined') { ENVM.state = 'off'; ENVM.why = !pMesh ? 'the graphics card would not build the scenery shader' : 'no loader'; return (ENVM.p = Promise.resolve(false)); }
+    ENVM.state = 'loading'; ENVM.why = ''; const q = '?v=' + (ver || ''), get = (u, t) => fetch(base + u + q).then(r => { if (!r.ok) throw new Error(u + ' ' + r.status); return r[t](); });
+    const img = u => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => no(new Error('picture ' + u)); i.src = base + u + q; });
+    return (ENVM.p = Promise.all([get('world.cde', 'arrayBuffer'), get('tex.json', 'json'), img('tex.jpg'), img('alpha.png')]).then(([ab, tj, ci, am]) => {
+      const S = tj.size, n = tj.n, cvs = document.createElement('canvas'); cvs.width = S; cvs.height = Math.max(S * n, am.height); const cx = cvs.getContext('2d', { willReadFrequently: true });
+      cx.drawImage(ci, 0, 0); const px = new Uint8Array(cx.getImageData(0, 0, S, S * n).data.buffer); cx.clearRect(0, 0, S, cvs.height); cx.drawImage(am, 0, 0); const ad = cx.getImageData(0, 0, S, am.height).data;
+      for (let k = 0; k < S * S * n; k++) px[k * 4 + 3] = 255; for (const li in tj.alpha) { const o = +li * S * S, oa = tj.alpha[li] * S * S; for (let k = 0; k < S * S; k++) px[(o + k) * 4 + 3] = ad[(oa + k) * 4]; }
+      for (let k = 0; k < 32 && gl.getError() !== gl.NO_ERROR; k++);
+      envTex = gl.createTexture(); gl.activeTexture(gl.TEXTURE5); gl.bindTexture(gl.TEXTURE_2D_ARRAY, envTex); gl.texImage3D(gl.TEXTURE_2D_ARRAY, 0, gl.RGBA8, S, S, n, 0, gl.RGBA, gl.UNSIGNED_BYTE, px); gl.generateMipmap(gl.TEXTURE_2D_ARRAY);
+      gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_S, gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.REPEAT);
+      const an = gl.getExtension('EXT_texture_filter_anisotropic'); if (an) gl.texParameterf(gl.TEXTURE_2D_ARRAY, an.TEXTURE_MAX_ANISOTROPY_EXT, 4); gl.activeTexture(gl.TEXTURE0);
+      const dv = new DataView(ab); if (String.fromCharCode(dv.getUint8(0), dv.getUint8(1), dv.getUint8(2), dv.getUint8(3)) !== 'CDE1') throw new Error('not a scenery pack'); const hl = dv.getUint32(4, true), H = JSON.parse(new TextDecoder().decode(new Uint8Array(ab, 8, hl))), B0 = 8 + hl;
+      for (const m of H.meshes) { const v = m.v, o = m.o.map(x => x + B0), q = m.q, Pq = new Int16Array(ab, o[0], v * 3), Uq = new Int16Array(ab, o[2], v * 2), P = new Float32Array(v * 3), U = new Float32Array(v * 2);
+        for (let k = 0; k < v * 3; k++) { const c = k % 3; P[k] = (Pq[k] + 32768) / 65535 * q[3 + c] + q[c]; } for (let k = 0; k < v * 2; k++) { const c = k & 1; U[k] = (Uq[k] + 32768) / 65535 * q[8 + c] + q[6 + c]; }
+        addMesh('m:' + m.n, { P, N: new Int8Array(ab, o[1], v * 4), U, L: new Uint8Array(ab, o[3], v * 2), I: m.i32 ? new Uint32Array(ab, o[4], m.i) : new Uint16Array(ab, o[4], m.i) }); ENVM.meshes[m.n] = { b: m.b }; }
+      const er = gl.getError(); if (er !== gl.NO_ERROR) throw new Error('graphics card error 0x' + er.toString(16) + ' on upload'); ENVM.state = 'on'; ENVM.why = H.meshes.length + ' pieces, ' + (ab.byteLength / 1048576).toFixed(1) + ' MB'; return true;
+    }).catch(e => { ENVM.state = 'failed'; ENVM.why = String(e && e.message || e).slice(0, 140); console.warn('scenery pack failed, keeping the old scenery', e); return false; }));
+  }
   function prog(vs, fs, names) {
     const mk = (t, s) => { const sh = gl.createShader(t); gl.shaderSource(sh, s); gl.compileShader(sh); if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh)); return sh; };
     const p = gl.createProgram(); gl.attachShader(p, mk(gl.VERTEX_SHADER, vs)); gl.attachShader(p, mk(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(p);
@@ -268,7 +303,7 @@ mat3x4 skm(){return bone(aJ.x)*aW.x+bone(aJ.y)*aW.y+bone(aJ.z)*aW.z+bone(aJ.w)*a
     addGeo('taper', gCyl(14, .6)); for (const k in BODY) addGeo(k, gLoft(BODY[k], 20, 4)); addGeo('blob', gSphere(10, 7)); addGeo('fol', gCyl(9, 0)); addGeo('trunk', gCyl(7, .6)); addGeo('disc', gDisc(28, 0)); addGeo('ring', gDisc(36, .86));
     pMain = prog(VS, FS, ['uVP', 'uLVP', 'uSh', 'uSun', 'uSunC', 'uSky', 'uGnd', 'uFog', 'uEye', 'uPl', 'uFogR', 'uLR', 'uLP[0]', 'uLC[0]', 'uT', 'uQ', 'uWet', 'uMist', 'uRim', 'uOut', 'uGr', 'uGe']);
     pGlow = prog(VS, FSG, ['uVP', 'uLVP', 'uPl', 'uLR', 'uT']);
-    pDepth = prog(VSD, FSD, ['uLVP', 'uT']); try { pMainS = prog(VSS, FS, ['uVP', 'uLVP', 'uSh', 'uSun', 'uSunC', 'uSky', 'uGnd', 'uFog', 'uEye', 'uPl', 'uFogR', 'uLR', 'uLP[0]', 'uLC[0]', 'uT', 'uQ', 'uWet', 'uMist', 'uRim', 'uOut', 'uGr', 'uGe', 'uBones', 'uBR']); pDepthS = prog(VSDS, FSD, ['uLVP', 'uT', 'uBones', 'uBR']); } catch (e) { pMainS = pDepthS = null; MI.state = 'off'; MI.why = 'the graphics card would not build the model shader: ' + String(e && e.message || e).split('\n')[0].slice(0, 120); console.warn('skinned models off', e); } pPost = prog(VSQ, FSQ, ['uA', 'uB', 'uC', 'uD', 'uMode', 'uDir', 'uT', 'uPI', 'uFx']);
+    pDepth = prog(VSD, FSD, ['uLVP', 'uT']); try { pMainS = prog(VSS, FS, ['uVP', 'uLVP', 'uSh', 'uSun', 'uSunC', 'uSky', 'uGnd', 'uFog', 'uEye', 'uPl', 'uFogR', 'uLR', 'uLP[0]', 'uLC[0]', 'uT', 'uQ', 'uWet', 'uMist', 'uRim', 'uOut', 'uGr', 'uGe', 'uBones', 'uBR']); pDepthS = prog(VSDS, FSD, ['uLVP', 'uT', 'uBones', 'uBR']); } catch (e) { pMainS = pDepthS = null; MI.state = 'off'; MI.why = 'the graphics card would not build the model shader: ' + String(e && e.message || e).split('\n')[0].slice(0, 120); console.warn('skinned models off', e); } try { pMesh = prog(VSM, FSM, ['uVP', 'uLVP', 'uSh', 'uSun', 'uSunC', 'uSky', 'uGnd', 'uFog', 'uEye', 'uPl', 'uFogR', 'uLR', 'uLP[0]', 'uLC[0]', 'uT', 'uQ', 'uWet', 'uMist', 'uRim', 'uOut', 'uGr', 'uGe', 'uTex']); pDepthM = prog(VSDM, FSDM, ['uLVP', 'uTex']); } catch (e) { pMesh = pDepthM = null; ENVM.why = 'the graphics card would not build the scenery shader: ' + String(e && e.message || e).split('\n')[0].slice(0, 120); console.warn('scenery meshes off', e); } pPost = prog(VSQ, FSQ, ['uA', 'uB', 'uC', 'uD', 'uMode', 'uDir', 'uT', 'uPI', 'uFx']);
     shTex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, shTex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24, SH, SH, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
@@ -307,7 +342,9 @@ mat3x4 skm(){return bone(aJ.x)*aW.x+bone(aJ.y)*aW.y+bone(aJ.z)*aW.z+bone(aJ.w)*a
     if (!b) {
       const Gm = geo[g]; b = { g: Gm, n: 0, cap: 256, data: new Float32Array(STRIDE * 256), vao: gl.createVertexArray(), buf: gl.createBuffer() };
       gl.bindVertexArray(b.vao); gl.bindBuffer(gl.ARRAY_BUFFER, Gm.vbo);
-      gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 24, 0); gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 24, 12);
+      if (Gm.mesh) { gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0); gl.bindBuffer(gl.ARRAY_BUFFER, Gm.nbo); gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 3, gl.BYTE, true, 4, 0);
+        gl.bindBuffer(gl.ARRAY_BUFFER, Gm.ubo); gl.enableVertexAttribArray(11); gl.vertexAttribPointer(11, 2, gl.FLOAT, false, 0, 0); gl.bindBuffer(gl.ARRAY_BUFFER, Gm.lbo); gl.enableVertexAttribArray(12); gl.vertexAttribPointer(12, 2, gl.UNSIGNED_BYTE, false, 2, 0); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Gm.ibo); }
+      else { gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 24, 0); gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 24, 12); }
       gl.bindBuffer(gl.ARRAY_BUFFER, b.buf); const sb = STRIDE * 4;
       for (let i = 0; i < 4; i++) { gl.enableVertexAttribArray(2 + i); gl.vertexAttribPointer(2 + i, 4, gl.FLOAT, false, sb, i * 16); gl.vertexAttribDivisor(2 + i, 1); }
       gl.enableVertexAttribArray(6); gl.vertexAttribPointer(6, 4, gl.FLOAT, false, sb, 64); gl.vertexAttribDivisor(6, 1);
@@ -365,18 +402,20 @@ mat3x4 skm(){return bone(aJ.x)*aW.x+bone(aJ.y)*aW.y+bone(aJ.z)*aW.z+bone(aJ.w)*a
   function upload(set, usage) { const box = typeof set === 'string' ? sets[set] : set; for (const g in box) { const b = box[g]; if (!b.n) continue; gl.bindBuffer(gl.ARRAY_BUFFER, b.buf); gl.bufferData(gl.ARRAY_BUFFER, b.data.subarray(0, b.n * STRIDE), usage); } }
   function statEnd() { for (const k in chunks) { upload(chunks[k].b, gl.STATIC_DRAW); for (const g in chunks[k].b) { const b = chunks[k].b[g]; b.data = null; } } }
   let depthPass = false;
-  function drawSet(set) {
-    if (set === 'stat') { const p = env.player; for (const k in chunks) { const c = chunks[k]; if (!c.always && (Math.abs(c.x - p[0]) > 48 || c.z - p[2] > 32 || p[2] - c.z > 56)) continue; drawSet(c.b); } return; }
-    const box = typeof set === 'string' ? sets[set] : set; for (const g in box) { const b = box[g]; if (!b.n || (depthPass && (g === 'blade' || g === 'disc' || g === 'tuft'))) continue; gl.bindVertexArray(b.vao); env.verts += b.g.count * b.n; gl.drawArraysInstanced(gl.TRIANGLES, 0, b.g.count, b.n); } }
+  function drawSet(set, mesh) {
+    if (set === 'stat') { const p = env.player; for (const k in chunks) { const c = chunks[k]; if (!c.always && (Math.abs(c.x - p[0]) > 48 || c.z - p[2] > 32 || p[2] - c.z > 56)) continue; drawSet(c.b, mesh); } return; }
+    const box = typeof set === 'string' ? sets[set] : set; for (const g in box) { const b = box[g]; if (!b.n || !b.g.mesh !== !mesh || (depthPass && (g === 'blade' || g === 'disc' || g === 'tuft'))) continue; gl.bindVertexArray(b.vao); env.verts += b.g.count * b.n;
+      if (mesh) gl.drawElementsInstanced(gl.TRIANGLES, b.g.count, b.g.it, 0, b.n); else gl.drawArraysInstanced(gl.TRIANGLES, 0, b.g.count, b.n); } }
   const LP = new Float32Array(32), LC = new Float32Array(24);
   let aoOK = 1;
+  const UM = () => ({ uVP: vp, uLVP: lvp, uT: [env.t], uQ: [env.q], uWet: [env.wet], uMist: [env.mist], uGr: env.gr, uGe: env.ge, uSun: env.sun, uSunC: env.sunC, uSky: env.sky, uGnd: env.gnd, uFog: env.fog, uEye: cam.eye, uPl: env.player, uFogR: [env.fogN, env.fogF], uLR: [env.lightR], 'uLP[0]': LP, 'uLC[0]': LC });
   function render() {
     resize(); ensurePost(); upload('dyn', gl.DYNAMIC_DRAW); upload('glow', gl.DYNAMIC_DRAW); upload('xr', gl.DYNAMIC_DRAW);
     const p = env.player, s = env.sun;
     lookAt(t1, [p[0] + s[0] * 60, s[1] * 60, p[2] + s[2] * 60], [p[0], 0, p[2]], [0, 1, 0]); ortho(t2, -38, 38, -38, 38, 1, 140); mul(lvp, t2, t1);
     gl.enable(gl.DEPTH_TEST);
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo); gl.viewport(0, 0, SH, SH); gl.clear(gl.DEPTH_BUFFER_BIT); gl.useProgram(pDepth.p); gl.uniformMatrix4fv(pDepth.u.uLVP, false, lvp); gl.uniform1f(pDepth.u.uT, env.t);
-    gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(2, 4); depthPass = true; upBones(); if (env.shadows !== false) { drawSet('stat'); drawSet('dyn'); if (SKD.length) { syncS(pDepthS, 0, { uLVP: lvp, uT: [env.t] }); drawSkinned(pDepthS); gl.useProgram(pDepth.p); } } depthPass = false; gl.disable(gl.POLYGON_OFFSET_FILL);
+    gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(2, 4); depthPass = true; upBones(); if (env.shadows !== false) { drawSet('stat'); if (envOn()) { gl.useProgram(pDepthM.p); gl.uniformMatrix4fv(pDepthM.u.uLVP, false, lvp); gl.uniform1i(pDepthM.u.uTex, 5); drawSet('stat', 1); gl.useProgram(pDepth.p); } drawSet('dyn'); if (SKD.length) { syncS(pDepthS, 0, { uLVP: lvp, uT: [env.t] }); drawSkinned(pDepthS); gl.useProgram(pDepth.p); } } depthPass = false; gl.disable(gl.POLYGON_OFFSET_FILL);
     gl.bindFramebuffer(gl.FRAMEBUFFER, post.ms); gl.viewport(0, 0, cv.width, cv.height);
     const tm = v => { v *= 1.3; v = (v * (2.51 * v + .03)) / (v * (2.43 * v + .59) + .14); return Math.pow(Math.min(1, Math.max(0, v)), 1 / 2.2); }; gl.clearColor(tm(env.fog[0]), tm(env.fog[1]), tm(env.fog[2]), 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     lights.sort((a, b) => (b.pri - a.pri) || ((a.x - p[0]) ** 2 + (a.z - p[2]) ** 2) - ((b.x - p[0]) ** 2 + (b.z - p[2]) ** 2));
@@ -387,11 +426,12 @@ mat3x4 skm(){return bone(aJ.x)*aW.x+bone(aJ.y)*aW.y+bone(aJ.z)*aW.z+bone(aJ.w)*a
     gl.uniform3fv(u.uEye, cam.eye); gl.uniform3fv(u.uPl, env.player); gl.uniform2f(u.uFogR, env.fogN, env.fogF); gl.uniform1f(u.uLR, env.lightR);
     gl.uniform4fv(u['uLP[0]'], LP); gl.uniform3fv(u['uLC[0]'], LC);
     gl.uniform1f(pMain.u.uRim, 0); drawSet('stat');
+    if (envOn()) { syncS(pMesh, 0, UM()); gl.uniform1f(pMesh.u.uRim, 0); gl.uniform1f(pMesh.u.uOut, 0); gl.uniform1i(pMesh.u.uTex, 5); drawSet('stat', 1); gl.useProgram(pMain.p); }
     // hero ghost: drawn against the world only, before the hero, so it shows only where walls or trees hide them
     { let n = 0; for (const g in sets.xr) n += sets.xr[g].n; if (n) { const gu = pGlow.u; gl.useProgram(pGlow.p); gl.uniformMatrix4fv(gu.uVP, false, vp); gl.uniformMatrix4fv(gu.uLVP, false, lvp); gl.uniform3fv(gu.uPl, env.player); gl.uniform1f(gu.uLR, env.lightR); gl.uniform1f(gu.uT, env.t); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.depthMask(false); gl.depthFunc(gl.GREATER); drawSet('xr'); gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.disable(gl.BLEND); gl.useProgram(pMain.p); } }
     if (env.q > 0 && env.outline !== false) { gl.uniform1f(pMain.u.uOut, .026); drawSet('dyn'); gl.uniform1f(pMain.u.uOut, 0); } // a thin ink outline so heroes and monsters stand out from the ground
     gl.uniform1f(pMain.u.uRim, env.q > 0 ? .8 : .4); drawSet('dyn'); gl.uniform1f(pMain.u.uRim, 0);
-    if (SKD.length) { const U = { uVP: vp, uLVP: lvp, uT: [env.t], uQ: [env.q], uWet: [env.wet], uMist: [env.mist], uGr: env.gr, uGe: env.ge, uSun: env.sun, uSunC: env.sunC, uSky: env.sky, uGnd: env.gnd, uFog: env.fog, uEye: cam.eye, uPl: env.player, uFogR: [env.fogN, env.fogF], uLR: [env.lightR], 'uLP[0]': LP, 'uLC[0]': LC };
+    if (SKD.length) { const U = UM();
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, shTex); syncS(pMainS, 0, U); const su = pMainS.u;
       if (env.q > 0 && env.outline !== false) { gl.uniform1f(su.uRim, 0); gl.uniform1f(su.uOut, .026); drawSkinned(pMainS); }
       gl.uniform1f(su.uOut, 0); gl.uniform1f(su.uRim, env.q > 0 ? .8 : .4); drawSkinned(pMainS); gl.useProgram(pMain.p); }
@@ -440,5 +480,5 @@ mat3x4 skm(){return bone(aJ.x)*aW.x+bone(aJ.y)*aW.y+bone(aJ.z)*aW.z+bone(aJ.w)*a
   function upBones() { if (!boneRows) return; gl.bindTexture(gl.TEXTURE_2D, boneTex); gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, boneW, boneRows, gl.RGBA, gl.FLOAT, boneData.subarray(0, boneW * 4 * boneRows)); }
   // shared uniforms for the skinned copy of a program, copied from the plain program's current values
   function syncS(P, keys, vals) { gl.useProgram(P.p); for (const k in vals) { const v = vals[k], u = P.u[k]; if (!u) continue; if (v.length === 16) gl.uniformMatrix4fv(u, false, v); else if (v.length === 32) gl.uniform4fv(u, v); else if (v.length === 24) gl.uniform3fv(u, v); else if (v.length === 3) gl.uniform3fv(u, v); else if (v.length === 4) gl.uniform4fv(u, v); else if (v.length === 2) gl.uniform2fv(u, v); else gl.uniform1f(u, v[0]); } if (P.u.uSh) gl.uniform1i(P.u.uSh, 0); }
-  return { init, resize, col, base, obj, part, halo, light, setCamera, toScreen, groundAt, begin, statBegin, statChunk, statEnd, render, env, cam, model, drawModel, modelInfo: () => MI, attach: (m, name, o) => m && m.ready ? CDM.attach(m, name, o) : null };
+  return { init, resize, col, base, obj, part, halo, light, setCamera, toScreen, groundAt, begin, statBegin, statChunk, statEnd, render, env, cam, model, drawModel, modelInfo: () => MI, envLoad, envOn, envInfo: () => ENVM, attach: (m, name, o) => m && m.ready ? CDM.attach(m, name, o) : null };
 })();
