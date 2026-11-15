@@ -371,7 +371,14 @@ function genZone(def) {
   for (let i = 0; i < GW * GW; i++) if (!c[i]) { const d = Math.hypot(i % GW - corner[0], (i / GW | 0) - corner[1]); if (d < sd) { sd = d; s = i; } }
   let dist = bfs(c, s), b = s; for (let i = 0; i < GW * GW; i++) if (dist[i] > dist[b]) b = i;
   const bx = clamp(b % GW, 8, GW - 9), by = clamp(b / GW | 0, 8, GW - 9); disc(c, bx, by, 5); disc(c, b % GW, b / GW | 0, 2); disc(c, s % GW, s / GW | 0, 2.2);
-  dist = bfs(c, s); Z.dist = dist; Z.start = [(s % GW + .5) * CS, ((s / GW | 0) + .5) * CS]; Z.bossAt = [(bx + .5) * CS, (by + .5) * CS];
+  dist = bfs(c, s);
+  { /* build 0071 (Lee's playtest): the main road from the start to the guardian is never a one-cell squeeze between trees; pinch points are opened to three cells */
+    let k = by * GW + bx, prev = -1, guard = 0; while (dist[k] > 0 && guard++ < GW * GW) { let nk = -1; for (const d of [-1, 1, -GW, GW]) { const n = k + d; if (n >= 0 && n < GW * GW && dist[n] === dist[k] - 1) { nk = n; break; } } if (nk < 0) break;
+      const horiz = Math.abs(nk - k) === 1, x = k % GW, y = k / GW | 0, side = horiz ? [-GW, GW] : [-1, 1];
+      if (side.every(d => c[k + d])) for (const d of side) { const n = k + d, nx = n % GW, ny = n / GW | 0; if (nx > 0 && ny > 0 && nx < GW - 1 && ny < GW - 1) c[n] = 0; }
+      prev = k; k = nk; }
+    dist = bfs(c, s); }
+  Z.dist = dist; Z.start = [(s % GW + .5) * CS, ((s / GW | 0) + .5) * CS]; Z.bossAt = [(bx + .5) * CS, (by + .5) * CS];
   const cand = []; for (let i = 0; i < GW * GW; i++) if (!c[i] && dist[i] > 8 && Math.hypot(i % GW - bx, (i / GW | 0) - by) > 8) cand.push(i);
   for (let i = cand.length - 1; i > 0; i--) { const j = Math.floor(sr() * (i + 1)); const t = cand[i]; cand[i] = cand[j]; cand[j] = t; }
   const packs = [], N = 24; for (const k of cand) { if (packs.length >= N) break; if (packs.every(q => Math.hypot(q % GW - k % GW, (q / GW | 0) - (k / GW | 0)) >= 5)) packs.push(k); }
@@ -430,11 +437,12 @@ function buildStatic(Z) { Z.torches = [];
       let near = 9; for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) { const xx = x + i, yy = y + j; if (xx >= 0 && yy >= 0 && xx < GW && yy < GW && !c[yy * GW + xx]) near = Math.min(near, Math.max(Math.abs(i), Math.abs(j))); }
       if (near > 2) continue;
       if (th.wall === 'tree') {
-        const jx = wx + (sr() - .5) * 1.6, jz = wz + (sr() - .5) * 1.6, tr = sr();
+        let ox = 0, oz = 0; if (near === 1) { for (const [i, j] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) { const xx = x + i, yy = y + j; if (xx >= 0 && yy >= 0 && xx < GW && yy < GW && !c[yy * GW + xx]) { ox -= i; oz -= j; } } const ol = Math.hypot(ox, oz) || 1; ox = ox / ol * .75; oz = oz / ol * .75; } /* build 0071: trees at the edge of a path lean back into the woods, so the way through stays visible */
+        const jx = wx + ox + (sr() - .5) * 1.1, jz = wz + oz + (sr() - .5) * 1.1, tr = sr();
         if (EV && near === 1 && sr() < (LOWQ ? .35 : .75)) { const ry = sr() * 6.28, v = sr(), lc = shade([.92, .96, .9], .8 + sr() * .35); // build 0046: real trees where you can see them; deeper rows stay simple to keep phones smooth
           if (tr < .5) Mx(['Pine_1', 'Pine_2', 'Pine_3', 'Pine_5'][v * 4 | 0], jx, 0, jz, ry, 1.25 + sr() * .45, lc); else if (tr < .92) Mx('CommonTree_' + (1 + (v * 4 | 0)), jx, 0, jz, ry, 1.05 + sr() * .4, lc); else Mx('DeadTree_' + (1 + (v * 3 | 0)), jx, 0, jz, ry, .8 + sr() * .25, shade(lc, .8)); }
         else if (tr < .58) pine(jx, jz); else if (tr < .93) broad(jx, jz); else dead(jx, jz);
-        if (near === 1 && sr() < .45) pine(wx + (sr() - .5) * 2.6, wz + (sr() - .5) * 2.6);
+        if (near === 1 && sr() < .45) pine(wx + ox * 1.3 + (sr() - .5) * 1.4, wz + oz * 1.3 + (sr() - .5) * 1.4);
         if (sr() < .55) { const r = 1 + sr() * .8; if (EV && near === 1) { const bn = sr() < .25 ? 'Bush_Common_Flowers' : 'Bush_Common', bx = wx + (sr() - .5) * 2.4, bz = wz + (sr() - .5) * 2.4, br = sr() * 6.28, bc = shade([.9, .95, .88], .8 + sr() * .3); if (!LOWQ || ((Math.abs(wx * 7.3 + wz * 13.1) | 0) % 10) > 2) Mx(bn, bx, 0, bz, br, r * 1.25, bc); } /* phones skip about a third of the bushes */ else GLX.obj('stat', 'blob', wx + (sr() - .5) * 2.4, r * .35, wz + (sr() - .5) * 2.4, sr() * 6, r * 1.3, r, r * 1.2, shade(leaf[sr() * 3 | 0], .7 + sr() * .4), 0, 1, 2); }
         if (sr() < .3) rock(wx + (sr() - .5) * 2.4, wz + (sr() - .5) * 2.4, 1 + sr() * 1.4);
         if (near === 1) { grass(wx, wz, gN >> 1, CS); if (!LOWQ && sr() < .45) fern(wx + (sr() - .5) * 2, wz + (sr() - .5) * 2); if (!LOWQ && sr() < .3) litter(wx, wz); if (sr() < .15) shroom(wx + (sr() - .5) * 2, wz + (sr() - .5) * 2); }
@@ -1032,6 +1040,24 @@ function botField() {
   for (let h = 0; h < q.length; h++) { const k = q[h], x = k % GW; for (const d of [-1, 1, -GW, GW]) { const n = k + d; if (n < 0 || n >= N) continue; if ((d === -1 && x === 0) || (d === 1 && x === GW - 1)) continue; if (!c[n] && prev[n] < 0) { prev[n] = k; dist[n] = dist[k] + 1; q.push(n); } } }
   return { s, prev, dist };
 }
+// ---- build 0071 (Lee's playtest): click-to-move finds its way around trees, walls, stalls and braziers ----
+// A one-unit walk grid is made once per floor from the same collision the hero uses; a search runs when the target changes, and the route is pulled tight so the hero walks straight wherever it can.
+const D8X = [1, -1, 0, 0, 1, 1, -1, -1], D8Z = [0, 0, 1, -1, 1, -1, 1, -1];
+const NAV = { z: null, s: null, g: null, W: GW * CS, S: 1, key: -1, pts: null, t: 0, stuck: 0 }; /* S: grid steps per world unit (two in town, where stalls leave narrow gaps) */
+function navGrid() { const Z = G.zone; if (NAV.z === Z && NAV.s === Z.solid && NAV.g) return NAV.g; const S = NAV.S = Z.solid && Z.solid.length ? 2 : 1, W = NAV.W = GW * CS * S, g = new Uint8Array(W * W); for (let i = 0; i < W * W; i++) g[i] = blocked((i % W + .5) / S, ((i / W | 0) + .5) / S, .56) ? 1 : 0; NAV.z = Z; NAV.s = Z.solid; NAV.g = g; NAV.key = -1; NAV.pts = null; return g; }
+function navClear(x1, z1, x2, z2) { const d = Math.hypot(x2 - x1, z2 - z1), n = Math.ceil(d / .35); for (let i = 1; i <= n; i++) { const t = i / n; if (blocked(x1 + (x2 - x1) * t, z1 + (z2 - z1) * t, .64)) return false; } return true; }
+function navFind(tx, tz) { const g = navGrid(), W = NAV.W, S = NAV.S, at = (x, z) => clamp(Math.floor(z * S), 0, W - 1) * W + clamp(Math.floor(x * S), 0, W - 1), wp = k => [(k % W + .5) / S, ((k / W | 0) + .5) / S];
+  let gi = at(tx, tz); if (g[gi]) { let best = -1, bd = 1e9; const gx = gi % W, gz = gi / W | 0; for (let j = -4; j <= 4; j++) for (let i = -4; i <= 4; i++) { const x = gx + i, z = gz + j; if (x < 0 || z < 0 || x >= W || z >= W || g[z * W + x]) continue; const d = i * i + j * j; if (d < bd) { bd = d; best = z * W + x; } } if (best < 0) return null; gi = best; [tx, tz] = wp(gi); }
+  let si = at(P.x, P.z); if (g[si]) { for (const d of [1, -1, W, -W, W + 1, W - 1, -W + 1, -W - 1]) if (si + d >= 0 && si + d < W * W && !g[si + d]) { si += d; break; } }
+  const prev = new Int32Array(W * W).fill(-1), q = new Int32Array(W * W); let qh = 0, qt = 0; q[qt++] = si; prev[si] = si; let found = si === gi;
+  while (qh < qt && !found) { const k = q[qh++], x = k % W, z = k / W | 0; for (let d = 0; d < 8; d++) { const i = D8X[d], j = D8Z[d], nx = x + i, nz = z + j; if (nx < 0 || nz < 0 || nx >= W || nz >= W) continue; const n = nz * W + nx; if (prev[n] >= 0 || g[n]) continue; if (i && j && (g[z * W + nx] || g[nz * W + x])) continue; prev[n] = k; if (n === gi) { found = true; break; } q[qt++] = n; } }
+  if (!found) return null; const raw = [[tx, tz]]; let k = prev[gi]; while (k !== si && k >= 0) { raw.push(wp(k)); k = prev[k]; } raw.reverse();
+  const out = []; let cx = P.x, cz = P.z, i = 0; while (i < raw.length) { let j = raw.length - 1; while (j > i && !navClear(cx, cz, raw[j][0], raw[j][1])) j--; out.push(raw[j]); cx = raw[j][0]; cz = raw[j][1]; i = j + 1; } return out; }
+// the next point to walk to on the way to (tx, tz); straight there when nothing is in the way
+function navStep(tx, tz, dt) { if (!G.zone || !G.zone.cell) return [tx, tz]; navGrid(); NAV.t -= dt; const W = NAV.W, key = clamp(Math.floor(tz * NAV.S), 0, W - 1) * W + clamp(Math.floor(tx * NAV.S), 0, W - 1);
+  const redo = !NAV.pts || NAV.stuck > .45 || (key !== NAV.key && NAV.t <= .35) || (NAV.t <= 0 && NAV.pts.length > 1); /* a moving target (mouse held) is re-routed a few times a second, not every frame */
+  if (redo) { const st = NAV.stuck > .45; NAV.t = .5; NAV.stuck = 0; NAV.key = key; NAV.pts = !st && navClear(P.x, P.z, tx, tz) ? [[tx, tz]] : navFind(tx, tz) || [[tx, tz]]; if (st && NAV.pts.length) NAV.hold = .6; } NAV.hold = Math.max(0, (NAV.hold || 0) - dt);
+  const pts = NAV.pts; while (pts.length > 1 && (Math.hypot(pts[0][0] - P.x, pts[0][1] - P.z) < .25 || (!NAV.hold && navClear(P.x, P.z, pts[1][0], pts[1][1])))) pts.shift(); if (pts.length === 1 && navClear(P.x, P.z, tx, tz)) { pts[0][0] = tx; pts[0][1] = tz; } return pts[0]; }
 const cellOf = (x, z) => clamp(Math.floor(z / CS), 0, GW - 1) * GW + clamp(Math.floor(x / CS), 0, GW - 1);
 function los(x1, z1, x2, z2) { const d = Math.hypot(x2 - x1, z2 - z1), n = Math.ceil(d / .4); for (let i = 1; i < n; i++) { const t = i / n; if (cellAt(x1 + (x2 - x1) * t, z1 + (z2 - z1) * t)) return false; } return true; }
 function botGear() {
@@ -1125,12 +1151,13 @@ function updPlayer(dt) {
   else if (P.pick) { if (!G.drops.includes(P.pick)) P.pick = null; else { if (Math.hypot(P.pick.x - P.x, P.pick.z - P.z) < 2.3) { pickup(P.pick); P.pick = null; return; } tx = P.pick.x; tz = P.pick.z; } }
   else if (P.inter) { const o = P.inter; if (Math.hypot(o.x - P.x, o.z - P.z) < (P.gateGo === o ? 3.4 : 2.6)) { interact(o); P.inter = null; return; } tx = o.x; tz = o.z; }
   else if (P.move) { tx = P.move[0]; tz = P.move[1]; if (Math.hypot(tx - P.x, tz - P.z) < .3) { P.move = null; tx = undefined; } }
+  if (tx !== undefined && jm < .18) { const w = navStep(tx, tz, dt); P.navTo = w; tx = w[0]; tz = w[1]; } else { NAV.key = -1; NAV.pts = null; P.navTo = null; }
   if (tx !== undefined) {
     const dx = tx - P.x, dz = tz - P.z, d = Math.hypot(dx, dz) || 1, sp = s.msT * (P.spin ? .8 : 1) * spK, st = Math.min(d, sp * dt);
     if (!P.spin) { let da = Math.atan2(dx, dz) - P.rot; while (da > Math.PI) da -= 6.2832; while (da < -Math.PI) da += 6.2832; P.rot += da * Math.min(1, dt * 18); }
-    const ox = P.x, oz = P.z; moveEnt(P, dx / d * st, dz / d * st, .55); let moved = Math.hypot(P.x - ox, P.z - oz);
-    if (moved < st * .5) { const ccx = (Math.floor(P.x / CS) + .5) * CS, ccz = (Math.floor(P.z / CS) + .5) * CS; if (Math.abs(dx) > Math.abs(dz)) moveEnt(P, 0, Math.sign(ccz - P.z) * Math.min(st, Math.abs(ccz - P.z)), .55); else moveEnt(P, Math.sign(ccx - P.x) * Math.min(st, Math.abs(ccx - P.x)), 0, .55); moved = Math.hypot(P.x - ox, P.z - oz); }
-    if (moved < st * .15) { if (P.move && !IN.lmb) P.move = null; } else { P.moving = true; P.walk += moved * 1.5; const sn = Math.floor(P.walk / Math.PI); if (sn !== P.stepN) { P.stepN = sn; SFX.play('step'); } }
+    const ox = P.x, oz = P.z, mx = dx / d * st, mz = dz / d * st; if (P.navTo && !blocked(P.x + mx, P.z + mz, .55)) { P.x += mx; P.z += mz; } else moveEnt(P, mx, mz, .55); let moved = Math.hypot(P.x - ox, P.z - oz); /* build 0071: a clear diagonal step is taken whole, so the hero does not catch on corners */
+    if (moved < st * .5 && !P.navTo) { const ccx = (Math.floor(P.x / CS) + .5) * CS, ccz = (Math.floor(P.z / CS) + .5) * CS; if (Math.abs(dx) > Math.abs(dz)) moveEnt(P, 0, Math.sign(ccz - P.z) * Math.min(st, Math.abs(ccz - P.z)), .55); else moveEnt(P, Math.sign(ccx - P.x) * Math.min(st, Math.abs(ccx - P.x)), 0, .55); moved = Math.hypot(P.x - ox, P.z - oz); }
+    if (moved < st * .15) { NAV.stuck += dt; if (P.move && !IN.lmb && NAV.stuck > 1.2) { P.move = null; NAV.stuck = 0; } } else { NAV.stuck = Math.max(0, NAV.stuck - dt); P.moving = true; P.walk += moved * 1.5; const sn = Math.floor(P.walk / Math.PI); if (sn !== P.stepN) { P.stepN = sn; SFX.play('step'); } }
   }
 }
 // ---- skill choices ----
