@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>OathByte</title>
 <meta name="description" content="OathByte: a free online action RPG you can play in your browser or on your phone. Five classes, loot, and co-op parties.">
-<meta property="og:title" content="OathByte"><meta property="og:description" content="A free online action RPG in your browser. Five classes, loot, and co-op parties."><meta property="og:type" content="website"><meta property="og:image" content="brand/og-share.jpg"><meta name="twitter:card" content="summary_large_image">
+<meta property="og:title" content="OathByte"><meta property="og:description" content="A free online action RPG in your browser. Five classes, loot, and co-op parties."><meta property="og:type" content="website"><meta property="og:image" content="https://oathbyte.onrender.com/brand/og-share.jpg"><meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="favicon.ico" sizes="any"><link rel="icon" href="brand/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
 <link rel="preload" href="brand/logo-letters.webp" as="image"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap">
 <style>
@@ -425,8 +425,8 @@ body.isz1 .it .ar{width:18px;height:18px;font-size:11px}body.isz2 .it .ar{width:
 @media (max-width:760px),(max-height:480px){#tbtns button::before{width:20px;height:20px}#ctl button::before{width:13px;height:13px;margin-right:4px}}
 #folk .tier .tierb{display:flex;flex-direction:column;align-items:flex-start;width:100%;text-align:left;margin:4px 0;padding:8px 10px;gap:2px}#folk .tier .tierb span{font-size:12px;opacity:.8}#folk .tier .tierb.on{outline:2px solid #e0a040}
 </style>
-<link rel="stylesheet" href="css/oathbyte.css?v=0077">
-<link rel="stylesheet" href="css/keyart.css?v=0077">
+<link rel="stylesheet" href="css/oathbyte.css?v=0080">
+<link rel="stylesheet" href="css/keyart.css?v=0080">
 </head>
 <body>
 <canvas id="gl"></canvas><canvas id="ov"></canvas>
@@ -477,7 +477,7 @@ body.isz1 .it .ar{width:18px;height:18px;font-size:11px}body.isz2 .it .ar{width:
   <div class="kaWrap kaIn"><div id="kaLeft">
     <div id="logo"><h1 class="obSr">OathByte</h1><div class="obLogo" aria-hidden="true"><img class="obL" src="brand/logo-letters.webp" alt="" width="1600" height="573" decoding="async"><i class="obSheen"></i><img class="obS" src="brand/logo-sword.webp" alt="" width="1600" height="573" decoding="async"><i class="obGem"></i><img class="obF" src="brand/logo-flame.webp" alt="" width="1600" height="573" decoding="async"><i class="obFlash"></i></div><div class="tag"><i></i>An online action RPG<i></i></div></div>
     <p id="menuMsg">Descend the Blighted Hollow, face the Ashen Tyrant, and keep your oath. Free in your browser, alone or with friends.</p>
-    <div id="online" class="hide"><input id="oName" maxlength="16" placeholder="Your name"><input id="oRoom" maxlength="12" placeholder="Party code (optional)" title="Leave blank to join other players"><label id="soloWrap" title="Play by yourself. Nobody can join you until you untick this."><input type="checkbox" id="soloChk"> Solo</label><div id="onlineN"></div></div>
+    <div id="online" class="hide"><input id="oName" maxlength="16" placeholder="Your name"><input id="oRoom" maxlength="12" placeholder="Party code (optional)" title="Leave blank to join other players"><label id="soloWrap" title="Play by yourself. Strangers can't join you; only friends you send an invite link to."><input type="checkbox" id="soloChk"> Solo</label><div id="onlineN"></div></div>
     <div id="kaGo"><button class="big" id="btnNew">Play</button><div id="kaMeta"><b></b><span>Free · No download</span></div></div>
     <div id="kaOpts"><button id="mDaily" title="Same floors for every player today. Type a party code to run it with friends."><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="1.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Daily challenge</button><button id="mParty" title="See every party that is playing right now and join one"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2 20a6 6 0 0 1 12 0M10 20a6 6 0 0 1 12 0"/></svg>Parties</button><button id="mLb"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8M9 17h6"/></svg>Leaderboard</button><button id="mSet"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>Settings</button><label id="hcWrap" class="hide" title="One life only. If this hero dies it is gone for good, and its leaderboard entry gets a skull."><input type="checkbox" id="hcChk"> ☠ Hardcore</label><button id="btnReset" class="hide">Reset this hero</button></div>
   </div>
@@ -517,13 +517,13 @@ body.isz1 .it .ar{width:18px;height:18px;font-size:11px}body.isz2 .it .ar{width:
   </details></div></section>
   <footer id="kaFoot"><div class="kaWrap"><a class="kaBrand" href="#" data-go="top"><img src="brand/ka/mark.png" alt="" width="30" height="30">OATHBYTE</a><nav><a href="#" data-go="top">Play</a><a href="#" data-go="lb">Leaderboard</a><a href="#" data-go="parties">Parties</a><a href="#" data-go="set">Settings</a><a href="#" data-go="ctrls">Controls</a></nav><div class="kaSmall"><span id="kaBuild"></span><span>Made for the browser. Plays with a mouse and keyboard or by touch.</span></div></div></footer>
 </div>
-<script src="js/move.js?v=0077"></script>
-<script src="js/models.js?v=0077"></script>
-<script src="js/gl.js?v=0077"></script>
-<script src="js/data.js?v=0077"></script>
-<script src="js/icons.js?v=0077"></script>
-<script src="js/game.js?v=0077"></script>
-<script src="js/net.js?v=0077"></script>
-<script src="js/ui.js?v=0077"></script>
+<script src="js/move.js?v=0080"></script>
+<script src="js/models.js?v=0080"></script>
+<script src="js/gl.js?v=0080"></script>
+<script src="js/data.js?v=0080"></script>
+<script src="js/icons.js?v=0080"></script>
+<script src="js/game.js?v=0080"></script>
+<script src="js/net.js?v=0080"></script>
+<script src="js/ui.js?v=0080"></script>
 <div id="mtags"></div></body>
 </html>

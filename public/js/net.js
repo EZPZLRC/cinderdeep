@@ -23,7 +23,12 @@ const NET = (() => {
       if (a[5] !== p.a) { p.a = a[5]; p.swing = 0; p.act = a[5] === 1 ? { sk: { type: 'melee' } } : a[5] === 2 ? { sk: { type: 'nova' } } : null; p.spin = a[5] === 3 ? { sk: SKILLS.whirl } : null; if (!CLASSES[p.cls]) p.cls = 'warden'; p.dash = a[5] === 4; }
     }
     for (const id in N.peers) if (!seen[id]) delete N.peers[id];
+    if (N.dropTo) dropIn();
   }
+  // build 0078 (Lee, Nov 15: playable links that drop friends right into your game): joining through an invite link or a party code puts you beside your friend, not at the floor's start
+  function dropIn() { const d = N.dropTo; if (performance.now() / 1000 > d.until) { N.dropTo = null; return; } if (G.state !== 'play' || G.inTown || P.dead || !G.zone || !G.zone.def || G.zone.def.rift) return;
+    let best = null; for (const id in N.peers) { const q = N.peers[id]; if (q.dead || q.town || !(q.x > -900)) continue; if (d.n && String(q.name).toLowerCase() === d.n.toLowerCase()) { best = q; break; } if (!best) best = q; }
+    if (!best) return; N.dropTo = null; if (Math.hypot(best.x - P.x, best.z - P.z) < 10) return; teleportTo(best.id); hint('You dropped in beside ' + best.name + '.'); }
   function handle(m) {
     if (m.t === 's' && m.o !== undefined) N.online = m.o;
     if (m.t === 's' && Array.isArray(m.w)) { N.wb = [m.w[0] | 0, Math.max(1, m.w[1] | 0), m.w[2] ? 1 : 0, m.w[3] | 0]; const now = Date.now(); if (now - (N.wbT || 0) > 5000) { N.wbT = now; try { localStorage.setItem('oathbyte-wb', JSON.stringify([N.wb[0], N.wb[3]])); } catch (e) { } } } /* build 0075: the server-wide world boss count; this device remembers it so a server update does not wipe it */

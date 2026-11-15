@@ -133,6 +133,7 @@ const MOVE_PAGE = '<!doctype html><meta charset="utf-8"><meta name="viewport" co
   + '<script>(function(){var o={},n=0;try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k.indexOf("cinderdeep_")===0){o[k]=localStorage.getItem(k);n++;}}}catch(e){}'
   + 'var u=' + JSON.stringify(MOVE_TO) + '+location.pathname+location.search;if(n){try{u+="#xfer="+btoa(unescape(encodeURIComponent(JSON.stringify(o))));}catch(e){}}document.getElementById("go").href=u;location.replace(u);})();</script>';
 // ---- http + websocket ----
+let INDEX_TXT = '';
 const server = http.createServer((req, res) => {
   let u = decodeURIComponent(req.url.split('?')[0]);
   if (u === '/cinderdeep-server') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ cinderdeep: 1, build: BUILD, players: onlineCount(), upAgo: Date.now() - LIVE_AT, worldBoss: { kills: WB.on ? WB_NEED : WB.k, need: WB_NEED, up: !!WB.on, slain: WB.n } })); /* build 0073: how long this build has been live, by the server's own clock */ return; }
@@ -140,6 +141,11 @@ const server = http.createServer((req, res) => {
   if (u === '/leaderboard') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ build: BUILD, lvl: LB.lvl, deep: LB.deep, rift: LB.rift || [], daily: LB.dlyDate === lbToday() ? LB.dly || [] : [], today: lbToday() })); return; }
   if (u === '/favicon.ico') { res.writeHead(204); res.end(); return; }
   if (MOVE_TO && String(req.headers.host || '').split(':')[0] === MOVE_FROM && (u === '/' || u === '/index.html')) { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(MOVE_PAGE); return; } /* build 0074 */
+  // build 0078 (Lee, Nov 15: playable links): an invite link gets its own preview card in chat apps, naming who sent it and the floor their party is on
+  if (u === '/' && /[?&]from=/.test(req.url)) { const q = new URLSearchParams(req.url.split('?')[1] || ''), who = String(q.get('from') || '').replace(/[^\w -]/g, '').trim().slice(0, 16), code = String(q.get('room') || '').toLowerCase().replace(/[^\w-]/g, '').slice(0, 12), rm = rooms.get(code); if (who) { if (!INDEX_TXT) try { INDEX_TXT = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8'); } catch (e) { }
+    if (INDEX_TXT) { const fl = rm && rm.players.size && rm.ctx.srvFloor ? rm.ctx.srvFloor() : 0, t = who + ' invited you to OathByte', d = (fl > 1 ? 'Tap to join their party on floor ' + fl + '.' : 'Tap to join their party.') + ' A free action RPG you play in your browser or on your phone, no download.';
+      const html = INDEX_TXT.replace('<title>OathByte</title>', '<title>' + t + '</title>').replace('<meta property="og:title" content="OathByte">', '<meta property="og:title" content="' + t + '">').replace(/<meta property="og:description" content="[^"]*">/, '<meta property="og:description" content="' + d + '">');
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(html); return; } } }
   if (u === '/') u = '/index.html'; const f = path.normalize(path.join(PUB, u));
   if (!f.startsWith(PUB)) { res.writeHead(403); res.end(); return; }
   // build 0039: model files and scripts go out gzipped when the browser accepts it (the hero models are about a third smaller)
