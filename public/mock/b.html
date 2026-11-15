@@ -4,7 +4,7 @@
 <link rel="stylesheet" href="mock.css"><style>
 .b .art{transition:opacity .8s;background-position:center 45%;filter:saturate(.9) brightness(.85)}
 .b .shade{background:radial-gradient(46% 42% at 50% 50%,rgba(7,6,10,.62),rgba(7,6,10,.35) 70%,rgba(7,6,10,.8) 100%),linear-gradient(0deg,var(--bg) 2%,rgba(7,6,10,.0) 45%),linear-gradient(180deg,rgba(7,6,10,.7),rgba(7,6,10,0) 22%)}
-.b .inner{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:84px 0 40px}
+.b .inner{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:84px var(--pad) 40px}
 .b .logo{width:min(560px,86vw);filter:drop-shadow(0 14px 34px rgba(0,0,0,.75))}
 .b .eyebrow{justify-content:center;margin:2px 0 34px;color:#e6e8ec;text-shadow:0 2px 8px #000}.b .eyebrow::after{content:"";width:36px;height:1px;background:var(--crim2)}
 .b .cname{font:800 clamp(40px,6vw,76px)/.95 var(--disp);letter-spacing:.14em;color:#fff;text-shadow:0 0 40px color-mix(in srgb,var(--cc) 55%,transparent),0 4px 18px #000}
@@ -25,7 +25,7 @@
 .b .side2 .txtlinks a{justify-content:flex-end}
 @media (max-width:1100px){.b .side,.b .side2{display:none}}
 @media (max-width:760px){
- .b .inner{justify-content:flex-end;padding:70px 0 30px}
+ .b .inner{justify-content:flex-end;padding:70px var(--pad) 30px}
  .b .logo{width:min(320px,82vw)}
  .b .eyebrow{margin-bottom:18vh;font-size:10px;letter-spacing:.32em}
  .b .cname{font-size:42px}
