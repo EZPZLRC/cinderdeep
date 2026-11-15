@@ -26,6 +26,8 @@ function leave(p) {
 }
 // monster life follows the party size as people come and go, not only when a floor is made (build 0022)
 function rescale(room, except) { const r = room.ctx.srvScale(room.players.size); if (r) cast(room, { t: 'scale', r }, except); }
+// build 0034: up to three AI teammates ride on the party host's position update: [class, x, z, rot, moving, gear tier, attacking]
+function cleanAi(a) { if (!Array.isArray(a)) return []; const out = []; for (const t of a.slice(0, 3)) { if (!Array.isArray(t)) continue; const n = t.slice(0, 7).map(v => +v || 0); if (!n.every(isFinite)) continue; out.push([Math.max(0, Math.min(4, n[0] | 0)), Math.round(n[1] * 100) / 100, Math.round(n[2] * 100) / 100, Math.round(n[3] * 100) / 100, n[4] ? 1 : 0, Math.max(1, Math.min(4, n[5] | 0)), n[6] ? 1 : 0]); } return out; }
 function clean(s, n) { return String(s == null ? '' : s).replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, n); }
 function onMessage(p, m) {
   if (!m || typeof m.t !== 'string') return;
@@ -45,7 +47,7 @@ function onMessage(p, m) {
   }
   const room = p.room; if (!room) return;
   switch (m.t) {
-    case 'p': { const x = +m.x, z = +m.z; if (!isFinite(x) || !isFinite(z)) return; const sp = room.ctx.SP[p.id]; sp.x = x; sp.z = z; sp.dead = !!m.dead; sp.lvl = p.lvl = Math.max(1, Math.min(60, m.lvl | 0)); p.st = [p.id, x, z, +m.r || 0, m.mv ? 1 : 0, m.a | 0, Math.max(0, Math.min(100, m.hp | 0)), p.lvl, m.dead ? 1 : 0, clean(m.g, 24)]; p.hc = !!m.hc; if (m.dead && p.hc) p.hcDead = true; lbNote(p, m.pl, m.dp, room, m.fc); break; }
+    case 'p': { const x = +m.x, z = +m.z; if (!isFinite(x) || !isFinite(z)) return; const sp = room.ctx.SP[p.id]; sp.x = x; sp.z = z; sp.dead = !!m.dead; sp.lvl = p.lvl = Math.max(1, Math.min(60, m.lvl | 0)); p.st = [p.id, x, z, +m.r || 0, m.mv ? 1 : 0, m.a | 0, Math.max(0, Math.min(100, m.hp | 0)), p.lvl, m.dead ? 1 : 0, clean(m.g, 24), cleanAi(m.ai)]; p.hc = !!m.hc; if (m.dead && p.hc) p.hcDead = true; lbNote(p, m.pl, m.dp, room, m.fc); break; }
     case 'hit': room.ctx.srvHit(p.id, m); break;
     case 'fx': cast(room, { t: 'fx', k: clean(m.k, 2), x: +m.x || 0, z: +m.z || 0, rot: +m.rot || 0, r: Math.min(80, +m.r || 0), arc: +m.arc || 0, c: m.c | 0 }, p.id); break;
     case 'found': { const s = clean(m.item, 60), now = Date.now(); if (!s || (m.r !== 3 && m.r !== 4) || now - (p.lastFound || 0) < 4000) break; p.lastFound = now; const raw = JSON.stringify({ t: 'found', n: p.name, item: s, r: m.r }); for (const r of rooms.values()) for (const q of r.players.values()) q.conn.sendRaw(raw); break; }

@@ -781,24 +781,65 @@ function updGps(dt) {
 
 // ---------- autoplay ----------
 const BOT = { t: 0, path: null, rv: 0, dodge: 0, kite: 0 };
-// ---- the sellsword: a companion who fights beside you when no other player is in your party ----
-const ALLY = { x: 0, y: 0, z: 0, rot: 0, walk: 0, mv: 0, hurt: 0, act: null, swing: 0, spin: null, dash: false, buffs: null, flaskT: 0, cls: 'ranger', on: false, cd: 0, name: 'Sellsword' };
-const ALLY_SK = { n: 'Sellsword', type: 'ally', el: 'phys', m: .4 };
-// Hand the Sellsword gear: it wears it, and hits harder for every piece (more for rarer, higher-level pieces).
-function allyPower() { return .6 * (1 + .15 * townLv('tower')); } /* 0031: the Sellsword no longer wears gear; it always hits for 60% of you (more with the Watchtower) */
+// ---- AI teammates (build 0034, Lee Nov 15): AI heroes fill your party so you never play alone; one steps aside for each real player who joins ----
+const AI_MAX = 3; // you plus up to three AI heroes makes a party of four
+const AI_ROSTER = { warden: { name: 'Bram', w: 0, el: 'phys', range: 2.4, c: 0xfff0c0, sp: 'slam' }, ranger: { name: 'Sera', w: 5, el: 'phys', range: 9, c: 0xfff0c0, sp: 'volley' }, elementalist: { name: 'Pyra', w: 3, el: 'fire', range: 8.5, c: 0xff7a2a, sp: 'meteor' }, arcanist: { name: 'Ilsa', w: 4, el: 'arc', range: 8.5, c: 0xb48cff, sp: 'orb' }, brawler: { name: 'Tor', w: 7, el: 'phys', range: 2.2, c: 0xffc070, sp: 'sweep' } };
+const AI_ORDER = ['warden', 'ranger', 'elementalist', 'arcanist', 'brawler']; // a tank, an archer and a caster first
+const ALLIES = []; // your own AI teammates (only the party host runs them online; the others see them through the host)
+const ALLY = ALLIES; /* kept for older references */
+const ALLY_SK = { n: 'Teammate', type: 'ally', el: 'phys', m: .23 };
+function allyPower() { return .6 * (1 + .15 * townLv('tower')); } /* the whole AI team together hits for about 60% of you plus 15% (more with the Watchtower) */
+function aiEach() { return allyPower() * 1.15 / AI_MAX; }
 function allyGive() { return false; }
 function allyTake() { }
-function updAlly(dt) {
-  const alone = !G.online || !Object.keys(NET.peers).length, want = G.set.ally !== false && !G.inTown && !P.dead && alone && G.state === 'play';
-  if (!want) { ALLY.on = false; return; } const h = G.hero;
-  if (!ALLY.on || Math.hypot(ALLY.x - P.x, ALLY.z - P.z) > 26) { ALLY.on = true; ALLY.x = P.x - 1.5; ALLY.z = P.z + 1.5; ALLY.cls = h.cls === 'warden' || h.cls === 'brawler' ? 'ranger' : 'warden'; ALLY.gear = null; ALLY_SK.m = allyPower(); }
-  const melee = ALLY.cls === 'warden', range = melee ? 2.4 : 9; let tg = null, bd = 13; for (const e of G.ents) { if (!e.alive || !e.awake) continue; const d = Math.hypot(e.x - ALLY.x, e.z - ALLY.z); if (d < bd && Math.hypot(e.x - P.x, e.z - P.z) < 16) { bd = d; tg = e; } }
-  ALLY.cd -= dt; if (ALLY.swing > 0) ALLY.swing -= dt * 3; let tx = null, tz = null;
-  if (tg) { ALLY.rot = Math.atan2(tg.x - ALLY.x, tg.z - ALLY.z); if (bd > range + tg.r) { tx = tg.x; tz = tg.z; } else if (ALLY.cd <= 0) { ALLY.cd = 1.15; ALLY.swing = 1; ALLY.act = { t: 0, d: .35, sk: ALLY_SK }; if (!melee) G.fx.push({ bolt: 1, x1: ALLY.x, z1: ALLY.z, x2: tg.x, z2: tg.z, life: .12, max: .12, c: GLX.col(0xfff0c0) }); hitEnemy(tg, ALLY_SK, 1, true); } }
-  else { const d = Math.hypot(P.x - ALLY.x, P.z - ALLY.z); if (d > 4) { tx = P.x; tz = P.z; } }
-  if (ALLY.act) { ALLY.act.t += dt; if (ALLY.act.t >= ALLY.act.d) ALLY.act = null; }
-  if (tx !== null) { const dx = tx - ALLY.x, dz = tz - ALLY.z, d = Math.hypot(dx, dz) || 1, st = Math.min(d, P.stats.msT * 1.05 * dt), o = { x: ALLY.x, z: ALLY.z }; moveEnt(o, dx / d * st, dz / d * st, .5); if (Math.hypot(o.x - ALLY.x, o.z - ALLY.z) < st * .2 && Math.hypot(P.x - ALLY.x, P.z - ALLY.z) > 9) { o.x = P.x - 1; o.z = P.z + 1; } ALLY.x = o.x; ALLY.z = o.z; ALLY.rot = tg ? ALLY.rot : Math.atan2(dx, dz); ALLY.walk += st * 1.6; ALLY.mv = 1; } else ALLY.mv = 0;
+function aiGear(cls, r) { // a fixed outfit per class, trimmed by how far you have come
+  const R = AI_ROSTER[cls], plate = cls === 'warden', robe = cls === 'arcanist' || cls === 'elementalist'; let c = '';
+  for (const sl of GSL) { const b = sl === 'weapon' ? R.w : sl === 'offhand' || sl === 'amulet' ? 0 : plate ? 0 : robe && (sl === 'helm' || sl === 'chest') ? 2 : 1; c += b + '' + r; }
+  return gearDecode(c);
 }
+function aiTier() { const l = G.hero ? G.hero.level : 1; return l < 8 ? 1 : l < 20 ? 2 : 3; }
+function aiPick(n) { const mine = G.hero ? G.hero.cls : 'warden'; return AI_ORDER.filter(c => c !== mine).slice(0, n); }
+function aiHumans() { return G.online ? Object.keys(NET.names).filter(i => +i !== NET.id).length : 0; }
+function aiHost() { if (!G.online) return true; const ids = Object.keys(NET.names).map(Number); return !ids.length || NET.id <= Math.min(...ids); } // the lowest id in the party runs the AI
+function aiWant() { if (G.set.ally === false || G.inTown || P.dead || G.state !== 'play' || !aiHost()) return 0; return Math.max(0, AI_MAX - aiHumans()); }
+function mkAlly(cls, i) { const a = { x: P.x - 1.5 + i, y: 0, z: P.z + 1.5 - i * .6, rot: 0, walk: 0, mv: 0, hurt: 0, act: null, swing: 0, spin: null, dash: false, buffs: null, flaskT: 0, cls, on: true, cd: rnd(.2, 1), spT: 3 + i * 2.2, name: AI_ROSTER[cls].name, ai: 1, gear: aiGear(cls, aiTier()), sk: { n: AI_ROSTER[cls].name, type: 'ally', el: AI_ROSTER[cls].el, m: aiEach() } }; return a; }
+function aiSpecial(a, tg) { // each AI hero has one signature move, used every few seconds
+  const R = AI_ROSTER[a.cls], m = aiEach() * 2.2;
+  if (R.sp === 'volley') { const near = G.ents.filter(e => e.alive && e.awake && Math.hypot(e.x - a.x, e.z - a.z) < 11).slice(0, 3); for (const e of near) { G.fx.push({ bolt: 1, x1: a.x, z1: a.z, x2: e.x, z2: e.z, life: .14, max: .14, c: GLX.col(0xd8ff9a) }); hitEnemy(e, { n: R.name, type: 'ally', el: 'phys', m: m * .6 }, 1, true); } return; }
+  const at = R.sp === 'sweep' || R.sp === 'slam' ? [a.x, a.z] : [tg.x, tg.z], rr = R.sp === 'meteor' ? 3 : R.sp === 'slam' ? 3 : 2.6, col = R.sp === 'meteor' ? 0xff7a2a : R.sp === 'orb' ? 0xb48cff : 0xffd0a0;
+  if (R.sp === 'orb' || R.sp === 'meteor') G.fx.push({ bolt: 1, x1: a.x, z1: a.z, x2: at[0], z2: at[1], life: .18, max: .18, c: GLX.col(col) });
+  addArea({ x: at[0], z: at[1], r: rr, delay: R.sp === 'meteor' ? .55 : .25, owner: 'p', sk: { n: R.name, type: 'ally', el: R.el, m }, c: col, proc: 1 });
+}
+function updAlly(dt) {
+  const want = aiWant();
+  if (ALLIES.length !== want) {
+    const before = ALLIES.length, hum = aiHumans(), nm = G.online ? Object.keys(NET.names).filter(i => +i !== NET.id).map(i => NET.names[i]).pop() : '';
+    if (want < before && want > 0 && before && G.aiSeen && hum) hint(ALLIES.slice(want).map(a => a.name).join(' and ') + ' stepped aside to make room for ' + (nm || 'a new player') + '.');
+    else if (want === 0 && before && hum) hint(aiHost() ? 'Your AI teammates stepped aside: your party is full of real players.' : 'Your AI teammates stepped aside: the party leader brings theirs.');
+    if (want > before && G.aiSeen && G.aiHum > hum) hint(aiPick(want).slice(before).map(c => AI_ROSTER[c].name).join(' and ') + ' rejoined your party.');
+    if (!want) ALLIES.length = 0; else { const cl = aiPick(want); ALLIES.length = Math.min(ALLIES.length, want); for (let i = ALLIES.length; i < want; i++) ALLIES.push(mkAlly(cl[i], i)); }
+    if (want && !G.aiSeen) { G.aiSeen = 1; hint(ALLIES.map(a => a.name).join(', ').replace(/, ([^,]*)$/, ' and $1') + ' joined your party. AI teammates step aside when real players join you.'); }
+    if (want || !G.inTown) G.aiHum = hum;
+  }
+  for (let i = 0; i < ALLIES.length; i++) {
+    const A = ALLIES[i], R = AI_ROSTER[A.cls], melee = R.range < 4, range = R.range;
+    if (Math.hypot(A.x - P.x, A.z - P.z) > 26) { A.x = P.x - 1.5 + i; A.z = P.z + 1.5 - i * .6; } // they keep up with you across the floor
+    A.sk.m = aiEach(); let tg = null, bd = 13; for (const e of G.ents) { if (!e.alive || !e.awake) continue; const d = Math.hypot(e.x - A.x, e.z - A.z); if (d < bd && Math.hypot(e.x - P.x, e.z - P.z) < 16) { bd = d; tg = e; } }
+    A.cd -= dt; A.spT -= dt; if (A.swing > 0) A.swing -= dt * 3; let tx = null, tz = null;
+    if (tg) { A.rot = Math.atan2(tg.x - A.x, tg.z - A.z); if (bd > range + tg.r) { tx = tg.x; tz = tg.z; } else if (A.spT <= 0) { A.spT = rnd(6, 8.5); A.swing = 1; A.act = { t: 0, d: .45, sk: { type: melee ? 'nova' : 'ally' } }; aiSpecial(A, tg); } else if (A.cd <= 0) { A.cd = rnd(1.05, 1.3); A.swing = 1; A.act = { t: 0, d: .35, sk: A.sk }; if (!melee) G.fx.push({ bolt: 1, x1: A.x, z1: A.z, x2: tg.x, z2: tg.z, life: .12, max: .12, c: GLX.col(R.c) }); hitEnemy(tg, A.sk, 1, true); } }
+    else { // fall in around you: each teammate keeps its own spot
+      const ang = P.rot + Math.PI + (i - (ALLIES.length - 1) / 2) * .9, fx = P.x + Math.sin(ang) * 2.6, fz = P.z + Math.cos(ang) * 2.6; if (Math.hypot(fx - A.x, fz - A.z) > 1.2) { tx = fx; tz = fz; } }
+    if (A.act) { A.act.t += dt; if (A.act.t >= A.act.d) A.act = null; }
+    if (tx !== null) { const dx = tx - A.x, dz = tz - A.z, d = Math.hypot(dx, dz) || 1, st = Math.min(d, P.stats.msT * 1.08 * dt), o = { x: A.x, z: A.z }; moveEnt(o, dx / d * st, dz / d * st, .5); if (Math.hypot(o.x - A.x, o.z - A.z) < st * .2 && Math.hypot(P.x - A.x, P.z - A.z) > 9) { o.x = P.x - 1; o.z = P.z + 1; } A.x = o.x; A.z = o.z; A.rot = tg ? A.rot : Math.atan2(dx, dz); A.walk += st * 1.6; A.mv = 1; } else A.mv = 0;
+    for (let j = 0; j < i; j++) { const B = ALLIES[j], dx = A.x - B.x, dz = A.z - B.z, d = Math.hypot(dx, dz); if (d < .9 && d > .001) { const o = { x: A.x, z: A.z }; moveEnt(o, dx / d * (.9 - d) * .5, dz / d * (.9 - d) * .5, .5); A.x = o.x; A.z = o.z; } } // no stacking on one spot
+  }
+  // the party host's AI teammates, seen by everyone else in the party (positions ride on the host's updates)
+  if (G.online) for (const id in NET.peers) { const q = NET.peers[id], src = Array.isArray(q.aiS) ? q.aiS : []; q.aiH = q.aiH || []; q.aiH.length = Math.min(q.aiH.length, src.length);
+    for (let i = 0; i < src.length; i++) { const s = src[i], cls = AI_ORDER[s[0]] || 'warden'; let o = q.aiH[i]; if (!o || o.cls !== cls) { o = q.aiH[i] = { x: s[1], y: 0, z: s[2], rot: s[3], walk: 0, mv: 0, hurt: 0, act: null, swing: 0, spin: null, dash: false, buffs: null, flaskT: 0, cls, ai: 1, name: AI_ROSTER[cls].name, gear: aiGear(cls, s[5] | 0 || 1) }; }
+      const k = Math.min(1, dt * 10), ox = o.x, oz = o.z; o.x += (s[1] - o.x) * k; o.z += (s[2] - o.z) * k; o.rot = s[3]; const mvd = Math.hypot(o.x - ox, o.z - oz); o.walk += mvd * 1.6; o.mv = s[4] ? 1 : 0; if (s[6] && !o.act) { o.swing = 1; o.act = { t: 0, d: .35, sk: { type: 'ally' } }; } if (o.act) { o.act.t += dt; if (o.act.t >= o.act.d) o.act = null; } if (o.swing > 0) o.swing -= dt * 3; } }
+}
+function aiNet() { return ALLIES.map(a => [Math.max(0, AI_ORDER.indexOf(a.cls)), Math.round(a.x * 100) / 100, Math.round(a.z * 100) / 100, Math.round(a.rot * 100) / 100, a.mv ? 1 : 0, aiTier(), a.act ? 1 : 0]); }
+function aiAll() { const out = ALLIES.slice(); if (G.online && !G.inTown) for (const id in NET.peers) { const q = NET.peers[id]; if (q.aiH) out.push(...q.aiH); } return out; } // every AI teammate you can see
 const NPCV = { x: 0, y: 0, z: 0, rot: 0, walk: 0, mv: 0, hurt: 0, act: null, swing: 0, spin: null, dash: false, buffs: null, flaskT: 0, cls: 'ranger' };
 function itemScore(it) { return it.dmg ? (it.dmg[0] + it.dmg[1]) / 2 * it.spd * (1 + it.aff.length * .06) : (it.armor || 0) + it.ilvl * (2 + it.aff.length * 2) + (it.power ? it.ilvl * 4 : 0); }
 function botField() {
@@ -1476,7 +1517,7 @@ function drawWorld() {
   const col = GLX.col, Z = G.zone;
   const sh = G.set.shake ? G.shake * G.shake * 1.5 : 0, sx = (Math.random() - .5) * sh, sz = (Math.random() - .5) * sh;
   GLX.env.player = [P.x, 0, P.z]; GLX.env.t = G.time; const zf = innerWidth < innerHeight ? 1.42 : 1; /* portrait phones see a little more around the hero */ GLX.setCamera([P.x + sx, 25 * G.zoom * zf + sz, P.z + 18 * G.zoom * zf], [P.x + sx, 1, P.z + sz], .66);
-  if (ALLY.on) drawHero(ALLY, false); drawPet(); if (G.inTown) drawTownLife(); else drawQuestBits();
+  for (const a of aiAll()) drawHero(a, false); drawPet(); if (G.inTown) drawTownLife(); else drawQuestBits();
   if (!G.inTown && G.zone.torches) { const tc = GLX.col(0xffa040), tw = GLX.col(0xffe0a0); for (const t of G.zone.torches) { if (Math.abs(t[0] - P.x) > 26 || Math.abs(t[2] - P.z) > 26) continue; const fl = .85 + Math.sin(G.time * 11 + t[0]) * .08 + Math.sin(G.time * 17.3 + t[2]) * .07; GLX.obj('glow', 'cone', t[0], t[1] + .12 * fl, t[2], 0, .2 * fl, .42 * fl, .2 * fl, tc, 1.6, 1); GLX.obj('glow', 'cone', t[0], t[1] + .08, t[2], 0, .1, .26 * fl, .1, tw, 2.2, 1); GLX.halo(t[0], t[1] + .1, t[2], 1.6 * fl, tc, .5); GLX.halo(t[0], .06, t[2] + .9, 3.4 * fl, tc, .14); } }
   { const gl = G.hero.goals, nx = gl && !gl.all ? GOALS.find(g => !gl[g[0]]) : null; let tx = null; // tutorial pointer in the world: a bouncing arrow over what to go for
     if (nx && !G.inTown && !P.dead) { if (nx[0] === 'kill') { let bd = 26; for (const e of G.ents) { if (!e.alive || e.boss) continue; const d = Math.hypot(e.x - P.x, e.z - P.z); if (d < bd) { bd = d; tx = [e.x, e.z, 2.6 * e.sc + .8]; } } }

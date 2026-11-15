@@ -4,7 +4,7 @@ A 3D online action RPG that runs in the browser, with its own multiplayer server
 
 Play it at https://cinderdeep.onrender.com.
 
-The build number shows in the bottom right corner of the game, in Settings, and at /cinderdeep-server on the live site, so you can tell which version is running. Every new build starts a new season: heroes reset.
+The build number shows in the bottom right corner of the game, in Settings, and at /cinderdeep-server on the live site, so you can tell which version is running. Heroes carry over from build to build.
 
 ## How the live game gets updated
 
@@ -22,6 +22,7 @@ The server has no dependencies.
 
 - On the menu, pick a hero and press Play. With the party code left blank you join other players automatically. Type a code to play with friends (up to 10 in a party), or tick Solo to play alone.
 - In the game, the Parties button lists everyone playing; tap Join to move to their party. Leave party puts you on your own.
+- AI teammates: when your party has room, up to three AI heroes fight beside you (a party of four). One steps aside for each real player who joins, and they come back when players leave. The party leader runs them and everyone in the party sees them. Turn them off in Settings.
 - Monsters live on the server, so everyone in a party fights the same ones. Their life scales with party size.
 - Loot is personal: every player in a kill gets their own drops. Give an item to the nearest player from the bag.
 - Town is private to each player. The town portal returns you to your party. The Rift Stone in town opens a timed floor for the whole party.
