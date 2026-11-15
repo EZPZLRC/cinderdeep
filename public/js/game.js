@@ -59,6 +59,7 @@ const SFX = (() => {
         case 'flask': tone(300, .3, 'sine', .12, 2); break;
         case 'boss': if (smp('boss', .7)) { smp('big_kill', .4, .7, .15); tone(55, 1.4, 'sawtooth', .07, .7); } else { tone(55, 1.4, 'sawtooth', .16, .7); noise(1.2, .12, 240); } break;
         case 'shrine': [440, 554, 659].forEach((f, i) => tone(f, .8, 'sine', .09, 1, i * .05)); break;
+        case 'bossdie': if (smp('big_kill', .8, .55)) { smp('boss', .6, .7, .1); smp('impact', .7, .5); } else { tone(45, 2, 'sawtooth', .2, .5); noise(1.6, .2, 300); } tone(38, 2.2, 'sine', .25, .6); break;
         case 'die': smp('big_kill', .5, .6); tone(200, 1, 'sawtooth', .14, .25); break;
         case 'warn': tone(70, .55, 'sawtooth', .07, 1.9); noise(.45, .06, 700); tone(140, .3, 'sine', .05, 1.5, .12); break; // build 0048: a heavy blow is being marked
         case 'evade': tone(880, .12, 'sine', .05, 1.4); tone(1320, .1, 'sine', .03, 1.2, .05); break;
@@ -1297,6 +1298,8 @@ function drawTele(a, c, k, fl) { const cw = GLX.col(0xffd0a0), L = areaLines(a);
   for (const sd of [-1, 1]) { const q = a.ang + a.arc * sd; GLX.obj('glow', 'box', a.x + Math.sin(q) * a.r / 2, .09, a.z + Math.cos(q) * a.r / 2, q, .12, .02, a.r, c, 1 + fl, .9, 0); } }
 function update(dt) {
   if (typeof UI !== 'undefined' && UI.panelOpen && UI.panelOpen()) { if (!G.online) return; G.menuHold = true; P.iframes = Math.max(P.iframes || 0, .4); P.move = P.atk = null; } else G.menuHold = false; // menus pause the game; online, where the world cannot stop, they shield you instead
+  if (G.cine) { const c = G.cine; c.t += dt; if (c.t >= c.dur) G.cine = null; else if (!G.online) dt *= c.kind === 'intro' ? .3 : .15 + .85 * Math.pow(c.t / c.dur, 2); } /* build 0053: boss moments slow the world (solo only, so online play stays in step) */
+  if (G.boss && G.boss.alive && G.boss.awake && !G.inTown && !G.cine) { const bk = G.zone && G.zone.def ? G.zone.def.seed + ':' + (G.zone.def.depth || 0) : ''; if (G.cineKey !== bk) { G.cineKey = bk; const b = G.boss; G.cine = { kind: 'intro', t: 0, dur: 2.6, x: b.x, z: b.z, e: b }; ring(b.x, b.z, .5, 9, .9, (b.md && b.md.e) || 0xff5a2a); burst(b.x, 1.5, b.z, (b.md && b.md.c2) || 0x6a4a2a, 24, 8); G.shake = Math.min(.7, (G.shake || 0) + .4); } }
   if (G.hitStop > 0) { G.hitStop -= dt; dt *= .12; } // a heavy blow lands: the world holds its breath for a few frames
   if (G.auto && G.hero && G.hero.picks) { const i = pendingPick(G.hero); if (i >= 0) pickSkill(i, skillTiers(G.hero.cls)[i][Math.random() * 2 | 0]); }
   SFX.ambTick(dt); SFX.fight(fightHeat(dt), dt); updAlly(dt); G.time += dt; if (G.shake > 0) G.shake = Math.max(0, G.shake - dt * 1.8);
@@ -1309,7 +1312,7 @@ function update(dt) {
   if (!G.online) for (let i = 0; i < act.length; i++) { const a = act[i]; for (let j = i + 1; j < act.length; j++) { const b = act[j], dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz), m = a.r + b.r; if (d < m && d > .001) { const p = (m - d) * .5, nx = dx / d * p, nz = dz / d * p; if (!a.boss) moveEnt(a, -nx, -nz, a.r * .8); if (!b.boss) moveEnt(b, nx, nz, b.r * .8); } }
     const dx = a.x - P.x, dz = a.z - P.z, d = Math.hypot(dx, dz), m = a.r + .5; if (d < m && d > .001 && !a.boss && !P.dash) moveEnt(a, dx / d * (m - d), dz / d * (m - d), a.r * .8); }
   if (G.ents.length && G.ents.some(e => !e.alive && e.deadT <= 0)) G.ents = G.ents.filter(e => e.alive || e.deadT > 0);
-  if (G.boss && !G.boss.alive) G.boss = null;
+  if (G.boss && !G.boss.alive) { const b = G.boss; G.cine = { kind: 'death', t: 0, dur: 2.4, x: b.x, z: b.z }; G.hitStop = 0; G.shake = .7; G.fx.push({ flash: 1, x: b.x, y: 1.5 * (b.sc || 1), z: b.z, r: 9, life: .5, max: .5, c: GLX.col(0xfff0d0) }); ring(b.x, b.z, .5, 14, 1.2, 0xffd8a0); ring(b.x, b.z, .5, 8, .8, (b.md && b.md.e) || 0xff5a2a); SFX.play('bossdie'); G.boss = null; } /* build 0053: the final blow lands in slow motion */
   // projectiles (enemy)
   for (let i = G.projs.length - 1; i >= 0; i--) { const p = G.projs[i]; p.x += p.vx * dt; p.z += p.vz * dt; p.life -= dt; let dead = p.life <= 0 || cellAt(p.x, p.z); if (!dead && !p.peer && !P.dead && Math.hypot(p.x - P.x, p.z - P.z) < p.r + .6 && P.y < 1.5) { if (!p.vis) dmgPlayer(p.dmg, p.el, null); dead = true; } if (dead) { burst(p.x, 1.2, p.z, 0xffffff, 3, 3); G.projs.splice(i, 1); } }
   for (let i = G.timers.length - 1; i >= 0; i--) { const t = G.timers[i]; t.t -= dt; if (t.t <= 0) { G.timers.splice(i, 1); t.fn(); } }
@@ -1767,7 +1770,8 @@ const BEAM = [0, 3.2, 6.5, 12, 18], RC = [0xc9c9c9, 0x5a8cff, 0xffd84a, 0xff8a2a
 function drawWorld() {
   const col = GLX.col, Z = G.zone;
   const sh = G.set.shake ? G.shake * G.shake * 1.5 : 0, sx = (Math.random() - .5) * sh, sz = (Math.random() - .5) * sh;
-  GLX.env.player = [P.x, 0, P.z]; GLX.env.t = G.time; GLX.env.pt = null; const zf = innerWidth < innerHeight ? 1.42 : 1; /* portrait phones see a little more around the hero */ GLX.setCamera([P.x + sx, 25 * G.zoom * zf + sz, P.z + 18 * G.zoom * zf], [P.x + sx, 1, P.z + sz], .66);
+  GLX.env.player = [P.x, 0, P.z]; GLX.env.t = G.time; GLX.env.pt = null; const zf = innerWidth < innerHeight ? 1.42 : 1; /* portrait phones see a little more around the hero */ let cx = P.x, cz = P.z, zm = 1; if (G.cine) { const c = G.cine, u = Math.min(1, c.t / c.dur), sm = v => v * v * (3 - 2 * v); if (c.e && c.e.alive) { c.x += (c.e.x - c.x) * .1; c.z += (c.e.z - c.z) * .1; } const k = c.kind === 'intro' ? sm(Math.min(1, u / .22)) * (1 - sm(Math.max(0, (u - .72) / .28))) : 1 - sm(Math.max(0, (u - .45) / .55)), pull = c.kind === 'intro' ? .8 : .55; cx += (c.x - P.x) * pull * k; cz += (c.z - P.z) * pull * k; zm = 1 - (c.kind === 'intro' ? .34 : .3) * k; } /* build 0053: the camera swings to the boss when it wakes and when it falls */
+  GLX.setCamera([cx + sx, 25 * G.zoom * zf * zm + sz, cz + 18 * G.zoom * zf * zm], [cx + sx, 1, cz + sz], .66);
   for (const a of aiAll()) drawHero(a, false); drawPet(); if (G.inTown) drawTownLife(); else drawQuestBits();
   if (!G.inTown && G.zone.torches) { const tc = GLX.col(0xffa040), tw = GLX.col(0xffe0a0); for (const t of G.zone.torches) { if (Math.abs(t[0] - P.x) > 26 || Math.abs(t[2] - P.z) > 26) continue; const fl = .85 * fireFl(G.time, t[0] + t[2] * 1.7); if (Math.abs(t[0] - P.x) < 18 && Math.abs(t[2] - P.z) < 18) GLX.light(t[0], t[1] + .3, t[2] + .9, 10, tc, 1.5 * fl); /* build 0052: wall torches light the stone around them */ GLX.obj('glow', 'cone', t[0], t[1] + .12 * fl, t[2], 0, .2 * fl, .42 * fl, .2 * fl, tc, 1.6, 1); GLX.obj('glow', 'cone', t[0], t[1] + .08, t[2], 0, .1, .26 * fl, .1, tw, 2.2, 1); GLX.halo(t[0], t[1] + .1, t[2], 1.6 * fl, tc, .5); GLX.halo(t[0], .06, t[2] + .9, 3.4 * fl, tc, .14); } }
   { const gl = G.hero.goals, nx = gl && !gl.all ? GOALS.find(g => !gl[g[0]]) : null; let tx = null; // tutorial pointer in the world: a bouncing arrow over what to go for
