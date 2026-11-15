@@ -64,6 +64,7 @@ body.tj .sk:active{box-shadow:inset 0 2px 1px rgba(255,255,255,.28),inset 0 -3px
 #ctl button::before{background:linear-gradient(180deg,#ffffff,#b9bec8 60%,#5a5e68)}
 #ctl button:hover{background:linear-gradient(180deg,rgba(255,90,42,.2),rgba(140,20,10,.16))!important;border-color:#8a909c!important;box-shadow:inset 0 0 9px rgba(255,80,40,.28)!important}
 #ctl button:hover::before,#tbtns button:active::before{background:linear-gradient(180deg,#fff,#ffb49a 50%,#e0321f)}
+@media (max-width:760px),(max-height:480px){#ctl button{background:rgba(12,12,16,.75);border-color:#4a4f5b}}
 #tbtns button{background:radial-gradient(circle at 50% 35%,#363941,#101114);border:1px solid #6a707c;color:#e6e9ee}
 #tbtns button::before{background:linear-gradient(180deg,#ffffff,#c4c9d2 55%,#5a5e68)}
 #mute{background:rgba(12,12,16,.82);border:1px solid #4a4f5b}
