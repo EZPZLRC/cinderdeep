@@ -1,5 +1,5 @@
 'use strict';
-// Online play: talks to the Cinderdeep dedicated server when the game is served by it.
+// Online play: talks to the Oathbyte dedicated server when the game is served by it.
 const NET = (() => {
   let ws = null, acc = 0; const N = { on: false, id: 0, peers: {}, names: {}, cls: {}, room: '' }, r2 = v => Math.round(v * 100) / 100;
   const STN = ['chase', 'wind', 'rec', 'charge'], WT = ['sword', 'axe', 'maul', 'staff', 'bow', 'fist'], ISL = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring'];
@@ -66,7 +66,7 @@ const NET = (() => {
     if (!me) { if (N.retry > 0) drop(null); else UI.netFail('Could not reach the server.'); return; }
     const kill = () => { if (ws !== me) return; me.onclose = me.onerror = me.onmessage = null; try { me.close(); } catch (e) { } drop(me); };
     const t1 = setTimeout(() => { if (ws === me && me.readyState !== 1) kill(); }, 8000); /* never opened */
-    me.onopen = () => { clearTimeout(t1); const b = N.retry > 0 && N.back; N.send({ t: 'join', name, room, lvl: G.hero.level, cls: G.hero.cls, dep: b && b.d ? b.d : 0, sd: b && b.seed, px: b ? Math.round(P.x * 10) / 10 : undefined, pz: b ? Math.round(P.z * 10) / 10 : undefined, clr: b && b.clr ? 1 : 0 });
+    me.onopen = () => { clearTimeout(t1); const b = N.retry > 0 && N.back; N.send({ t: 'join', name, room, lvl: G.hero.level, cls: G.hero.cls, tier: tierPick(G.hero), dep: b && b.d ? b.d : 0, sd: b && b.seed, px: b ? Math.round(P.x * 10) / 10 : undefined, pz: b ? Math.round(P.z * 10) / 10 : undefined, clr: b && b.clr ? 1 : 0 });
       setTimeout(() => { if (ws === me && !N.gotZone) kill(); }, 10000); /* opened but the server never sent the floor */ };
     me.onmessage = ev => { if (ws !== me) return; let m; try { m = JSON.parse(ev.data); } catch (e) { return; } handle(m); };
     me.onclose = () => { clearTimeout(t1); if (ws !== me) return; drop(me); };

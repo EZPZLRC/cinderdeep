@@ -4,7 +4,7 @@ const STARTED = Date.now(); // build 0073 (Lee): the build label says how long a
 // started much later (it slept and woke up), fall back to the push time plus a typical deploy, so the label never resets to "just now".
 const BUILT_AT = +((/const BUILT_AT = (\d+)/.exec(require('fs').readFileSync(require('path').join(__dirname, 'public', 'js', 'data.js'), 'utf8')) || [])[1] || 0);
 const LIVE_AT = BUILT_AT && STARTED - BUILT_AT > 20 * 60000 ? BUILT_AT + 4 * 60000 : STARTED;
-// Cinderdeep dedicated server. No dependencies: plain Node 18+.
+// Oathbyte dedicated server. No dependencies: plain Node 18+.
 // Serves the game from ./public and runs one shared world per party over WebSockets at /ws.
 const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto'), vm = require('vm');
 const PORT = process.env.PORT || 3000, PUB = process.env.PUBLIC_DIR || path.join(__dirname, 'public');
@@ -53,6 +53,7 @@ function onMessage(p, m) {
     if (room.players.size >= PARTY_MAX) { p.conn.send({ t: 'error', m: 'That party is full (' + PARTY_MAX + ' players).' }); return; }
     p.room = room; room.players.set(p.id, p); room.emptyAt = 0; p.st = null;
     p.conn.send({ t: 'hello', id: p.id, room: code });
+    if (fresh) room.ctx.srvTier(m.tier | 0); /* build 0074: a new party plays at the difficulty its first hero picked */
     if (fresh) p.conn.send(((m.dep | 0) > 1 || (m.sd > 0 && (m.dep | 0) >= 1)) && typeof room.ctx.srvResume === 'function' ? room.ctx.srvResume(p.lvl, 1, m.dep | 0, +m.sd || 0, +m.px, +m.pz, !!m.clr) : room.ctx.srvNewZone(p.lvl, 1)); else { rescale(room, p.id); p.conn.send(room.ctx.srvState()); }
     room.ctx.SP[p.id] = { id: p.id, x: -999, z: -999, dead: true, lvl: p.lvl };
     cast(room, { t: 'join', id: p.id, name: p.name }, p.id); cast(room, roster(room)); return;
@@ -64,6 +65,7 @@ function onMessage(p, m) {
     case 'fx': cast(room, { t: 'fx', k: clean(m.k, 2), x: +m.x || 0, z: +m.z || 0, rot: +m.rot || 0, r: Math.min(80, +m.r || 0), arc: +m.arc || 0, c: m.c | 0 }, p.id); break;
     case 'found': { const s = clean(m.item, 60), now = Date.now(); if (!s || (m.r !== 3 && m.r !== 4) || now - (p.lastFound || 0) < 4000) break; p.lastFound = now; const raw = JSON.stringify({ t: 'found', n: p.name, item: s, r: m.r }); for (const r of rooms.values()) for (const q of r.players.values()) q.conn.sendRaw(raw); break; }
     case 'chat': { const s = clean(m.m, 140), now = Date.now(); if (!s || now - (p.lastChat || 0) < 700) break; p.lastChat = now; const bd = typeof m.b === 'string' && m.b.length <= 2 && /^[\u2600-\u27BF\u2580-\u25FF\u2654-\u265F]$/.test(m.b) ? m.b : undefined; if (m.g) { const raw = JSON.stringify({ t: 'chat', n: p.name, m: s, g: 1, b: bd }); for (const r of rooms.values()) for (const q of r.players.values()) q.conn.sendRaw(raw); } else cast(room, { t: 'chat', n: p.name, m: s, b: bd }); break; }
+    case 'tier': { const v = room.ctx.srvTier(m.v | 0); cast(room, { t: 'note', m: p.name + ' set the difficulty to ' + room.ctx.srvTierName(v) + ' from the next floor.' }); break; } /* build 0074 */
     case 'sync': p.conn.send(Object.assign(room.ctx.srvState(), { sync: 1 })); break;
     case 'prev': if (room.ctx.srvCleared() || room.players.size === 1) { let lv = 1; for (const q of room.players.values()) lv = Math.max(lv, q.lvl); cast(room, room.ctx.srvNewZone(lv, room.players.size, 'prev')); } break;
     case 'feedback': { const s = clean(m.m, 600), now = Date.now(); if (!s || now - (p.lastFb || 0) < 20000) break; p.lastFb = now; console.log('[FEEDBACK] ' + new Date().toISOString() + ' build ' + BUILD + ' from ' + p.name + ' (level ' + p.lvl + ' ' + p.cls + '): ' + s); p.conn.send({ t: 'chat', n: '', m: 'Thank you. Your feedback was sent.', s: 1 }); break; }
@@ -105,6 +107,13 @@ function lbNote(p, pl, dp, room, fc) {
   lbPut(LB.lvl, e, lvl * 100000 + (lvl >= 60 ? par : 0)); if (cl > 0) lbPut(LB.deep, e, cl);
   if (room && room.daily) { const td = lbToday(); if (room.daily === td) { if (LB.dlyDate !== td) { LB.dlyDate = td; LB.dly = []; } if (d > 1) lbPut(LB.dly, Object.assign({}, e, { d: d - 1 }), d - 1); } }
 }
+// build 0074: moving to the Oathbyte address. Once MOVE_TO is set, the old address answers its front page with a tiny page that reads this
+// browser's heroes and sends the player on with the heroes in the link (after the #, so no server sees them). Empty: nothing changes.
+const MOVE_TO = 'https://oathbyte.onrender.com', MOVE_FROM = 'cinderdeep.onrender.com';
+const MOVE_PAGE = '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Oathbyte has moved</title><body style="background:#121014;color:#e8dcc8;font:16px sans-serif;padding:24px">'
+  + '<p>Cinderdeep is now Oathbyte, at <a style="color:#e0a040" id="go" href="' + MOVE_TO + '/">' + MOVE_TO.replace('https://', '') + '</a>. Taking you there with your heroes…</p>'
+  + '<script>(function(){var o={},n=0;try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k.indexOf("cinderdeep_")===0){o[k]=localStorage.getItem(k);n++;}}}catch(e){}'
+  + 'var u=' + JSON.stringify(MOVE_TO) + '+location.pathname+location.search;if(n){try{u+="#xfer="+btoa(unescape(encodeURIComponent(JSON.stringify(o))));}catch(e){}}document.getElementById("go").href=u;location.replace(u);})();</script>';
 // ---- http + websocket ----
 const server = http.createServer((req, res) => {
   let u = decodeURIComponent(req.url.split('?')[0]);
@@ -112,6 +121,7 @@ const server = http.createServer((req, res) => {
   if (u === '/parties') { const list = []; for (const [code, r] of rooms) { if (!r.players.size || /^solo/.test(code)) continue; const pl = [...r.players.values()].map(q => ({ n: q.name, c: q.cls, l: q.lvl | 0 })); list.push({ code, players: pl, floor: r.ctx.srvFloor ? r.ctx.srvFloor() : 1, daily: !!r.daily }); } list.sort((a, b) => b.players.length - a.players.length); res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ parties: list.slice(0, 40), max: PARTY_MAX })); return; } // party browser (build 0021)
   if (u === '/leaderboard') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ build: BUILD, lvl: LB.lvl, deep: LB.deep, rift: LB.rift || [], daily: LB.dlyDate === lbToday() ? LB.dly || [] : [], today: lbToday() })); return; }
   if (u === '/favicon.ico') { res.writeHead(204); res.end(); return; }
+  if (MOVE_TO && String(req.headers.host || '').split(':')[0] === MOVE_FROM && (u === '/' || u === '/index.html')) { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(MOVE_PAGE); return; } /* build 0074 */
   if (u === '/') u = '/index.html'; const f = path.normalize(path.join(PUB, u));
   if (!f.startsWith(PUB)) { res.writeHead(403); res.end(); return; }
   // build 0039: model files and scripts go out gzipped when the browser accepts it (the hero models are about a third smaller)
@@ -152,7 +162,7 @@ setInterval(() => { for (const c of conns) { if (!c.alive) { c.close(); continue
 // build 0070: when the host restarts the server for an update, tell everyone first so they reconnect at once to the new one, on the same floor and spot
 let closing = false; function shutdown() { if (closing) return; closing = true; const bye = JSON.stringify({ t: 'bye' }); for (const c of conns) c.sendRaw(bye); setTimeout(() => { for (const c of conns) c.close(); process.exit(0); }, 800); }
 process.on('SIGTERM', shutdown); process.on('SIGINT', shutdown);
-server.listen(PORT, () => console.log('Cinderdeep server build ' + BUILD + ' listening on port ' + PORT));
+server.listen(PORT, () => console.log('Oathbyte server build ' + BUILD + ' listening on port ' + PORT));
 // Keep the free host awake (Lee approved a 10-minute ping, Nov 12). GitHub's scheduled ping only ran a few times a day,
 // so the server also calls its own public address every 10 minutes. Render sets RENDER_EXTERNAL_URL; locally SELF_PING_URL can be used.
 const SELF_URL = process.env.SELF_PING_URL || process.env.RENDER_EXTERNAL_URL;

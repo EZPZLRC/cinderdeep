@@ -239,11 +239,11 @@ function itemValue(it) { return Math.round((5 + it.ilvl * 3) * [1, 2.5, 6, 25, 8
 function luck() { return (P.stats.mf || 0) + Math.min(G.streak, 50) * 2; }
 const MYTHIC_CHANCE = .05; // a Legendary drop has this chance to be Mythic instead; no other drop rate moves
 function rollRarity(bonus) {
-  const mf = luck() / 100; const w = [62, 30 * (1 + mf), 7.5 * (1 + mf * 1.2) * (1 + bonus), .35 * (1 + mf * 1.5) * (1 + bonus * 2)]; /* build 0034 (Lee, Nov 14: make loot scarcer): legendary weight .5 -> .35, about one legendary every 2.5 floors instead of every 1.4 */
+  const mf = luck() / 100; const w = [62, 30 * (1 + mf), 7.5 * (1 + mf * 1.2) * (1 + bonus), .35 * (1 + mf * 1.5) * (1 + bonus * 2) * tierOf().leg]; /* build 0074: higher tiers raise only the Legendary (and so Mythic) chance */ /* build 0034 (Lee, Nov 14: make loot scarcer): legendary weight .5 -> .35, about one legendary every 2.5 floors instead of every 1.4 */
   let r = Math.random() * (w[0] + w[1] + w[2] + w[3]); for (let i = 0; i < 4; i++) { if (r < w[i]) return i === 3 && Math.random() < MYTHIC_CHANCE ? 4 : i; r -= w[i]; } return 0;
 }
 function dropItem(x, z, it, exact) { const a = rnd(6.28), d = exact ? 0 : rnd(.6, 1.8); let dx = x + Math.cos(a) * d, dz = z + Math.sin(a) * d; if (blocked(dx, dz, .3)) { dx = x; dz = z; } G.drops.push({ x: dx, z: dz, ox: x, oz: z, item: it, t: 0, spin: rnd(-1, 1) }); if (it.rar >= 3) jackpot(it); else if (it.rar > 0) SFX.play('drop' + it.rar); }
-function dropGold(x, z, amt, exact) { const a = rnd(6.28), d = exact ? 0 : rnd(.4, 1.5); let dx = x + Math.cos(a) * d, dz = z + Math.sin(a) * d; if (blocked(dx, dz, .3)) { dx = x; dz = z; } G.drops.push({ x: dx, z: dz, gold: Math.max(1, Math.round(amt * (1 + (P.stats.gf || 0) / 100) * (1 + .15 * townLv('guild')))), t: 0 }); }
+function dropGold(x, z, amt, exact) { const a = rnd(6.28), d = exact ? 0 : rnd(.4, 1.5); let dx = x + Math.cos(a) * d, dz = z + Math.sin(a) * d; if (blocked(dx, dz, .3)) { dx = x; dz = z; } G.drops.push({ x: dx, z: dz, gold: Math.max(1, Math.round(amt * (1 + (P.stats.gf || 0) / 100) * (1 + .15 * townLv('guild')) * (1 + tierOf().gold / 100))), t: 0 }); }
 /* build 0034 (Lee, Nov 14): a guardian's loot no longer lands on the gate that opens where it fell. It bursts out in a fan toward you, 3.6 to 5.6 steps from the gate, so picking it up never brings up the "next floor?" question */
 function lootFan(x, z, i, n) { const toP = typeof P !== 'undefined' && isFinite(P.x) ? Math.atan2(P.z - z, P.x - x) : rnd(6.28), spread = n > 1 ? 2.4 : 0, a0 = toP + (n > 1 ? (i / (n - 1) - .5) * spread : 0), R0 = 3.6 + (i % 3);
   for (const R of [R0, R0 - .6, R0 + .8, 3.4, 3]) for (const da of [0, .35, -.35, .8, -.8, 1.4, -1.4, 2.2, -2.2, 3.14]) { const a = a0 + da, px = x + Math.cos(a) * R, pz = z + Math.sin(a) * R; if (!blocked(px, pz, .4) && los(x, z, px, pz)) return [px, pz]; } return null; }
@@ -297,6 +297,7 @@ function calcStats(eq) {
   }
   for (const b of P.buffs) for (const k in b.s) s[k] = (s[k] || 0) + b.s[k];
   const pg = h.pg || {}; s.dmg += pg.dmg || 0; s.lifePct += pg.life || 0; s.armorPct += (pg.armor || 0) * 2; s.critDmg += (pg.crit || 0) * 2; s.mf += pg.mf || 0; s.ms += Math.min(25, pg.ms || 0);
+  { const ts = talBuild().s; for (const k in ts) s[k] = (s[k] || 0) + ts[k]; } /* build 0074: talent cards */
   s.wmin = wmin; s.wmax = wmax; s.wspd = wspd;
   s.maxLife = Math.round((c.life + h.level * c.lifeLv + s.life) * (1 + s.lifePct / 100)); s.maxMana = c.res.max;
   s.armorT = Math.round((arm + s.armor + c.armor * h.level) * (1 + s.armorPct / 100));
@@ -330,7 +331,7 @@ function gainXp(v) { if (v > 0 && G.hero && G.hero.level < MAX_LEVEL) { G.xpPop 
   h.xp += v;
   while (h.level < MAX_LEVEL && h.xp >= xpNeed(h.level)) {
     h.xp -= xpNeed(h.level); h.level++; computeStats(); P.hp = P.stats.maxLife; P.mana = P.stats.maxMana; SFX.play('level'); G.fx.push({ pillar: 1, x: P.x, z: P.z, life: 1.8, max: 1.8, c: GLX.col(0xffd84a) }); ring(P.x, P.z, 0, 9, .7, 0xffd84a); burst(P.x, 1.5, P.z, 0xffd84a, 30, 7); if (h.level >= MAX_LEVEL) { h.pxp = h.xp; h.xp = 0; hint('Level 60! From here you earn Paragon levels with no limit.'); }
-    floatText(P.x, 3, P.z, 'LEVEL ' + h.level, '#ffd84a', 1.8, 22); { computeStats(); hint('Level ' + h.level + '! More life, harder hits. Life and ' + CLASSES[h.cls].res.n + ' refilled.'); const nt = TIER_LV.find(l => l > h.level); if (nt && skillTiers(h.cls)[TIER_LV.indexOf(nt)]) hint('Next skill choice at level ' + nt + '.'); } applyKit(h, true);
+    floatText(P.x, 3, P.z, 'LEVEL ' + h.level, '#ffd84a', 1.8, 22); { computeStats(); hint('Level ' + h.level + '! More life, harder hits. Life and ' + CLASSES[h.cls].res.n + ' refilled.'); const nt = TIER_LV.find(l => l > h.level); if (nt && skillTiers(h.cls)[TIER_LV.indexOf(nt)]) hint('Next skill choice at level ' + nt + '.'); } applyKit(h, true); if (TAL_LV.includes(h.level)) hint('New talent cards at level ' + h.level + '! Open Skills to pick one.'); /* build 0074 */
   }
 }
 function seasonCheck() { try { if (localStorage.getItem('cinderdeep_season') === SEASON) return false; const old = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.indexOf(SAVE_KEY + '_') === 0) old.push(k); } old.forEach(k => localStorage.removeItem(k)); localStorage.setItem('cinderdeep_season', SEASON); return old.length > 0; } catch (e) { return false; } }
@@ -608,20 +609,25 @@ function buildStatic(Z) { Z.torches = [];
   }
   GLX.statEnd();
 }
-// Reference basic-attack hit: expected for the level, kept close to the hero's real hit so normal enemies always die in 2-5 swings.
-// Sprint 1: how far monster life may drift from the hero's real hit. Floors 1-4: 0.70-1.08; widens evenly to 0.55-1.35 by floor 12, then holds.
-function refBand() { const f = ((G.hero && G.hero.depth) || 0) + 1, k = clamp((f - 4) / 8, 0, 1); return [.7 + (.55 - .7) * k, 1.08 + (1.35 - 1.08) * k]; }
-function refHit(lvl) { const s = P.stats, exp = 7.5 * Math.pow(1.11, lvl) * (1 + .04 * lvl); if (!s || !s.wmin) return exp; const act = ((s.wmin + s.wmax) / 2 + s.addPhys + s.addFire + s.addCold + s.addLight) * (1 + (s.dmg + s.phys) / 100), b = refBand(); return clamp(exp, act * b[0], act * b[1]); }
+// build 0074 (Lee, Nov 15: "Upgrades you feel"): monster life follows the level and the floor, not your gear. A typical kit kills an ordinary monster in about 3 hits; better gear kills faster at once.
+function parHit(lvl) { lvl = clamp(lvl || 1, 1, 80); let i = 0; while (i < PAR_L.length - 2 && lvl > PAR_L[i + 1]) i++; const t = clamp((lvl - PAR_L[i]) / (PAR_L[i + 1] - PAR_L[i]), 0, 1); return 7.5 * Math.pow(1.11, lvl) * (1 + .04 * lvl) * (PAR_K[i] + (PAR_K[i + 1] - PAR_K[i]) * t); }
+function floorK(f) { f = f || 1; return f <= 3 ? .9 : Math.min(1.2, .9 + (f - 3) * .3 / 9); } // floors 1-3 a little softer, 20% tougher than par by floor 12
+function refHit(lvl) { const d = G.zone && G.zone.def; return 1.25 * parHit(lvl) * floorK(d ? d.depth : 1); } // 1.25: plain gear about 4 hits, magic about 3, rare or better 2
+function tierNow() { const d = G.zone && G.zone.def; return d && d.type === 'zone' ? clamp(d.tier | 0, 0, TIERS.length - 1) : 0; }
+function tierOf() { return TIERS[tierNow()]; }
+function tierMaxOf(h) { if (!h) return 0; if (h.tierMax === undefined) h.tierMax = (h.maxClear || h.depthMax || 0) > 0 ? 1 : 0; /* heroes who already slew a guardian start with Hard open */ return clamp(h.tierMax | 0, 0, TIERS.length - 1); }
+function tierPick(h) { return Math.min(h ? h.tier | 0 : 0, tierMaxOf(h)); }
+function tierWin() { const h = G.hero, t = tierNow(); if (!h || t < tierMaxOf(h) || t >= TIERS.length - 1) return; h.tierMax = t + 1; saveGame(); const n = TIERS[t + 1].n; if (typeof setTimeout === 'function' && typeof UI !== 'undefined' && UI.zoneBanner) setTimeout(() => UI.zoneBanner(n + ' unlocked', 'Choose it at the town portal: tougher monsters, more gold and Legendaries'), 3200); hint(n + ' is unlocked. Pick it at the town portal for tougher monsters and better loot.'); }
 // build 0035 (Real danger, Lee Nov 15): monsters hit harder floor by floor, so dodging and potions matter. Hits to kill, drops and XP are unchanged.
 var DANGER_TOP = 4.5; // how much harder monsters hit from floor 4 on, compared with floor 1
 function dangerK(f) { f = f || 1; const t = DANGER_TOP; return f <= 1 ? 1 : f === 2 ? 1 + (t - 1) * .35 : f === 3 ? 1 + (t - 1) * .7 : t * Math.min(1.3, 1 + (f - 4) * .04); }
 function mkEnemy(md, x, z, lvl, elite, pack) {
   const a = ARCH[md.a], hit = refHit(lvl);
-  const e = { id: ++G.eid, md, a, arch: md.a, x, z, rot: rnd(6.28), lvl, elite, pack, r: a.r * (elite ? 1.2 : 1), sc: a.sc * (elite === 1 ? 1.2 : elite === 2 ? 1.38 : 1), maxHp: Math.round(2.8 * hit * a.hp * (elite === 1 ? 2.2 : elite === 2 ? 3.5 : 1)), dmg: 5 * Math.pow(1.095, lvl) * a.dmg * (elite ? 1.3 : 1), spd: a.spd, st: 'chase', t: 0, cd: rnd(.2, 1), walk: rnd(6), awake: false, flash: 0, chill: 0, shock: 0, frozen: 0, burn: 0, burnT: 0, atk: 0, alive: true, deadT: 0, modT: 2, name: md.n, mods: [] };
-  e.dmg *= dangerK(G.zone && G.zone.def ? G.zone.def.depth : 1); /* build 0035 */
+  const e = { id: ++G.eid, md, a, arch: md.a, x, z, rot: rnd(6.28), lvl, elite, pack, r: a.r * (elite ? 1.2 : 1), sc: a.sc * (elite === 1 ? 1.2 : elite === 2 ? 1.38 : 1), maxHp: Math.round(2.8 * hit * a.hp * (elite === 1 ? 2.2 : elite === 2 ? 3.5 : 1) * tierOf().hp), dmg: 5 * Math.pow(1.095, lvl) * a.dmg * (elite ? 1.3 : 1), spd: a.spd, st: 'chase', t: 0, cd: rnd(.2, 1), walk: rnd(6), awake: false, flash: 0, chill: 0, shock: 0, frozen: 0, burn: 0, burnT: 0, atk: 0, alive: true, deadT: 0, modT: 2, name: md.n, mods: [] };
+  e.dmg *= dangerK(G.zone && G.zone.def ? G.zone.def.depth : 1) * tierOf().dmg; /* build 0035; build 0074 tier */
   const dep0 = G.zone && G.zone.def && !G.zone.def.rift ? G.zone.def.depth || 1 : 99; if (a === ARCH.caster && dep0 <= 3) e.dmg *= .7; /* build 0072 (Lee's playtest): ranged monsters on the first three floors hit 30% softer */
   if (elite) { const keys = Object.keys(EMODS).filter(k => !(dep0 === 1 && k === 'hasted')); if (dep0 === 1) e.dmg /= 1.3; /* build 0072: floor 1 elites are never Hasted and hit like ordinary monsters (they keep their life and loot) */ while (e.mods.length < elite) { const k = pick(keys); if (!e.mods.includes(k)) e.mods.push(k); } for (const k of e.mods) e[k] = true; if (e.hasted) e.spd *= 1.3; e.name = e.mods.map(k => EMODS[k].n).join(' ') + ' ' + md.n; }
-  if (!elite && !md.boss && P.stats && P.stats.wmin && G.hero) { const s = P.stats, bs = (!G.hero.eq.weapon ? SKILLS.punch : SKILLS[G.hero.bar[0]]) || SKILLS.punch, low = (s.wmin + s.addPhys + s.addFire + s.addCold + s.addLight) * (1 + (s.dmg + (s[bs.el] || 0) + (bs.el !== 'phys' ? s.ele : 0)) / 100) * (bs.m || 1); e.maxHp = Math.max(1, Math.min(e.maxHp, Math.floor(low * 4.8))); }
+  if (!elite && !md.boss && !tierNow() && P.stats && P.stats.wmin && G.hero) { /* build 0074: on Normal an ordinary monster never needs more than about 5 of your weakest hits */ const s = P.stats, bs = (!G.hero.eq.weapon ? SKILLS.punch : SKILLS[G.hero.bar[0]]) || SKILLS.punch, low = (s.wmin + s.addPhys + s.addFire + s.addCold + s.addLight) * (1 + (s.dmg + (s[bs.el] || 0) + (bs.el !== 'phys' ? s.ele : 0)) / 100) * (bs.m || 1); e.maxHp = Math.max(1, Math.min(e.maxHp, Math.floor(low * 4.8))); }
   e.hp = e.maxHp; G.ents.push(e); return e;
 }
 function spawnAll(Z) {
@@ -634,7 +640,7 @@ function spawnAll(Z) {
   });
   if (Z.def.type === 'zone' && Math.random() < .33) for (let t = 0; t < 60; t++) { const k = (Math.random() * GW * GW) | 0; if (Z.cell[k] || !Z.dist || Z.dist[k] < 14) continue; const x = (k % GW + .5) * CS, z = ((k / GW | 0) + .5) * CS; if (blocked(x, z, .6)) continue; mkEnemy({ a: 'goblin', n: 'Treasure Goblin', c: 0x4a7a34, c2: 0xc89a3a, e: 0xffd84a }, x, z, lv, 0, -1); break; } /* build 0027 */
   const bd = bossFor(Z.def.theme, Z.def.depth, Z.def.rift), hit = refHit(lv + 1);
-  const b = { id: ++G.eid, md: { a: 'boss', n: bd.n, c: bd.c, c2: bd.c2, e: bd.e }, a: { r: 1.7, sc: bd.sc || 2.3, rec: .9, wind: .8, reach: 3.6, xp: 40, spd: 4 }, arch: 'boss', boss: true, bd, x: Z.bossAt[0], z: Z.bossAt[1], rot: 0, lvl: lv + 1, elite: 3, pack: -1, r: 1.7, sc: bd.sc || 2.3, maxHp: Math.round(2.8 * hit * 40 * 1.6 * (bd.hpM || 1)), dmg: 5 * Math.pow(1.095, lv + 1) * 3, /* build 0062 (playtest): guardians last longer and hit much harder */ spd: 4, st: 'chase', t: 0, cd: 1, walk: 0, awake: false, flash: 0, chill: 0, shock: 0, frozen: 0, burn: 0, burnT: 0, atk: 0, alive: true, deadT: 0, pt: 2.5, pi: 0, name: bd.n, mods: [] };
+  const b = { id: ++G.eid, md: { a: 'boss', n: bd.n, c: bd.c, c2: bd.c2, e: bd.e }, a: { r: 1.7, sc: bd.sc || 2.3, rec: .9, wind: .8, reach: 3.6, xp: 40, spd: 4 }, arch: 'boss', boss: true, bd, x: Z.bossAt[0], z: Z.bossAt[1], rot: 0, lvl: lv + 1, elite: 3, pack: -1, r: 1.7, sc: bd.sc || 2.3, maxHp: Math.round(2.8 * hit * 40 * 1.6 * (bd.hpM || 1) * tierOf().hp), dmg: 5 * Math.pow(1.095, lv + 1) * 3 * tierOf().dmg, /* build 0062 (playtest): guardians last longer and hit much harder */ spd: 4, st: 'chase', t: 0, cd: 1, walk: 0, awake: false, flash: 0, chill: 0, shock: 0, frozen: 0, burn: 0, burnT: 0, atk: 0, alive: true, deadT: 0, pt: 2.5, pi: 0, name: bd.n, mods: [] };
   b.hp = b.maxHp; G.ents.push(b); G.boss = b; Z.ent0 = G.ents.filter(e => !e.boss).length; Z.repT = 30;
 }
 function addReplica(i) {
@@ -647,14 +653,14 @@ function repEnemy(e, dt) {
 }
 function enterZone(net) {
   G.inTown = false; G.away = null;
-  const h = G.hero, lvl = net ? net.lvl : h.level, dpt = net ? net.d | 0 : (h.depth === undefined ? (h.depth = h.runs) : h.depth), zd = zoneFor(dpt); const def = { type: 'zone', theme: net && net.theme ? net.theme : zd.theme, lvl, seed: net ? net.seed : G.resumeAt && G.resumeAt.d === dpt + 1 ? G.resumeAt.seed : (Math.random() * 1e9) | 0, name: zd.name, depth: dpt + 1 };
+  const h = G.hero, lvl = net ? net.lvl : h.level, dpt = net ? net.d | 0 : (h.depth === undefined ? (h.depth = h.runs) : h.depth), zd = zoneFor(dpt); const def = { type: 'zone', theme: net && net.theme ? net.theme : zd.theme, lvl, seed: net ? net.seed : G.resumeAt && G.resumeAt.d === dpt + 1 ? G.resumeAt.seed : (Math.random() * 1e9) | 0, name: zd.name, depth: dpt + 1, tier: net ? clamp(net.tier | 0, 0, TIERS.length - 1) : tierPick(h) };
   { const isRift = net ? net.rift !== undefined : !!G.riftNext; G.riftNext = false; G.riftDone = 0; if (isRift) { if (!net) { def.lvl += 2; def.theme = pick(Object.keys(THEMES).filter(k => k !== 'town')); } def.rift = 1; def.name = 'Rift · ' + def.theme[0].toUpperCase() + def.theme.slice(1); G.riftT0 = G.time - (net && net.rift > 0 ? net.rift / 1000 : 0); if (net && net.rift === -1) G.riftDone = 1; } } // timed rift (build 0021)
   G.zone = genZone(def); const Z = G.zone; G.ents.length = 0; G.projs.length = 0; G.pp.length = 0; G.areas.length = 0; G.drops.length = 0; G.fx.length = 0; G.texts.length = 0; G.timers.length = 0; G.boss = null; G.streak = 0;
   P.buffs = []; computeStats(); buildStatic(Z); if (net) { for (const i of net.ents) addReplica(i); } else spawnAll(Z); BOT.path = null; questZone(Z); stZone(Z); if (typeof GPS !== 'undefined') GPS.t = 0; /* quest text refreshes at once on a new floor */
   P.x = Z.start[0]; P.z = Z.start[1]; P.y = 0; P.act = P.spin = P.dash = P.move = P.atk = P.inter = P.pick = null; P.dead = false; P.lastHit = -9; P.flaskCd = 0; P.buffs = []; P.cds = {}; computeStats(); P.hp = P.stats.maxLife; P.mana = CLASSES[h.cls].res.regen ? P.stats.maxMana : 0; P.flaskCd = 0; P.lastHit = -9;
   setEnv(Z); if (net && net.sync && net.pos) { P.x = net.pos[0]; P.z = net.pos[1]; }
   { const ra = G.resumeAt; G.resumeAt = null; if (!net && ra && ra.seed === def.seed && isFinite(ra.x)) { P.x = ra.x; P.z = ra.z; for (let i = G.ents.length - 1; i >= 0; i--) { const e = G.ents[i]; if (!e.boss && Math.hypot(e.x - P.x, e.z - P.z) < 12) G.ents.splice(i, 1); } } } /* build 0070: solo after a lost connection, same floor and spot */
-  G.state = 'play'; if (typeof UI !== 'undefined') UI.zoneBanner(def.name, 'Floor ' + def.depth + ' · monster level ' + lvl); { const dw = h.dangerSeen || 0; if (def.depth >= 4 && dw < 2) { h.dangerSeen = 2; hint('The deep turns deadly from here. Step out of red circles, dodge (Space on PC) and keep a potion ready.'); } else if (def.depth >= 2 && dw < 1) { h.dangerSeen = 1; hint('Monsters hit harder on every floor. Watch for red circles on the ground: they mark a heavy blow.'); } } /* build 0035 */ saveGame();
+  G.state = 'play'; if (typeof UI !== 'undefined') UI.zoneBanner(def.name, 'Floor ' + def.depth + ' · monster level ' + lvl + (def.tier ? ' · ' + TIERS[def.tier].n : '')); { const dw = h.dangerSeen || 0; if (def.depth >= 4 && dw < 2) { h.dangerSeen = 2; hint('The deep turns deadly from here. Step out of red circles, dodge (Space on PC) and keep a potion ready.'); } else if (def.depth >= 2 && dw < 1) { h.dangerSeen = 1; hint('Monsters hit harder on every floor. Watch for red circles on the ground: they mark a heavy blow.'); } } /* build 0035 */ saveGame();
 }
 
 // ---------- town ----------
@@ -839,17 +845,18 @@ function aspdK() { return G.hero && G.hero.cls === 'brawler' && P.mana > 60 ? 1.
 function expHit() { const s = P.stats; if (!s || !s.wmin || !G.hero) return 0; const bs = (!G.hero.eq.weapon ? SKILLS.punch : SKILLS[G.hero.bar[0]]) || SKILLS.punch; return ((s.wmin + s.wmax) / 2 + s.addPhys + s.addFire + s.addCold + s.addLight) * (1 + (s.dmg + (s[bs.el] || 0) + (bs.el !== 'phys' ? s.ele : 0)) / 100) * (bs.m || 1) * (1 + partyBonus() / 100); }
 function meterHit(v) { const m = P.meter || (P.meter = { log: [], peak: 0 }); m.log.push([G.time, v]); if (v > m.peak) m.peak = v; while (m.log.length && m.log[0][0] < G.time - 10) m.log.shift(); }
 function meterDps() { const m = P.meter; if (!m) return 0; let t = 0; for (const q of m.log) if (q[0] >= G.time - 10) t += q[1]; return Math.round(t / 10); }
-function rollDmg(sk, mult) { const s = P.stats; const base = rnd(s.wmin, s.wmax) + s.addPhys + s.addFire + s.addCold + s.addLight; let inc = s.dmg + (s[sk.el] || 0) + (sk.el !== 'phys' ? s.ele : 0); if (s.lowLife && P.hp < s.maxLife * .5) inc += s.lowLife; let v = base * sk.m * (mult || 1) * (1 + inc / 100) * (1 + partyBonus() / 100); const crit = Math.random() * 100 < s.critT; if (crit) v *= s.critM; return { v, crit }; }
+function rollDmg(sk, mult) { const s = P.stats; const base = rnd(s.wmin, s.wmax) + s.addPhys + s.addFire + s.addCold + s.addLight; let inc = s.dmg + (s[sk.el] || 0) + (sk.el !== 'phys' ? s.ele : 0); if (s.lowLife && P.hp < s.maxLife * .5) inc += s.lowLife; let v = base * sk.m * (mult || 1) * (1 + inc / 100) * (1 + partyBonus() / 100); const crit = Math.random() * 100 < s.critT + (sk.crit || 0); if (crit) v *= s.critM; return { v, crit }; }
 /* build 0034: a training dummy in town. It never fights back or dies; it shows your damage per second, total and biggest hit, and resets after 4 seconds without a hit */
 function addDummy() { const cx = GW / 2 * CS, cz = GW / 2 * CS; let x = cx - 6.5, z = cz + 10.5; for (let k = 0; k < 40 && blocked(x, z, 1); k++) { x = cx - 6.5 + rnd(-4, 4); z = cz + 10.5 + rnd(-4, 4); }
   const key = Object.keys(ARCH)[0], h = G.hero; G.ents.push({ id: ++G.eid, md: { n: 'Training Dummy', c: 0xc8a868, c2: 0x6a4a2a, e: 0xffd070 }, a: ARCH[key], arch: key, x, z, rot: 0, lvl: h ? h.level : 1, elite: 0, pack: -1, r: .7, sc: 1, maxHp: 1e12, hp: 1e12, dmg: 0, spd: 0, st: 'idle', t: 0, cd: 0, walk: 0, awake: true, flash: 0, chill: 0, shock: 0, frozen: 0, burn: 0, burnT: 0, atk: 0, alive: true, deadT: 0, modT: 0, name: 'Training Dummy', mods: [], dummy: 1, wob: 0, tot: 0, big: 0, t0: 0, lastT: -99 }); }
 function dummyHit(e, v) { if (G.time - e.lastT > 4) { e.t0 = G.time; e.tot = 0; e.big = 0; e.n = 0; } e.tot += v; e.big = Math.max(e.big, v); e.n++; e.lastT = G.time; e.wob = 1; e.hp = e.maxHp; }
 function dummyDps(e) { if (!e.tot) return 0; const live = G.time - e.lastT <= 4, span = (live ? G.time : e.lastT) - e.t0; return e.tot / Math.max(1, span); }
 function hitEnemy(e, sk, mult, noProc) { if (e && e.alive && e.arch === 'goblin' && typeof UI !== 'undefined' && Math.random() < .55) dropGold(e.x, e.z, (4 + (G.hero ? G.hero.level : 1) * 2) * rnd(.8, 1.3)); /* build 0027: coins fly out with every hit */
-  if (!e.alive) return; e.byAlly = !!(sk && sk.type === 'ally'); const s = P.stats, d = rollDmg(sk, mult); let v = d.v; if (e.armored) v *= .6; if (e.shock > 0) v *= 1.15; if (!e.boss && !e.elite && e.hp > e.maxHp * .95) v = Math.min(v, e.maxHp * .65); v = Math.max(1, Math.round(v)); // house rule: ordinary monsters always take at least 2 hits
+  if (!e.alive) return; e.byAlly = !!(sk && sk.type === 'ally'); if (sk.type !== 'ally') { const s0 = P.stats; let k = 1; const ex = (sk.exec || 0) + (s0.exec || 0), vc = (sk.vsCtl || 0) + (s0.vsCtl || 0), gp = sk.grp || 0; if (ex && e.hp < e.maxHp / 3) k *= 1 + ex / 100; if (vc && (e.frozen > 0 || e.chill > 0)) k *= 1 + vc / 100; if (gp) { let n = 0; for (const o of G.ents) if (o !== e && o.alive && !o.dummy && Math.hypot(o.x - e.x, o.z - e.z) < 4 && ++n >= 5) break; k *= 1 + gp * n / 100; } if (k !== 1) mult = (mult || 1) * k; } /* build 0074: talent cards */
+  const s = P.stats, d = rollDmg(sk, mult); let v = d.v; if (e.armored) v *= .6; if (e.shock > 0) v *= 1.15; if (!e.boss && !e.elite && e.hp > e.maxHp * .95) v = Math.min(v, e.maxHp * .65); v = Math.max(1, Math.round(v)); // house rule: ordinary monsters always take at least 2 hits
   if (sk.type === 'ally' && e.boss) v = Math.max(1, Math.round(v * .4)); /* build 0062: teammates chip a guardian, the hero brings it down */ if (!e.boss && !e.elite && !e.dummy) { if (!noProc) e.nh = (e.nh || 0) + 1; if (e.nh < 2) v = Math.min(v, Math.max(1, Math.floor(e.hp - 1))); } /* build 0062 (playtest): nothing finishes an ordinary monster before its second hit */ if (sk.type === 'ally' && !e.dummy) { const cap = Math.floor(e.hp - e.maxHp * .12); if (cap < 1) { e.flash = .06; wake(e); return; } v = Math.min(v, cap); } // build 0054: teammates soften monsters up, the hero lands the kill
   const over = v > 3 * Math.max(1, e.hp); /* Sprint 1: overkill, more than three times the life it had left */ meterHit(v); if (e.dummy) dummyHit(e, v);
-  e.hp -= v; e.flash = .13; wake(e); P.lastHit = G.time; if (sk.gen) P.mana = Math.min(s.maxMana, P.mana + sk.gen);
+  e.hp -= v; e.flash = .13; wake(e); P.lastHit = G.time; if (sk.gen) P.mana = Math.min(s.maxMana, P.mana + sk.gen); if (sk.heal && sk.type !== 'ally') P.hp = Math.min(s.maxLife, P.hp + s.maxLife * sk.heal / 100); if (sk.ref) P.mana = Math.min(s.maxMana, P.mana + sk.ref);
   floatText(e.x, 1.6 * e.sc + .6, e.z, (d.crit ? '✦' : '') + v, d.crit ? '#ffe14a' : EL_CSS[sk.el], d.crit ? 1.1 : .8, d.crit ? 21 : 15);
   if (sk.freeze && !e.boss) e.frozen = sk.freeze;
   if (sk.el === 'fire' && sk.type !== 'ally') { e.burn = Math.max(e.burn, v * .15); e.burnT = 3; } else if (sk.el === 'cold') e.chill = 2.5; else if (sk.el === 'light') e.shock = 3;
@@ -887,7 +894,7 @@ function killEnemy(e) {
   if (e.boss) {
     if (G.zone.def.rift && !G.riftDone && !G.online) riftDone((G.time - G.riftT0) * 1000, G.zone.def.lvl);
     if (typeof GPS !== 'undefined') GPS.t = 0; G.zone.cleared = true; G.shake = .9; ring(e.x, e.z, 0, 16, 1.1, e.md.e); burst(e.x, 2, e.z, e.md.e, 60, 11); SFX.play('level'); h.runs++; h.maxClear = Math.max(h.maxClear || 0, G.zone.def.depth || 1); /* deepest floor you have completed, for the leaderboard */
-    G.zone.objs.push({ kind: 'portal', x: e.x, z: e.z, name: 'Next floor', used: false }); h.depthMax = Math.max(h.depthMax || 0, G.zone.def.depth || 1); if (!G.zone.def.rift) UI.zoneBanner('Guardian slain', (G.bossXp ? '+' + G.bossXp.toLocaleString() + ' XP · ' : '') + 'a great gate opens to the next floor'); ring(e.x, e.z, 0, 16, 1.2, 0x7ad0ff); ring(e.x, e.z, 0, 9, .8, 0xb48cff); burst(e.x, 2, e.z, 0x7ad0ff, 60, 12); G.shake = .9; SFX.play('shrine'); saveGame(); if (!G.zone.def.rift) stBoss(G.zone.def.depth || 1);
+    G.zone.objs.push({ kind: 'portal', x: e.x, z: e.z, name: 'Next floor', used: false }); h.depthMax = Math.max(h.depthMax || 0, G.zone.def.depth || 1); if (!G.zone.def.rift) UI.zoneBanner('Guardian slain', (G.bossXp ? '+' + G.bossXp.toLocaleString() + ' XP · ' : '') + 'a great gate opens to the next floor'); ring(e.x, e.z, 0, 16, 1.2, 0x7ad0ff); ring(e.x, e.z, 0, 9, .8, 0xb48cff); burst(e.x, 2, e.z, 0x7ad0ff, 60, 12); G.shake = .9; SFX.play('shrine'); saveGame(); tierWin(); if (!G.zone.def.rift) stBoss(G.zone.def.depth || 1);
   }
 }
 // ---- first steps ----
@@ -906,11 +913,12 @@ function autoCast(...a) { P._auto = 1; try { return tryCast(...a); } finally { P
 function tryCast(slot, tx, tz) {
   const h = G.hero, s = P.stats; let id = h.bar[slot];
   if (!h.eq.weapon) { if (slot !== 0) { if (G.time - P.oomT > 1.5) { P.oomT = G.time; hint('Unarmed: you can only punch until you equip a weapon.'); } return false; } id = 'punch'; }
-  if (!id) return false; const sk = SKILLS[id];
+  if (!id) return false; const sk = talSk(id);
   if (P.act || P.dash || (P.cds[id] || 0) > 0) return false; if (sk.type === 'spin' && P.spin) return false;
   if (P.mana < (sk.cost || 0)) { if (G.time - P.oomT > 1.5) { P.oomT = G.time; hint('Not enough ' + CLASSES[h.cls].res.n + '.'); } return false; }
   if (tx === undefined) { tx = IN.gx; tz = IN.gz; }
   P.mana -= sk.cost || 0; if (sk.cd) P.cds[id] = sk.cd * (1 - s.cdrT / 100);
+  if (sk.buff && sk.buff.s) { P.buffs = P.buffs.filter(b => b.n !== sk.buff.n); P.buffs.push({ s: sk.buff.s, t: sk.buff.t, n: sk.buff.n }); computeStats(); } /* build 0074: a talent card's short boost */
   const sp = (1 + s.aspd / 100) * aspdK();
   if (sk.type === 'spin') { P.spin = { t: sk.dur, tk: 0, sk }; return true; }
   if (slot > 0 && !P._auto) goalDone('skill'); /* build 0062 (playtest): only a skill you cast yourself ticks First Steps, not autocast */
@@ -926,6 +934,7 @@ function shoot(ang, sk) {
 function areaHit(x, z, r, sk, mult) { let n = 0; for (const e of G.ents) if (e.alive && Math.hypot(e.x - x, e.z - z) <= r + e.r) { hitEnemy(e, sk, mult); n++; } return n; }
 function fireSkill(a) {
   const sk = a.sk, s = P.stats, ar = 1 + s.area / 100;
+  if (sk.echo && !a.echoed) G.timers.push({ t: .3, fn: () => { if (!P.dead) fireSkill(Object.assign({}, a, { echoed: 1, sk: Object.assign({}, sk, { m: sk.m * sk.echo / 100, echo: 0 }) })); } }); /* build 0074: a talent card's second go */
   if (sk.type !== 'melee' && !sk.basic && EL_COL[sk.el] !== undefined) { const c = GLX.col(EL_COL[sk.el]), fx = P.x + Math.sin(P.rot) * .8, fz = P.z + Math.cos(P.rot) * .8; G.fx.push({ flash: 1, x: fx, y: 1.6, z: fz, r: 2.4, life: .22, max: .22, c }); ring(P.x, P.z, .3, 1.8, .3, EL_COL[sk.el]); for (let i = 0; i < 8; i++) { const an = P.rot + rnd(-.7, .7), sp = rnd(4, 9); G.fx.push({ spk: 1, x: fx, y: 1.5, z: fz, vx: Math.sin(an) * sp, vy: rnd(1, 4), vz: Math.cos(an) * sp, life: rnd(.2, .4), max: .4, c }); } } // casting flare at the hands
   if (sk.type === 'melee') {
     const range = sk.range * Math.sqrt(ar); let n = 0;
@@ -1098,11 +1107,11 @@ function botStep(dt) {
   if (BOT.dodge > 0) { BOT.dodge -= dt; return false; }
   let tgt = null, bd = 17, goal = null, act = null; for (const e of G.ents) { if (!e.alive || !e.awake || e.dummy) continue; const d = Math.hypot(e.x - P.x, e.z - P.z); if (d < bd) { bd = d; tgt = e; } }
   if (tgt) {
-    const clear = los(P.x, P.z, tgt.x, tgt.z), bs = SKILLS[h.bar[0]] || SKILLS.cleave;
+    const clear = los(P.x, P.z, tgt.x, tgt.z), bs = talSk(h.bar[0]) || SKILLS.cleave;
     if (bs.range > 5 && bd < 4 && (BOT.kite || 0) <= 0 && tgt.arch !== 'caster' && !tgt.boss) BOT.kite = .7;
     if (BOT.kite > 0) { BOT.kite -= dt; if (BOT.kite > .3) { const ax = P.x - (tgt.x - P.x) / bd * 5, az = P.z - (tgt.z - P.z) / bd * 5; if (!blocked(ax, az, .6)) { P.atk = null; P.move = [ax, az]; return false; } } }
     for (let i = 1; i < (G.set.apSkill === false ? 1 : 4); i++) {
-      const id = h.bar[i]; if (!id) continue; const sk = SKILLS[id]; if ((P.cds[id] || 0) > 0 || P.mana < (sk.cost || 0) || (sk.type === 'spin' && P.spin)) continue;
+      const id = h.bar[i]; if (!id) continue; const sk = talSk(id); if ((P.cds[id] || 0) > 0 || P.mana < (sk.cost || 0) || (sk.type === 'spin' && P.spin)) continue;
       if (sk.type === 'dash') { if (!sk.land) { if (bd < 3.5 && P.hp < s.maxLife * .6 && tryCast(i, P.x * 2 - tgt.x, P.z * 2 - tgt.z)) return true; continue; } if (bd > 5 && bd < sk.range && tryCast(i, tgt.x, tgt.z)) return true; continue; }
       if (sk.type === 'buff') { if (bd < 8 && tryCast(i, tgt.x, tgt.z)) return true; continue; }
       if (sk.type === 'rain') { if (bd < 12 && tryCast(i, tgt.x, tgt.z)) return true; continue; }
@@ -1110,7 +1119,7 @@ function botStep(dt) {
       if (sk.type === 'barrage') { if (bd < 7 && tryCast(i, tgt.x, tgt.z)) return true; continue; }
       if (bd < (sk.r || sk.range || 4) * .8 + tgt.r && tryCast(i, tgt.x, tgt.z)) return true;
     }
-    const basic = SKILLS[h.bar[0]] || SKILLS.cleave; if (bd <= basic.range * .78 + tgt.r && (clear || basic.range < 5)) { P.move = null; return tryCast(0, tgt.x, tgt.z); }
+    const basic = talSk(h.bar[0]) || SKILLS.cleave; if (bd <= basic.range * .78 + tgt.r && (clear || basic.range < 5)) { P.move = null; return tryCast(0, tgt.x, tgt.z); }
     goal = [tgt.x, tgt.z];
   } else {
     let best = 26; const want = P.hp < s.maxLife * .7;
@@ -1173,7 +1182,7 @@ function updPlayer(dt) {
   if (P.atk && !P.atk.alive) { P.atk = null; }
   if (jm >= .18) { P.atk = P.inter = P.pick = P.move = null; tx = P.x + jx / jm * 4; tz = P.z + jz / jm * 4; spK = Math.min(1, .45 + jm * .7); }
   else if (chase) { P.atk = P.inter = P.pick = P.move = null; tx = chase.x; tz = chase.z; }
-  else if (P.atk) { const e = P.atk, d = Math.hypot(e.x - P.x, e.z - P.z); if (d <= (SKILLS[G.hero.bar[0]] || SKILLS.cleave).range * .78 + e.r) { tryCast(0, e.x, e.z); if (!IN.lmb) P.atk = null; return; } tx = e.x; tz = e.z; }
+  else if (P.atk) { const e = P.atk, d = Math.hypot(e.x - P.x, e.z - P.z); if (d <= (talSk(G.hero.bar[0]) || SKILLS.cleave).range * .78 + e.r) { tryCast(0, e.x, e.z); if (!IN.lmb) P.atk = null; return; } tx = e.x; tz = e.z; }
   else if (P.pick) { if (!G.drops.includes(P.pick)) P.pick = null; else { if (Math.hypot(P.pick.x - P.x, P.pick.z - P.z) < 2.3) { pickup(P.pick); P.pick = null; return; } tx = P.pick.x; tz = P.pick.z; } }
   else if (P.inter) { const o = P.inter; if (Math.hypot(o.x - P.x, o.z - P.z) < (P.gateGo === o ? 3.4 : 2.6)) { interact(o); P.inter = null; return; } tx = o.x; tz = o.z; }
   else if (P.move) { tx = P.move[0]; tz = P.move[1]; if (Math.hypot(tx - P.x, tz - P.z) < .3) { P.move = null; tx = undefined; } }
@@ -1187,6 +1196,17 @@ function updPlayer(dt) {
   }
 }
 // ---- skill choices ----
+/* build 0074 (Lee, Nov 15): talent cards. Each picked card changes a skill (a copy of it, so the base data never changes) or adds a lasting bonus */
+const TAL_MUL = { m: 1, r: 1, range: 1, spread: 1, ct: 1, as: 1, arc: 1, spd: 1, delay: 1, explode: 1 }, TAL_SET = { cost: 1, cd: 1, el: 1, buff: 1 }, TALC = { key: null, sk: {}, s: {} };
+function talPicks(h) { if (!h) return []; const rows = talRows(h.cls), t = Array.isArray(h.tal) ? h.tal : [], out = []; for (let i = 0; i < rows.length; i++) { const k = t[i]; if ((k === 0 || k === 1 || k === 2) && h.level >= TAL_LV[i] && rows[i][k]) out.push(rows[i][k]); } return out; }
+function talOpen(h) { if (!h) return 0; const t = Array.isArray(h.tal) ? h.tal : []; let n = 0; for (let i = 0; i < TAL_LV.length; i++) if (h.level >= TAL_LV[i] && !(t[i] === 0 || t[i] === 1 || t[i] === 2)) n++; return n; }
+function talBuild() { const h = G.hero, key = h ? h.cls + ':' + h.level + ':' + (Array.isArray(h.tal) ? h.tal.join(',') : '') : ''; if (TALC.key === key) return TALC; TALC.key = key; TALC.sk = {}; TALC.s = {};
+  for (const c of talPicks(h)) { if (c.s) for (const k in c.s) TALC.s[k] = (TALC.s[k] || 0) + c.s[k];
+    if (c.fx) for (const id in c.fx) { const base = SKILLS[id]; if (!base) continue; const o = TALC.sk[id] || (TALC.sk[id] = Object.assign({}, base, { id })), f = c.fx[id];
+      for (const k in f) { const v = f[k]; if (k[0] === '=') o[k.slice(1)] = v; else if (TAL_SET[k]) o[k] = v; else if (TAL_MUL[k]) { if (o[k] !== undefined) o[k] *= v; else if (k === 'as') o.as = v; } else o[k] = (o[k] || (k === 'cnt' ? 1 : 0)) + v; } } }
+  return TALC; }
+function talSk(id) { return id && G.hero ? talBuild().sk[id] || SKILLS[id] : SKILLS[id]; }
+function talPick(row, k) { const h = G.hero; if (!h || !(row >= 0 && row < TAL_LV.length) || !(k === 0 || k === 1 || k === 2) || h.level < TAL_LV[row]) return 0; h.tal = Array.isArray(h.tal) ? h.tal.slice(0, TAL_LV.length) : []; while (h.tal.length < TAL_LV.length) h.tal.push(null); const had = h.tal[row]; if (had === k) return 0; if ((had === 0 || had === 1 || had === 2) && !G.inTown) return -1; h.tal[row] = k; computeStats(); saveGame(); return 1; }
 function knows(h, id) { const sk = SKILLS[id]; if (!sk) return false; if (sk.basic) return CLASSES[h.cls].skills.includes(id); const i = (KIT[h.cls] || []).indexOf(id); return i >= 0 && h.level >= KIT_LV[i]; }
 function applyKit(h, announce) { const k = KIT[h.cls] || []; h.bar = h.bar || [CLASSES[h.cls].skills[0], null, null, null]; if (!h.bar[0] || !knows(h, h.bar[0])) h.bar[0] = CLASSES[h.cls].skills[0]; h.autoc = h.autoc || [0, 1, 1, 1]; k.forEach((id, i) => { if (h.level >= KIT_LV[i] && h.bar[i + 1] !== id) { h.bar[i + 1] = id; h.autoc[i + 1] = 1; /* Lee, Nov 13: every skill starts on autocast */ if (announce) hint('New skill: ' + SKILLS[id].n + ' — on ' + SLOT_KEY[i + 1] + ', autocast on.'); } else if (h.level < KIT_LV[i]) h.bar[i + 1] = null; }); if (typeof UI !== 'undefined' && UI.buildBar && G.hero === h) UI.buildBar(); }
 function pendingPick(h) { const t = skillTiers(h.cls); for (let i = 0; i < t.length; i++) if (h.level >= TIER_LV[i] && !h.picks[i]) return i; return -1; }
@@ -1383,7 +1403,7 @@ function interact(o) {
   else if (o.kind === 'shrine') { o.used = true; P.buffs.push({ s: o.sh.s, t: 45, n: o.sh.n }); computeStats(); ring(o.x, o.z, 0, 8, .7, o.sh.c); SFX.play('shrine'); hint(o.sh.n + ' empowers you for 45 seconds.'); }
   else if (o.kind === 'planner') UI.openPlanner && UI.openPlanner();
   else if (o.kind === 'stash' || o.kind === 'vendor' || o.kind === 'altar') { const h = G.hero; if (h && !(h.tour || {})[o.kind]) { h.tour = Object.assign({}, h.tour, { [o.kind]: 1 }); saveGame(); } UI.openTown(o.kind); }
-  else if (o.kind === 'tportal') leaveTown();
+  else if (o.kind === 'tportal') { if (tierMaxOf(G.hero) > 0 && typeof UI !== 'undefined' && UI.openTier) UI.openTier(); else leaveTown(); } /* build 0074: pick a difficulty once one is unlocked */
   else if (o.kind === 'npc') UI.openFolk && UI.openFolk(o.id);
   else if (o.kind === 'captive') stRescue(o);
   else if (o.kind === 'lost') { o.used = true; o.runT = G.time; tqAdd('rescue'); SFX.play('shrine'); burst(o.x, 1.2, o.z, 0xff9ad0, 24, 5); hint('Pip: "You found me! I will run straight home to Mum!"'); }

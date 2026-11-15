@@ -5,14 +5,17 @@ var SP = {}, known = new Set(), curTarget = null, curK = 1; // curK: how much mo
 var ST = { chase: 0, wind: 1, rec: 2, charge: 3 };
 function r2(v) { return Math.round(v * 100) / 100; }
 function entInfo(e) { return { id: e.id, md: e.md, arch: e.arch, x: r2(e.x), z: r2(e.z), rot: r2(e.rot), lvl: e.lvl, elite: e.elite, pack: e.pack, r: e.r, sc: e.sc, maxHp: e.maxHp, hp: Math.round(e.hp), dmg: e.dmg, spd: e.spd, name: e.name, mods: e.mods, boss: !!e.boss, awake: !!e.awake, noLoot: !!e.noLoot }; }
-let depth = 0, rift = null; // rift (build 0021): a timed floor; the party races to slay its guardian
+let depth = 0, rift = null, tierV = 0; // tierV (build 0074): the party's difficulty, used from its next new floor
+function srvTierName(v) { return TIERS[Math.max(0, Math.min(TIERS.length - 1, v | 0))].n; }
+function srvTier(v) { tierV = Math.max(0, Math.min(TIERS.length - 1, v | 0)); return tierV; }
+ // rift (build 0021): a timed floor; the party races to slay its guardian
 function srvNewZone(lvl, nPlayers, next) {
   const wasRift = !!rift; if (next === 'rift') rift = { t0: Date.now(), tier: Math.max(1, lvl | 0) + 2 }; else { rift = null; if (next === 'prev') depth = Math.max(0, depth - 1); else if (next && !wasRift) depth++; }
-  const zd = rift ? zoneFor(((r12) => r12 === 9 ? 8 : r12)((Math.random() * 12) | 0)) /* build 0074: floor 10 is the Heart, so a rift rolls the Voidscar there instead */ : zoneFor(depth), def = { type: 'zone', theme: zd.theme, rift: rift ? 1 : 0, lvl: rift ? rift.tier : Math.max(1, lvl | 0), seed: !rift && forceSeed ? forceSeed : !rift && typeof DAILY === 'number' ? (Math.imul(DAILY ^ (depth + 1), 2654435761) >>> 0) % 1000000000 : (Math.random() * 1e9) | 0, name: rift ? 'Rift · ' + zd.name : zd.name, depth: depth + 1 };
+  const zd = rift ? zoneFor(((r12) => r12 === 9 ? 8 : r12)((Math.random() * 12) | 0)) /* build 0074: floor 10 is the Heart, so a rift rolls the Voidscar there instead */ : zoneFor(depth), def = { type: 'zone', theme: zd.theme, rift: rift ? 1 : 0, lvl: rift ? rift.tier : Math.max(1, lvl | 0), seed: !rift && forceSeed ? forceSeed : !rift && typeof DAILY === 'number' ? (Math.imul(DAILY ^ (depth + 1), 2654435761) >>> 0) % 1000000000 : (Math.random() * 1e9) | 0, name: rift ? 'Rift · ' + zd.name : zd.name, depth: depth + 1, tier: tierV };
   G.zone = genZone(def); G.ents.length = 0; G.projs.length = 0; G.areas.length = 0; G.boss = null; spawnAll(G.zone);
   const k = partyK(nPlayers); curK = k; known = new Set();
   for (const e of G.ents) { e.maxHp = Math.round(e.maxHp * k); e.hp = e.maxHp; known.add(e.id); }
-  return { t: 'zone', seed: def.seed, lvl: def.lvl, d: depth, theme: def.theme, rift: rift ? Date.now() - rift.t0 : undefined, ents: G.ents.map(entInfo) };
+  return { t: 'zone', seed: def.seed, lvl: def.lvl, d: depth, tier: def.tier, theme: def.theme, rift: rift ? Date.now() - rift.t0 : undefined, ents: G.ents.map(entInfo) };
 }
 // build 0062 (playtest): a party that reconnects after a server update gets a fresh floor at the depth it was on, not floor 1
 var forceSeed = 0;
@@ -27,7 +30,7 @@ function partyK(n) { return 1 + .5 * Math.max(0, n - 1); }
 // someone joined or left: scale the life of every monster on the floor to the new party size, keeping how hurt it is (build 0022)
 function srvScale(n) { if (!G.zone || n < 1) return 0; const k = partyK(n), r = k / curK; if (Math.abs(r - 1) < .001) return 0; curK = k; for (const e of G.ents) { if (!e.alive) continue; e.maxHp = Math.max(1, Math.round(e.maxHp * r)); e.hp = Math.min(e.maxHp, Math.max(1, Math.round(e.hp * r))); } return Math.round(r * 10000) / 10000; }
 function srvFloor() { return depth + 1; } /* the floor this party is on, for the party browser */
-function srvState() { return { t: 'zone', seed: G.zone.def.seed, lvl: G.zone.def.lvl, d: depth, theme: G.zone.def.theme, rift: rift ? (rift.done ? -1 : Date.now() - rift.t0) : undefined, cleared: !!G.zone.cleared, bossAt: G.zone.bossAt, ents: G.ents.filter(e => e.alive).map(entInfo) }; }
+function srvState() { return { t: 'zone', seed: G.zone.def.seed, lvl: G.zone.def.lvl, d: depth, tier: G.zone.def.tier | 0, theme: G.zone.def.theme, rift: rift ? (rift.done ? -1 : Date.now() - rift.t0) : undefined, cleared: !!G.zone.cleared, bossAt: G.zone.bossAt, ents: G.ents.filter(e => e.alive).map(entInfo) }; }
 dmgPlayer = function (v, el, src) { if (curTarget) __emit(curTarget.id, { t: 'dmg', v: Math.round(v), el: el, src: src ? src.id : 0 }); };
 addArea = function (o) { o.t = 0; G.areas.push(o); if (o.owner === 'e') __emit(null, { t: 'area', x: r2(o.x), z: r2(o.z), r: o.r, delay: o.delay, c: o.c, sh: o.sh, ang: o.ang === undefined ? undefined : r2(o.ang), arc: o.arc, len: o.len, w: o.w, n: o.n, hv: o.hvy }); return o; }; // build 0048: shapes and heavy blows go to every player
 eShoot = function (e, ang, spd, dmgM, el) {

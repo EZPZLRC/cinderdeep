@@ -1,8 +1,10 @@
-# Cinderdeep
+# Oathbyte
+
+The game was called Cinderdeep until build 0074. The old address forwards players here and brings their heroes along. Save keys keep the old name so every hero still loads.
 
 A 3D online action RPG that runs in the browser, with its own multiplayer server.
 
-Play it at https://cinderdeep.onrender.com.
+Play it at https://oathbyte.onrender.com.
 
 The build number shows in the bottom right corner of the game, in Settings, and at /cinderdeep-server on the live site, so you can tell which version is running. Heroes carry over from build to build.
 
@@ -31,6 +33,7 @@ The server has no dependencies.
 - Build 0042: every hero, the townsfolk and the merchant use real models. `tools/model/characters.sh <packs folder> <UAL1_Standard.glb>` bakes `public/models/anims.cdl` (one shared animation library, retargeted on the graphics card side by forward kinematics in `models.js`) and mesh-only `.cdm` files for ranger, warden, arcanist, elementalist, brawler, folkm and folkf. Class colours are dyed at bake time with `--tint`; townsfolk are dyed at runtime from their LOOK colours. Helmets, hats, shields and weapons are still code-built and ride on the hand, head and back bones. Still behind `?models=1`.
 - Build 0043: real models are the default for everyone. `?models=0` forces the classic code-built characters, and `?models=1` shows the load-check line. Any device that cannot load a model, or hits an error drawing one, falls back to the classic look on its own.
 - Build 0044: new floors. The ground shader (material 1 in `gl.js`) blends four layers, the region colour, earth, stone and ash, by height with warped, rotated noise so nothing tiles. Each region sets `gr: [earth, stone, ash, glow]` in THEMES; stone gets flagstones with mortar on Medium and High, and the glow colour is the region lamp colour. Low graphics skips the warp and the flagstones.
+- Build 0074: Oathbyte: the game has a new name. Monster life now follows the floor, not your gear, so every upgrade shows at once: plain gear takes about 4 hits, rare gear about 2. Slay a guardian to unlock Hard, then Torment 1 to 4, picked at the town portal: tougher monsters, more gold and better Legendary odds, same XP. And talent cards: every 5 levels pick one of three cards that change a skill or your hero, swap them free in town.
 - Build 0073: Story Act III, The Unmaking: through the Voidscar to the Heart of Cinders on floor 10, where Vaeloth fights in three phases. Teammates hunt down monsters that shoot at you, potions heal at once and show how much, the Trader is cheaper while you are new, your first item comes to you, and the right-hand panels no longer overlap. A speaker button in the top-right corner (or the M key) mutes all sound and remembers it, the build label says how long ago the game was updated, and the server now refuses impossible hits, forged gifts and message floods.
 - Build 0072: Safer first floors and boss intros, a safe respawn away from the boss, Enter to rise again, town services named on the map with a first walk round Emberwatch, a remembered Solo tick, party kills that always pay XP, and a steady players-online count.
 - Build 0071: pathfinding from Lee's playtest. Click to move (and chasing a monster, an item or an object) finds a route around trees, walls, stalls and braziers instead of stopping at the first one, and re-routes when stuck. The road from the start to each guardian never squeezes down to one cell, and trees at the edge of a path lean back into the woods so the way through stays visible.
