@@ -14,6 +14,8 @@ function srvNewZone(lvl, nPlayers, next) {
   for (const e of G.ents) { e.maxHp = Math.round(e.maxHp * k); e.hp = e.maxHp; known.add(e.id); }
   return { t: 'zone', seed: def.seed, lvl: def.lvl, d: depth, theme: def.theme, rift: rift ? Date.now() - rift.t0 : undefined, ents: G.ents.map(entInfo) };
 }
+// build 0062 (playtest): a party that reconnects after a server update gets a fresh floor at the depth it was on, not floor 1
+function srvResume(lvl, nPlayers, d) { rift = null; depth = Math.max(0, Math.min(500, (d | 0) - 1)); return srvNewZone(lvl, nPlayers, false); }
 // TODO (Sprint 1, server side): switch to partyHpK(n) from data.js, about 1.7x monster life for a full group. Not changed in build 0028.
 function partyK(n) { return 1 + .5 * Math.max(0, n - 1); }
 // someone joined or left: scale the life of every monster on the floor to the new party size, keeping how hurt it is (build 0022)

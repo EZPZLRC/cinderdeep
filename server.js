@@ -46,7 +46,7 @@ function onMessage(p, m) {
     if (room.players.size >= PARTY_MAX) { p.conn.send({ t: 'error', m: 'That party is full (' + PARTY_MAX + ' players).' }); return; }
     p.room = room; room.players.set(p.id, p); room.emptyAt = 0; p.st = null;
     p.conn.send({ t: 'hello', id: p.id, room: code });
-    if (fresh) p.conn.send(room.ctx.srvNewZone(p.lvl, 1)); else { rescale(room, p.id); p.conn.send(room.ctx.srvState()); }
+    if (fresh) p.conn.send((m.dep | 0) > 1 && typeof room.ctx.srvResume === 'function' ? room.ctx.srvResume(p.lvl, 1, m.dep | 0) : room.ctx.srvNewZone(p.lvl, 1)); else { rescale(room, p.id); p.conn.send(room.ctx.srvState()); }
     room.ctx.SP[p.id] = { id: p.id, x: -999, z: -999, dead: true, lvl: p.lvl };
     cast(room, { t: 'join', id: p.id, name: p.name }, p.id); cast(room, roster(room)); return;
   }
@@ -58,7 +58,7 @@ function onMessage(p, m) {
     case 'found': { const s = clean(m.item, 60), now = Date.now(); if (!s || (m.r !== 3 && m.r !== 4) || now - (p.lastFound || 0) < 4000) break; p.lastFound = now; const raw = JSON.stringify({ t: 'found', n: p.name, item: s, r: m.r }); for (const r of rooms.values()) for (const q of r.players.values()) q.conn.sendRaw(raw); break; }
     case 'chat': { const s = clean(m.m, 140), now = Date.now(); if (!s || now - (p.lastChat || 0) < 700) break; p.lastChat = now; const bd = typeof m.b === 'string' && m.b.length <= 2 && /^[\u2600-\u27BF\u2580-\u25FF\u2654-\u265F]$/.test(m.b) ? m.b : undefined; if (m.g) { const raw = JSON.stringify({ t: 'chat', n: p.name, m: s, g: 1, b: bd }); for (const r of rooms.values()) for (const q of r.players.values()) q.conn.sendRaw(raw); } else cast(room, { t: 'chat', n: p.name, m: s, b: bd }); break; }
     case 'sync': p.conn.send(Object.assign(room.ctx.srvState(), { sync: 1 })); break;
-    case 'prev': if (room.ctx.srvCleared()) { let lv = 1; for (const q of room.players.values()) lv = Math.max(lv, q.lvl); cast(room, room.ctx.srvNewZone(lv, room.players.size, 'prev')); } break;
+    case 'prev': if (room.ctx.srvCleared() || room.players.size === 1) { let lv = 1; for (const q of room.players.values()) lv = Math.max(lv, q.lvl); cast(room, room.ctx.srvNewZone(lv, room.players.size, 'prev')); } break;
     case 'feedback': { const s = clean(m.m, 600), now = Date.now(); if (!s || now - (p.lastFb || 0) < 20000) break; p.lastFb = now; console.log('[FEEDBACK] ' + new Date().toISOString() + ' build ' + BUILD + ' from ' + p.name + ' (level ' + p.lvl + ' ' + p.cls + '): ' + s); p.conn.send({ t: 'chat', n: '', m: 'Thank you. Your feedback was sent.', s: 1 }); break; }
     case 'rift': { const now = Date.now(); if (now - (room.riftT || 0) < 8000) break;
       // a rift moves the whole party, so it only opens when nobody else is out fighting on the floor (build 0022)

@@ -247,7 +247,7 @@ function bagFits(i, it, occ) { if (i < 0 || i >= occ.length || occ[i]) return fa
 function bagPut(inv, it, at) { const occ = bagOcc(inv); if (at !== undefined && bagFits(at, it, occ)) { inv[at] = it; return true; } for (let i = 0; i < inv.length; i++) if (bagFits(i, it, occ)) { inv[i] = it; return true; } return false; }
 function sortBag(inv) { const o = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'pants', 'boots', 'belt', 'amulet', 'ring'], items = inv.filter(x => x).sort((a, b) => itemH(b) - itemH(a) || o.indexOf(a.slot) - o.indexOf(b.slot) || b.rar - a.rar || b.ilvl - a.ilvl || (a.name < b.name ? -1 : 1)); inv.fill(null); for (const it of items) bagPut(inv, it); SFX.play('pickup'); saveGame(); }
 function bagFree() { return bagOcc(G.hero.inv).filter(x => !x).length; }
-function addItem(it, at) { return bagPut(G.hero.inv, it, at); }
+function addItem(it, at) { const inv = G.hero.inv; if (bagPut(inv, it, at)) return true; if (bagFree() < itemH(it)) return false; /* build 0062 (playtest): free cells were scattered, so tidy the bag (tall items first) and try again instead of saying it is full */ const items = inv.filter(x => x).sort((a, b) => itemH(b) - itemH(a)); inv.fill(null); const rows = Math.ceil(inv.length / BAG_W), cells = []; for (let r = rows - 2; r >= -1; r -= 2) for (let c = BAG_W - 1; c >= 0; c--) for (const rr of [r + 1, r]) if (rr >= 0 && rr < rows) cells.push(rr * BAG_W + c); for (const x of items) { if (itemH(x) === 2) bagPut(inv, x); else { const occ = bagOcc(inv), i = cells.find(j => j < inv.length && !occ[j]); if (i !== undefined) inv[i] = x; else bagPut(inv, x); } } if (typeof UI !== 'undefined') UI.invDirty = true; return bagPut(inv, it); }
 function canUse(it) { const h = G.hero; if (it.dmg && !CLASSES[h.cls].wts.includes(it.wt)) return false; if (it.slot === 'offhand' && it.oc && it.oc !== h.cls) return false; return true; }
 function moveItem(from, to) {
   const inv = G.hero.inv, it = inv[from]; if (!it || from === to) return false; let occ = bagOcc(inv, it);
@@ -382,6 +382,9 @@ function genZone(def) {
   { const ev = sr(); if (Z.def.type === 'zone' && rest.length > 40) { const far = rest.slice(22).filter(k => Z.dist && Z.dist[k] > 12); const k = far[(sr() * far.length) | 0]; if (k !== undefined) { const p = W(k); if (ev < .33) Z.objs.push({ kind: 'well', x: p[0], z: p[1], name: 'Wishing Well', used: false }); else if (ev < .58) { Z.vault = { x: p[0], z: p[1] }; for (const [ox, oz] of [[-.85, -.85], [.85, -.85], [-.85, .85], [.85, .85]]) Z.objs.push({ kind: 'gchest', x: p[0] + ox, z: p[1] + oz, name: 'Golden Chest', used: false }); } } } } /* build 0027: a happy surprise on most floors */
   for (let i = 6; i < 22 && i < rest.length; i++) { const p = W(rest[i]); Z.lamps.push({ x: p[0] + (sr() - .5), z: p[1] + (sr() - .5) }); }
   Z.lamps.push({ x: Z.start[0] + 2.5, z: Z.start[1] - 2, big: 1 });
+  if (Z.def.type === 'zone' && !Z.def.rift && (Z.def.depth || 1) > 1) { /* build 0062 (playtest): the gate back to the previous floor was never placed; it now stands just behind where you arrive */
+    let bk = -1, bd = 1e9; for (let i = 0; i < GW * GW; i++) if (!c[i] && dist[i] === 2) { const d = Math.hypot(i % GW - corner[0], (i / GW | 0) - corner[1]); if (d < bd) { bd = d; bk = i; } }
+    if (bk >= 0) { const p = W(bk); Z.objs.push({ kind: 'pback', x: p[0], z: p[1], name: 'Previous floor', used: false }); } }
   return Z;
 }
 const LOWQ = typeof matchMedia !== 'undefined' && matchMedia('(pointer:coarse)').matches;
@@ -608,7 +611,7 @@ function spawnAll(Z) {
   });
   if (Z.def.type === 'zone' && Math.random() < .33) for (let t = 0; t < 60; t++) { const k = (Math.random() * GW * GW) | 0; if (Z.cell[k] || !Z.dist || Z.dist[k] < 14) continue; const x = (k % GW + .5) * CS, z = ((k / GW | 0) + .5) * CS; if (blocked(x, z, .6)) continue; mkEnemy({ a: 'goblin', n: 'Treasure Goblin', c: 0x4a7a34, c2: 0xc89a3a, e: 0xffd84a }, x, z, lv, 0, -1); break; } /* build 0027 */
   const bd = bossFor(Z.def.theme, Z.def.depth), hit = refHit(lv + 1);
-  const b = { id: ++G.eid, md: { a: 'boss', n: bd.n, c: bd.c, c2: bd.c2, e: bd.e }, a: { r: 1.7, sc: bd.sc || 2.3, rec: .9, wind: .8, reach: 3.6, xp: 40, spd: 4 }, arch: 'boss', boss: true, bd, x: Z.bossAt[0], z: Z.bossAt[1], rot: 0, lvl: lv + 1, elite: 3, pack: -1, r: 1.7, sc: bd.sc || 2.3, maxHp: Math.round(2.8 * hit * 40), dmg: 5 * Math.pow(1.095, lv + 1) * 1.6, spd: 4, st: 'chase', t: 0, cd: 1, walk: 0, awake: false, flash: 0, chill: 0, shock: 0, frozen: 0, burn: 0, burnT: 0, atk: 0, alive: true, deadT: 0, pt: 2.5, pi: 0, name: bd.n, mods: [] };
+  const b = { id: ++G.eid, md: { a: 'boss', n: bd.n, c: bd.c, c2: bd.c2, e: bd.e }, a: { r: 1.7, sc: bd.sc || 2.3, rec: .9, wind: .8, reach: 3.6, xp: 40, spd: 4 }, arch: 'boss', boss: true, bd, x: Z.bossAt[0], z: Z.bossAt[1], rot: 0, lvl: lv + 1, elite: 3, pack: -1, r: 1.7, sc: bd.sc || 2.3, maxHp: Math.round(2.8 * hit * 40 * 1.6), dmg: 5 * Math.pow(1.095, lv + 1) * 3, /* build 0062 (playtest): guardians last longer and hit much harder */ spd: 4, st: 'chase', t: 0, cd: 1, walk: 0, awake: false, flash: 0, chill: 0, shock: 0, frozen: 0, burn: 0, burnT: 0, atk: 0, alive: true, deadT: 0, pt: 2.5, pi: 0, name: bd.n, mods: [] };
   b.hp = b.maxHp; G.ents.push(b); G.boss = b; Z.ent0 = G.ents.filter(e => !e.boss).length; Z.repT = 30;
 }
 function addReplica(i) {
@@ -636,14 +639,14 @@ function genTown() {
   for (let y = 0; y < GW; y++) for (let x = 0; x < GW; x++) if (Math.hypot(x + .5 - c0, y + .5 - c0) < 7.2) Z.cell[y * GW + x] = 0;
   const cx = c0 * CS, cz = c0 * CS; Z.start = [cx, cz + 9]; Z.bossAt = [cx, cz]; Z.dist = new Int16Array(GW * GW);
   Z.lamps.push({ x: cx, z: cz, big: 1 }, { x: cx - 11, z: cz - 8 }, { x: cx + 11, z: cz - 8 }, { x: cx - 8, z: cz + 10 }, { x: cx + 8, z: cz + 10 }, { x: cx - 16, z: cz + 1 }, { x: cx + 16, z: cz + 1 }, { x: cx - 4, z: cz - 15 }, { x: cx + 4, z: cz - 15 });
-  Z.objs.push({ kind: 'stash', x: cx, z: cz - 13, name: 'Stash', used: false }, { kind: 'vendor', x: cx - 13, z: cz - 2, name: 'Mirel the Trader', used: false }, { kind: 'altar', x: cx + 13, z: cz - 2, name: 'Altar of Embers', used: false }, { kind: 'tportal', x: cx, z: cz + 14, name: 'Return to the Hollow', used: false }, { kind: 'planner', x: cx + 6.5, z: cz + 10.5, name: 'Town Planner', used: false });
+  Z.objs.push({ kind: 'stash', x: cx, z: cz - 13, name: 'Stash', used: false }, { kind: 'vendor', x: cx - 13, z: cz - 2, name: 'Mirel the Trader', used: false }, { kind: 'altar', x: cx + 13, z: cz - 2, name: 'Altar of Embers', used: false }, { kind: 'tportal', x: cx, z: cz + 14, name: 'Return to the floor', used: false }, { kind: 'planner', x: cx + 6.5, z: cz + 10.5, name: 'Town Planner', used: false });
   for (const id in FOLK) { const f = FOLK[id]; Z.objs.push({ kind: 'npc', id, x: cx + f.at[0], z: cz + f.at[1], name: f.n, used: false }); }
   Z.objs.push({ kind: 'rift', x: cx + 11.6, z: cz + 4.4, name: 'Rift Stone', used: false });
   return Z;
 }
 function setEnv(Z) { const e = GLX.env, th = Z.th, n = Math.hypot(.55, .66, .42); e.sun = [.55 / n, .66 / n, .42 / n]; e.sunC = th.sunC; e.sky = th.sky; e.gnd = th.gnd; e.fog = GLX.col(th.fog); e.lightR = th.lightR; if (th !== THEMES.forest && th !== THEMES.town && th !== THEMES.ice) { e.lightR *= 1.3; e.sky = e.sky.map(v => v * 1.45); e.gnd = e.gnd.map(v => v * 1.3);  } /* deeper regions were too dark to read */ e.wet = th.wet === undefined ? .4 : th.wet; e.mist = th.mist === undefined ? .35 : th.mist; e.gr = th.gr || [.45, .2, .05, 0]; e.scat = th.scat !== undefined ? th.scat : .012 + e.mist * .03; e.ge = GLX.col(th.lamp || 0xff7a2a); SFX.ambient(Object.keys(THEMES).find(k => THEMES[k] === th)); }
 function enterTown() {
-  if (G.inTown || P.dead || G.state !== 'play') return; for (const e of G.ents) if (e.alive && e.awake && Math.hypot(e.x - P.x, e.z - P.z) < 16) { hint('You cannot leave while enemies are near. Finish the fight or step away first.'); return; }
+  if (G.inTown || P.dead || G.state !== 'play') return; for (const e of G.ents) if (e.alive && e.awake && !e.dummy && Math.hypot(e.x - P.x, e.z - P.z) < 16 && (Math.hypot(e.x - P.x, e.z - P.z) < 6 || los(e.x, e.z, P.x, P.z))) { hint('You cannot leave while enemies are near. Finish the fight or step away first.'); return; }
   goalDone('town'); P.fl = FLASK_MAX; P.flaskCd = 0; /* build 0026: only a real trip to town counts (and refills potions) */ if (P.meter) P.meter.peak = 0; /* Sprint 1: peak hit resets in town */
   G.away = { zone: G.zone, ents: G.ents, drops: G.drops, boss: G.boss, x: P.x, z: P.z, seed: G.zone.def.seed }; G.ents = []; G.drops = []; G.projs = []; G.pp = []; G.areas = []; G.fx = []; G.texts = []; G.timers = []; G.boss = null; G.streak = 0;
   G.zone = genTown(); G.inTown = true; buildStatic(G.zone); setEnv(G.zone); P.x = G.zone.start[0]; P.z = G.zone.start[1]; P.y = 0; P.rot = Math.PI; P.act = P.spin = P.dash = P.move = P.atk = P.inter = P.pick = null; BOT.path = null; P.hp = P.stats.maxLife; addDummy();
@@ -795,8 +798,8 @@ function addDummy() { const cx = GW / 2 * CS, cz = GW / 2 * CS; let x = cx - 6.5
 function dummyHit(e, v) { if (G.time - e.lastT > 4) { e.t0 = G.time; e.tot = 0; e.big = 0; e.n = 0; } e.tot += v; e.big = Math.max(e.big, v); e.n++; e.lastT = G.time; e.wob = 1; e.hp = e.maxHp; }
 function dummyDps(e) { if (!e.tot) return 0; const live = G.time - e.lastT <= 4, span = (live ? G.time : e.lastT) - e.t0; return e.tot / Math.max(1, span); }
 function hitEnemy(e, sk, mult, noProc) { if (e && e.alive && e.arch === 'goblin' && typeof UI !== 'undefined' && Math.random() < .55) dropGold(e.x, e.z, (4 + (G.hero ? G.hero.level : 1) * 2) * rnd(.8, 1.3)); /* build 0027: coins fly out with every hit */
-  if (!e.alive) return; const s = P.stats, d = rollDmg(sk, mult); let v = d.v; if (e.armored) v *= .6; if (e.shock > 0) v *= 1.15; if (!e.boss && !e.elite && e.hp > e.maxHp * .95) v = Math.min(v, e.maxHp * .65); v = Math.max(1, Math.round(v)); // house rule: ordinary monsters always take at least 2 hits
-  if (sk.type === 'ally' && !e.dummy) { const cap = Math.floor(e.hp - e.maxHp * .12); if (cap < 1) { e.flash = .06; wake(e); return; } v = Math.min(v, cap); } // build 0054: teammates soften monsters up, the hero lands the kill
+  if (!e.alive) return; e.byAlly = !!(sk && sk.type === 'ally'); const s = P.stats, d = rollDmg(sk, mult); let v = d.v; if (e.armored) v *= .6; if (e.shock > 0) v *= 1.15; if (!e.boss && !e.elite && e.hp > e.maxHp * .95) v = Math.min(v, e.maxHp * .65); v = Math.max(1, Math.round(v)); // house rule: ordinary monsters always take at least 2 hits
+  if (sk.type === 'ally' && e.boss) v = Math.max(1, Math.round(v * .4)); /* build 0062: teammates chip a guardian, the hero brings it down */ if (!e.boss && !e.elite && !e.dummy) { if (!noProc) e.nh = (e.nh || 0) + 1; if (e.nh < 2) v = Math.min(v, Math.max(1, Math.floor(e.hp - 1))); } /* build 0062 (playtest): nothing finishes an ordinary monster before its second hit */ if (sk.type === 'ally' && !e.dummy) { const cap = Math.floor(e.hp - e.maxHp * .12); if (cap < 1) { e.flash = .06; wake(e); return; } v = Math.min(v, cap); } // build 0054: teammates soften monsters up, the hero lands the kill
   const over = v > 3 * Math.max(1, e.hp); /* Sprint 1: overkill, more than three times the life it had left */ meterHit(v); if (e.dummy) dummyHit(e, v);
   e.hp -= v; e.flash = .13; wake(e); P.lastHit = G.time; if (sk.gen) P.mana = Math.min(s.maxMana, P.mana + sk.gen);
   floatText(e.x, 1.6 * e.sc + .6, e.z, (d.crit ? '✦' : '') + v, d.crit ? '#ffe14a' : EL_CSS[sk.el], d.crit ? 1.1 : .8, d.crit ? 21 : 15);
@@ -820,7 +823,7 @@ function flingCorpse(e) { /* build 0048: kills go flying, away from the hero; he
   const w = e.arch === 'brute' || e.elite ? .55 : e.arch === 'swarm' ? 1.3 : 1, sp = (e.lheavy ? 9 : 5.5) * w * rnd(.85, 1.15); e.fly = { vx: dx * sp, vz: dz * sp, vy: (e.lheavy ? 5.5 : 3.5) * Math.min(1.2, w), y: 0, tilt: 0, tv: -(e.lheavy ? 9 : 6), side: rnd(-.6, .6) }; e.deadT = .95; e.dmax = .95; }
 function flyStep(e, dt) { const f = e.fly; if (!f) return; if (!moveEnt(e, f.vx * dt, f.vz * dt, .3)) { f.vx *= -.25; f.vz *= -.25; } f.vy -= 22 * dt; f.y += f.vy * dt; if (f.y <= 0) { if (f.vy < -4 && !f.thud) { f.thud = 1; burst(e.x, .2, e.z, 0x8a7a60, 6, 3); } f.y = 0; f.vy = Math.abs(f.vy) * .25; f.vx *= .55; f.vz *= .55; if (f.vy < 1) f.vy = 0; } f.tilt = Math.max(-1.5, f.tilt + f.tv * dt); if (f.tilt <= -1.5) f.tv = 0; }
 function killEnemy(e) {
-  if (!e.alive) return; e.alive = false; e.deadT = .45; flingCorpse(e); const h = G.hero, s = P.stats; h.kills++; if (h.cls === 'arcanist') P.arcT = G.time + 2; /* Sprint 1: +40% Arcane Power regen for 2 s after a kill (refreshes, never stacks) */ if (h.goals && !h.goals.kill) { h.goals.k = (h.goals.k || 0) + 1; if (h.goals.k >= 5) goalDone('kill'); } if (e.boss) goalDone('boss');
+  if (!e.alive) return; e.alive = false; e.deadT = .45; flingCorpse(e); const h = G.hero, s = P.stats; h.kills++; if (h.cls === 'arcanist') P.arcT = G.time + 2; /* Sprint 1: +40% Arcane Power regen for 2 s after a kill (refreshes, never stacks) */ if (h.goals && !h.goals.kill && !e.byAlly) { h.goals.k = (h.goals.k || 0) + 1; if (h.goals.k >= 5) goalDone('kill'); } if (e.boss) goalDone('boss');
   let xp = 22 * Math.pow(1.13, e.lvl) * (e.a.xp || 1) * (e.elite === 1 ? 3 : e.elite === 2 ? 6 : 1); const diff = h.level - e.lvl, pf = diff > 4 ? Math.max(.1, 1 - (diff - 4) * .15) : 1; xp *= pf; if (e.boss) { xp = Math.max(xp, xpNeed(h.level) * .65 * pf); G.bossXp = Math.round(xp); } /* one announcement only: the Guardian slain banner shows the XP */ /* Lee, Nov 13: guardians give a lot of XP, about two thirds of a level */ if (G.set.nums !== false && h.level < MAX_LEVEL) floatText(e.x, 2.4 * e.sc, e.z, '+' + Math.max(1, Math.round(xp)) + ' xp', '#cfc4ff', 1, 12); gainXp(xp);
   G.streak++; G.streakT = 4; if (G.streak > G.bestStreak) G.bestStreak = G.streak; if (G.streak > (h.best || 0)) h.best = G.streak;
   { const MS = { 10: ['Rampage!', 0xffb03a], 25: ['Massacre!', 0xff6a3a], 50: ['Unstoppable!', 0xff3a6a], 100: ['Godlike!', 0xc070ff] }, m = MS[G.streak]; if (m) { const bonus = Math.round((8 + h.level * 4) * (G.streak / 10)); h.gold += bonus; UI.streakPop && UI.streakPop('x' + G.streak + ' ' + m[0], '+' + bonus + ' gold', m[1]); impact(P.x, P.z, 2.2, m[1], true); SFX.play('level'); } } // kill streak milestones with a small gold bonus
@@ -838,7 +841,7 @@ function killEnemy(e) {
   }
 }
 // ---- first steps ----
-function goalDone(k) { const h = G.hero; if (!h || !h.goals || h.goals.all || h.goals[k]) return; h.goals[k] = 1; const g = GOALS.find(x => x[0] === k); SFX.play('shrine'); floatText(P.x, 3.2, P.z, '✓ ' + g[1], '#9effa8', 2, 16);
+function goalDone(k) { const h = G.hero; if (!h || !h.goals || h.goals.all || h.goals[k]) return; h.goals[k] = 1; const g = GOALS.find(x => x[0] === k), now = Date.now(), wait = Math.max(0, (G._gqT || 0) - now); G._gqT = now + wait + 1600; const show = () => { SFX.play('shrine'); floatText(P.x, 3.2, P.z, '✓ ' + g[1], '#9effa8', 2, 16); }; if (wait > 0 && typeof setTimeout === 'function') setTimeout(show, wait); else show(); /* build 0062 (playtest): First Steps ticks come one at a time instead of piling up */
   if (GOALS.every(x => h.goals[x[0]])) { h.goals.all = 1; if (typeof UI !== 'undefined') UI.zoneBanner('First steps complete', 'The deep is yours to explore'); SFX.play('level'); } saveGame(); }
 const blessed = () => { const h = G.hero; return !!h && !h.runs && h.level < 4; }; // newcomer's blessing: softer hits until the first guardian falls
 function dmgPlayer(v, el, src, hvy) {
@@ -846,9 +849,10 @@ function dmgPlayer(v, el, src, hvy) {
   if (Math.random() * 100 < s.dodgeT) { floatText(P.x, 2.6, P.z, 'Dodge', '#9fe', .7); return; }
   if (el === 'phys') v *= 1 - Math.min(.8, s.armorT / (s.armorT + 60 + v * 6)); else v *= 1 - (s['r' + el] || 0) / 100; v *= 1 - Math.min(50, s.dr + furyDR()) / 100; if (hvy > 0) v = Math.max(v, s.maxLife * Math.min(.5, hvy) * (blessed() ? .6 : 1) * (1 - Math.min(50, s.dr + furyDR()) / 100)); v = Math.max(1, Math.round(v));
   P.hp -= v; P.hurt = .25; P.lastHit = G.time; P.mana = Math.min(s.maxMana, P.mana + 2); G.shake = Math.min(.7, G.shake + .12 + v / s.maxLife); floatText(P.x, 2.6, P.z, '-' + v, '#ff5a4a', .9, 17); SFX.play('hurt'); burst(P.x, 1.4, P.z, 0xffc070, 7, 5); { const hf = typeof document !== 'undefined' && document.getElementById('hurtFx'); if (hf && hf.animate) hf.animate([{ opacity: Math.min(.75, .3 + v / s.maxLife * 2) }, { opacity: 0 }], { duration: 450, easing: 'ease-out' }); }
-  if (src && src.alive && s.thorns > 0) { src.flash = .1; if (G.online) NET.send({ t: 'hit', id: src.id, v: s.thorns, el: 'phys' }); else { src.hp -= s.thorns; if (src.hp <= 0) killEnemy(src); } }
+  if (src && src.alive && s.thorns > 0) { src.flash = .1; if (G.online) NET.send({ t: 'hit', id: src.id, v: s.thorns, el: 'phys' }); else { src.hp = Math.max(!src.boss && !src.elite && (src.nh || 0) < 2 ? 1 : -1e9, src.hp - s.thorns); if (src.hp <= 0) killEnemy(src); } }
   if (P.hp <= 0) { if (s.cheat && P.cheatCd <= 0) { P.hp = s.maxLife; P.cheatCd = 60; ring(P.x, P.z, 0, 10, .8, 0xff8a2a); hint('Emberheart saves you from death!'); } else { P.hp = 0; P.dead = true; P.act = P.spin = P.dash = null; G.streak = 0; SFX.play('die'); UI.showDeath(); } }
 }
+function autoCast(...a) { P._auto = 1; try { return tryCast(...a); } finally { P._auto = 0; } }
 function tryCast(slot, tx, tz) {
   const h = G.hero, s = P.stats; let id = h.bar[slot];
   if (!h.eq.weapon) { if (slot !== 0) { if (G.time - P.oomT > 1.5) { P.oomT = G.time; hint('Unarmed: you can only punch until you equip a weapon.'); } return false; } id = 'punch'; }
@@ -859,7 +863,7 @@ function tryCast(slot, tx, tz) {
   P.mana -= sk.cost || 0; if (sk.cd) P.cds[id] = sk.cd * (1 - s.cdrT / 100);
   const sp = (1 + s.aspd / 100) * aspdK();
   if (sk.type === 'spin') { P.spin = { t: sk.dur, tk: 0, sk }; return true; }
-  if (slot > 0) goalDone('skill');
+  if (slot > 0 && !P._auto) goalDone('skill'); /* build 0062 (playtest): only a skill you cast yourself ticks First Steps, not autocast */
   if (sk.type === 'buff') { P.buffs = P.buffs.filter(b => b.n !== sk.n); P.buffs.push({ s: sk.s, t: sk.dur, n: sk.n }); computeStats(); ring(P.x, P.z, 0, 7, .5, 0xffb03a); SFX.play('shrine'); P.mana = Math.min(s.maxMana, P.mana + 20); return true; }
   P.rot = Math.atan2(tx - P.x, tz - P.z); const dur = sk.basic ? 1 / (s.wspd * sp * (sk.as || 1)) : (sk.ct || .35) / sp;
   P.act = { sk, id, t: 0, dur, fireAt: dur * .42, fired: false, tx, tz }; P.swing = 0; SFX.play('swing'); return true;
@@ -913,7 +917,7 @@ function questTarget() {
   const Z = G.zone; if (!Z) return null; const h = G.hero, cq = tqCur ? tqCur() : null;
   if (G.inTown) { /* build 0025: the path leads to whoever is waiting for you first */ const who = cq ? (h.tq.n >= cq.goal.n ? cq.by : null) : (tqNext() ? tqNext().by : null), npc = who && Z.objs.find(o => o.kind === 'npc' && o.id === who);
     if (npc) { const at = npc.st || npc; return { x: at.x, z: at.z, text: (cq ? 'Collect your reward from ' : 'Talk to ') + FOLK[who].n + (cq ? '' : ': they have a job for you') }; }
-    const o = Z.objs.find(o => o.kind === 'tportal'); return { x: o.x, z: o.z, text: cq ? 'Take the portal back out to work on ' + cq.t : 'Take the portal back to the Hollow' }; }
+    const o = Z.objs.find(o => o.kind === 'tportal'); return { x: o.x, z: o.z, text: cq ? 'Take the portal back out to work on ' + cq.t : 'Take the portal back to ' + (G.away && G.away.zone ? G.away.zone.def.name : 'the floor') }; }
   if (cq && cq.goal.k === 'rescue' && h.tq.n < cq.goal.n) { const pip = Z.objs.find(o => o.kind === 'lost' && !o.used); if (pip) return { x: pip.x, z: pip.z, text: 'Find Pip: follow the path, he is hiding on this floor' }; }
   const po = Z.objs.find(o => o.kind === 'portal' && !o.used); if (po) return { x: po.x, z: po.z, text: 'Take the portal deeper' };
   const b = G.boss; return { x: b ? b.x : Z.bossAt[0], z: b ? b.z : Z.bossAt[1], text: 'Find and slay ' + (b ? b.name : bossFor(Z.def.theme, Z.def.depth).n) };
@@ -1071,7 +1075,7 @@ function updPlayer(dt) {
   const jx = IN.joy.x, jz = IN.joy.z, jm = IN.joy.on ? Math.hypot(jx, jz) : 0; let chase = null;
   // auto-cast: skills switched to auto fire by themselves at the nearest foe, only while foes are near
   if (h.autoPot && !P.dead && P.stats && P.hp < P.stats.maxLife * .5 && (P.fl === undefined || P.fl > 0) && !(P.flaskT > 0)) useFlask();
-  if (h.autoc && !P.act) for (let i = 1; i < 4; i++) { if (!h.autoc[i] || !h.bar[i]) continue; const sk = SKILLS[h.bar[i]], e = nearFoe(sk.type === 'melee' || sk.type === 'nova' || sk.type === 'spin' ? (sk.range || sk.r || 3) * .8 : 11); if (!e || (e.dummy && G.time - (P.manT || -99) > 1.5) /* build 0034: autocast only joins in while you are attacking the Training Dummy yourself */ || (P.cds[h.bar[i]] || 0) > 0 || P.mana < (sk.cost || 0)) continue; const esc = sk.type === 'dash' && !sk.land; if (esc) continue; if (tryCast(i, e.x, e.z)) return; }
+  if (h.autoc && !P.act) for (let i = 1; i < 4; i++) { if (!h.autoc[i] || !h.bar[i]) continue; const sk = SKILLS[h.bar[i]], e = nearFoe(sk.type === 'melee' || sk.type === 'nova' || sk.type === 'spin' ? (sk.range || sk.r || 3) * .8 : 11); if (!e || (e.dummy && G.time - (P.manT || -99) > 1.5) /* build 0034: autocast only joins in while you are attacking the Training Dummy yourself */ || (P.cds[h.bar[i]] || 0) > 0 || P.mana < (sk.cost || 0)) continue; const esc = sk.type === 'dash' && !sk.land; if (esc) continue; if (autoCast(i, e.x, e.z)) return; }
   if ((IN.lmb && P.atk && P.atk.dummy) || IN.rmb || IN.tb[0] || IN.tb[1] || IN.tb[2] || IN.tb[3]) P.manT = G.time; /* the last moment you attacked by hand */
   for (let i = 0; i < 4; i++) if (IN.tb[i]) {
     const e = nearFoe(15), sk = SKILLS[i === 0 && !h.eq.weapon ? 'punch' : h.bar[i]];
@@ -1263,7 +1267,7 @@ function interact(o) {
   else if ((o.kind === 'portal' || o.kind === 'pback') && !o.gone && typeof UI !== 'undefined' && UI.askGate) { UI.askGate(o); return; } /* click, E or the phone Use button: ask before leaving the floor, like walking in */
   else if (o.kind === 'portal') { if (G.online) NET.send({ t: 'next' }); else { if (!G.zone.def.rift) G.hero.depth = (G.hero.depth || 0) + 1; enterZone(); } }
   else if (o.kind === 'rift') UI.openRift && UI.openRift();
-  else if (o.kind === 'pback') { if (G.online) NET.send({ t: 'prev' }); else { G.hero.depth = Math.max(0, (G.hero.depth || 0) - 1); enterZone(); } }
+  else if (o.kind === 'pback') { if (G.online) { if (G.boss && G.boss.alive && Object.keys(NET.peers || {}).length) { o.gone = false; hint('Your party can head back once the guardian of this floor is slain'); } else NET.send({ t: 'prev' }); } else { G.hero.depth = Math.max(0, (G.hero.depth || 0) - 1); enterZone(); } }
 }
 function eShoot(e, ang, spd, dmgM, el) { G.projs.push({ x: e.x + Math.sin(ang) * e.r, z: e.z + Math.cos(ang) * e.r, vx: Math.sin(ang) * spd, vz: Math.cos(ang) * spd, life: 3, r: .45, dmg: e.dmg * (dmgM || 1), el: el || 'phys', src: e, c: GLX.col(e.md.e) }); }
 function bossPattern(e) {
@@ -1286,11 +1290,11 @@ function updEnemy(e, dt) {
   if (e.dummy) { if (e.flash > 0) e.flash -= dt; e.wob = Math.max(0, (e.wob || 0) - dt * 1.6); if (e.burnT > 0) { e.burnT -= dt; dummyHit(e, e.burn * dt); } e.chill = e.shock = e.frozen = 0; e.awake = true; return; }
   if (e.flash > 0) e.flash -= dt; if (e.atk > 0) e.atk -= dt * 3; if (e.chill > 0) e.chill -= dt; if (e.shock > 0) e.shock -= dt;
   if (e.kvx || e.kvz) { if (!moveEnt(e, e.kvx * dt, e.kvz * dt, e.r * .8)) e.kvx = e.kvz = 0; const f = Math.max(0, 1 - dt * 9); e.kvx *= f; e.kvz *= f; if (Math.abs(e.kvx) + Math.abs(e.kvz) < .2) e.kvx = e.kvz = 0; } // build 0048: the shove slides out instead of snapping
-  if (e.burnT > 0) { e.burnT -= dt; e.hp -= e.burn * dt; if (e.hp <= 0) { killEnemy(e); return; } }
+  if (e.burnT > 0) { e.burnT -= dt; e.hp = Math.max(!e.boss && !e.elite && (e.nh || 0) < 2 ? 1 : -1e9, e.hp - e.burn * dt); if (e.hp <= 0) { killEnemy(e); return; } }
   if (e.tnt) { e.tnt.t -= dt; if (e.tnt.t <= 0 || !ALLIES.includes(e.tnt.a) || G.online) e.tnt = null; } // build 0054: a taunted monster turns on the tank
   const T = e.tnt ? e.tnt.a : P, dx = T.x - e.x, dz = T.z - e.z, d = Math.hypot(dx, dz) || .001;
   const hitT = (v, el) => T === P ? dmgPlayer(v, el, e) : tankHit(T, e);
-  if (!e.awake) { if (Math.hypot(P.x - e.x, P.z - e.z) < (e.boss ? 17 : 14) && !P.dead) wake(e); else return; }
+  if (!e.awake) { if (Math.hypot(P.x - e.x, P.z - e.z) < (e.boss ? 17 : 14) && !P.dead && !(e.dozeT > G.time && !los(e.x, e.z, P.x, P.z))) wake(e); else return; }
   if (P.dead) return; if (e.frozen > 0) { e.frozen -= dt; return; }
   const slow = e.chill > 0 ? .6 : 1, sp = e.spd * slow, a = e.a; e.cd -= dt * slow; e.t -= dt * slow;
   if (e.arch === 'goblin') { e.escT = (e.escT || 0) + dt; if (e.escT > 30) { e.alive = false; e.deadT = .45; e.escaped = 1; if (typeof __emit === 'function') __emit(null, { t: 'gone', id: e.id }); else goblinGone(e); return; }
@@ -1299,7 +1303,8 @@ function updEnemy(e, dt) {
   if (e.regen) e.hp = Math.min(e.maxHp, e.hp + e.maxHp * .02 * dt);
   if (e.storm) { e.modT -= dt; if (e.modT <= 0) { e.modT = 3.2; addArea({ x: P.x, z: P.z, r: 2.4, delay: .9, owner: 'e', dmg: e.dmg * 1.2, el: 'light', c: 0xfff07a, src: e }); } }
   const face = () => { let da = Math.atan2(dx, dz) - e.rot; while (da > Math.PI) da -= 6.2832; while (da < -Math.PI) da += 6.2832; e.rot += da * Math.min(1, dt * 10); };
-  const go = (dir, k) => { const st = sp * dt * (k || 1); moveEnt(e, dx / d * st * dir, dz / d * st * dir, e.r * .8); e.walk += st * 1.6; };
+  const go = (dir, k) => { const st = sp * dt * (k || 1); if (!moveEnt(e, dx / d * st * dir, dz / d * st * dir, e.r * .8)) { const sd = (e.id & 1) ? 1 : -1; moveEnt(e, -dz / d * st * sd, dx / d * st * sd, e.r * .8); } e.walk += st * 1.6; };
+  if (!e.boss && !G.online) { e.skT = (e.skT || 0) + dt; if (e.skT > 1.2) { const mv = e.skX === undefined ? 1 : Math.hypot(e.x - e.skX, e.z - e.skZ); e.skN = mv < .3 && d > 3.5 ? (e.skN || 0) + 1 : 0; e.skX = e.x; e.skZ = e.z; e.skT = 0; if (e.skN >= 3 && !los(e.x, e.z, P.x, P.z)) { e.awake = false; e.skN = 0; e.tnt = null; e.dozeT = G.time + 8; return; } } } /* build 0062 (playtest): a monster stuck behind a wall for a few seconds with no way to you gives up and dozes off */
   if (e.st === 'charge') { const st = 24 * dt; if (!moveEnt(e, Math.sin(e.cdir) * st, Math.cos(e.cdir) * st, e.r)) e.t = 0; e.rot = e.cdir; e.walk += st; if (!e.chit && d < e.r + 1.2) { e.chit = true; hitT(e.dmg * 1.8, 'phys'); } if (e.t <= 0) { e.st = 'rec'; e.t = .6; } return; }
   if (e.cd2 > 0) e.cd2 -= dt;
   if (e.st === 'hwind') { face(); if (e.t <= 0) { e.atk = 1; e.st = 'rec'; e.t = a.rec; } return; } // build 0035: a champion's heavy blow lands where the red circle was
@@ -1973,13 +1978,16 @@ function drawWorld() {
     if (r > 0) { const h = BEAM[r], p = .8 + Math.sin(G.time * 4 + d.x) * .2; GLX.obj('glow', 'box', d.x, h / 2, d.z, .78, .14 + r * .05, h, .14 + r * .05, c, 1, .55 * p); GLX.halo(d.x, .4, d.z, 1.4 + r * .9, c, .55 * p); GLX.obj('glow', 'ring', d.x, .06, d.z, G.time, 1.2 + r * .4, 1, 1.2 + r * .4, c, 1, .7, -1); if (r >= 2) GLX.light(d.x, 1.5, d.z, 5 + r * 2, c, .7 + r * .2, r); }
   }
   let pl = 0;
+  let busy = G.fx.length * .5 + G.pp.length * 3; for (const a of G.areas) if (a.owner !== 'e') busy += 6; G._gd += ((busy > 60 ? Math.max(.4, 1 - (busy - 60) / 170) : 1) - (G._gd || 1)) * .15 || 0; if (!(G._gd > 0)) G._gd = 1; const GD = G._gd; GLX.glowK && GLX.glowK(GD); /* build 0062 (playtest): when spells pile up their glow dims, while the red danger shapes stay full and get brighter */
   for (const p of G.pp) {
     if (p.arrow) { GLX.obj('dyn', 'box', p.x, 1.25, p.z, p.rot, .05, .05, 1.2, col(0xd8c8a0), .3); GLX.obj('dyn', 'cone', p.x + Math.sin(p.rot) * .65, 1.25, p.z + Math.cos(p.rot) * .65, p.rot, .1, .1, .22, col(0xc8ced8), .2, 1, 4); GLX.halo(p.x, 1.25, p.z, 1.1, p.c, .35); GLX.obj('glow', 'box', p.x - Math.sin(p.rot) * 1.8, 1.25, p.z - Math.cos(p.rot) * 1.8, p.rot, .03, .03, 2.4, p.c, 1, .18); GLX.obj('glow', 'box', p.x - Math.sin(p.rot) * .9, 1.25, p.z - Math.cos(p.rot) * .9, p.rot, .05, .05, 1.6, p.c, 1, .35); }
     else if (FX_EL[p.sk.el]) drawSpell(p.x, 1.25, p.z, p.rot, p.r, p.sk.el, p.c, pl++ < 3);
     else { const s = p.r * 1.5, sx = Math.sin(p.rot), cz2 = Math.cos(p.rot); GLX.obj('glow', 'sphere', p.x, 1.25, p.z, 0, s, s, s, p.c, 2.2, 1); GLX.obj('glow', 'sphere', p.x, 1.25, p.z, 0, s * .5, s * .5, s * .5, col(0xffffff), 2, .9); GLX.halo(p.x, 1.25, p.z, p.r * 7, p.c, .7); for (let k = 1; k <= 5; k++) { const q = s * (1 - k * .15), wob = Math.sin(G.time * 30 + k * 1.7) * .08 * k; GLX.obj('glow', 'sphere', p.x - sx * k * .42 + cz2 * wob, 1.25 + Math.cos(G.time * 26 + k) * .05 * k, p.z - cz2 * k * .42 - sx * wob, 0, q, q, q, p.c, 1.4, .6 - k * .1); } GLX.obj('glow', 'ring', p.x, 1.25, p.z, G.time * 8, s * 1.9, 1, s * 1.9, p.c, 1, .35, -1); GLX.obj('glow', 'box', p.x - Math.sin(p.rot) * .8, 1.25, p.z - Math.cos(p.rot) * .8, p.rot, p.r * .5, p.r * .5, 1.6, p.c, 1, .4); if (pl++ < 3) GLX.light(p.x, 1.5, p.z, 6, p.c, .8, 1); }
   }
+  GLX.glowK && GLX.glowK(1);
   for (const p of G.projs) { const rt = Math.atan2(p.vx, p.vz); if (FX_EL[p.el]) { drawSpell(p.x, 1.2, p.z, rt, p.r * .85, p.el, p.c, pl++ < 4); continue; } GLX.obj('glow', 'sphere', p.x, 1.2, p.z, 0, p.r * 1.6, p.r * 1.6, p.r * 1.6, p.c, 1.6, 1); GLX.obj('glow', 'sphere', p.x, 1.2, p.z, 0, p.r * .7, p.r * .7, p.r * .7, col(0xffffff), 2, .8); for (let k = 1; k <= 3; k++) { const q = p.r * (1.4 - k * .3); GLX.obj('glow', 'sphere', p.x - Math.sin(rt) * k * .4, 1.2, p.z - Math.cos(rt) * k * .4, 0, q, q, q, p.c, 1.3, .55 - k * .13); } GLX.halo(p.x, 1.2, p.z, p.r * 5, p.c, .6); } // build 0057: enemy shots get a hot core and a trail too
   for (const a of G.areas) {
+    GLX.glowK && GLX.glowK(a.owner === 'e' ? 1 + (1 - GD) * .8 : GD);
     const c = col(a.c), k = clamp(a.t / a.delay, 0, 1), d = a.r * 2, fl = a.hvy && !a.done && k > .72 ? .55 + .45 * Math.sin(G.time * 38) : 0; // build 0048: heavy blows flash just before they land
     if (a.sh) { drawTele(a, c, k, fl); continue; }
     GLX.obj('glow', 'ring', a.x, .09, a.z, 0, d, 1, d, c, 1 + fl, a.owner === 'e' ? .9 : .5, -1); GLX.obj('glow', 'disc', a.x, .08, a.z, 0, d * k, 1, d * k, c, 1, a.owner === 'e' ? .35 : .2, 0);
@@ -2009,6 +2017,7 @@ function drawWorld() {
           else if (wx === 'ash') { const H = 8, y = H - ((t * 1.1 * sp + ph) % H); GLX.obj('glow', 'gem', x + Math.sin(t * .8 + ph) * .9, y, z + Math.cos(t * .6 + ph) * .7, t + ph, .05, .03, .05, q ? wc : col(0xff6a2a), q ? .2 : 2, q ? .55 : .8); }
           else if (wx === 'snow') { const H = 8, y = H - ((t * 1.6 * sp + ph) % H); GLX.obj('glow', 'sphere', x + Math.sin(t * 1.3 * sp + ph) * .7, y, z + Math.cos(t + ph) * .4 + y * .1, 0, .06, .06, .06, wc, .8, .85); }
           else { const y = (t * .7 * sp + ph) % 6; GLX.obj('glow', 'gem', x + Math.sin(t * sp + ph) * .5, y, z + Math.cos(t * sp * .7 + ph) * .5, t, .05, .09, .05, wc, 1.6, (1 - y / 6) * .7); } } } } }
+  GLX.glowK && GLX.glowK(GD);
   for (const f of G.fx) {
     const k = f.life / f.max;
     if (f.pillar) { const e = Math.min(1, (1 - k) * 6), w = (1.3 + (1 - k) * .4) * e; f.x = P.x; f.z = P.z; GLX.obj('glow', 'cyl', f.x, 9, f.z, G.time, w, 18, w, f.c, 1.5, k * .55); GLX.obj('glow', 'cyl', f.x, 9, f.z, -G.time, w * .4, 18, w * .4, col(0xffffff), 2, k * .7); GLX.halo(f.x, 1.2, f.z, 5 * e, f.c, k * .6); for (let i = 0; i < 10; i++) { const ph = ((1 - k) * 1.6 + i / 10) % 1, a = i * .63 + G.time * 2; GLX.obj('glow', 'gem', f.x + Math.cos(a) * w * .9, ph * 10, f.z + Math.sin(a) * w * .9, a, .1, .2, .1, f.c, 2, k); } GLX.light(f.x, 3, f.z, 12, f.c, 1.6 * k, 9); }
@@ -2034,6 +2043,7 @@ function drawWorld() {
     else if (f.dust) GLX.halo(f.x, f.y, f.z, f.size * (2 - k), f.c, k * .22);
 else GLX.obj('glow', 'gem', f.x, f.y, f.z, f.life * 9, f.size, f.size, f.size, f.c, 1, k);
   }
+  GLX.glowK && GLX.glowK(1);
   if (GPS.pts.length > 1 && G.set.gps) { const c = col(0xffd84a), c2g = col(0xffa040); let acc = (G.time * 3) % 1.6, tot = 0; for (let i = 1; i < GPS.pts.length && tot < 34; i++) { const a = GPS.pts[i - 1], b = GPS.pts[i], L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, ry = Math.atan2(b[0] - a[0], b[1] - a[1]); while (acc < L && tot + acc < 34) { const t = acc / L, k = 1 - (tot + acc) / 34; if (tot + acc > 1.6) { const x = a[0] + (b[0] - a[0]) * t, z = a[1] + (b[1] - a[1]) * t, al = .55 * k; for (const sd of [1, -1]) { const fx = Math.sin(ry), fz = Math.cos(ry), sx = fz, sz = -fx; GLX.obj('glow', 'box', x - fx * .12 + sx * sd * .15, .06, z - fz * .12 + sz * sd * .15, ry - sd * .62, .08, .02, .44, c2g, 1, al); } } acc += 1.3; } acc -= L; tot += L; } }
   if (P.move && !P.atk) GLX.obj('glow', 'ring', P.move[0], .06, P.move[1], 0, .8, 1, .8, col(0xffffff), 1, .25, -1);
   if (G.tj && !G.auto && !P.dead) { const e = nearFoe(15); if (e && e !== G.hover) GLX.obj('glow', 'ring', e.x, .06, e.z, G.time * 1.5, e.r * 2.5, 1, e.r * 2.5, col(0xffb03a), 1, .55, -1); }

@@ -279,7 +279,7 @@ mat3x4 skm(){return bone(aJ.x)*aW.x+bone(aJ.y)*aW.y+bone(aJ.z)*aW.z+bone(aJ.w)*a
   const VSM = VS.replace('layout(location=7) in vec2 iE;', 'layout(location=7) in vec2 iE; layout(location=11) in vec2 aU; layout(location=12) in vec2 aM; out vec2 vU; flat out float vLy,vAl;')
     .replace('vec4 w=wpos(iM,aP,aN,iE.y);', 'float mt=aM.y;vec4 w=iM*vec4(aP,1.);if(mt>1.5&&mt<2.5){float hg=max(aP.y,0.)*.3*length(iM[1].xyz);w.x+=sin(uT*1.3+w.x*.35+w.z*.27)*.05*hg;w.z+=cos(uT*1.1+w.x*.3)*.03*hg;}vU=aU;vLy=aM.x;vAl=(mt>1.5&&mt<2.5)?1.:0.;')
     .replace('vC=iC;vE=iE;', 'vC=mt>9.5?vec4(1.,.56,.24,1.):iC;vE=vec2(iE.x+(mt>9.5?.9:0.),(mt>3.5&&mt<4.5)?4.:0.);');
-  const FSM = FS.replace('uniform vec4 uGr;', 'uniform vec4 uGr; uniform mediump sampler2DArray uTex; in vec2 vU; flat in float vLy,vAl;').replace('mat>1.5&&mat<3.5&&vW.y>2.3', 'vW.y>2.3')
+  const FSM = FS.replace('uniform vec4 uGr;', 'uniform vec4 uGr; uniform mediump sampler2DArray uTex; in vec2 vU; flat in float vLy,vAl;').replace('((mat>1.5&&mat<3.5)||(mat>10.5&&mat<14.5))&&vW.y>2.3){float hd=length(vec2(vW.x,vW.z-(vW.y-1.)*.72)-uPl.xz);if(hd<4.2){float th=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))));if(th>smoothstep(3.55,4.15,hd))discard;}}', 'vW.y>1.3){float hd=length(vec2(vW.x,vW.z-(vW.y-1.)*.72)-uPl.xz);if(hd<6.6){float th=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))));if(th>.12+.88*smoothstep(4.6,6.4,hd))discard;}}') /* build 0062 (playtest): trees and other models fade in a wider circle between the camera and the hero (this rule had stopped matching in 0056) */
     .replace('vec3 n=normalize(vN);vec3 a=vC.rgb;', 'vec3 n=normalize(vN);vec4 tx=texture(uTex,vec3(vU,vLy));if(vAl>.5&&tx.a<.5)discard;vec3 tc=tx.rgb*tx.rgb;vec3 a=vC.rgb*mix(vec3(dot(tc,vec3(.3,.59,.11))),tc,.7)*1.15;if(!gl_FrontFacing)n=-n;');
   const VSDM = `#version 300 es
 layout(location=0) in vec3 aP; layout(location=2) in mat4 iM; layout(location=11) in vec2 aU; layout(location=12) in vec2 aM; uniform mat4 uLVP; out vec2 vU; flat out float vLy,vAl;
@@ -373,11 +373,12 @@ precision highp float; uniform mediump sampler2DArray uTex; in vec2 vU; flat in 
       gl.bindVertexArray(null); box[g] = b;
     } return b;
   }
+  let GK = 1; /* build 0062: a dimmer for spell glow in busy fights, so danger shapes stay visible */
   function put(set, g, m, c, em, a, e2) {
     const b = batch(set, g);
     if (b.n >= b.cap) { b.cap *= 2; const d = new Float32Array(STRIDE * b.cap); d.set(b.data); b.data = d; }
     const o = b.n * STRIDE, d = b.data; for (let i = 0; i < 16; i++) d[o + i] = m[i];
-    d[o + 16] = c[0]; d[o + 17] = c[1]; d[o + 18] = c[2]; d[o + 19] = a === undefined ? 1 : a; d[o + 20] = em || 0; d[o + 21] = e2 || 0; b.n++;
+    d[o + 16] = c[0]; d[o + 17] = c[1]; d[o + 18] = c[2]; d[o + 19] = (a === undefined ? 1 : a) * (set === 'glow' ? GK : 1); d[o + 20] = em || 0; d[o + 21] = e2 || 0; b.n++;
   }
   // entity base matrix: T * Ry * uniform scale
   function base(o, x, y, z, ry, s) { const c = Math.cos(ry) * s, sn = Math.sin(ry) * s; o[0] = c; o[1] = 0; o[2] = -sn; o[3] = 0; o[4] = 0; o[5] = s; o[6] = 0; o[7] = 0; o[8] = sn; o[9] = 0; o[10] = c; o[11] = 0; o[12] = x; o[13] = y; o[14] = z; o[15] = 1; return o; }
@@ -502,5 +503,5 @@ precision highp float; uniform mediump sampler2DArray uTex; in vec2 vU; flat in 
   function upBones() { if (!boneRows) return; gl.bindTexture(gl.TEXTURE_2D, boneTex); gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, boneW, boneRows, gl.RGBA, gl.FLOAT, boneData.subarray(0, boneW * 4 * boneRows)); }
   // shared uniforms for the skinned copy of a program, copied from the plain program's current values
   function syncS(P, keys, vals) { gl.useProgram(P.p); for (const k in vals) { const v = vals[k], u = P.u[k]; if (!u) continue; if (v.length === 16) gl.uniformMatrix4fv(u, false, v); else if (v.length === 32) gl.uniform4fv(u, v); else if (v.length === 24) gl.uniform3fv(u, v); else if (v.length === 3) gl.uniform3fv(u, v); else if (v.length === 4) gl.uniform4fv(u, v); else if (v.length === 2) gl.uniform2fv(u, v); else gl.uniform1f(u, v[0]); } if (P.u.uSh) gl.uniform1i(P.u.uSh, 0); }
-  return { init, resize, col, base, obj, part, halo, light, setCamera, toScreen, groundAt, begin, statBegin, statChunk, statEnd, render, env, cam, model, drawModel, modelInfo: () => MI, envLoad, envOn, envInfo: () => ENVM, attach: (m, name, o) => m && m.ready ? CDM.attach(m, name, o) : null };
+  return { glowK: v => { GK = v; }, init, resize, col, base, obj, part, halo, light, setCamera, toScreen, groundAt, begin, statBegin, statChunk, statEnd, render, env, cam, model, drawModel, modelInfo: () => MI, envLoad, envOn, envInfo: () => ENVM, attach: (m, name, o) => m && m.ready ? CDM.attach(m, name, o) : null };
 })();
