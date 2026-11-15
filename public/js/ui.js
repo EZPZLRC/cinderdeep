@@ -83,20 +83,21 @@ const UI = (() => {
     return `url(#${addGrad('g' + hex, `<radialGradient id="ID" cx=".38" cy=".32" r=".75">${S(0, 1.6)}${S(.25, 1.1)}${S(.6, .72)}${S(1, .32)}</radialGradient>`)})`; }
   const IX_TEX = (id, fx, fy, oct, amt) => `<filter id="${id}" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="${fx} ${fy}" numOctaves="${oct}" seed="7" result="n"/><feColorMatrix in="n" type="matrix" values="1 0 0 0 0  1 0 0 0 0  1 0 0 0 0  0 0 0 0 1" result="g"/><feComposite in="SourceGraphic" in2="g" operator="arithmetic" k1="0" k2="1" k3="${amt}" k4="${-amt / 2}" result="t"/><feComposite in="t" in2="SourceGraphic" operator="in"/></filter>`;
   const IX_FILTERS = IX_TEX('ix-metal', 2.2, .09, 2, .2) + IX_TEX('ix-wood', .16, 1.6, 3, .32) + IX_TEX('ix-leather', .55, .5, 2, .15) + IX_TEX('ix-cloth', 2.8, 2.8, 1, .1)
-    /* 3D look for item icons. Side: the icon darkened and stacked down-right for thickness. Top: lit by a light at the top left (diffuse shading plus a specular glint on the bevels). Shadow: a soft drop under it. */
-    + '<filter id="ix-3d" x="-12%" y="-12%" width="130%" height="135%" color-interpolation-filters="sRGB">'
-    + '<feColorMatrix in="SourceGraphic" type="matrix" values=".38 0 0 0 0  0 .38 0 0 0  0 0 .42 0 0  0 0 0 1 0" result="dk"/>'
-    + [1, 2, 3, 4, 5].map(i => `<feOffset in="dk" dx="${(i * .22).toFixed(2)}" dy="${(i * .3).toFixed(2)}" result="e${i}"/>`).join('')
-    + '<feMerge result="side"><feMergeNode in="e5"/><feMergeNode in="e4"/><feMergeNode in="e3"/><feMergeNode in="e2"/><feMergeNode in="e1"/></feMerge>'
-    + '<feGaussianBlur in="SourceAlpha" stdDeviation=".55" result="bump"/>'
-    + '<feDiffuseLighting in="bump" surfaceScale="2.2" diffuseConstant="1.38" lighting-color="#fff" result="dif"><feDistantLight azimuth="225" elevation="46"/></feDiffuseLighting>'
+    /* Bold 3D look for item icons. Side: the icon darkened and stacked well down-right for real thickness, with a dark outline. Top: raised and embossed (its painted details stand up too), lit from the top left with a strong glint on the bevels. Shadow: a deep soft drop under it. */
+    + '<filter id="ix-3d" x="-15%" y="-15%" width="140%" height="145%" color-interpolation-filters="sRGB">'
+    + '<feColorMatrix in="SourceGraphic" type="matrix" values=".3 0 0 0 0  0 .3 0 0 0  0 0 .34 0 0  0 0 0 1 0" result="dk"/>'
+    + [1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => `<feOffset in="dk" dx="${(i * .2).toFixed(2)}" dy="${(i * .27).toFixed(2)}" result="e${i}"/>`).join('')
+    + '<feMerge result="side">' + [9, 8, 7, 6, 5, 4, 3, 2, 1].map(i => `<feMergeNode in="e${i}"/>`).join('') + '</feMerge>'
+    + '<feMorphology in="SourceAlpha" operator="dilate" radius=".35" result="ol0"/><feOffset in="ol0" dx=".9" dy="1.2" result="ol1"/><feMerge result="ol2"><feMergeNode in="ol0"/><feMergeNode in="ol1"/></feMerge><feColorMatrix in="ol2" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .85 0" result="ol"/>'
+    + '<feGaussianBlur in="SourceAlpha" stdDeviation=".75" result="ba"/><feColorMatrix in="SourceGraphic" type="luminanceToAlpha" result="la"/><feGaussianBlur in="la" stdDeviation=".25" result="lb"/><feComposite in="ba" in2="lb" operator="arithmetic" k1="0" k2="1" k3=".35" k4="0" result="bump"/>'
+    + '<feDiffuseLighting in="bump" surfaceScale="3.6" diffuseConstant="1.45" lighting-color="#fff" result="dif"><feDistantLight azimuth="225" elevation="42"/></feDiffuseLighting>'
     + '<feComposite in="SourceGraphic" in2="dif" operator="arithmetic" k1="1" k2="0" k3="0" k4="0" result="lit"/>'
-    + '<feSpecularLighting in="bump" surfaceScale="2.2" specularConstant=".85" specularExponent="16" lighting-color="#fff8ec" result="spc"><feDistantLight azimuth="225" elevation="40"/></feSpecularLighting>'
+    + '<feSpecularLighting in="bump" surfaceScale="3.6" specularConstant="1.05" specularExponent="18" lighting-color="#fff6e6" result="spc"><feDistantLight azimuth="225" elevation="36"/></feSpecularLighting>'
     + '<feComposite in="spc" in2="SourceAlpha" operator="in" result="spi"/>'
-    + '<feComposite in="lit" in2="spi" operator="arithmetic" k1="0" k2="1" k3=".55" k4="0" result="top"/>'
+    + '<feComposite in="lit" in2="spi" operator="arithmetic" k1="0" k2="1" k3=".75" k4="0" result="top"/>'
     + '<feComposite in="top" in2="SourceAlpha" operator="in" result="topc"/>'
-    + '<feOffset in="SourceAlpha" dx="1.3" dy="1.9" result="so"/><feGaussianBlur in="so" stdDeviation="1.1" result="sb"/><feColorMatrix in="sb" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .6 0" result="sh"/>'
-    + '<feMerge><feMergeNode in="sh"/><feMergeNode in="side"/><feMergeNode in="topc"/></feMerge></filter>'
+    + '<feOffset in="SourceAlpha" dx="2" dy="2.8" result="so"/><feGaussianBlur in="so" stdDeviation="1.5" result="sb"/><feColorMatrix in="sb" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .75 0" result="sh"/>'
+    + '<feMerge><feMergeNode in="sh"/><feMergeNode in="ol"/><feMergeNode in="side"/><feMergeNode in="topc"/></feMerge></filter>'
     + '<linearGradient id="ix-sheen" x1="0" y1="0" x2=".7" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset=".4" stop-color="#fff" stop-opacity="0"/><stop offset=".7" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".32"/></linearGradient>';
   function slotSvg(sl) { const k = sl === 'weapon' ? 'sword' : sl === 'offhand' ? 'o_' + OFFHAND[G.hero.cls].n : sl.replace(/\d/, ''); return '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="0">' + (IC[k] || IC.ring) + '</svg>'; }
   function allyBest() { // one click: the Sellsword takes the best weapon and armour from your bag, leaving your own upgrades alone
