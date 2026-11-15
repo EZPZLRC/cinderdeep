@@ -1226,7 +1226,7 @@ const TRIMC = [0x77726a, 0x5878d8, 0xd8b030, 0xff8a2a, 0xb060ff];
 // build 0042: every hero, AI teammate, other player and townsperson is on a real model. All of them share one animation file,
 // each class has its own outfit, and weapons, shields, hats and helmets are held by the model's own hand and head bones.
 // If a model has not loaded (or a graphics card cannot skin on the GPU), the code-built character is drawn instead.
-const MLIFT = [1.55, 1.55, 1.5], MLIFT_SKIN = [1.15, 1.12, 1.1], MODELS_ON = typeof location !== 'undefined' && /[?&]models=1/.test(location.search), BMm = new Float32Array(16), HAL = new Float32Array(16), HAR = new Float32Array(16), UPMASK = {};
+const MLIFT = [1.55, 1.55, 1.5], MLIFT_SKIN = [1.15, 1.12, 1.1], MODELS_ON = !(typeof location !== 'undefined' && /[?&]models=0/.test(location.search)), MODELS_BADGE = typeof location !== 'undefined' && /[?&]models=1/.test(location.search), BMm = new Float32Array(16), HAL = new Float32Array(16), HAR = new Float32Array(16), UPMASK = {};
 const MODEL_OF = { warden: 'warden', ranger: 'ranger', arcanist: 'arcanist', elementalist: 'elementalist', brawler: 'brawler', vil1: 'folkm', vil4: 'folkm', vil5: 'folkm', kid: 'folkm', vendor: 'folkm', vil2: 'folkf', vil3: 'folkf', vil6: 'folkf' }, HAIR_ALT = { vil4: 1, vil5: 1, vil3: 1, vendor: 1 }, MSC = 1.32;
 const MBK = new Float32Array(16), MT1 = new Float32Array(16), MT2 = new Float32Array(16), MHB = new Float32Array(16), MAT = new Float32Array(16), DYE = new Map();
 function m4mul(o, a, b) { for (let c = 0; c < 4; c++) { const x = b[c * 4], y = b[c * 4 + 1], z = b[c * 4 + 2], w = b[c * 4 + 3]; for (let r = 0; r < 4; r++) MT2[c * 4 + r] = a[r] * x + a[4 + r] * y + a[8 + r] * z + a[12 + r] * w; } o.set(MT2); return o; }

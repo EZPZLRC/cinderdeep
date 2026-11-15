@@ -658,7 +658,7 @@ const UI = (() => {
       const steps = G.online ? 1 : G.speed; let sdt = dt; if (G.slowT > 0) { G.slowT -= dt; if (!G.online) sdt = dt * .3; } /* build 0027: jackpot slow-motion beat (offline only: the online world never slows) */ for (let i = 0; i < steps && G.state === 'play'; i++) update(sdt);
       GLX.begin(); drawWorld(); G.camReady = true; GLX.render(); hud(dt);
     } else if (!$('menu').classList.contains('hide')) menuScene(t / 1000);
-    drawOv(); if (MODELS_ON && ++mbN % 15 === 1) modelBadge();
+    drawOv(); if (MODELS_BADGE && ++mbN % 15 === 1) modelBadge();
   }
   // build 0040: with ?models=1 a small line says whether the real hero models loaded, and if not, why
   let mbN = 0; function modelBadge() { let el = $('mdlInfo'); if (!el) { el = document.createElement('div'); el.id = 'mdlInfo'; el.style.cssText = 'position:fixed;left:8px;bottom:8px;max-width:70vw;font:12px/1.35 system-ui,sans-serif;color:#e8e0d0;background:rgba(10,8,6,.78);border:1px solid #6a5a40;border-radius:6px;padding:5px 8px;z-index:60;pointer-events:none'; document.body.appendChild(el); } const mi = GLX.modelInfo ? GLX.modelInfo() : { state: 'off', why: 'old renderer' }; const t = 'Real models test: ' + mi.state + (mi.why ? ' (' + mi.why + ')' : ''); if (el.textContent !== t) el.textContent = t; }
