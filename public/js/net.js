@@ -20,9 +20,10 @@ const NET = (() => {
     switch (m.t) {
       case 'hello': N.id = m.id; N.room = m.room; N.on = true; G.online = true; G.speed = 1; break;
       case 'error': UI.netFail(m.m); break;
+      case 'bye': N.bye = true; break; /* build 0070: the server is restarting for an update; reconnect at once */
       case 'note': hint(txt(m.m, 160)); break;
       case 'scale': { const r = +m.r; if (!(r > 0 && r < 20)) break; for (const e of G.ents) { if (!e.alive) continue; e.maxHp = Math.max(1, Math.round(e.maxHp * r)); e.hp = Math.min(e.maxHp, Math.round(e.hp * r)); } break; } // party size changed (build 0022)
-      case 'zone': if (N.retry > 0) { if (N.back && N.back.seed === m.seed) { m.sync = 1; m.pos = [N.back.x, N.back.z]; } else if (N.back && N.back.d > 1) N.upd = N.back.d; N.retry = 0; N.back = null; UI.reconnecting(0); if (G.inTown) { G.away = null; } } if (m.sync && G.away && G.away.seed === m.seed) m.pos = [G.away.x, G.away.z]; enterZone(m); if (N.upd) { const d = N.upd; N.upd = 0; setTimeout(() => { if (typeof UI !== 'undefined' && UI.zoneBanner) UI.zoneBanner('The game was updated', 'You are back on floor ' + d + ' with a fresh layout'); }, 600); } if (m.cleared && m.bossAt) { G.zone.cleared = true; G.zone.objs.push({ kind: 'portal', x: m.bossAt[0], z: m.bossAt[1], name: 'Next floor', used: false }); } UI.netZone(); break;
+      case 'zone': N.gotZone = true; if (N.retry > 0) { if (N.back && N.back.seed === m.seed) { m.sync = 1; m.pos = G.zone && !G.inTown && G.zone.def && G.zone.def.seed === m.seed ? [P.x, P.z] : [N.back.x, N.back.z]; } /* build 0070: back where you stood, on the same layout */ else if (N.back && N.back.d > 1) N.upd = N.back.d; N.retry = 0; N.back = null; UI.reconnecting(0); if (G.inTown) { G.away = null; } } if (m.sync && G.away && G.away.seed === m.seed) m.pos = [G.away.x, G.away.z]; enterZone(m); if (N.upd) { const d = N.upd; N.upd = 0; setTimeout(() => { if (typeof UI !== 'undefined' && UI.zoneBanner) UI.zoneBanner('The game was updated', 'You are back on floor ' + d + ' with a fresh layout'); }, 600); } if (m.cleared && m.bossAt) { G.zone.cleared = true; G.zone.objs.push({ kind: 'portal', x: m.bossAt[0], z: m.bossAt[1], name: 'Next floor', used: false }); } UI.netZone(); break;
       case 'gone': { const e = find(m.id); if (e && e.alive) { e.alive = false; e.deadT = .45; goblinGone(e); } break; } /* build 0027: the goblin got away */
       case 's': {
         for (const a of m.e) { const e = find(a[0]); if (!e || !e.alive) continue; const nt = performance.now() / 1000; if (e.sT1 && nt - e.sT1 < .5) { e.sx0 = e.sx1; e.sz0 = e.sz1; e.sT0 = e.sT1; } else { e.sx0 = e.x; e.sz0 = e.z; e.sT0 = nt - .1; } e.sx1 = a[1]; e.sz1 = a[2]; e.sT1 = nt; /* build 0024: glide between server updates */ e.tx = a[1]; e.tz = a[2]; e.trot = a[3]; e.hp = a[4] > e.hp + e.maxHp * .04 ? a[4] : Math.min(e.hp, a[4]); e.st = STN[a[5]] || 'chase'; if (!e.awake) e.awake = true; /* the boss intro card is the one announcement */ }
@@ -56,12 +57,33 @@ const NET = (() => {
   N.close = () => { if (ws) { N.quit = true; N.on = false; G.online = false; N.peers = {}; try { ws.close(); } catch (e) { } ws = null; } };
   N.send = o => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); };
   const seen = {}; N.quiet = k => { const t = Date.now(); if (seen[k] && t - seen[k] < 60000) return false; seen[k] = t; return true; }; // a flaky connection should not flood chat
-  N.connect = (name, room) => { N.me = name;
-    try { ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws'); } catch (e) { UI.netFail('Could not reach the server.'); return; }
-    ws.onopen = () => N.send({ t: 'join', name, room, lvl: G.hero.level, cls: G.hero.cls, dep: N.retry > 0 && N.back && N.back.d ? N.back.d : 0 });
-    ws.onmessage = ev => { let m; try { m = JSON.parse(ev.data); } catch (e) { return; } handle(m); };
-    ws.onclose = () => { if (N.quit) { N.quit = false; return; } const was = N.on || N.retry > 0; N.on = false; N.peers = {}; ws = null; if (was && G.state === 'play') { if (!(N.retry > 0)) { N.retry = 0; N.back = G.inTown ? null : { seed: G.zone.def.seed, x: P.x, z: P.z, d: G.zone.def.depth }; } N.retry++; if (N.retry > 12) { N.retry = 0; G.online = false; UI.lost('The connection to the server was lost. Press Play online to rejoin.'); return; } P.iframes = Math.max(P.iframes || 0, 6); UI.reconnecting(N.retry); setTimeout(() => { if (G.state === 'play' && N.retry > 0) N.connect(N.me, N.room); }, N.retry === 1 ? 800 : 3000); } else if (was) { N.retry = 0; G.online = false; } else if (!was) UI.netFail('Could not reach the server. Try again in a minute; a sleeping server takes about a minute to wake.'); };
+  // build 0070 (Lee's playtest, item 1 and 9): a reconnect could hang on "try 1" forever when the socket never opened or never answered.
+  // Every attempt now gives up after a few seconds and tries again; the server is pinged first, which also wakes a sleeping one.
+  // Retries run for up to three minutes (a sleeping server takes about a minute to wake), and the box offers solo play the whole time.
+  const RETRY_MS = 180000;
+  N.connect = (name, room) => { N.me = name; N.gotZone = false;
+    let me; try { me = ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws'); } catch (e) { me = null; }
+    if (!me) { if (N.retry > 0) drop(null); else UI.netFail('Could not reach the server.'); return; }
+    const kill = () => { if (ws !== me) return; me.onclose = me.onerror = me.onmessage = null; try { me.close(); } catch (e) { } drop(me); };
+    const t1 = setTimeout(() => { if (ws === me && me.readyState !== 1) kill(); }, 8000); /* never opened */
+    me.onopen = () => { clearTimeout(t1); const b = N.retry > 0 && N.back; N.send({ t: 'join', name, room, lvl: G.hero.level, cls: G.hero.cls, dep: b && b.d ? b.d : 0, sd: b && b.seed, px: b ? Math.round(P.x * 10) / 10 : undefined, pz: b ? Math.round(P.z * 10) / 10 : undefined, clr: b && b.clr ? 1 : 0 });
+      setTimeout(() => { if (ws === me && !N.gotZone) kill(); }, 10000); /* opened but the server never sent the floor */ };
+    me.onmessage = ev => { if (ws !== me) return; let m; try { m = JSON.parse(ev.data); } catch (e) { return; } handle(m); };
+    me.onclose = () => { clearTimeout(t1); if (ws !== me) return; drop(me); };
   };
+  function drop(me) {
+    if (me && ws === me) ws = null; if (N.quit) { N.quit = false; return; } const was = N.on || N.retry > 0; N.on = false; N.peers = {};
+    if (!(was && G.state === 'play')) { if (was) { N.retry = 0; G.online = false; } else UI.netFail('Could not reach the server. Try again in a minute; a sleeping server takes about a minute to wake.'); return; }
+    if (!(N.retry > 0)) { N.retry = 0; N.t0 = Date.now(); N.back = G.inTown || !G.zone || G.zone.def.rift ? null : { seed: G.zone.def.seed, x: P.x, z: P.z, d: G.zone.def.depth, clr: !!G.zone.cleared }; }
+    N.retry++; const left = RETRY_MS - (Date.now() - N.t0);
+    if (left <= 0) { N.retry = 0; G.online = false; UI.reconnecting(0, true); UI.lost('The server did not answer for three minutes. Press Play online to try again, or play solo: your hero and floor are saved.'); return; }
+    P.iframes = Math.max(P.iframes || 0, 6); UI.reconnecting(N.retry, false, Math.round((Date.now() - N.t0) / 1000), N.bye);
+    const wait = N.bye ? 600 : [800, 1500, 2500, 3500][N.retry - 1] || 5000; N.bye = false;
+    setTimeout(async () => { if (G.state !== 'play' || !(N.retry > 0)) return; if (N.retry > 2) await N.probe(); if (G.state === 'play' && N.retry > 0) N.connect(N.me, N.room); }, wait);
+  }
+  // build 0070: give up on the server and keep going solo on the same floor (same layout, same spot)
+  N.goSolo = () => { const b = N.back || (G.zone && !G.inTown && G.zone.def && !G.zone.def.rift ? { seed: G.zone.def.seed, x: P.x, z: P.z, d: G.zone.def.depth } : null); N.retry = 0; N.quit = !!ws; const w = ws; ws = null; if (w) { w.onclose = w.onerror = w.onmessage = null; try { w.close(); } catch (e) { } } N.quit = false; N.on = false; G.online = false; N.peers = {}; N.back = null;
+    if (b) { G.hero.depth = b.d - 1; G.resumeAt = { seed: b.seed, d: b.d, x: P.x, z: P.z }; } return b; };
   N.tick = dt => {
     for (const id in N.peers) {
       const p = N.peers[id], k = Math.min(1, dt * 10), ox = p.x, oz = p.z; if (p.sT1 && p.sT1 > p.sT0) { const u = Math.min(1.2, Math.max(0, (performance.now() / 1000 - .1 - p.sT0) / (p.sT1 - p.sT0))), kk = Math.min(1, dt * 20); p.x += (p.sx0 + (p.sx1 - p.sx0) * u - p.x) * kk; p.z += (p.sz0 + (p.sz1 - p.sz0) * u - p.z) * kk; } else { p.x += (p.tx - p.x) * k; p.z += (p.tz - p.z) * k; } /* build 0024: other heroes glide too */ let da = p.trot - p.rot; while (da > Math.PI) da -= 6.2832; while (da < -Math.PI) da += 6.2832; p.rot += da * k;

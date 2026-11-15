@@ -624,12 +624,13 @@ function repEnemy(e, dt) {
 }
 function enterZone(net) {
   G.inTown = false; G.away = null;
-  const h = G.hero, lvl = net ? net.lvl : h.level, dpt = net ? net.d | 0 : (h.depth === undefined ? (h.depth = h.runs) : h.depth), zd = zoneFor(dpt); const def = { type: 'zone', theme: net && net.theme ? net.theme : zd.theme, lvl, seed: net ? net.seed : (Math.random() * 1e9) | 0, name: zd.name, depth: dpt + 1 };
+  const h = G.hero, lvl = net ? net.lvl : h.level, dpt = net ? net.d | 0 : (h.depth === undefined ? (h.depth = h.runs) : h.depth), zd = zoneFor(dpt); const def = { type: 'zone', theme: net && net.theme ? net.theme : zd.theme, lvl, seed: net ? net.seed : G.resumeAt && G.resumeAt.d === dpt + 1 ? G.resumeAt.seed : (Math.random() * 1e9) | 0, name: zd.name, depth: dpt + 1 };
   { const isRift = net ? net.rift !== undefined : !!G.riftNext; G.riftNext = false; G.riftDone = 0; if (isRift) { if (!net) { def.lvl += 2; def.theme = pick(Object.keys(THEMES).filter(k => k !== 'town')); } def.rift = 1; def.name = 'Rift · ' + def.theme[0].toUpperCase() + def.theme.slice(1); G.riftT0 = G.time - (net && net.rift > 0 ? net.rift / 1000 : 0); if (net && net.rift === -1) G.riftDone = 1; } } // timed rift (build 0021)
   G.zone = genZone(def); const Z = G.zone; G.ents.length = 0; G.projs.length = 0; G.pp.length = 0; G.areas.length = 0; G.drops.length = 0; G.fx.length = 0; G.texts.length = 0; G.timers.length = 0; G.boss = null; G.streak = 0;
   P.buffs = []; computeStats(); buildStatic(Z); if (net) { for (const i of net.ents) addReplica(i); } else spawnAll(Z); BOT.path = null; questZone(Z); stZone(Z); if (typeof GPS !== 'undefined') GPS.t = 0; /* quest text refreshes at once on a new floor */
   P.x = Z.start[0]; P.z = Z.start[1]; P.y = 0; P.act = P.spin = P.dash = P.move = P.atk = P.inter = P.pick = null; P.dead = false; P.lastHit = -9; P.flaskCd = 0; P.buffs = []; P.cds = {}; computeStats(); P.hp = P.stats.maxLife; P.mana = CLASSES[h.cls].res.regen ? P.stats.maxMana : 0; P.flaskCd = 0; P.lastHit = -9;
   setEnv(Z); if (net && net.sync && net.pos) { P.x = net.pos[0]; P.z = net.pos[1]; }
+  { const ra = G.resumeAt; G.resumeAt = null; if (!net && ra && ra.seed === def.seed && isFinite(ra.x)) { P.x = ra.x; P.z = ra.z; for (let i = G.ents.length - 1; i >= 0; i--) { const e = G.ents[i]; if (!e.boss && Math.hypot(e.x - P.x, e.z - P.z) < 12) G.ents.splice(i, 1); } } } /* build 0070: solo after a lost connection, same floor and spot */
   G.state = 'play'; if (typeof UI !== 'undefined') UI.zoneBanner(def.name, 'Floor ' + def.depth + ' · monster level ' + lvl); { const dw = h.dangerSeen || 0; if (def.depth >= 4 && dw < 2) { h.dangerSeen = 2; hint('The deep turns deadly from here. Step out of red circles, dodge (Space on PC) and keep a potion ready.'); } else if (def.depth >= 2 && dw < 1) { h.dangerSeen = 1; hint('Monsters hit harder on every floor. Watch for red circles on the ground: they mark a heavy blow.'); } } /* build 0035 */ saveGame();
 }
 

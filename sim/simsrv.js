@@ -8,14 +8,20 @@ function entInfo(e) { return { id: e.id, md: e.md, arch: e.arch, x: r2(e.x), z: 
 let depth = 0, rift = null; // rift (build 0021): a timed floor; the party races to slay its guardian
 function srvNewZone(lvl, nPlayers, next) {
   const wasRift = !!rift; if (next === 'rift') rift = { t0: Date.now(), tier: Math.max(1, lvl | 0) + 2 }; else { rift = null; if (next === 'prev') depth = Math.max(0, depth - 1); else if (next && !wasRift) depth++; }
-  const zd = rift ? zoneFor((Math.random() * 12) | 0) : zoneFor(depth), def = { type: 'zone', theme: zd.theme, rift: rift ? 1 : 0, lvl: rift ? rift.tier : Math.max(1, lvl | 0), seed: !rift && typeof DAILY === 'number' ? (Math.imul(DAILY ^ (depth + 1), 2654435761) >>> 0) % 1000000000 : (Math.random() * 1e9) | 0, name: rift ? 'Rift · ' + zd.name : zd.name, depth: depth + 1 };
+  const zd = rift ? zoneFor((Math.random() * 12) | 0) : zoneFor(depth), def = { type: 'zone', theme: zd.theme, rift: rift ? 1 : 0, lvl: rift ? rift.tier : Math.max(1, lvl | 0), seed: !rift && forceSeed ? forceSeed : !rift && typeof DAILY === 'number' ? (Math.imul(DAILY ^ (depth + 1), 2654435761) >>> 0) % 1000000000 : (Math.random() * 1e9) | 0, name: rift ? 'Rift · ' + zd.name : zd.name, depth: depth + 1 };
   G.zone = genZone(def); G.ents.length = 0; G.projs.length = 0; G.areas.length = 0; G.boss = null; spawnAll(G.zone);
   const k = partyK(nPlayers); curK = k; known = new Set();
   for (const e of G.ents) { e.maxHp = Math.round(e.maxHp * k); e.hp = e.maxHp; known.add(e.id); }
   return { t: 'zone', seed: def.seed, lvl: def.lvl, d: depth, theme: def.theme, rift: rift ? Date.now() - rift.t0 : undefined, ents: G.ents.map(entInfo) };
 }
 // build 0062 (playtest): a party that reconnects after a server update gets a fresh floor at the depth it was on, not floor 1
-function srvResume(lvl, nPlayers, d) { rift = null; depth = Math.max(0, Math.min(500, (d | 0) - 1)); return srvNewZone(lvl, nPlayers, false); }
+var forceSeed = 0;
+// build 0070 (Lee's playtest): after a dropped connection or a server restart the floor comes back with the same layout, so the hero keeps their exact spot.
+// Monsters right around that spot are not put back, and a guardian already slain stays slain.
+function srvResume(lvl, nPlayers, d, seed, x, z, clr) { rift = null; depth = Math.max(0, Math.min(500, (d | 0) - 1)); forceSeed = seed > 0 && seed < 1e9 ? seed | 0 : 0; let m; try { m = srvNewZone(lvl, nPlayers, false); } finally { forceSeed = 0; }
+  if (m.seed !== (seed | 0)) return m; const near = e => isFinite(x) && isFinite(z) && Math.hypot(e.x - x, e.z - z) < 12;
+  for (let i = G.ents.length - 1; i >= 0; i--) { const e = G.ents[i]; if ((!e.boss && near(e)) || (e.boss && clr)) G.ents.splice(i, 1); } if (clr) { G.zone.cleared = true; G.boss = null; }
+  return srvState(); }
 // TODO (Sprint 1, server side): switch to partyHpK(n) from data.js, about 1.7x monster life for a full group. Not changed in build 0028.
 function partyK(n) { return 1 + .5 * Math.max(0, n - 1); }
 // someone joined or left: scale the life of every monster on the floor to the new party size, keeping how hurt it is (build 0022)
