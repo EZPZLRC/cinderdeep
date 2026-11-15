@@ -1244,7 +1244,8 @@ function updPlayer(dt) {
     const t = steer && (dash || !e) ? [P.x + jx / jm * far, P.z + jz / jm * far] : e && !(dash && !sk.land) ? [e.x, e.z] : [P.x + Math.sin(P.rot) * far, P.z + Math.cos(P.rot) * far];
     if (P.act || tryCast(i, t[0], t[1])) break; /* build 0093: cast and keep moving with the stick */
   }
-  if (IN.lmb || IN.lmbFresh) {
+  if ((IN.lmb || IN.lmbFresh) && IN.joy.kb && jm >= .18 && !G.hoverObj && !P.pickNow && !G.hoverPet) { IN.lmbFresh = false; if (!P.act) { const e = G.hover && G.hover.alive ? G.hover : null; tryCast(0, e ? e.x : IN.gx, e ? e.z : IN.gz); } } /* build 0095 (Lee: cast spells while moving): steering with the arrow keys, a left click attacks or casts at the cursor and the hero keeps walking */
+  else if (IN.lmb || IN.lmbFresh) {
     if (IN.shift) { P.atk = P.move = P.inter = P.pick = null; IN.lmbFresh = false; tryCast(0); return; }
     if (IN.lmbFresh) { IN.lmbFresh = false; if (G.hoverPet && !P.pickNow) { petSell(); } else if (P.pickNow) { P.pick = P.pickNow; P.pickNow = null; P.atk = P.inter = P.move = null; } else if (G.hoverObj) { P.inter = G.hoverObj; P.gateGo = (G.hoverObj.kind === 'portal' || G.hoverObj.kind === 'pback') ? G.hoverObj : null; P.atk = P.move = P.pick = null; } else if (G.hover) { P.atk = G.hover; P.inter = P.move = P.pick = null; } else { P.atk = P.inter = P.pick = null; P.move = [IN.gx, IN.gz]; } }
     else if (!P.atk && !P.inter && !P.pick) { if (G.hover) P.atk = G.hover; else P.move = [IN.gx, IN.gz]; }
