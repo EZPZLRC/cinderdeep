@@ -4,7 +4,7 @@
 var SP = {}, known = new Set(), curTarget = null, curK = 1; // curK: how much monster life is scaled for the party's size
 var ST = { chase: 0, wind: 1, rec: 2, charge: 3 };
 function r2(v) { return Math.round(v * 100) / 100; }
-function entInfo(e) { return { id: e.id, md: e.md, arch: e.arch, x: r2(e.x), z: r2(e.z), rot: r2(e.rot), lvl: e.lvl, elite: e.elite, pack: e.pack, r: e.r, sc: e.sc, maxHp: e.maxHp, hp: Math.round(e.hp), dmg: e.dmg, spd: e.spd, name: e.name, mods: e.mods, boss: !!e.boss, awake: !!e.awake, noLoot: !!e.noLoot }; }
+function entInfo(e) { return { id: e.id, md: e.md, arch: e.arch, x: r2(e.x), z: r2(e.z), rot: r2(e.rot), lvl: e.lvl, elite: e.elite, pack: e.pack, r: e.r, sc: e.sc, maxHp: e.maxHp, hp: Math.round(e.hp), dmg: e.dmg, spd: e.spd, name: e.name, mods: e.mods, boss: !!e.boss, awake: !!e.awake, noLoot: !!e.noLoot, wb: e.wb ? 1 : undefined }; }
 let depth = 0, rift = null, tierV = 0; // tierV (build 0074): the party's difficulty, used from its next new floor
 function srvTierName(v) { return TIERS[Math.max(0, Math.min(TIERS.length - 1, v | 0))].n; }
 function srvTier(v) { tierV = Math.max(0, Math.min(TIERS.length - 1, v | 0)); return tierV; }
@@ -15,6 +15,7 @@ function srvNewZone(lvl, nPlayers, next) {
   G.zone = genZone(def); G.ents.length = 0; G.projs.length = 0; G.areas.length = 0; G.boss = null; spawnAll(G.zone);
   const k = partyK(nPlayers); curK = k; known = new Set();
   for (const e of G.ents) { e.maxHp = Math.round(e.maxHp * k); e.hp = e.maxHp; known.add(e.id); }
+  { const w = wbAdd(); if (w) known.add(w.id); } /* build 0075: the world boss is on every new floor while it lives */
   return { t: 'zone', seed: def.seed, lvl: def.lvl, d: depth, tier: def.tier, theme: def.theme, rift: rift ? Date.now() - rift.t0 : undefined, ents: G.ents.map(entInfo) };
 }
 // build 0062 (playtest): a party that reconnects after a server update gets a fresh floor at the depth it was on, not floor 1
@@ -28,7 +29,7 @@ function srvResume(lvl, nPlayers, d, seed, x, z, clr) { rift = null; depth = Mat
 // TODO (Sprint 1, server side): switch to partyHpK(n) from data.js, about 1.7x monster life for a full group. Not changed in build 0028.
 function partyK(n) { return 1 + .5 * Math.max(0, n - 1); }
 // someone joined or left: scale the life of every monster on the floor to the new party size, keeping how hurt it is (build 0022)
-function srvScale(n) { if (!G.zone || n < 1) return 0; const k = partyK(n), r = k / curK; if (Math.abs(r - 1) < .001) return 0; curK = k; for (const e of G.ents) { if (!e.alive) continue; e.maxHp = Math.max(1, Math.round(e.maxHp * r)); e.hp = Math.min(e.maxHp, Math.max(1, Math.round(e.hp * r))); } return Math.round(r * 10000) / 10000; }
+function srvScale(n) { if (!G.zone || n < 1) return 0; const k = partyK(n), r = k / curK; if (Math.abs(r - 1) < .001) return 0; curK = k; for (const e of G.ents) { if (!e.alive || e.wb) continue; e.maxHp = Math.max(1, Math.round(e.maxHp * r)); e.hp = Math.min(e.maxHp, Math.max(1, Math.round(e.hp * r))); } return Math.round(r * 10000) / 10000; }
 function srvFloor() { return depth + 1; } /* the floor this party is on, for the party browser */
 function srvState() { return { t: 'zone', seed: G.zone.def.seed, lvl: G.zone.def.lvl, d: depth, tier: G.zone.def.tier | 0, theme: G.zone.def.theme, rift: rift ? (rift.done ? -1 : Date.now() - rift.t0) : undefined, cleared: !!G.zone.cleared, bossAt: G.zone.bossAt, ents: G.ents.filter(e => e.alive).map(entInfo) }; }
 dmgPlayer = function (v, el, src) { if (curTarget) __emit(curTarget.id, { t: 'dmg', v: Math.round(v), el: el, src: src ? src.id : 0 }); };
@@ -38,16 +39,17 @@ eShoot = function (e, ang, spd, dmgM, el) {
   G.projs.push(p); __emit(null, { t: 'proj', x: r2(p.x), z: r2(p.z), vx: r2(p.vx), vz: r2(p.vz), c: e.md.e });
 };
 killEnemy = function (e) {
-  if (!e.alive) return; e.alive = false; e.deadT = .45; __emit(null, { t: 'die', id: e.id, l: e.lvl, xm: (e.a && e.a.xp) || 1, el: e.elite | 0 });
+  if (!e.alive) return; e.alive = false; e.deadT = .45; __emit(null, { t: 'die', id: e.id, l: e.lvl, xm: (e.a && e.a.xp) || 1, el: e.elite | 0 }); if (!e.wb && !e.noLoot && typeof __kill === 'function') __kill(); /* build 0075: every real kill feeds the server-wide world boss count */
   if (e.volatile) addArea({ x: e.x, z: e.z, r: 3.2, delay: 1, owner: 'e', dmg: e.dmg * 1.8, el: 'fire', c: 0xff5a2a });
   if (e.molten) addArea({ x: e.x, z: e.z, r: 2.6, delay: .7, owner: 'e', dmg: e.dmg * 1.3, el: 'fire', c: 0xff7a2a });
-  if (e.boss) { G.zone.cleared = true; if (rift && !rift.done) { rift.done = true; __emit(null, { t: 'riftDone', ms: Date.now() - rift.t0, tier: rift.tier }); } }
+  if (e.boss && !e.wb) { G.zone.cleared = true; if (rift && !rift.done) { rift.done = true; __emit(null, { t: 'riftDone', ms: Date.now() - rift.t0, tier: rift.tier }); } }
 };
 function srvHit(pid, m) {
   const e = G.ents.find(x => x.id === m.id); if (!e || !e.alive) return; const p = SP[pid];
   // build 0074 (security): a hit has to come from near the monster, and no single hit or burst of hits can do more than the game itself allows.
   // A cull or an execute is at most twice a monster's life. A guardian takes at most 8% of its life from one hit and 12% a second from one player.
   if (!p || p.dead || Math.hypot(e.x - p.x, e.z - p.z) > 36) return;
+  if (e.wb) { const v = Math.max(0, Math.min(+m.v || 0, e.maxHp * WB_HIT)); wake(e); if (m.el === 'cold') e.chill = 2.5; else if (m.el === 'light') e.shock = 3; if (WBS && v > 0 && typeof __wb === 'function') __wb(v / e.maxHp, pid); return; } /* the world boss has one life shared by the whole server: the host keeps it */
   let v = Math.max(0, Math.min(+m.v || 0, e.boss ? e.maxHp * .08 : e.maxHp * 2)); if (!isFinite(v)) return;
   if (e.boss) { const now = Date.now(), b = p.bossDmg || (p.bossDmg = { t: now, v: 0 }); b.v = Math.max(0, b.v - (now - b.t) / 1000 * e.maxHp * .12); b.t = now; const room = e.maxHp * .12 - b.v; if (room <= 0) return; v = Math.min(v, room); b.v += v; }
   e.hp -= v; wake(e);
@@ -59,7 +61,7 @@ function srvHit(pid, m) {
 function srvTick(dt) {
   G.time += dt; const all = Object.values(SP), pl = all.filter(p => !p.dead);
   repop(dt, all.filter(p => p.x > -900)); // monsters slowly repopulate the floor, far from every player
-  if (all.length && !pl.length) { for (const e of G.ents) if (e.alive && e.awake) { e.awake = false; e.st = 'chase'; if (e.boss) { e.hp = e.maxHp; e.x = G.zone.bossAt[0]; e.z = G.zone.bossAt[1]; } } }
+  if (all.length && !pl.length) { const rs = []; for (const e of G.ents) if (e.alive && e.awake) { e.awake = false; e.st = 'chase'; if (e.boss && !e.wb) { e.hp = e.maxHp; e.x = G.zone.bossAt[0]; e.z = G.zone.bossAt[1]; } rs.push([e.id, r2(e.x), r2(e.z), Math.round(e.hp)]); } if (rs.length) __emit(null, { t: 'rest', e: rs }); } /* build 0075: tell the players, so their screens match */
   const act = [];
   for (const e of G.ents) {
     if (!e.alive) { e.deadT -= dt; continue; }
@@ -86,3 +88,24 @@ function srvTick(dt) {
 function srvSnap() { const o = []; for (const e of G.ents) if (e.alive && e.awake) o.push([e.id, r2(e.x), r2(e.z), r2(e.rot), Math.max(0, Math.round(e.hp)), ST[e.st] | 0]); return o; }
 function srvIsRift() { return !!(G.zone && G.zone.def && G.zone.def.rift); }
 function srvCleared() { return !!(G.zone && G.zone.cleared); }
+
+// ---- build 0075 (Lee, Nov 15): the world boss ----
+// Every kill by every player on the server fills one shared count (kept by server.js). When it is full, the same boss rises on every party's floor.
+// It has one life shared by the whole server: each hit takes the same share off it whatever floor or level the hitter is on.
+var WBS = null; // set by the host while the boss lives: { f: share of life left (1 to 0), k: life scale for how many players were online }
+function wbEnt() { for (const e of G.ents) if (e.wb && e.alive) return e; return null; }
+function wbAdd() {
+  if (!WBS || !G.zone || rift || wbEnt()) return null;
+  const Z = G.zone, lv = Z.def.lvl, hit = refHit(lv + 2), bd = WORLD_BOSS, pls = Object.values(SP).filter(p => p.x > -900 && !p.dead);
+  // it waits in open ground a short walk from the floor entrance, never on top of a player: you go to it when you are ready
+  let x = Z.start[0], z = Z.start[1], best = -1;
+  for (let t = 0; t < 400; t++) { const k = (Math.random() * GW * GW) | 0; if (Z.cell[k]) continue; const d = Z.dist ? Z.dist[k] : 5; if (d < 5) continue; const tx = (k % GW + .5) * CS, tz = ((k / GW | 0) + .5) * CS; if (blocked(tx, tz, 2.3)) continue;
+    if (Math.hypot(tx - Z.bossAt[0], tz - Z.bossAt[1]) < 26) continue; let near = 1e9; for (const p of pls) near = Math.min(near, Math.hypot(p.x - tx, p.z - tz)); if (near < 20) continue;
+    const sc = 100 - Math.abs(d - 9) * 4 + Math.random() * 3; if (sc > best) { best = sc; x = tx; z = tz; } if (d >= 7 && d <= 12) break; }
+  const b = { id: ++G.eid, md: { a: 'boss', n: bd.n, c: bd.c, c2: bd.c2, e: bd.e }, a: { r: 2.3, sc: bd.sc, rec: .9, wind: .8, reach: 4.4, xp: 40, spd: 4 }, arch: 'boss', boss: true, wb: 1, bd, x, z, rot: 0, lvl: lv + 1, elite: 3, pack: -3, r: 2.3, sc: bd.sc,
+    maxHp: Math.round(2.8 * hit * 40 * 1.6 * WB_LIFE * WBS.k), dmg: 5 * Math.pow(1.095, lv + 1) * 3, spd: 4, st: 'chase', t: 0, cd: 1, walk: 0, awake: false, flash: 0, chill: 0, shock: 0, frozen: 0, burn: 0, burnT: 0, atk: 0, alive: true, deadT: 0, pt: 2.5, pi: 0, name: bd.n, mods: [] };
+  b.hp = Math.max(1, Math.round(b.maxHp * WBS.f)); G.ents.push(b); return b;
+}
+// called by the host every tick while the boss lives: keeps every floor's copy on the shared life, and puts the boss on floors that do not have it yet
+function srvWbSync(f, k) { if (!WBS) WBS = { f: f, k: k }; WBS.f = f; let e = wbEnt(); if (!e) e = wbAdd(); if (e) e.hp = Math.max(1, Math.round(e.maxHp * f)); }
+function srvWbEnd() { const e = wbEnt(); WBS = null; if (e) killEnemy(e); }

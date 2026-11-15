@@ -13,30 +13,37 @@ const NET = (() => {
     if (i.fd) o.fd = 1; if (i.up > 0 && i.up <= 5) o.up = i.up | 0; if (i.sd > 0 && i.sd < 2147483647) o.sd = i.sd | 0; if (i.slot === 'offhand' && CLASSES[i.oc]) o.oc = i.oc; if (i.power && POWERS[i.power]) o.power = i.power; return o;
   }
   const find = id => G.ents.find(e => e.id === id);
+  // everyone else in the party. In town the monsters' part of an update is skipped but this still runs, so party members in town see each other (build 0075)
+  function peersUpd(list) {
+    const seen = {};
+    for (const a of list) {
+      if (!a || a[0] === N.id) continue; seen[a[0]] = 1; let p = N.peers[a[0]];
+      if (!p) p = N.peers[a[0]] = { id: a[0], x: a[1], z: a[2], y: 0, rot: a[3], walk: 0, mv: 0, hurt: 0, act: null, swing: 0, spin: null, dash: false, buffs: null, flaskT: 0, a: 0, name: N.names[a[0]] || 'Hero', cls: N.cls[a[0]] || 'warden' };
+      { const nt = performance.now() / 1000; if (p.sT1 && nt - p.sT1 < .5) { p.sx0 = p.sx1; p.sz0 = p.sz1; p.sT0 = p.sT1; } else { p.sx0 = p.x; p.sz0 = p.z; p.sT0 = nt - .1; } p.sx1 = a[1]; p.sz1 = a[2]; p.sT1 = nt; } p.tx = a[1]; p.tz = a[2]; p.trot = a[3]; p.tmv = a[4]; if (Math.hypot(p.tx - p.x, p.tz - p.z) > 18) { p.x = p.tx; p.z = p.tz; } if (Math.hypot(p.tx - p.x, p.tz - p.z) > 18) p.sx0 = p.sx1, p.sz0 = p.sz1; p.hp = a[6]; p.lvl = a[7]; p.dead = !!a[8]; p.town = !!a[11]; if (a[9] !== p.gc) { p.gc = a[9]; p.gear = gearDecode(a[9]); } p.aiS = Array.isArray(a[10]) ? a[10] : []; /* build 0034: the host's AI teammates */
+      if (a[5] !== p.a) { p.a = a[5]; p.swing = 0; p.act = a[5] === 1 ? { sk: { type: 'melee' } } : a[5] === 2 ? { sk: { type: 'nova' } } : null; p.spin = a[5] === 3 ? { sk: SKILLS.whirl } : null; if (!CLASSES[p.cls]) p.cls = 'warden'; p.dash = a[5] === 4; }
+    }
+    for (const id in N.peers) if (!seen[id]) delete N.peers[id];
+  }
   function handle(m) {
     if (m.t === 's' && m.o !== undefined) N.online = m.o;
-    if (G.inTown && (m.t === 's' || m.t === 'spawn' || m.t === 'die' || m.t === 'dmg' || m.t === 'area' || m.t === 'proj' || m.t === 'fx' || m.t === 'scale')) return;
+    if (m.t === 's' && Array.isArray(m.w)) { N.wb = [m.w[0] | 0, Math.max(1, m.w[1] | 0), m.w[2] ? 1 : 0, m.w[3] | 0]; const now = Date.now(); if (now - (N.wbT || 0) > 5000) { N.wbT = now; try { localStorage.setItem('oathbyte-wb', JSON.stringify([N.wb[0], N.wb[3]])); } catch (e) { } } } /* build 0075: the server-wide world boss count; this device remembers it so a server update does not wipe it */
+    if (m.t === 'wb') { wbEvent(m); return; }
+    if (G.inTown && (m.t === 's' || m.t === 'spawn' || m.t === 'die' || m.t === 'dmg' || m.t === 'area' || m.t === 'proj' || m.t === 'fx' || m.t === 'scale' || m.t === 'rest')) { if (m.t === 's' && Array.isArray(m.p)) peersUpd(m.p); return; }
     if (G.inTown && m.t === 'zone' && !m.sync && m.rift === undefined) { hint('Your party has moved deeper. Take the portal to rejoin them.'); return; }
     switch (m.t) {
       case 'hello': N.id = m.id; N.room = m.room; N.on = true; G.online = true; G.speed = 1; break;
       case 'error': UI.netFail(m.m); break;
       case 'bye': N.bye = true; break; /* build 0070: the server is restarting for an update; reconnect at once */
       case 'note': hint(txt(m.m, 160)); break;
-      case 'scale': { const r = +m.r; if (!(r > 0 && r < 20)) break; for (const e of G.ents) { if (!e.alive) continue; e.maxHp = Math.max(1, Math.round(e.maxHp * r)); e.hp = Math.min(e.maxHp, Math.round(e.hp * r)); } break; } // party size changed (build 0022)
+      case 'scale': { const r = +m.r; if (!(r > 0 && r < 20)) break; for (const e of G.ents) { if (!e.alive || e.wb) continue; e.maxHp = Math.max(1, Math.round(e.maxHp * r)); e.hp = Math.min(e.maxHp, Math.round(e.hp * r)); } break; } // party size changed (build 0022)
       case 'zone': N.gotZone = true; if (N.retry > 0) { if (N.back && N.back.seed === m.seed) { m.sync = 1; m.pos = G.zone && !G.inTown && G.zone.def && G.zone.def.seed === m.seed ? [P.x, P.z] : [N.back.x, N.back.z]; } /* build 0070: back where you stood, on the same layout */ else if (N.back && N.back.d > 1) N.upd = N.back.d; N.retry = 0; N.back = null; UI.reconnecting(0); if (G.inTown) { G.away = null; } } if (m.sync && G.away && G.away.seed === m.seed) m.pos = [G.away.x, G.away.z]; enterZone(m); if (N.upd) { const d = N.upd; N.upd = 0; setTimeout(() => { if (typeof UI !== 'undefined' && UI.zoneBanner) UI.zoneBanner('The game was updated', 'You are back on floor ' + d + ' with a fresh layout'); }, 600); } if (m.cleared && m.bossAt) { G.zone.cleared = true; G.zone.objs.push({ kind: 'portal', x: m.bossAt[0], z: m.bossAt[1], name: 'Next floor', used: false }); } UI.netZone(); break;
       case 'gone': { const e = find(m.id); if (e && e.alive) { e.alive = false; e.deadT = .45; goblinGone(e); } break; } /* build 0027: the goblin got away */
       case 's': {
         for (const a of m.e) { const e = find(a[0]); if (!e || !e.alive) continue; const nt = performance.now() / 1000; if (e.sT1 && nt - e.sT1 < .5) { e.sx0 = e.sx1; e.sz0 = e.sz1; e.sT0 = e.sT1; } else { e.sx0 = e.x; e.sz0 = e.z; e.sT0 = nt - .1; } e.sx1 = a[1]; e.sz1 = a[2]; e.sT1 = nt; /* build 0024: glide between server updates */ e.tx = a[1]; e.tz = a[2]; e.trot = a[3]; e.hp = a[4] > e.hp + e.maxHp * .04 ? a[4] : Math.min(e.hp, a[4]); e.st = STN[a[5]] || 'chase'; if (!e.awake) e.awake = true; /* the boss intro card is the one announcement */ }
-        const seen = {};
-        for (const a of m.p) {
-          if (!a || a[0] === N.id) continue; seen[a[0]] = 1; let p = N.peers[a[0]];
-          if (!p) p = N.peers[a[0]] = { id: a[0], x: a[1], z: a[2], y: 0, rot: a[3], walk: 0, mv: 0, hurt: 0, act: null, swing: 0, spin: null, dash: false, buffs: null, flaskT: 0, a: 0, name: N.names[a[0]] || 'Hero', cls: N.cls[a[0]] || 'warden' };
-          { const nt = performance.now() / 1000; if (p.sT1 && nt - p.sT1 < .5) { p.sx0 = p.sx1; p.sz0 = p.sz1; p.sT0 = p.sT1; } else { p.sx0 = p.x; p.sz0 = p.z; p.sT0 = nt - .1; } p.sx1 = a[1]; p.sz1 = a[2]; p.sT1 = nt; } p.tx = a[1]; p.tz = a[2]; p.trot = a[3]; p.tmv = a[4]; if (Math.hypot(p.tx - p.x, p.tz - p.z) > 18) { p.x = p.tx; p.z = p.tz; } if (Math.hypot(p.tx - p.x, p.tz - p.z) > 18) p.sx0 = p.sx1, p.sz0 = p.sz1; p.hp = a[6]; p.lvl = a[7]; p.dead = !!a[8]; if (a[9] !== p.gc) { p.gc = a[9]; p.gear = gearDecode(a[9]); } p.aiS = Array.isArray(a[10]) ? a[10] : []; /* build 0034: the host's AI teammates */
-          if (a[5] !== p.a) { p.a = a[5]; p.swing = 0; p.act = a[5] === 1 ? { sk: { type: 'melee' } } : a[5] === 2 ? { sk: { type: 'nova' } } : null; p.spin = a[5] === 3 ? { sk: SKILLS.whirl } : null; if (!CLASSES[p.cls]) p.cls = 'warden'; p.dash = a[5] === 4; }
-        }
-        for (const id in N.peers) if (!seen[id]) delete N.peers[id];
+        peersUpd(m.p);
         break;
       }
+      case 'rest': if (Array.isArray(m.e)) for (const a of m.e) { const e = find(a[0]); if (!e || !e.alive) continue; e.awake = false; e.st = 'chase'; e.x = e.tx = a[1]; e.z = e.tz = a[2]; e.hp = Math.min(e.maxHp, a[3]); e.sT1 = 0; e.atk = 0; } break; /* build 0075: the whole party fell or left, so the monsters went back to rest (and the guardian healed). Before this the screen kept the old picture */
       case 'spawn': for (const i of m.ents) { addReplica(i); const e = find(i.id); if (e) ring(e.x, e.z, 0, 2, .4, e.md.e); } break;
       case 'riftDone': if (G.zone && G.zone.def.rift && !G.riftDone) riftDone(+m.ms || 0, m.tier | 0); break;
       case 'die': { const e = find(m.id); if (e && e.alive) { e.hp = 0; killEnemy(e); } else if (!e && m.l > 0 && G.hero && !G.inTown) { const xp = xpFor(Math.min(99, m.l | 0), Math.min(4, Math.max(0, +m.xm || 1)), m.el | 0); if (xp > 0) { G.hero.kills++; gainXp(xp); } } break; } /* build 0072: a party kill always pays XP, even if this screen never saw that monster */
@@ -66,7 +73,7 @@ const NET = (() => {
     if (!me) { if (N.retry > 0) drop(null); else UI.netFail('Could not reach the server.'); return; }
     const kill = () => { if (ws !== me) return; me.onclose = me.onerror = me.onmessage = null; try { me.close(); } catch (e) { } drop(me); };
     const t1 = setTimeout(() => { if (ws === me && me.readyState !== 1) kill(); }, 8000); /* never opened */
-    me.onopen = () => { clearTimeout(t1); const b = N.retry > 0 && N.back; N.send({ t: 'join', name, room, lvl: G.hero.level, cls: G.hero.cls, tier: tierPick(G.hero), dep: b && b.d ? b.d : 0, sd: b && b.seed, px: b ? Math.round(P.x * 10) / 10 : undefined, pz: b ? Math.round(P.z * 10) / 10 : undefined, clr: b && b.clr ? 1 : 0 });
+    me.onopen = () => { clearTimeout(t1); const b = N.retry > 0 && N.back; N.send({ t: 'join', sid: N.sid || (N.sid = Math.random().toString(36).slice(2) + Date.now().toString(36)), name, room, lvl: G.hero.level, cls: G.hero.cls, tier: tierPick(G.hero), dep: b && b.d ? b.d : 0, sd: b && b.seed, px: b ? Math.round(P.x * 10) / 10 : undefined, pz: b ? Math.round(P.z * 10) / 10 : undefined, clr: b && b.clr ? 1 : 0, wb: (() => { try { const j = JSON.parse(localStorage.getItem('oathbyte-wb') || 'null'); return Array.isArray(j) ? [j[0] | 0, j[1] | 0] : undefined; } catch (e) { return undefined; } })() });
       setTimeout(() => { if (ws === me && !N.gotZone) kill(); }, 10000); /* opened but the server never sent the floor */ };
     me.onmessage = ev => { if (ws !== me) return; let m; try { m = JSON.parse(ev.data); } catch (e) { return; } handle(m); };
     me.onclose = () => { clearTimeout(t1); if (ws !== me) return; drop(me); };
@@ -89,7 +96,7 @@ const NET = (() => {
       const p = N.peers[id], k = Math.min(1, dt * 10), ox = p.x, oz = p.z; if (p.sT1 && p.sT1 > p.sT0) { const u = Math.min(1.2, Math.max(0, (performance.now() / 1000 - .1 - p.sT0) / (p.sT1 - p.sT0))), kk = Math.min(1, dt * 20); p.x += (p.sx0 + (p.sx1 - p.sx0) * u - p.x) * kk; p.z += (p.sz0 + (p.sz1 - p.sz0) * u - p.z) * kk; } else { p.x += (p.tx - p.x) * k; p.z += (p.tz - p.z) * k; } /* build 0024: other heroes glide too */ let da = p.trot - p.rot; while (da > Math.PI) da -= 6.2832; while (da < -Math.PI) da += 6.2832; p.rot += da * k;
       p.walk += Math.hypot(p.x - ox, p.z - oz) * 1.5; p.mv += ((p.tmv ? 1 : 0) - p.mv) * Math.min(1, dt * 12); p.y = p.dash ? 1.6 : 0; if (p.act) { p.swing += dt / .4; if (p.swing >= 1) p.swing = 0; }
     }
-    acc += dt; if (acc >= .1) { acc = 0; N.send({ t: 'p', ai: typeof aiNet === 'function' ? aiNet() : [], x: r2(P.x), z: r2(P.z), r: r2(P.rot), mv: P.moving ? 1 : 0, a: P.spin ? 3 : P.dash ? 4 : P.act ? (P.act.sk.type === 'nova' ? 2 : 1) : 0, hp: Math.round(clamp(P.hp / P.stats.maxLife, 0, 1) * 100), lvl: G.hero.level, pl: G.hero.plvl || 0, dp: (G.hero.depth || 0) + 1, hc: G.hero.hc ? 1 : 0, fc: G.hero.maxClear || 0, dead: P.dead || G.inTown ? 1 : 0, g: P.gc || '' }); }
+    acc += dt; if (acc >= .1) { acc = 0; N.send({ t: 'p', ai: typeof aiNet === 'function' ? aiNet() : [], x: r2(P.x), z: r2(P.z), r: r2(P.rot), mv: P.moving ? 1 : 0, a: P.spin ? 3 : P.dash ? 4 : P.act ? (P.act.sk.type === 'nova' ? 2 : 1) : 0, hp: Math.round(clamp(P.hp / P.stats.maxLife, 0, 1) * 100), lvl: G.hero.level, pl: G.hero.plvl || 0, dp: (G.hero.depth || 0) + 1, hc: G.hero.hc ? 1 : 0, fc: G.hero.maxClear || 0, dead: P.dead || G.inTown ? 1 : 0, tw: G.inTown ? 1 : 0, g: P.gc || '' }); }
   };
   N._handle = handle; /* used by the test kit */
   return N;
