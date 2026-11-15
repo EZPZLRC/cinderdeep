@@ -338,6 +338,11 @@ body.tj #xp{height:16px!important}body.tj #xp #xpT{line-height:14px;font-size:10
 #menu.hide~#mtags,body:has(#menu.hide) #mtags{display:none!important}
 @media (max-width:520px){#mtags .mtag{font-size:9.5px;padding:2px 6px;letter-spacing:.03em}}
 #folk .planner{max-width:520px}#folk .tp{border-top:1px solid #3a2e1e;padding:7px 0}#folk .tpn{color:#ffe2a0;font-weight:600}#folk .tpn .pips{color:#ffd84a;letter-spacing:2px;margin-left:6px}#folk .tpd{color:#cfc3aa;font-size:.92em;margin:2px 0 4px}#folk .tpc{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#d8ccb4;font-size:.92em}#folk .tpc.done{color:#9affc8}#folk .tpc button{min-width:84px}
+/* build 0035: bigger inventory items (Settings > Item size). Large is the default; Normal is the old size */
+body.isz1 #inv,body.isz1 #town{--c:52px;--d:46px}body.isz2 #inv,body.isz2 #town{--c:64px;--d:56px}
+body.isz1 .it .lv,body.isz2 .it .lv{font-size:11px}body.isz1 .it.up::after,body.isz2 .it.up::after{font-size:12px}body.isz2 .it .lv{font-size:13px}
+@media (max-width:760px){body.isz1 #inv,body.isz1 #town,body.isz2 #inv,body.isz2 #town{right:6px;z-index:26}body.isz1 #inv,body.isz1 #town{--c:min(36px,calc((100vw - 50px) / 10));--d:min(34px,calc((100vw - 50px) / 10))}body.isz2 #inv,body.isz2 #town{--c:min(46px,calc((100vw - 50px) / 10));--d:min(42px,calc((100vw - 50px) / 10))}}
+@media (max-height:480px){body.isz1 #inv,body.isz1 #town{--c:32px;--d:27px}body.isz2 #inv,body.isz2 #town{--c:38px;--d:32px}}
 </style>
 </head>
 <body>
@@ -418,10 +423,10 @@ body.tj #xp{height:16px!important}body.tj #xp #xpT{line-height:14px;font-size:10
   <div id="news"></div>
   <div id="mfoot"><button id="mInvite" class="hide">Share the game</button><button id="mTip" class="hide">♥ Support the game</button><button id="mFeed" class="hide">Send feedback</button></div>
 </div>
-<script src="js/gl.js?v=0034"></script>
-<script src="js/data.js?v=0034"></script>
-<script src="js/game.js?v=0034"></script>
-<script src="js/net.js?v=0034"></script>
-<script src="js/ui.js?v=0034"></script>
+<script src="js/gl.js?v=0035"></script>
+<script src="js/data.js?v=0035"></script>
+<script src="js/game.js?v=0035"></script>
+<script src="js/net.js?v=0035"></script>
+<script src="js/ui.js?v=0035"></script>
 <div id="mtags"></div></body>
 </html>

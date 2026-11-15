@@ -511,9 +511,13 @@ function buildStatic(Z) { Z.torches = [];
 // Sprint 1: how far monster life may drift from the hero's real hit. Floors 1-4: 0.70-1.08; widens evenly to 0.55-1.35 by floor 12, then holds.
 function refBand() { const f = ((G.hero && G.hero.depth) || 0) + 1, k = clamp((f - 4) / 8, 0, 1); return [.7 + (.55 - .7) * k, 1.08 + (1.35 - 1.08) * k]; }
 function refHit(lvl) { const s = P.stats, exp = 7.5 * Math.pow(1.11, lvl) * (1 + .04 * lvl); if (!s || !s.wmin) return exp; const act = ((s.wmin + s.wmax) / 2 + s.addPhys + s.addFire + s.addCold + s.addLight) * (1 + (s.dmg + s.phys) / 100), b = refBand(); return clamp(exp, act * b[0], act * b[1]); }
+// build 0035 (Real danger, Lee Nov 15): monsters hit harder floor by floor, so dodging and potions matter. Hits to kill, drops and XP are unchanged.
+var DANGER_TOP = 4.5; // how much harder monsters hit from floor 4 on, compared with floor 1
+function dangerK(f) { f = f || 1; const t = DANGER_TOP; return f <= 1 ? 1 : f === 2 ? 1 + (t - 1) * .35 : f === 3 ? 1 + (t - 1) * .7 : t * Math.min(1.3, 1 + (f - 4) * .04); }
 function mkEnemy(md, x, z, lvl, elite, pack) {
   const a = ARCH[md.a], hit = refHit(lvl);
   const e = { id: ++G.eid, md, a, arch: md.a, x, z, rot: rnd(6.28), lvl, elite, pack, r: a.r * (elite ? 1.2 : 1), sc: a.sc * (elite === 1 ? 1.2 : elite === 2 ? 1.38 : 1), maxHp: Math.round(2.8 * hit * a.hp * (elite === 1 ? 2.2 : elite === 2 ? 3.5 : 1)), dmg: 5 * Math.pow(1.095, lvl) * a.dmg * (elite ? 1.3 : 1), spd: a.spd, st: 'chase', t: 0, cd: rnd(.2, 1), walk: rnd(6), awake: false, flash: 0, chill: 0, shock: 0, frozen: 0, burn: 0, burnT: 0, atk: 0, alive: true, deadT: 0, modT: 2, name: md.n, mods: [] };
+  e.dmg *= dangerK(G.zone && G.zone.def ? G.zone.def.depth : 1); /* build 0035 */
   if (elite) { const keys = Object.keys(EMODS); while (e.mods.length < elite) { const k = pick(keys); if (!e.mods.includes(k)) e.mods.push(k); } for (const k of e.mods) e[k] = true; if (e.hasted) e.spd *= 1.3; e.name = e.mods.map(k => EMODS[k].n).join(' ') + ' ' + md.n; }
   if (!elite && !md.boss && P.stats && P.stats.wmin && G.hero) { const s = P.stats, bs = (!G.hero.eq.weapon ? SKILLS.punch : SKILLS[G.hero.bar[0]]) || SKILLS.punch, low = (s.wmin + s.addPhys + s.addFire + s.addCold + s.addLight) * (1 + (s.dmg + (s[bs.el] || 0) + (bs.el !== 'phys' ? s.ele : 0)) / 100) * (bs.m || 1); e.maxHp = Math.max(1, Math.min(e.maxHp, Math.floor(low * 4.8))); }
   e.hp = e.maxHp; G.ents.push(e); return e;
@@ -547,7 +551,7 @@ function enterZone(net) {
   P.buffs = []; computeStats(); buildStatic(Z); if (net) { for (const i of net.ents) addReplica(i); } else spawnAll(Z); BOT.path = null; questZone(Z); if (typeof GPS !== 'undefined') GPS.t = 0; /* quest text refreshes at once on a new floor */
   P.x = Z.start[0]; P.z = Z.start[1]; P.y = 0; P.act = P.spin = P.dash = P.move = P.atk = P.inter = P.pick = null; P.dead = false; P.lastHit = -9; P.flaskCd = 0; P.buffs = []; P.cds = {}; computeStats(); P.hp = P.stats.maxLife; P.mana = CLASSES[h.cls].res.regen ? P.stats.maxMana : 0; P.flaskCd = 0; P.lastHit = -9;
   setEnv(Z); if (net && net.sync && net.pos) { P.x = net.pos[0]; P.z = net.pos[1]; }
-  G.state = 'play'; if (typeof UI !== 'undefined') UI.zoneBanner(def.name, 'Floor ' + def.depth + ' · monster level ' + lvl); saveGame();
+  G.state = 'play'; if (typeof UI !== 'undefined') UI.zoneBanner(def.name, 'Floor ' + def.depth + ' · monster level ' + lvl); { const dw = h.dangerSeen || 0; if (def.depth >= 4 && dw < 2) { h.dangerSeen = 2; hint('The deep turns deadly from here. Step out of red circles, dodge (Space on PC) and keep a potion ready.'); } else if (def.depth >= 2 && dw < 1) { h.dangerSeen = 1; hint('Monsters hit harder on every floor. Watch for red circles on the ground: they mark a heavy blow.'); } } /* build 0035 */ saveGame();
 }
 
 // ---------- town ----------
@@ -899,6 +903,7 @@ function updPlayer(dt) {
   for (const k in P.cds) if (P.cds[k] > 0) P.cds[k] -= dt;
   if (P.iframes > 0) P.iframes -= dt; if (P.dodgeCd > 0) P.dodgeCd -= dt; if (P.hurt > 0) P.hurt -= dt; if (P.cheatCd > 0) P.cheatCd -= dt;
   if (P.buffs.length) { let ex = false; for (const b of P.buffs) { b.t -= dt; if (b.t <= 0) ex = true; } if (ex) { P.buffs = P.buffs.filter(b => b.t > 0); computeStats(); } }
+  if (!P.dead && P.hp < s.maxLife * .3 && !G.inTown) { P.lowT = (P.lowT || 0) - dt; if (P.lowT <= 0) { P.lowT = 1.1; const hf = typeof document !== 'undefined' && document.getElementById('hurtFx'); if (hf && hf.animate) hf.animate([{ opacity: 0 }, { opacity: .45 }, { opacity: 0 }], { duration: 900, easing: 'ease-in-out' }); if (!G.lowHint) { G.lowHint = 1; hint('Low health! Drink a potion (1 on PC, the potion button on phone) or dodge away.'); } } } // build 0035: the screen edge pulses red when you are close to death
   if (P.flaskT > 0) { P.flaskT -= dt; P.hp = Math.min(s.maxLife, P.hp + s.maxLife * .5 * (1 + .15 * townLv('garden')) * dt); }
   if (G.streakT > 0) { G.streakT -= dt; if (G.streakT <= 0) G.streak = 0; }
   P.moving = false;
@@ -1135,6 +1140,7 @@ function updEnemy(e, dt) {
   const go = (dir, k) => { const st = sp * dt * (k || 1); moveEnt(e, dx / d * st * dir, dz / d * st * dir, e.r * .8); e.walk += st * 1.6; };
   if (e.st === 'charge') { const st = 24 * dt; if (!moveEnt(e, Math.sin(e.cdir) * st, Math.cos(e.cdir) * st, e.r)) e.t = 0; e.rot = e.cdir; e.walk += st; if (!e.chit && d < e.r + 1.2) { e.chit = true; dmgPlayer(e.dmg * 1.8, 'phys', e); } if (e.t <= 0) { e.st = 'rec'; e.t = .6; } return; }
   if (e.cd2 > 0) e.cd2 -= dt;
+  if (e.st === 'hwind') { face(); if (e.t <= 0) { e.atk = 1; e.st = 'rec'; e.t = a.rec; } return; } // build 0035: a champion's heavy blow lands where the red circle was
   if (e.st === 'cwind') { if (e.t <= 0) { e.st = 'charge'; e.t = .5; e.chit = false; } return; } // rush telegraphed: it has locked its line
   if (e.st === 'wind') { face(); if (e.t <= 0) { e.atk = 1; if (e.arch === 'caster' && e.md.v === 'lob') addArea({ x: e.lx, z: e.lz, r: 2.3, delay: .75, owner: 'e', dmg: e.dmg * 1.1, el: G.zone.th.elem, c: e.md.e, src: e }); else if (e.arch === 'caster') eShoot(e, Math.atan2(dx, dz), 12, 1, G.zone.th.elem); else if (e.arch === 'bomber') { addArea({ x: e.x, z: e.z, r: 3.3, delay: .05, owner: 'e', dmg: e.dmg, el: 'fire', c: 0xff7a2a }); e.noXp = true; killEnemy(e); return; } else if (e.arch !== 'brute' && d <= a.reach + e.r + .9) dmgPlayer(e.dmg, 'phys', e); e.st = 'rec'; e.t = a.rec / (e.hasted ? 1.3 : 1); } return; }
   if (e.st === 'rec') { if (e.t <= 0) e.st = 'chase'; return; }
@@ -1147,6 +1153,7 @@ function updEnemy(e, dt) {
   if (e.arch === 'caster') { if (d > 11) go(1); else if (d < 6) go(-1, .8); else { const sd = Math.sin(G.time * .5 + e.id) > 0 ? 1 : -1, st = sp * dt * .55; moveEnt(e, dz / d * st * sd, -dx / d * st * sd, e.r * .8); e.walk += st * 1.6; } // keeps moving sideways so it is harder to line up
     if (e.cd <= 0 && d < 14) { e.cd = 2.4; e.st = 'wind'; e.t = a.wind; e.lx = P.x; e.lz = P.z; } return; }
   if (e.md.v === 'charge' && !e.boss && d > 4.5 && d < 10 && !(e.cd2 > 0)) { e.cd2 = 5.5; e.st = 'cwind'; e.t = .7; e.cdir = Math.atan2(dx, dz); e.rot = e.cdir; for (const k of [3, 6, 9]) addArea({ x: e.x + Math.sin(e.cdir) * k, z: e.z + Math.cos(e.cdir) * k, r: 1.1, delay: .7, owner: 'e', vis: true, dmg: 0, el: 'phys', c: 0xff4a2a }); return; }
+  if (e.elite && d < 7 && e.arch !== 'bomber' && e.arch !== 'goblin') { e.hsT = (e.hsT === undefined ? rnd(2, 4) : e.hsT) - dt; if (e.hsT <= 0) { e.hsT = rnd(5, 7); e.st = 'hwind'; e.t = .95; addArea({ x: P.x, z: P.z, r: 2.8, delay: .95, owner: 'e', dmg: e.dmg * 2.2, el: 'phys', c: 0xff4a2a, src: e }); return; } } // build 0035: champions wind up a heavy blow; step out of the red circle or dodge
   const reach = a.reach + e.r * .5;
   if (d > reach) { if (d > 3.2 && !e.boss && e.arch !== 'brute') { if (e.fl === undefined) e.fl = ((e.id * 7919 % 100) / 100 - .5) * 6; const fx = P.x - dz / d * e.fl - e.x, fz = P.z + dx / d * e.fl - e.z, fd = Math.hypot(fx, fz) || 1, st = sp * dt; moveEnt(e, fx / fd * st, fz / fd * st, e.r * .8); e.walk += st * 1.6; } else go(1); } // the pack fans out to surround instead of queueing up
   else if (e.cd <= 0) {
