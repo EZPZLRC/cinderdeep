@@ -290,6 +290,12 @@ function dropGold(x, z, amt, exact) { const a = rnd(6.28), d = exact ? 0 : rnd(.
 function lootFan(x, z, i, n) { const toP = typeof P !== 'undefined' && isFinite(P.x) ? Math.atan2(P.z - z, P.x - x) : rnd(6.28), spread = n > 1 ? 2.4 : 0, a0 = toP + (n > 1 ? (i / (n - 1) - .5) * spread : 0), R0 = 3.6 + (i % 3);
   for (const R of [R0, R0 - .6, R0 + .8, 3.4, 3]) for (const da of [0, .35, -.35, .8, -.8, 1.4, -1.4, 2.2, -2.2, 3.14]) { const a = a0 + da, px = x + Math.cos(a) * R, pz = z + Math.sin(a) * R; if (!blocked(px, pz, .4) && los(x, z, px, pz)) return [px, pz]; } return null; }
 const DROP_MOB = .03, DRY_MAX = 20; /* build 0034 (Lee, Nov 14): loot is scarcer so each drop matters. Plain monsters 9% -> 3% and the dry-spell guarantee 14 -> 20 kills, which halves what plain monsters drop. Champions, guardians, goblins, vaults and wells stay the big loot moments */
+/* build 0096 (Lee: "make the teleporter for the next level spawn away from the loot"): a guardian's loot fans out toward you, so the gate opens on the far side of where it fell,
+   about 7 m out on open ground in sight of the spot, at least 7 m from every drop. If nothing is that clear it takes the open spot farthest from the loot */
+function gatePlace(x, z) { const toP = isFinite(P.x) ? Math.atan2(P.z - z, P.x - x) : 0, away = toP + Math.PI; let best = null, bs = -1;
+  for (const R of [7, 8, 6, 9, 5]) for (const off of [0, .35, -.35, .7, -.7, 1.05, -1.05, 1.4, -1.4, 1.75, -1.75]) { const a = away + off, gx = x + Math.cos(a) * R, gz = z + Math.sin(a) * R;
+    if (blocked(gx, gz, 1.6) || !los(x, z, gx, gz)) continue; let md = 99; for (const d of G.drops) md = Math.min(md, Math.hypot(d.x - gx, d.z - gz)); if (md >= 7) return [gx, gz]; if (md > bs) { bs = md; best = [gx, gz]; } }
+  return best || [x, z]; }
 function dropLoot(e) {
   const lv = Math.max(e.lvl, G.hero.level), x = e.x, z = e.z; let n = 0, bonus = 0, minR = 0;
   if (e.boss) { n = 5; bonus = 3; minR = 2; } else if (e.elite === 2) { n = 2; bonus = 1.5; minR = 2; } else if (e.elite === 1) { n = 1 + (Math.random() < .5 ? 1 : 0); bonus = .8; minR = 2; } /* build 0027: a champion's first item is always rare or better */ else if (e.arch === 'goblin') { n = 4; bonus = 2; minR = 2; for (let i = 0; i < 8; i++) dropGold(x, z, (15 + lv * 7) * rnd(.8, 1.3)); if (Math.random() < .2) dropItem(x, z, makeItem(lv, null, 3)); if (typeof UI !== 'undefined') UI.zoneBanner('Treasure Goblin caught!', 'Its whole sack spills out for you'); } else if (Math.random() < DROP_MOB || (G.dry || 0) >= DRY_MAX) n = 1; /* Lee, Nov 13: a guaranteed item after a dry spell (14 kills then, 20 since build 0034) */ G.dry = n ? 0 : (G.dry || 0) + 1;
@@ -986,7 +992,7 @@ function killEnemy(e) {
   else if (e.boss) {
     if (G.zone.def.rift && !G.riftDone && !G.online) riftDone((G.time - G.riftT0) * 1000, G.zone.def.lvl);
     if (typeof GPS !== 'undefined') GPS.t = 0; G.zone.cleared = true; G.shake = .9; ring(e.x, e.z, 0, 16, 1.1, e.md.e); burst(e.x, 2, e.z, e.md.e, 60, 11); SFX.play('level'); h.runs++; h.maxClear = Math.max(h.maxClear || 0, G.zone.def.depth || 1); /* deepest floor you have completed, for the leaderboard */
-    G.zone.objs.push({ kind: 'portal', x: e.x, z: e.z, name: 'Next floor', used: false }); h.depthMax = Math.max(h.depthMax || 0, G.zone.def.depth || 1); if (!G.zone.def.rift) UI.zoneBanner('Guardian slain', (G.bossXp ? '+' + G.bossXp.toLocaleString() + ' XP · ' : '') + 'a great gate opens to the next floor'); ring(e.x, e.z, 0, 16, 1.2, 0x7ad0ff); ring(e.x, e.z, 0, 9, .8, 0xb48cff); burst(e.x, 2, e.z, 0x7ad0ff, 60, 12); G.shake = .9; SFX.play('shrine'); saveGame(); tierWin(); if (!G.zone.def.rift) stBoss(G.zone.def.depth || 1);
+    { const gp = gatePlace(e.x, e.z); G.zone.objs.push({ kind: 'portal', x: gp[0], z: gp[1], name: 'Next floor', used: false }); } h.depthMax = Math.max(h.depthMax || 0, G.zone.def.depth || 1); if (!G.zone.def.rift) UI.zoneBanner('Guardian slain', (G.bossXp ? '+' + G.bossXp.toLocaleString() + ' XP · ' : '') + 'a great gate opens to the next floor'); ring(e.x, e.z, 0, 16, 1.2, 0x7ad0ff); ring(e.x, e.z, 0, 9, .8, 0xb48cff); burst(e.x, 2, e.z, 0x7ad0ff, 60, 12); G.shake = .9; SFX.play('shrine'); saveGame(); tierWin(); if (!G.zone.def.rift) stBoss(G.zone.def.depth || 1);
   }
 }
 // ---- first steps ----
