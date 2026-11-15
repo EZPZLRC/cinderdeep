@@ -1,0 +1,20 @@
+<!doctype html><html><head><meta charset="utf-8"><title>loading</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="../css/oathbyte.css"><link rel="stylesheet" href="../css/keyart.css">
+<style>
+html,body{margin:0;background:#07060a;overflow:hidden}
+#menu.ka{position:fixed;inset:0;overflow:hidden!important;background:#07060a!important}
+.cell{position:absolute;width:620px;height:300px;overflow:hidden;background:linear-gradient(rgba(7,6,10,.5),rgba(7,6,10,.75)),url(../brand/ka/key-wide.webp) 50% 30%/1100px auto no-repeat;display:flex;align-items:center;justify-content:center}
+.cell #logo{width:560px;display:flex;flex-direction:column;align-items:center}
+</style></head><body><div id="menu" class="ka"></div>
+<script>
+const FPS=12,q=new URLSearchParams(location.search),f0=+(q.get('f')||0),N=9,menu=document.getElementById('menu');
+const L='<div id="logo"><div class="obLogo" aria-hidden="true"><img class="obL" src="../brand/logo-letters.webp" alt=""><i class="obSheen"></i><img class="obS" src="../brand/logo-sword.webp" alt=""><i class="obGem"></i><img class="obF" src="../brand/logo-flame.webp" alt=""><i class="obFlash"></i><i class="obHeat"></i><span class="obSpks">'+'<i></i>'.repeat(12)+'</span><span class="obEmb">'+'<i></i>'.repeat(6)+'</span><i class="obGlint"></i></div><div class="tag"><i></i>An online action RPG<i></i></div></div>';
+const cells=[];for(let k=0;k<N;k++){const d=document.createElement('div');d.className='cell';d.style.left=(20+(k%3)*630)+'px';d.style.top=(20+Math.floor(k/3)*320)+'px';d.innerHTML=L;menu.appendChild(d);cells.push(d);}
+const srcs=['logo-letters','logo-sword','logo-flame','logo-mask','ka/key-wide'].map(n=>'../brand/'+n+'.webp');
+const imgs=srcs.map(s=>new Promise(r=>{const i=new Image();i.onload=i.onerror=r;i.src=s;}));
+Promise.all([document.fonts.ready,...imgs]).then(()=>{
+  cells.forEach((d,k)=>{const t=(f0+k)/FPS;d.getAnimations({subtree:true}).forEach(a=>{a.pause();a.currentTime=t*1000;});});
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{document.title='ready '+f0;}));
+});
+</script></body></html>
