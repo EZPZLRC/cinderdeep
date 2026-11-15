@@ -1,5 +1,5 @@
 {
-  "name": "cinderdeep-server",
+  "name": "oathbyte-server",
   "version": "1.1.2",
   "description": "Oathbyte: a 3D online action RPG with its own multiplayer server. No dependencies.",
   "main": "server.js",

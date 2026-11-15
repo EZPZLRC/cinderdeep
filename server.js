@@ -13,9 +13,9 @@ const simSrc = ['js/data.js', 'js/game.js'].map(f => new vm.Script(fs.readFileSy
 simSrc.push(new vm.Script(fs.readFileSync(path.join(__dirname, 'sim', 'simsrv.js'), 'utf8'), { filename: 'simsrv.js' }));
 const BUILD = (/const BUILD = '([^']+)'/.exec(fs.readFileSync(path.join(PUB, 'js/data.js'), 'utf8')) || [])[1] || '?';
 const rooms = new Map(); let nextId = 1;
-// ---- build 0074 (Lee, Nov 15): the world boss. One kill count shared by everyone on the server; when it is full the boss rises on every party's floor ----
+// ---- build 0075 (Lee, Nov 15): the world boss. One kill count shared by everyone on the server; when it is full the boss rises on every party's floor ----
 const WB_NEED = Math.max(1, +process.env.WB_NEED || +((/const WB_NEED = (\d+)/.exec(fs.readFileSync(path.join(PUB, 'js/data.js'), 'utf8')) || [])[1]) || 1000);
-const WB_FILE = path.join(process.env.LB_DIR || require('os').tmpdir(), 'cinderdeep-worldboss.json');
+const WB_FILE = path.join(process.env.LB_DIR || require('os').tmpdir(), 'oathbyte-worldboss.json');
 const WB = { k: 0, n: 0, on: null }; // k: kills counted so far, n: world bosses slain, on: the living boss { f: share of life left, k: life scale, hit: names of everyone who hit it }
 try { const j = JSON.parse(fs.readFileSync(WB_FILE, 'utf8')); WB.k = Math.max(0, Math.min(WB_NEED, j.k | 0)); WB.n = Math.max(0, j.n | 0); } catch (e) { }
 let wbDirty = false; setInterval(() => { if (!wbDirty) return; wbDirty = false; fs.writeFile(WB_FILE, JSON.stringify({ k: WB.on ? WB_NEED : WB.k, n: WB.n }), () => { }); }, 15000);
@@ -52,7 +52,7 @@ function onMessage(p, m) {
   if (!m || typeof m.t !== 'string') return; if (!budget(p)) return;
   if (m.t === 'join') {
     if (p.room) return; p.name = clean(m.name, 16) || 'Warden';
-    // build 0074 (party sync): a dropped connection that comes back used to leave its old self standing on the floor for up to a minute. Monsters kept chasing that ghost and the party looked out of step. The same browser coming back now replaces its old connection at once
+    // build 0075 (party sync): a dropped connection that comes back used to leave its old self standing on the floor for up to a minute. Monsters kept chasing that ghost and the party looked out of step. The same browser coming back now replaces its old connection at once
     p.sid = clean(m.sid, 32); if (p.sid) for (const r of rooms.values()) for (const q of [...r.players.values()]) if (q !== p && q.sid === p.sid) q.conn.close(); let code = (clean(m.room, 12) || 'public').toLowerCase(); p.lvl = Math.max(1, Math.min(60, m.lvl | 0)); p.cls = clean(m.cls, 14) || 'warden';
     // the kill count lives in memory, and a new build restarts the server: a returning player hands back the count they last saw, so an update does not wipe everyone's progress toward the boss
     if (Array.isArray(m.wb) && !WB.on) { const k = Math.max(0, Math.min(WB_NEED, m.wb[0] | 0)), n = Math.max(0, Math.min(999999, m.wb[1] | 0)); if (n > WB.n || (n === WB.n && k > WB.k)) { WB.n = n; WB.k = k; wbDirty = true; } }
@@ -69,6 +69,7 @@ function onMessage(p, m) {
     if (room.players.size >= PARTY_MAX) { p.conn.send({ t: 'error', m: 'That party is full (' + PARTY_MAX + ' players).' }); return; }
     p.room = room; room.players.set(p.id, p); room.emptyAt = 0; p.st = null;
     p.conn.send({ t: 'hello', id: p.id, room: code });
+    if (fresh) room.ctx.srvTier(m.tier | 0); /* build 0074: a new party plays at the difficulty its first hero picked */
     if (fresh) p.conn.send(((m.dep | 0) > 1 || (m.sd > 0 && (m.dep | 0) >= 1)) && typeof room.ctx.srvResume === 'function' ? room.ctx.srvResume(p.lvl, 1, m.dep | 0, +m.sd || 0, +m.px, +m.pz, !!m.clr) : room.ctx.srvNewZone(p.lvl, 1)); else { rescale(room, p.id); p.conn.send(room.ctx.srvState()); }
     room.ctx.SP[p.id] = { id: p.id, x: -999, z: -999, dead: true, lvl: p.lvl };
     cast(room, { t: 'join', id: p.id, name: p.name }, p.id); cast(room, roster(room)); if (!WB.on && WB.k >= WB_NEED) wbStart(); return;
@@ -80,6 +81,7 @@ function onMessage(p, m) {
     case 'fx': cast(room, { t: 'fx', k: clean(m.k, 2), x: +m.x || 0, z: +m.z || 0, rot: +m.rot || 0, r: Math.min(80, +m.r || 0), arc: +m.arc || 0, c: m.c | 0 }, p.id); break;
     case 'found': { const s = clean(m.item, 60), now = Date.now(); if (!s || (m.r !== 3 && m.r !== 4) || now - (p.lastFound || 0) < 4000) break; p.lastFound = now; const raw = JSON.stringify({ t: 'found', n: p.name, item: s, r: m.r }); for (const r of rooms.values()) for (const q of r.players.values()) q.conn.sendRaw(raw); break; }
     case 'chat': { const s = clean(m.m, 140), now = Date.now(); if (!s || now - (p.lastChat || 0) < 700) break; p.lastChat = now; const bd = typeof m.b === 'string' && m.b.length <= 2 && /^[\u2600-\u27BF\u2580-\u25FF\u2654-\u265F]$/.test(m.b) ? m.b : undefined; if (m.g) { const raw = JSON.stringify({ t: 'chat', n: p.name, m: s, g: 1, b: bd }); for (const r of rooms.values()) for (const q of r.players.values()) q.conn.sendRaw(raw); } else cast(room, { t: 'chat', n: p.name, m: s, b: bd }); break; }
+    case 'tier': { const v = room.ctx.srvTier(m.v | 0); cast(room, { t: 'note', m: p.name + ' set the difficulty to ' + room.ctx.srvTierName(v) + ' from the next floor.' }); break; } /* build 0074 */
     case 'sync': p.conn.send(Object.assign(room.ctx.srvState(), { sync: 1 })); break;
     case 'prev': if (room.ctx.srvCleared() || room.players.size === 1) { let lv = 1; for (const q of room.players.values()) lv = Math.max(lv, q.lvl); cast(room, room.ctx.srvNewZone(lv, room.players.size, 'prev')); } break;
     case 'feedback': { const s = clean(m.m, 600), now = Date.now(); if (!s || now - (p.lastFb || 0) < 20000) break; p.lastFb = now; console.log('[FEEDBACK] ' + new Date().toISOString() + ' build ' + BUILD + ' from ' + p.name + ' (level ' + p.lvl + ' ' + p.cls + '): ' + s); p.conn.send({ t: 'chat', n: '', m: 'Thank you. Your feedback was sent.', s: 1 }); break; }
@@ -101,7 +103,7 @@ setInterval(() => {
   const now = Date.now(), dt = Math.min(.1, (now - last) / 1000); last = now; tickN++; const online = onlineCount();
   for (const [code, room] of rooms) {
     if (!room.players.size) { if (now - room.emptyAt > 60000) rooms.delete(code); continue; }
-    // build 0074 (party sync): a player whose game has gone quiet (phone locked, tab in the background) stops counting as a target, so monsters do not stand around a frozen hero
+    // build 0075 (party sync): a player whose game has gone quiet (phone locked, tab in the background) stops counting as a target, so monsters do not stand around a frozen hero
     for (const q of room.players.values()) { if (q.st && q.lastP && now - q.lastP > 4000 && !q.st[8]) { q.st[8] = 1; const sp = room.ctx.SP[q.id]; if (sp) sp.dead = true; } }
     try { if (WB.on) room.ctx.srvWbSync(Math.max(0, WB.on.f), WB.on.k); room.ctx.srvTick(dt); if (tickN % 2 === 0) cast(room, { t: 's', o: online, w: wbInfo(), e: room.ctx.srvSnap(), p: [...room.players.values()].filter(p => p.st).map(p => p.st) }); }
     catch (err) { console.error('room', code, err); }
@@ -123,6 +125,13 @@ function lbNote(p, pl, dp, room, fc) {
   lbPut(LB.lvl, e, lvl * 100000 + (lvl >= 60 ? par : 0)); if (cl > 0) lbPut(LB.deep, e, cl);
   if (room && room.daily) { const td = lbToday(); if (room.daily === td) { if (LB.dlyDate !== td) { LB.dlyDate = td; LB.dly = []; } if (d > 1) lbPut(LB.dly, Object.assign({}, e, { d: d - 1 }), d - 1); } }
 }
+// build 0074: moving to the Oathbyte address. Once MOVE_TO is set, the old address answers its front page with a tiny page that reads this
+// browser's heroes and sends the player on with the heroes in the link (after the #, so no server sees them). Empty: nothing changes.
+const MOVE_TO = 'https://oathbyte.onrender.com', MOVE_FROM = 'cinderdeep.onrender.com';
+const MOVE_PAGE = '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Oathbyte has moved</title><body style="background:#121014;color:#e8dcc8;font:16px sans-serif;padding:24px">'
+  + '<p>Cinderdeep is now Oathbyte, at <a style="color:#e0a040" id="go" href="' + MOVE_TO + '/">' + MOVE_TO.replace('https://', '') + '</a>. Taking you there with your heroes…</p>'
+  + '<script>(function(){var o={},n=0;try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k.indexOf("cinderdeep_")===0){o[k]=localStorage.getItem(k);n++;}}}catch(e){}'
+  + 'var u=' + JSON.stringify(MOVE_TO) + '+location.pathname+location.search;if(n){try{u+="#xfer="+btoa(unescape(encodeURIComponent(JSON.stringify(o))));}catch(e){}}document.getElementById("go").href=u;location.replace(u);})();</script>';
 // ---- http + websocket ----
 const server = http.createServer((req, res) => {
   let u = decodeURIComponent(req.url.split('?')[0]);
@@ -130,6 +139,7 @@ const server = http.createServer((req, res) => {
   if (u === '/parties') { const list = []; for (const [code, r] of rooms) { if (!r.players.size || /^solo/.test(code)) continue; const pl = [...r.players.values()].map(q => ({ n: q.name, c: q.cls, l: q.lvl | 0 })); list.push({ code, players: pl, floor: r.ctx.srvFloor ? r.ctx.srvFloor() : 1, daily: !!r.daily }); } list.sort((a, b) => b.players.length - a.players.length); res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ parties: list.slice(0, 40), max: PARTY_MAX })); return; } // party browser (build 0021)
   if (u === '/leaderboard') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ build: BUILD, lvl: LB.lvl, deep: LB.deep, rift: LB.rift || [], daily: LB.dlyDate === lbToday() ? LB.dly || [] : [], today: lbToday() })); return; }
   if (u === '/favicon.ico') { res.writeHead(204); res.end(); return; }
+  if (MOVE_TO && String(req.headers.host || '').split(':')[0] === MOVE_FROM && (u === '/' || u === '/index.html')) { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(MOVE_PAGE); return; } /* build 0074 */
   if (u === '/') u = '/index.html'; const f = path.normalize(path.join(PUB, u));
   if (!f.startsWith(PUB)) { res.writeHead(403); res.end(); return; }
   // build 0039: model files and scripts go out gzipped when the browser accepts it (the hero models are about a third smaller)
@@ -166,7 +176,7 @@ server.on('upgrade', (req, sock) => {
   conn.onclose = () => { conns.delete(conn); leave(p); };
   sock.on('data', d => conn.feed(d)); sock.on('close', () => conn.close()); sock.on('error', () => conn.close());
 });
-setInterval(() => { for (const c of conns) { if (!c.alive) { c.close(); continue; } c.alive = false; c.ctl(9); } }, 12000); /* build 0074: a dead connection is noticed in about 20 seconds instead of about 50 */
+setInterval(() => { for (const c of conns) { if (!c.alive) { c.close(); continue; } c.alive = false; c.ctl(9); } }, 12000); /* build 0075: a dead connection is noticed in about 20 seconds instead of about 50 */
 // build 0070: when the host restarts the server for an update, tell everyone first so they reconnect at once to the new one, on the same floor and spot
 let closing = false; function shutdown() { if (closing) return; closing = true; const bye = JSON.stringify({ t: 'bye' }); for (const c of conns) c.sendRaw(bye); setTimeout(() => { for (const c of conns) c.close(); process.exit(0); }, 800); }
 process.on('SIGTERM', shutdown); process.on('SIGINT', shutdown);

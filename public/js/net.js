@@ -13,7 +13,7 @@ const NET = (() => {
     if (i.fd) o.fd = 1; if (i.up > 0 && i.up <= 5) o.up = i.up | 0; if (i.sd > 0 && i.sd < 2147483647) o.sd = i.sd | 0; if (i.slot === 'offhand' && CLASSES[i.oc]) o.oc = i.oc; if (i.power && POWERS[i.power]) o.power = i.power; return o;
   }
   const find = id => G.ents.find(e => e.id === id);
-  // everyone else in the party. In town the monsters' part of an update is skipped but this still runs, so party members in town see each other (build 0074)
+  // everyone else in the party. In town the monsters' part of an update is skipped but this still runs, so party members in town see each other (build 0075)
   function peersUpd(list) {
     const seen = {};
     for (const a of list) {
@@ -26,7 +26,7 @@ const NET = (() => {
   }
   function handle(m) {
     if (m.t === 's' && m.o !== undefined) N.online = m.o;
-    if (m.t === 's' && Array.isArray(m.w)) { N.wb = [m.w[0] | 0, Math.max(1, m.w[1] | 0), m.w[2] ? 1 : 0, m.w[3] | 0]; const now = Date.now(); if (now - (N.wbT || 0) > 5000) { N.wbT = now; try { localStorage.setItem('cinderdeep-wb', JSON.stringify([N.wb[0], N.wb[3]])); } catch (e) { } } } /* build 0074: the server-wide world boss count; this device remembers it so a server update does not wipe it */
+    if (m.t === 's' && Array.isArray(m.w)) { N.wb = [m.w[0] | 0, Math.max(1, m.w[1] | 0), m.w[2] ? 1 : 0, m.w[3] | 0]; const now = Date.now(); if (now - (N.wbT || 0) > 5000) { N.wbT = now; try { localStorage.setItem('oathbyte-wb', JSON.stringify([N.wb[0], N.wb[3]])); } catch (e) { } } } /* build 0075: the server-wide world boss count; this device remembers it so a server update does not wipe it */
     if (m.t === 'wb') { wbEvent(m); return; }
     if (G.inTown && (m.t === 's' || m.t === 'spawn' || m.t === 'die' || m.t === 'dmg' || m.t === 'area' || m.t === 'proj' || m.t === 'fx' || m.t === 'scale' || m.t === 'rest')) { if (m.t === 's' && Array.isArray(m.p)) peersUpd(m.p); return; }
     if (G.inTown && m.t === 'zone' && !m.sync && m.rift === undefined) { hint('Your party has moved deeper. Take the portal to rejoin them.'); return; }
@@ -43,7 +43,7 @@ const NET = (() => {
         peersUpd(m.p);
         break;
       }
-      case 'rest': if (Array.isArray(m.e)) for (const a of m.e) { const e = find(a[0]); if (!e || !e.alive) continue; e.awake = false; e.st = 'chase'; e.x = e.tx = a[1]; e.z = e.tz = a[2]; e.hp = Math.min(e.maxHp, a[3]); e.sT1 = 0; e.atk = 0; } break; /* build 0074: the whole party fell or left, so the monsters went back to rest (and the guardian healed). Before this the screen kept the old picture */
+      case 'rest': if (Array.isArray(m.e)) for (const a of m.e) { const e = find(a[0]); if (!e || !e.alive) continue; e.awake = false; e.st = 'chase'; e.x = e.tx = a[1]; e.z = e.tz = a[2]; e.hp = Math.min(e.maxHp, a[3]); e.sT1 = 0; e.atk = 0; } break; /* build 0075: the whole party fell or left, so the monsters went back to rest (and the guardian healed). Before this the screen kept the old picture */
       case 'spawn': for (const i of m.ents) { addReplica(i); const e = find(i.id); if (e) ring(e.x, e.z, 0, 2, .4, e.md.e); } break;
       case 'riftDone': if (G.zone && G.zone.def.rift && !G.riftDone) riftDone(+m.ms || 0, m.tier | 0); break;
       case 'die': { const e = find(m.id); if (e && e.alive) { e.hp = 0; killEnemy(e); } else if (!e && m.l > 0 && G.hero && !G.inTown) { const xp = xpFor(Math.min(99, m.l | 0), Math.min(4, Math.max(0, +m.xm || 1)), m.el | 0); if (xp > 0) { G.hero.kills++; gainXp(xp); } } break; } /* build 0072: a party kill always pays XP, even if this screen never saw that monster */
@@ -73,7 +73,7 @@ const NET = (() => {
     if (!me) { if (N.retry > 0) drop(null); else UI.netFail('Could not reach the server.'); return; }
     const kill = () => { if (ws !== me) return; me.onclose = me.onerror = me.onmessage = null; try { me.close(); } catch (e) { } drop(me); };
     const t1 = setTimeout(() => { if (ws === me && me.readyState !== 1) kill(); }, 8000); /* never opened */
-    me.onopen = () => { clearTimeout(t1); const b = N.retry > 0 && N.back; N.send({ t: 'join', sid: N.sid || (N.sid = Math.random().toString(36).slice(2) + Date.now().toString(36)), name, room, lvl: G.hero.level, cls: G.hero.cls, dep: b && b.d ? b.d : 0, sd: b && b.seed, px: b ? Math.round(P.x * 10) / 10 : undefined, pz: b ? Math.round(P.z * 10) / 10 : undefined, clr: b && b.clr ? 1 : 0, wb: (() => { try { const j = JSON.parse(localStorage.getItem('cinderdeep-wb') || 'null'); return Array.isArray(j) ? [j[0] | 0, j[1] | 0] : undefined; } catch (e) { return undefined; } })() });
+    me.onopen = () => { clearTimeout(t1); const b = N.retry > 0 && N.back; N.send({ t: 'join', sid: N.sid || (N.sid = Math.random().toString(36).slice(2) + Date.now().toString(36)), name, room, lvl: G.hero.level, cls: G.hero.cls, tier: tierPick(G.hero), dep: b && b.d ? b.d : 0, sd: b && b.seed, px: b ? Math.round(P.x * 10) / 10 : undefined, pz: b ? Math.round(P.z * 10) / 10 : undefined, clr: b && b.clr ? 1 : 0, wb: (() => { try { const j = JSON.parse(localStorage.getItem('oathbyte-wb') || 'null'); return Array.isArray(j) ? [j[0] | 0, j[1] | 0] : undefined; } catch (e) { return undefined; } })() });
       setTimeout(() => { if (ws === me && !N.gotZone) kill(); }, 10000); /* opened but the server never sent the floor */ };
     me.onmessage = ev => { if (ws !== me) return; let m; try { m = JSON.parse(ev.data); } catch (e) { return; } handle(m); };
     me.onclose = () => { clearTimeout(t1); if (ws !== me) return; drop(me); };
