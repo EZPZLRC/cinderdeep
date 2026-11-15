@@ -8,7 +8,7 @@
 <meta name="description" content="OathByte: a free online action RPG you can play in your browser or on your phone. Five classes, loot, and co-op parties.">
 <meta property="og:title" content="OathByte"><meta property="og:description" content="A free online action RPG in your browser. Five classes, loot, and co-op parties."><meta property="og:type" content="website"><meta property="og:image" content="https://oathbyte.onrender.com/brand/og-share.jpg"><meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="favicon.ico" sizes="any"><link rel="icon" href="brand/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
-<link rel="preload" href="brand/logo-letters.webp" as="image"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&display=swap">
+<link rel="preload" href="brand/logo-letters.webp" as="image"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;background:#07090a;color:#e8e2d4;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:14px;user-select:none;-webkit-user-select:none}
@@ -425,7 +425,8 @@ body.isz1 .it .ar{width:18px;height:18px;font-size:11px}body.isz2 .it .ar{width:
 @media (max-width:760px),(max-height:480px){#tbtns button::before{width:20px;height:20px}#ctl button::before{width:13px;height:13px;margin-right:4px}}
 #folk .tier .tierb{display:flex;flex-direction:column;align-items:flex-start;width:100%;text-align:left;margin:4px 0;padding:8px 10px;gap:2px}#folk .tier .tierb span{font-size:12px;opacity:.8}#folk .tier .tierb.on{outline:2px solid #e0a040}
 </style>
-<link rel="stylesheet" href="css/oathbyte.css?v=0078">
+<link rel="stylesheet" href="css/oathbyte.css?v=0079">
+<link rel="stylesheet" href="css/keyart.css?v=0079">
 </head>
 <body>
 <canvas id="gl"></canvas><canvas id="ov"></canvas>
@@ -469,15 +470,27 @@ body.isz1 .it .ar{width:18px;height:18px;font-size:11px}body.isz2 .it .ar{width:
 <div id="tip" class="hide"></div>
 <div id="err" class="hide"></div>
 <div id="death" class="ov hide"><h1>You have fallen</h1><div id="deathBy"></div><div id="deathTip"></div><button class="big" id="revive">Rise again · with a second wind</button><button id="deathMenu">Exit to menu</button></div>
-<div id="menu" class="ov">
+<div id="menu" class="ov ka">
   <canvas id="embers" aria-hidden="true"></canvas>
-  <div id="logo"><h1 class="obSr">OathByte</h1><div class="obLogo" aria-hidden="true"><img class="obL" src="brand/logo-letters.webp" alt="" width="1600" height="573" decoding="async"><i class="obSheen"></i><img class="obS" src="brand/logo-sword.webp" alt="" width="1600" height="573" decoding="async"><i class="obGem"></i><img class="obF" src="brand/logo-flame.webp" alt="" width="1600" height="573" decoding="async"><i class="obFlash"></i></div><div class="tag"><i></i>An online action RPG<i></i></div></div><div id="menuOn">Waking the server. This can take up to a minute…</div>
-  <div id="stage"></div>
-  <p id="menuMsg">Pick a hero, carve through the Blighted Hollow, slay its guardian, and take the portal deeper.</p>
-  <div id="classes"></div>
-  <div id="online" class="hide"><input id="oName" maxlength="16" placeholder="Your name"><input id="oRoom" maxlength="12" placeholder="Party code (blank = join others)"><label id="soloWrap" title="Play by yourself. Strangers can't join you; only friends you send an invite link to."><input type="checkbox" id="soloChk"> Solo</label><div id="onlineN"></div></div>
-  <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center"><button class="big" id="btnNew">Play</button><button id="btnReset" class="hide">Reset this hero</button><label id="hcWrap" class="hide" title="One life only. If this hero dies it is gone for good, and its leaderboard entry gets a skull."><input type="checkbox" id="hcChk"> ☠ Hardcore</label><button id="mDaily" title="Same floors for every player today. Type a party code to run it with friends.">☀ Daily challenge</button><button id="mParty" title="See every party that is playing right now and join one">⚑ Parties</button><button id="mLb">Leaderboard</button><button id="mSet">Settings</button></div>
-  <details id="ctrls"><summary>Controls</summary>
+  <header id="kaNav"><div class="kaWrap"><a class="kaBrand" href="#" data-go="top"><img src="brand/ka/mark.png" alt="" width="30" height="30">OATHBYTE</a><nav class="kaLinks"><a href="#" data-go="heroes">Heroes</a><a href="#" data-go="lb">Leaderboard</a><a href="#" data-go="parties">Parties</a><a href="#" data-go="game">The game</a><a href="#" data-go="news">News</a><a href="#" data-go="ctrls">Controls</a></nav><span class="kaSp"></span><div id="menuOn">Waking the server. This can take up to a minute…</div></div></header>
+  <section id="kaHero"><div class="kaArt" aria-hidden="true"></div><div class="kaShade" aria-hidden="true"></div>
+  <div class="kaWrap kaIn"><div id="kaLeft">
+    <div id="logo"><h1 class="obSr">OathByte</h1><div class="obLogo" aria-hidden="true"><img class="obL" src="brand/logo-letters.webp" alt="" width="1600" height="573" decoding="async"><i class="obSheen"></i><img class="obS" src="brand/logo-sword.webp" alt="" width="1600" height="573" decoding="async"><i class="obGem"></i><img class="obF" src="brand/logo-flame.webp" alt="" width="1600" height="573" decoding="async"><i class="obFlash"></i></div><div class="tag"><i></i>An online action RPG<i></i></div></div>
+    <p id="menuMsg">Descend the Blighted Hollow, face the Ashen Tyrant, and keep your oath. Free in your browser, alone or with friends.</p>
+    <div id="online" class="hide"><input id="oName" maxlength="16" placeholder="Your name"><input id="oRoom" maxlength="12" placeholder="Party code (optional)" title="Leave blank to join other players"><label id="soloWrap" title="Play by yourself. Strangers can't join you; only friends you send an invite link to."><input type="checkbox" id="soloChk"> Solo</label><div id="onlineN"></div></div>
+    <div id="kaGo"><button class="big" id="btnNew">Play</button><div id="kaMeta"><b></b><span>Free · No download</span></div></div>
+    <div id="kaOpts"><button id="mDaily" title="Same floors for every player today. Type a party code to run it with friends."><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="1.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Daily challenge</button><button id="mParty" title="See every party that is playing right now and join one"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2 20a6 6 0 0 1 12 0M10 20a6 6 0 0 1 12 0"/></svg>Parties</button><button id="mLb"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8M9 17h6"/></svg>Leaderboard</button><button id="mSet"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>Settings</button><label id="hcWrap" class="hide" title="One life only. If this hero dies it is gone for good, and its leaderboard entry gets a skull."><input type="checkbox" id="hcChk"> ☠ Hardcore</label><button id="btnReset" class="hide">Reset this hero</button></div>
+  </div>
+  <div id="kaRail"><h4>Choose your hero <em id="kaDesc"></em></h4><div id="classes"></div></div></div>
+  </section>
+  <section class="kaSec" id="kaGame"><div class="kaWrap"><div class="kaEye">The game</div><h2>Swear the oath. Break the dark.</h2>
+    <div class="kaFeats"><div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 3H21v6.5L9 21.5 2.5 15z"/><path d="M5 12l7 7M3 21l3-3"/></svg><h3>Five heroes</h3><p>Each with its own skills and talent cards you pick as you level.</p></div><div><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2 20a6 6 0 0 1 12 0M10 20a6 6 0 0 1 12 0"/></svg><h3>Play together</h3><p>Share a party code, or drop into a run with other players.</p></div><div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a8 8 0 0 0-5 14.2V21h10v-3.8A8 8 0 0 0 12 3z"/><circle cx="9" cy="11" r="1.6"/><circle cx="15" cy="11" r="1.6"/><path d="M10 21v-3M14 21v-3"/></svg><h3>A story to break</h3><p>Three acts down to the Heart of Cinders, and a world boss the whole server fights.</p></div><div><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg><h3>Free, right here</h3><p>Runs in your browser on desktop and phone. No download.</p></div></div>
+  </div></section>
+  <section class="kaSec"><div class="kaWrap"><div class="kaEye">From the depths</div><h2>Screenshots</h2>
+    <div class="kaGal"><i style="background-image:url(brand/ka/shot-L12.webp)"></i><i style="background-image:url(brand/ka/shot-L07.webp)"></i><i style="background-image:url(brand/ka/shot-L10.webp)"></i><i style="background-image:url(brand/ka/shot-L06.webp)"></i><i style="background-image:url(brand/ka/shot-L03.webp)"></i></div>
+  </div></section>
+  <section class="kaSec" id="kaNews"><div class="kaWrap kaTwo"><div id="news"></div><div class="kaCard"><h3>Keep it burning</h3><p>OathByte is free to play. If you enjoy it, share it with a friend or chip in.</p><div id="mfoot"><button id="mInvite" class="hide">Share the game</button><button id="mTip" class="hide">♥ Support the game</button><button id="mFeed" class="hide">Send feedback</button></div></div></div></section>
+  <section class="kaSec" id="kaCtrls"><div class="kaWrap"><details id="ctrls"><summary>Controls</summary>
   <div class="keys touchOnly">
     <b>Left thumb stick</b><span>Move (or tap the ground)</span>
     <b>Big round button</b><span>Attack the nearest enemy</span>
@@ -501,17 +514,16 @@ body.isz1 .it .ar{width:18px;height:18px;font-size:11px}body.isz2 .it .ar{width:
     <b>Enter · Tab</b><span>Online chat · switch Global / Party</span>
     <b>G</b><span>Quest path on the ground on/off</span>
   </div>
-  </details>
-  <div id="news"></div>
-  <div id="mfoot"><button id="mInvite" class="hide">Share the game</button><button id="mTip" class="hide">♥ Support the game</button><button id="mFeed" class="hide">Send feedback</button></div>
+  </details></div></section>
+  <footer id="kaFoot"><div class="kaWrap"><a class="kaBrand" href="#" data-go="top"><img src="brand/ka/mark.png" alt="" width="30" height="30">OATHBYTE</a><nav><a href="#" data-go="top">Play</a><a href="#" data-go="lb">Leaderboard</a><a href="#" data-go="parties">Parties</a><a href="#" data-go="set">Settings</a><a href="#" data-go="ctrls">Controls</a></nav><div class="kaSmall"><span id="kaBuild"></span><span>Made for the browser. Plays with a mouse and keyboard or by touch.</span></div></div></footer>
 </div>
-<script src="js/move.js?v=0078"></script>
-<script src="js/models.js?v=0078"></script>
-<script src="js/gl.js?v=0078"></script>
-<script src="js/data.js?v=0078"></script>
-<script src="js/icons.js?v=0078"></script>
-<script src="js/game.js?v=0078"></script>
-<script src="js/net.js?v=0078"></script>
-<script src="js/ui.js?v=0078"></script>
+<script src="js/move.js?v=0079"></script>
+<script src="js/models.js?v=0079"></script>
+<script src="js/gl.js?v=0079"></script>
+<script src="js/data.js?v=0079"></script>
+<script src="js/icons.js?v=0079"></script>
+<script src="js/game.js?v=0079"></script>
+<script src="js/net.js?v=0079"></script>
+<script src="js/ui.js?v=0079"></script>
 <div id="mtags"></div></body>
 </html>
