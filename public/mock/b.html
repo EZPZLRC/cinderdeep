@@ -1,0 +1,94 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Oathbyte mockup B</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mock.css"><style>
+.b .art{transition:opacity .8s;background-position:center 45%}
+.b .shade{background:radial-gradient(70% 60% at 50% 42%,rgba(7,6,10,.15),rgba(7,6,10,.75) 75%),linear-gradient(0deg,var(--bg) 2%,rgba(7,6,10,.0) 45%),linear-gradient(180deg,rgba(7,6,10,.7),rgba(7,6,10,0) 22%)}
+.b .inner{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:84px 0 40px}
+.b .logo{width:min(560px,86vw);filter:drop-shadow(0 14px 34px rgba(0,0,0,.75))}
+.b .eyebrow{justify-content:center;margin:2px 0 34px}.b .eyebrow::after{content:"";width:36px;height:1px;background:var(--crim2)}
+.b .cname{font:800 clamp(40px,6vw,76px)/.95 var(--disp);letter-spacing:.14em;color:#fff;text-shadow:0 0 40px color-mix(in srgb,var(--cc) 55%,transparent),0 4px 18px #000}
+.b .role{margin:14px 0 8px;font:600 12px var(--ui);letter-spacing:.32em;text-transform:uppercase;color:var(--cc)}
+.b .desc{max-width:460px;color:#d4d6db;font-size:16px;margin-bottom:28px;text-shadow:0 2px 10px #000}
+.b .go{display:flex;gap:10px;align-items:center}
+.b .go .field{width:200px;height:60px;text-align:center;font-size:15px}
+.b .meta{margin-top:14px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx2)}
+.b .meta b{color:#fff;font-weight:600}
+.b .emb{display:flex;gap:26px;margin-top:44px}
+.b .em{display:flex;flex-direction:column;align-items:center;gap:10px;font:700 12px var(--disp);letter-spacing:.16em;color:var(--tx2);cursor:pointer}
+.b .em i{width:76px;height:76px;border-radius:50%;background:#000 center 18%/cover;border:2px solid rgba(255,255,255,.22);box-shadow:0 8px 20px -6px #000;transition:.2s}
+.b .em:hover i{border-color:#fff;transform:translateY(-3px)}
+.b .em.on{color:#fff}.b .em.on i{border-color:var(--c);box-shadow:0 0 0 4px rgba(0,0,0,.6),0 0 0 6px var(--c),0 0 30px var(--c)}
+.b .side{position:absolute;left:var(--pad);bottom:40px;text-align:left}
+.b .side2{position:absolute;right:var(--pad);bottom:40px;text-align:right}
+.b .side .txtlinks,.b .side2 .txtlinks{flex-direction:column;gap:12px}
+.b .side2 .txtlinks a{justify-content:flex-end}
+@media (max-width:1100px){.b .side,.b .side2{display:none}}
+@media (max-width:760px){
+ .b .inner{justify-content:flex-end;padding:70px 0 30px}
+ .b .logo{width:min(320px,82vw)}
+ .b .eyebrow{margin-bottom:18vh;font-size:10px;letter-spacing:.32em}
+ .b .cname{font-size:42px}
+ .b .desc{font-size:14px;margin-bottom:18px}
+ .b .go{flex-direction:column;width:100%}
+ .b .go .field{width:100%;height:48px}
+ .b .emb{gap:10px;margin-top:26px;width:100%;justify-content:space-between}
+ .b .em{font-size:9px;letter-spacing:.08em}
+ .b .em i{width:54px;height:54px}
+}
+</style></head><body><header class="nav"><div class="wrap">
+<a class="brand" href="#"><img src="img/mark.png" alt="">OATHBYTE</a>
+<nav class="links"><a class="on" href="#">Play</a><a href="#">Heroes</a><a href="#">Leaderboard</a><a href="#">Parties</a><a href="#">Daily challenge</a><a href="#">News</a></nav>
+<span class="sp"></span><span class="pill"><i></i>214 online</span>
+<button class="ib hideS" title="Share"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/></svg></button>
+<button class="ib" title="Mute sound"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></button>
+<button class="ib burger" title="Menu" style="display:none"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+</div></header><main class="b">
+<section class="hero" id="bh" style="--cc:#ff7a2a"><div class="art" id="art1" style="background-image:url(img/bg-elementalist.webp)"></div><div class="art" id="art2" style="opacity:0"></div><div class="shade"></div><div class="embers"></div>
+<div class="wrap inner">
+<img class="logo" src="img/logo-notag.webp" alt="Oathbyte">
+<div class="eyebrow">An online action RPG</div>
+<div class="cname" id="cn">ELEMENTALIST</div>
+<div class="role" id="cr">Spell caster</div>
+<p class="desc" id="cd">Commands fire, frost and lightning. Fragile, but erases whole packs.</p>
+<div class="go"><input class="field" placeholder="Hero name" value="Lee"><a class="cta" href="#">PLAY NOW</a></div>
+<div class="meta"><b>Continue level 9</b> · Free · No download</div>
+<div class="emb"><a class="em" style="--c:#d8a040" data-k="warden" data-n="Warden" data-r="Melee" data-d="Sword and shield. Wades into the horde and builds Fury with every swing."><i style="background-image:url(img/cls-warden.webp)"></i>Warden</a><a class="em" style="--c:#4aa850" data-k="ranger" data-n="Ranger" data-r="Bow" data-d="A swift archer who kites and shreds enemies from range."><i style="background-image:url(img/cls-ranger.webp)"></i>Ranger</a><a class="em" style="--c:#9a5aff" data-k="arcanist" data-n="Arcanist" data-r="Arcane" data-d="Bends raw arcane power: orbs, beams and teleports. Power refills fast."><i style="background-image:url(img/cls-arcanist.webp)"></i>Arcanist</a><a class="em" style="--c:#e0503a" data-k="brawler" data-n="Brawler" data-r="Physical" data-d="Bare-knuckle martial artist. Very fast strikes, dashes and kicks; builds Spirit."><i style="background-image:url(img/cls-brawler.webp)"></i>Brawler</a><a class="em on" style="--c:#ff7a2a" data-k="elementalist" data-n="Elementalist" data-r="Spell caster" data-d="Commands fire, frost and lightning. Fragile, but erases whole packs."><i style="background-image:url(img/cls-elementalist.webp)"></i>Elementalist</a></div>
+</div>
+<div class="side"><div class="txtlinks"><a href="#"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2 20a6 6 0 0 1 12 0M10 20a6 6 0 0 1 12 0"/></svg>Parties</a><a href="#"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="1.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Daily challenge</a><a href="#"><svg viewBox="0 0 24 24"><path d="M12 3a8 8 0 0 0-5 14.2V21h10v-3.8A8 8 0 0 0 12 3z"/><circle cx="9" cy="11" r="1.6"/><circle cx="15" cy="11" r="1.6"/><path d="M10 21v-3M14 21v-3"/></svg>Hardcore</a></div></div>
+<div class="side2"><div class="txtlinks"><a href="#">Leaderboard<svg viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8M9 17h6"/></svg></a><a href="#">Settings<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></a><a href="#">Controls<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></a></div></div>
+</section><section class="sec"><div class="wrap">
+<div class="eyebrow">The game</div><h2>Swear the oath. Break the dark.</h2>
+<div class="feats">
+<div class="feat"><svg viewBox="0 0 24 24"><path d="M14.5 3H21v6.5L9 21.5 2.5 15z"/><path d="M5 12l7 7M3 21l3-3"/></svg><h3>Five heroes</h3><p>Each with its own skills, resource and talent cards you pick as you level.</p></div>
+<div class="feat"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2 20a6 6 0 0 1 12 0M10 20a6 6 0 0 1 12 0"/></svg><h3>Play together</h3><p>Share a party code or drop into a run with friends in seconds.</p></div>
+<div class="feat"><svg viewBox="0 0 24 24"><path d="M12 3a8 8 0 0 0-5 14.2V21h10v-3.8A8 8 0 0 0 12 3z"/><circle cx="9" cy="11" r="1.6"/><circle cx="15" cy="11" r="1.6"/><path d="M10 21v-3M14 21v-3"/></svg><h3>A story to break</h3><p>Three acts down to the Heart of Cinders, and a world boss that hits the whole server.</p></div>
+<div class="feat"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg><h3>Free, right here</h3><p>Runs in your browser on desktop and phone. No download, no account.</p></div>
+</div></div></section>
+<section class="sec"><div class="wrap">
+<div class="eyebrow">From the depths</div><h2>Screenshots</h2>
+<div class="gal"><div style="background-image:url(img/shot-L12.webp)"></div><div style="background-image:url(img/shot-L07.webp)"></div><div style="background-image:url(img/shot-L10.webp)"></div><div style="background-image:url(img/shot-L06.webp)"></div><div style="background-image:url(img/shot-L03.webp)"></div></div>
+</div></section>
+<section class="sec"><div class="wrap two">
+<div class="card"><h3>NEWS <em>Build 0076</em></h3><ul class="news">
+<li><b>NOV 15</b>Cinderdeep is now Oathbyte. Your heroes came with you.</li>
+<li><b>NOV 15</b>New world boss, longer acts and a fresh soundtrack.</li>
+<li><b>NOV 14</b>Talent cards: pick one of three each time you level.</li></ul></div>
+<div class="card"><h3>KEEP IT BURNING</h3><p style="color:var(--tx2);font-size:14px;margin-bottom:20px">Oathbyte is made by one developer. If you enjoy it, tell a friend or chip in.</p>
+<div style="display:flex;gap:10px;flex-wrap:wrap"><a class="ghost" href="#"><svg viewBox="0 0 24 24"><path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/></svg>Support the game</a><a class="ghost" href="#"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/></svg>Share</a><a class="ghost" href="#"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>Send feedback</a></div></div>
+</div></section>
+<footer class="foot"><div class="wrap">
+<a class="brand" href="#"><img src="img/mark.png" alt="">OATHBYTE</a>
+<nav><a href="#">Play</a><a href="#">Leaderboard</a><a href="#">Parties</a><a href="#">Settings</a><a href="#">Controls</a><a href="#">Send feedback</a><a href="#">Support</a></nav>
+<div class="small"><span>Build 0076 · © 2026 EZPZLRC</span><span>Made for the browser. Best with a keyboard or a controller.</span></div>
+</div></footer>
+<script>
+document.querySelectorAll('.ib[title="Mute sound"]').forEach(b=>b.onclick=()=>b.classList.toggle('muted'));
+</script><script>
+const mob=matchMedia('(max-width:760px)').matches,a1=art1,a2=art2;let front=a1;
+function pick(e){document.querySelectorAll('.em').forEach(x=>x.classList.toggle('on',x===e));const k=e.dataset.k,back=front===a1?a2:a1;
+back.style.backgroundImage=`url(img/${mob?'bgt':'bg'}-${k}.webp)`;back.style.opacity=1;front.style.opacity=0;front=back;
+bh.style.setProperty('--cc',getComputedStyle(e).getPropertyValue('--c'));cn.textContent=e.dataset.n.toUpperCase();cr.textContent=e.dataset.r;cd.textContent=e.dataset.d}
+document.querySelectorAll('.em').forEach(e=>e.onclick=()=>pick(e));
+const q=new URLSearchParams(location.search).get('c');pick(document.querySelector(`.em[data-k="${q||'elementalist'}"]`));
+</script></main></body></html>
