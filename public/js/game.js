@@ -91,14 +91,14 @@ const SFX = (() => {
   }
 
   // background music (build 0020): a driving rock loop written on the fly. Drums, distorted power chords, bass and a lead riff in E minor.
-  let mBus = null, gBus = null, mLvl = .4, mNext = 0, mStep = 0, mOn = true;
+  let mBus = null, gBus = null, mLvl = .4, mNext = 0, mStep = 0, mOn = true, bossLv = 0, fadeTo = 0;
   const MF = n => 82.41 * Math.pow(2, n / 12), RIFF = [0, 0, -4, -2, 0, 0, 3, 5], PENT = [0, 3, 5, 7, 10, 12, 15, 17], BPM = 138;
-  const mVol = () => (mute || !mOn ? 0 : mLvl * master * .5 * (fBuf ? 1 - .9 * Math.min(1, fLvl * 1.6) : 1));
+  const mVol = () => (mute || !mOn ? 0 : mLvl * master * .5 * (fBuf && !bossLv ? 1 - .9 * Math.min(1, fLvl * 1.6) : 1));
   /* build 0051: fight music. "Battle Theme A" by cynicmusic (CC0) fades in over the area tune when a fight starts, and its sound opens up as the fight grows */
   let fBuf = null, fSrc = null, fG = null, fLp = null, fLvl = 0, fGo = false, fT0 = 0, fOff = 0;
   function loadFight() { if (fGo || !ac) return; fGo = true; getBuf('sfx/battle.mp3', b => { fBuf = b; }); }
   function fight(k, dt) {
-    if (!ac || !(dt > 0)) return; fLvl += (k - fLvl) * Math.min(1, dt * (k > fLvl ? 1.4 : .3)); if (fLvl < .003 && k <= 0) fLvl = 0; if (!fBuf) return;
+    if (!ac || !(dt > 0)) return; if (bossLv) k = 0; /* build 0095: the boss theme takes over from the battle track */ fLvl += (k - fLvl) * Math.min(1, dt * (k > fLvl || bossLv ? 1.4 : .3)); if (fLvl < .003 && k <= 0) fLvl = 0; if (!fBuf) return;
     const v = mute || !mOn ? 0 : Math.min(1, fLvl * 1.3) * mLvl * master * .8, now = ac.currentTime;
     if (v > .001 && !fSrc) { fG = ac.createGain(); fG.gain.value = 0; fLp = ac.createBiquadFilter(); fLp.type = 'lowpass'; fLp.frequency.value = 600; fSrc = ac.createBufferSource(); fSrc.buffer = fBuf; fSrc.loop = true; fSrc.connect(fLp); fLp.connect(fG); fG.connect(ac.destination); fSrc.start(now, fOff % fBuf.duration); fT0 = now - fOff; }
     if (!fSrc) return; fG.gain.setTargetAtTime(v, now, .25); fLp.frequency.setTargetAtTime(500 + fLvl * fLvl * 14000, now, .3);
@@ -161,10 +161,24 @@ const SFX = (() => {
       lead: { horn: 1, v: .046, lp: 1500, oct: 24, m: [0, _, _, 2, 3, _, 2, _, 0, _, _, _, -1, _, 0, _, 4, _, _, 3, 2, _, 0, _, 2, _, _, _, _, _, _, _] },
       mB: [4, _, _, _, 7, _, 6, 4, 5, _, _, _, 3, _, _, _, 4, _, 5, _, 7, _, 8, _, 9, _, _, 7, 6, _, _, _] }
   });
+  /* build 0095 (Lee: change the music at the boss fight, more epic and sped up): the boss theme. D harmonic minor at 168 bpm, pounding drums and timpani,
+     driving strings, full brass, a low choir and the horn call. hot skips the quiet intro so it hits at once. s_boss2 is the enrage: a semitone up, faster, more drums and a racing string arp */
+  Object.assign(THEMES, {
+    s_boss: { bpm: 168, base: 73.42, len: 8, sc: 'hmin', hot: 1, prog: [0, 0, -4, -4, -2, -2, -5, -5], q: [3, 3, 4, 4, 4, 4, 4, 4], progB: [-4, -4, -2, -2, 0, 0, 1, 1], qB: [4, 4, 4, 4, 3, 3, 4, 4], kick: [0, 2, 3, 4, 6], snare: [2, 6], tom: [5, 7], timp: [0, 3, 4, 6], hat: [0, 1, 2, 3, 4, 5, 6, 7], hv: .035, bass: 'pulse', bw: 'triangle', echo: .22,
+      ost: { v: .032, lp: 2600, p: DRV, n: [0, 12, 7, 12, 0, 12, 7, 12] }, brass: { v: .028, lp: 2000 }, pad: { w: 'sawtooth', v: .018, lp: 1300, iv: [0, 7, 12, 15], det: 10 },
+      lead: { horn: 1, v: .056, lp: 2100, oct: 24, m: [0, _, _, 4, 3, _, 2, _, 4, _, _, 7, 6, _, 4, _, 5, _, _, 4, 3, _, 2, 1, 2, _, _, _, _, _, _, _] },
+      mB: [7, _, _, _, 8, _, 7, _, 9, _, _, _, 8, _, 7, _, 6, _, _, 7, 8, _, 9, _, 11, _, _, _, _, _, 10, _] },
+    s_boss2: { bpm: 184, base: 77.78, len: 8, sc: 'hmin', hot: 3, prog: [0, 0, -4, -4, -2, -2, -5, -5], q: [3, 3, 4, 4, 4, 4, 4, 4], progB: [-4, -4, -2, -2, 0, 0, 1, 1], qB: [4, 4, 4, 4, 3, 3, 4, 4], kick: [0, 2, 3, 4, 6, 7], snare: [2, 6], tom: [3, 5, 7], timp: [0, 2, 4, 6], hat: [0, 1, 2, 3, 4, 5, 6, 7], hv: .045, bass: 'pulse', bw: 'triangle', echo: .2,
+      arp: { w: 'sawtooth', v: .02, d: .12, oct: 24, n: [0, 7, 12, 7, 15, 12, 7, 12], split: 1 }, ost: { v: .036, lp: 2800, p: DRV, n: [0, 12, 7, 12, 0, 12, 7, 12] }, brass: { v: .033, lp: 2300 }, pad: { w: 'sawtooth', v: .02, lp: 1500, iv: [0, 7, 12, 15], det: 12 },
+      lead: { horn: 1, v: .058, lp: 2300, oct: 24, m: [0, _, _, 4, 3, _, 2, _, 4, _, _, 7, 6, _, 4, _, 5, _, _, 4, 3, _, 2, 1, 2, _, _, _, _, _, _, _] },
+      mB: [7, _, _, _, 8, _, 7, _, 9, _, _, _, 8, _, 7, _, 6, _, _, 7, 8, _, 9, _, 11, _, _, _, _, _, 10, _] }
+  });
   let gameSong = '';
   let theme = null, themeK = '', cBus = null;
   if (typeof setInterval !== 'undefined' && typeof document !== 'undefined') setInterval(() => { try { musTick(); } catch (e) { } }, 90); /* keeps the music steady when frames are slow */
-  function setTheme(k) { k = THEMES[k] ? k : ''; if (k === themeK) return; themeK = k; theme = THEMES[k] || null; if (mBus && ac) { mBus.gain.cancelScheduledValues(ac.currentTime); mBus.gain.setValueAtTime(0, ac.currentTime); } mStep = 0; if (ac) mNext = ac.currentTime + .25; }
+  function setTheme(k) { k = THEMES[k] ? k : ''; if (k === themeK) return; const was = themeK; themeK = k; theme = THEMES[k] || null; mStep = theme && theme.hot ? theme.len * 4 * theme.hot : 0;
+    const xf = /^s_boss/.test(k) || /^s_boss/.test(was); /* build 0095: into and out of the boss theme the music fades across instead of cutting */
+    if (mBus && ac) { const now = ac.currentTime; mBus.gain.cancelScheduledValues(now); if (xf) { mBus.gain.setValueAtTime(mBus.gain.value, now); mBus.gain.linearRampToValueAtTime(0, now + .45); fadeTo = now + .5; mNext = now + .5; return; } mBus.gain.setValueAtTime(0, now); } if (ac) mNext = ac.currentTime + .25; }
   function tom(t, f, v) { const o = ac.createOscillator(), g = ac.createGain(); o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * .55, t + .3); env(g, t, .003, v, .45); o.connect(g); g.connect(mBus); o.start(t); o.stop(t + .5); hit(t, 600, 'lowpass', v * .3, .08, mBus); }
   function filt(out, f) { const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = f; lp.connect(out); return lp; }
   /* build 0034: songs now move through sections (intro, verse, a bridge with its own chords and tune, then a big last verse) and every other time round they lift up a key, so they keep changing */
@@ -198,7 +212,7 @@ const SFX = (() => {
     if (!mBus) { mBus = ac.createGain(); mBus.gain.value = 0; const comp = ac.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 4; mBus.connect(comp); comp.connect(ac.destination);
       gBus = ac.createGain(); gBus.gain.value = .5; const ws = ac.createWaveShaper(), cv = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = i / 512 - 1; cv[i] = Math.tanh(x * 6) * .8; } ws.curve = cv; ws.oversample = '2x'; const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2600; const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 90; gBus.connect(ws); ws.connect(hp); hp.connect(lp); lp.connect(mBus); mNext = ac.currentTime + .1; }
     if (!cBus) { cBus = ac.createGain(); cBus.gain.value = 1; const dl = ac.createDelay(1), fb = ac.createGain(), wet = ac.createGain(); dl.delayTime.value = .33; fb.gain.value = .32; wet.gain.value = .3; cBus.connect(mBus); cBus.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(wet); wet.connect(mBus); cBus.wet = wet; }
-    mBus.gain.setTargetAtTime(mVol(), ac.currentTime, .5); if (mVol() <= 0) { mNext = ac.currentTime + .1; return; }
+    if (ac.currentTime >= fadeTo) mBus.gain.setTargetAtTime(mVol(), ac.currentTime, bossLv ? .25 : .5); if (mVol() <= 0) { mNext = ac.currentTime + .1; return; }
     const st = 60 / (theme ? theme.bpm : BPM) / 2; if (mNext < ac.currentTime - .5) mNext = ac.currentTime + .05;
     if (theme) { cBus.wet.gain.value = theme.echo || .2; while (mNext < ac.currentTime + .25) { themeStep(mNext, st); mStep++; mNext += st; } return; }
     while (mNext < ac.currentTime + .25) {
@@ -216,7 +230,7 @@ const SFX = (() => {
       mStep++; mNext += st;
     }
   }
-  return { unlock: ctx, play, fight, ambient, ambTick(dt) { setTheme(gameSong); ambTick(dt); musTick(); }, musTick, theme: setTheme, music(v) { mLvl = v; }, toggle() { mute = !mute; setAmb(); return mute; }, vol(v) { master = v; mute = v <= 0; setAmb(); } };
+  return { unlock: ctx, play, fight, ambient, ambTick(dt) { setTheme(bossLv ? (bossLv > 1 ? 's_boss2' : 's_boss') : gameSong); ambTick(dt); musTick(); }, boss(v) { bossLv = v; }, musTick, theme: setTheme, music(v) { mLvl = v; }, toggle() { mute = !mute; setAmb(); return mute; }, vol(v) { master = v; mute = v <= 0; setAmb(); } };
 })();
 
 // ---------- items ----------
@@ -900,6 +914,13 @@ function partyBonus() { if (!G.online || G.inTown) return 0; let n = 0; for (con
 function dodge(tx, tz) { if (G.state !== 'play' || P.dead || P.dash || (P.dodgeCd || 0) > 0 || G.inTown && false) return false; let dx = (tx === undefined ? P.x + Math.sin(P.rot) : tx) - P.x, dz = (tz === undefined ? P.z + Math.cos(P.rot) : tz) - P.z; const d = Math.hypot(dx, dz); if (d < .3) { dx = Math.sin(P.rot); dz = Math.cos(P.rot); } else { dx /= d; dz /= d; }
   let ex = P.x, ez = P.z; for (let t = .5; t <= 5; t += .5) { const nx = P.x + dx * t, nz = P.z + dz * t; if (blocked(nx, nz, .55)) break; ex = nx; ez = nz; } if (Math.hypot(ex - P.x, ez - P.z) < .4) return false;
   P.act = P.move = P.atk = null; P.rot = Math.atan2(dx, dz); P.dash = { x0: P.x, z0: P.z, x1: ex, z1: ez, t: 0, dur: .22, sk: { flat: 1 } }; P.iframes = Math.max(P.iframes || 0, .35); P.dodgeCd = 1; for (let i = 0; i < 6; i++) G.fx.push({ smoke: 1, x: P.x - dx * i * .3 + rnd(-.3, .3), y: .3, z: P.z - dz * i * .3 + rnd(-.3, .3), vx: rnd(-.5, .5), vy: rnd(.3, .9), vz: rnd(-.5, .5), life: rnd(.4, .7), max: .7, size: rnd(.3, .5), c: GLX.col(0xa89a80) }); SFX.play('leap'); return true; }
+/* build 0095: which music the boss fight wants. 0 none, 1 a boss is awake and near (act guardians and the world boss), 2 it is enraged (half life).
+   It holds 3 s after the boss leaves reach so the theme does not flicker, and ends at once on a kill or a death */
+function bossMus(dt) {
+  let lv = 0; if (G.state === 'play' && !G.inTown && !P.dead && G.ents) for (const e of G.ents) { if (!e.alive || !e.boss || !e.awake) continue; if (Math.hypot(e.x - P.x, e.z - P.z) > 26) continue; lv = Math.max(lv, e.p2 || (e.wb && e.hp < e.maxHp * .5) ? 2 : 1); }
+  if (lv) { G.bossMuL = Math.max(lv, G.bossMuT > 0 ? G.bossMuL || 0 : 0); G.bossMuT = 3; } else if (G.bossMuT > 0 && !P.dead && G.state === 'play' && G.ents && G.ents.some(e => e.alive && e.boss)) { G.bossMuT -= dt; lv = G.bossMuL || 0; } else { G.bossMuT = 0; G.bossMuL = 0; }
+  return lv;
+}
 /* build 0051: how hot the fight is, from 0 (calm) to 1 (a boss), for the fight music. It holds a few seconds after the last foe so the music doesn't cut in and out */
 function fightHeat(dt) {
   let k = 0; if (G.state === 'play' && !G.inTown && !P.dead && G.ents) { let n = 0, el = 0; for (const e of G.ents) { if (!e.alive || !e.awake || e.dummy) continue; if (Math.hypot(e.x - P.x, e.z - P.z) > 17) continue; if (e.boss) { n = -1; break; } n++; if (e.elite) el = 1; } k = n < 0 ? 1 : n ? Math.min(.85, .38 + n * .06 + el * .22) : 0; }
@@ -1630,7 +1651,7 @@ function update(dt) {
   if (G.boss && G.boss.alive && G.boss.awake && !G.inTown && !G.cine) { const bk = G.zone && G.zone.def ? G.zone.def.seed + ':' + (G.zone.def.depth || 0) : ''; if (G.cineKey !== bk) { G.cineKey = bk; const b = G.boss; /* build 0075: no intro camera or slow motion; the name card, the ring and the shake stay */ P.iframes = Math.max(P.iframes || 0, 4); /* build 0072 (Lee's playtest): nothing can hurt you for a moment when a guardian wakes */ if (stBrand(b) && UI.zoneBanner) UI.zoneBanner(b.name, b.bd && b.bd.phases ? 'The Prophet himself, at the Heart of Cinders' : 'Bound to ' + STORY_VILLAIN); ring(b.x, b.z, .5, 9, .9, (b.md && b.md.e) || 0xff5a2a); burst(b.x, 1.5, b.z, (b.md && b.md.c2) || 0x6a4a2a, 24, 8); G.shake = Math.min(.7, (G.shake || 0) + .4); } }
   if (G.hitStop > 0) { G.hitStop -= dt; dt *= .12; } // a heavy blow lands: the world holds its breath for a few frames
   if (G.auto && G.hero && G.hero.picks) { const i = pendingPick(G.hero); if (i >= 0) pickSkill(i, skillTiers(G.hero.cls)[i][Math.random() * 2 | 0]); }
-  SFX.ambTick(dt); SFX.fight(fightHeat(dt), dt); updAlly(dt); G.time += dt; if (G.shake > 0) G.shake = Math.max(0, G.shake - dt * 1.8);
+  SFX.boss(bossMus(dt)); SFX.ambTick(dt); SFX.fight(fightHeat(dt), dt); updAlly(dt); G.time += dt; if (G.shake > 0) G.shake = Math.max(0, G.shake - dt * 1.8);
   P.mv += ((P.moving ? 1 : 0) - P.mv) * Math.min(1, dt * 12);
   updPlayer(dt); if (G.online) NET.tick(dt); updGps(dt); updPet(dt); if (!G.online && !G.inTown) repop(dt, [P]); if (G.zone && !G.inTown && !P.dead) for (const o of G.zone.objs) if ((o.kind === 'lost' || o.kind === 'captive') && !o.used && Math.hypot(o.x - P.x, o.z - P.z) < 2.4) interact(o); G.achT = (G.achT || 0) - dt; if (G.achT <= 0) { G.achT = 1; achCheck(); }
   if (G.auto && P.dead) { BOT.rv += dt; if (BOT.rv > 2.5) { BOT.rv = 0; UI.revive(); } }
