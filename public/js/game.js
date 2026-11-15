@@ -228,7 +228,7 @@ function rollRarity(bonus) {
   const mf = luck() / 100; const w = [62, 30 * (1 + mf), 7.5 * (1 + mf * 1.2) * (1 + bonus), .35 * (1 + mf * 1.5) * (1 + bonus * 2)]; /* build 0034 (Lee, Nov 14: make loot scarcer): legendary weight .5 -> .35, about one legendary every 2.5 floors instead of every 1.4 */
   let r = Math.random() * (w[0] + w[1] + w[2] + w[3]); for (let i = 0; i < 4; i++) { if (r < w[i]) return i === 3 && Math.random() < MYTHIC_CHANCE ? 4 : i; r -= w[i]; } return 0;
 }
-function dropItem(x, z, it, exact) { const a = rnd(6.28), d = exact ? 0 : rnd(.6, 1.8); let dx = x + Math.cos(a) * d, dz = z + Math.sin(a) * d; if (blocked(dx, dz, .3)) { dx = x; dz = z; } G.drops.push({ x: dx, z: dz, item: it, t: 0 }); if (it.rar >= 3) jackpot(it); else if (it.rar > 0) SFX.play('drop' + it.rar); }
+function dropItem(x, z, it, exact) { const a = rnd(6.28), d = exact ? 0 : rnd(.6, 1.8); let dx = x + Math.cos(a) * d, dz = z + Math.sin(a) * d; if (blocked(dx, dz, .3)) { dx = x; dz = z; } G.drops.push({ x: dx, z: dz, ox: x, oz: z, item: it, t: 0, spin: rnd(-1, 1) }); if (it.rar >= 3) jackpot(it); else if (it.rar > 0) SFX.play('drop' + it.rar); }
 function dropGold(x, z, amt, exact) { const a = rnd(6.28), d = exact ? 0 : rnd(.4, 1.5); let dx = x + Math.cos(a) * d, dz = z + Math.sin(a) * d; if (blocked(dx, dz, .3)) { dx = x; dz = z; } G.drops.push({ x: dx, z: dz, gold: Math.max(1, Math.round(amt * (1 + (P.stats.gf || 0) / 100) * (1 + .15 * townLv('guild')))), t: 0 }); }
 /* build 0034 (Lee, Nov 14): a guardian's loot no longer lands on the gate that opens where it fell. It bursts out in a fan toward you, 3.6 to 5.6 steps from the gate, so picking it up never brings up the "next floor?" question */
 function lootFan(x, z, i, n) { const toP = typeof P !== 'undefined' && isFinite(P.x) ? Math.atan2(P.z - z, P.x - x) : rnd(6.28), spread = n > 1 ? 2.4 : 0, a0 = toP + (n > 1 ? (i / (n - 1) - .5) * spread : 0), R0 = 3.6 + (i % 3);
@@ -383,7 +383,7 @@ function genZone(def) {
   for (let i = 6; i < 22 && i < rest.length; i++) { const p = W(rest[i]); Z.lamps.push({ x: p[0] + (sr() - .5), z: p[1] + (sr() - .5) }); }
   Z.lamps.push({ x: Z.start[0] + 2.5, z: Z.start[1] - 2, big: 1 });
   if (Z.def.type === 'zone' && !Z.def.rift && (Z.def.depth || 1) > 1) { /* build 0062 (playtest): the gate back to the previous floor was never placed; it now stands just behind where you arrive */
-    let bk = -1, bd = 1e9; for (let i = 0; i < GW * GW; i++) if (!c[i] && dist[i] === 2) { const d = Math.hypot(i % GW - corner[0], (i / GW | 0) - corner[1]); if (d < bd) { bd = d; bk = i; } }
+    let bk = -1, bd = 1e9; for (let i = 0; i < GW * GW; i++) if (!c[i] && (dist[i] === 2 || dist[i] === 3)) { const d = (i / GW | 0) * 10 + Math.hypot(i % GW - corner[0], (i / GW | 0) - corner[1]) * .1; if (d < bd) { bd = d; bk = i; } } /* up-screen of the start, so it never stands between the camera and the hero */
     if (bk >= 0) { const p = W(bk); Z.objs.push({ kind: 'pback', x: p[0], z: p[1], name: 'Previous floor', used: false }); } }
   return Z;
 }
@@ -1855,7 +1855,8 @@ function drawItemModel(d, hop) {
   /* 0030: dropped items wear their real materials (the same metal, wood, leather, cloth and gem as their icon); rarity stays in the beam and ring */
   const hx = h => parseInt(h.slice(1), 16), mk = L && L.kind, mc = L ? col(hx(L.mat[1])) : null, rc = L ? col(hx(L.acc)) : col(0x8a7a5a), gm = L ? col(hx(L.gem[1])) : col(RC[it.rar]),
     steel = mk === 'metal' ? mc : col(0xaab2c0), wood = mk === 'wood' ? mc : col(0x6a4a2a), leather = mk === 'leather' ? mc : col(0x5c4230), gold = mk === 'jewel' ? mc : col(0xc9a030), cloth = mk === 'cloth' ? mc : col(0x6a5a8a), em = 0;
-  GLX.base(BM, d.x, .1 + hop, d.z, G.time * .7 + d.x * 3, 1.25);
+  { const ry = G.time * .7 + d.x * 3, tb = d.tb || 0; if (!tb) GLX.base(BM, d.rx === undefined ? d.x : d.rx, .1 + hop, d.rz === undefined ? d.z : d.rz, ry, 1.25); else { /* build 0063: tumbling end over end while it flies */ const s = 1.25, ca = Math.cos(ry) * s, sa = Math.sin(ry) * s, cb = Math.cos(tb), sb = Math.sin(tb);
+    BM[0] = ca; BM[1] = 0; BM[2] = -sa; BM[3] = 0; BM[4] = sa * sb; BM[5] = cb * s; BM[6] = ca * sb; BM[7] = 0; BM[8] = sa * cb; BM[9] = -sb * s; BM[10] = ca * cb; BM[11] = 0; BM[12] = d.rx; BM[13] = .35 + hop; BM[14] = d.rz; BM[15] = 1; } }
   const p = (g, px, py, pz, rx, ry, rz, sx, sy, sz, c, mat, e) => GLX.part('dyn', g, BM, px, py, pz, rx, ry, rz, 0, 0, 0, sx, sy, sz, c, e === undefined ? em : e, 1, mat || 0), H = 1.5708;
   const sl = it.slot, wt = it.wt, b = it.base || '';
   if (sl === 'weapon') {
@@ -1893,6 +1894,30 @@ function drawItemModel(d, hop) {
   } else { for (let i = 0; i < 10; i++) { const a = i / 10 * 6.2832; p('sphere', Math.cos(a) * .17, .07, Math.sin(a) * .17, 0, 0, 0, .09, .1, .09, gold, 4); } p('gem', 0, .16, .19, 0, G.time * 2, 0, .15, .18, .15, gm, 0, 1.6); }
 }
 const BEAM = [0, 3.2, 6.5, 12, 18], RC = [0xc9c9c9, 0x5a8cff, 0xffd84a, 0xff8a2a, 0xb060ff];
+/* build 0063: loot is tossed out of the monster in an arc, tumbles, bounces once and lands with a flash in its rarity colour */
+const TOSS = .5;
+function lootToss(d, r) {
+  const t = d.t || 0, f = Math.min(1, t / TOSS), sx = d.ox === undefined ? d.x : d.ox, sz = d.oz === undefined ? d.z : d.oz;
+  d.rx = sx + (d.x - sx) * f; d.rz = sz + (d.z - sz) * f;
+  if (f < 1) { d.hop = .6 + Math.sin(f * Math.PI) * (2 + r * .35) * (1 - f * .4) - f * .6; d.tb = (f * 6.2832 * (1.2 + Math.abs(d.spin || .5))) * Math.sign(d.spin || 1); return; }
+  const u = t - TOSS; d.hop = u < .5 ? Math.abs(Math.sin(u / .5 * Math.PI)) * .45 * (1 - u / .5) : 0; d.tb = 0;
+  if (d.landT === undefined) { d.landT = G.time; if (d.t < 2 && Math.hypot(d.x - P.x, d.z - P.z) < 32) { const cc = RC[r]; ring(d.x, d.z, .2, 1.4 + r * .7, .35 + r * .08, cc); burst(d.x, .3, d.z, cc, 6 + r * 6, 2 + r * .8); if (r >= 3) { ring(d.x, d.z, .4, 4 + r, .7, cc); burst(d.x, 1.2, d.z, 0xfff0c0, 24, 6); G.shake = Math.max(G.shake || 0, .2); } } }
+}
+function drawBeam(d, r, c, lt) {
+  const x = d.x, z = d.z, h = BEAM[r], p = .8 + Math.sin(G.time * 4 + x) * .2, w = .14 + r * .05, rise = Math.min(1, lt / .35), H = h * rise, col = GLX.col, wc = col(0xfff4e0);
+  if (H > .05) { /* a soft outer column, a bright thin core, and a top that fades out */
+    GLX.obj('glow', 'cyl', x, H * .25, z, 0, w * 2.6, H * .5, w * 2.6, c, 1, .16 * p);
+    GLX.obj('glow', 'cyl', x, H * .5, z, 0, w * 1.25, H, w * 1.25, c, 1.2, .62 * p);
+    GLX.obj('glow', 'cyl', x, H * .4, z, 0, w * .3, H * .8, w * .3, wc, 1.3, .45 * p); }
+  if (lt < .6) { const k = lt / .6; GLX.obj('glow', 'ring', x, .08, z, 0, .4 + k * (3 + r), 1, .4 + k * (3 + r), c, 1.4, .8 * (1 - k), -1); GLX.halo(x, .6, z, 3 + r * 1.5, c, .9 * (1 - k)); } /* landing flash */
+  GLX.halo(x, .4, z, 1.2 + r * .6, c, .4 * p);
+  GLX.obj('glow', 'ring', x, .06, z, G.time, 1.2 + r * .4, 1, 1.2 + r * .4, c, 1, .7, -1);
+  GLX.obj('glow', 'disc', x, .05, z, 0, 1 + r * .35, 1, 1 + r * .35, c, 1, .07 + r * .015, 1); /* a pool of coloured light under it */
+  if (r >= 2) { GLX.light(x, 1.5, z, 4 + r * 1.5, c, .55 + r * .15, r); /* motes drift up the beam */ const n = r * 2; for (let k = 0; k < n; k++) { const ph = (G.time * (.35 + k * .04) + k / n + x * .13) % 1, a = k * 2.4 + G.time * .8, rr = .25 + (k % 3) * .14; GLX.obj('glow', 'sphere', x + Math.cos(a) * rr, .3 + ph * h * .8, z + Math.sin(a) * rr, 0, .07, .07, .07, k % 2 ? wc : c, 1.6, .9 * Math.sin(ph * Math.PI)); } }
+  if (r >= 3) { /* legendary and mythic: a slow turning rune circle and a crown of light */ const R0 = 1.6 + r * .4, t = G.time; GLX.obj('glow', 'ring', x, .07, z, -t * .5, R0, 1, R0, c, 1.2, .55 * p, -1); GLX.obj('glow', 'ring', x, .075, z, t * .7, R0 * .78, 1, R0 * .78, wc, 1.1, .35 * p, -1);
+    for (let k = 0; k < 6; k++) { const a = k / 6 * 6.2832 - t * .5; GLX.obj('glow', 'box', x + Math.cos(a) * R0 * .89, .07, z + Math.sin(a) * R0 * .89, -a, .5, .02, .08, c, 1.2, .5 * p); }
+    GLX.halo(x, H * .96, z, 1.2 + r * .3, c, .35 * p); }
+}
 function drawWorld() {
   const col = GLX.col, Z = G.zone;
   const sh = G.set.shake ? G.shake * G.shake * 1.5 : 0, sx = (Math.random() - .5) * sh, sz = (Math.random() - .5) * sh;
@@ -1936,7 +1961,17 @@ function drawWorld() {
     else if (o.kind === 'shrine') { const st = col(0x5a5c60), c = col(o.sh.c), t = G.time; GLX.obj('dyn', 'cyl', o.x, .12, o.z, 0, 3, .24, 3, st, hov, 1, 3); GLX.obj('dyn', 'cyl', o.x, .34, o.z, .4, 2.2, .22, 2.2, col(0x6a6c70), hov, 1, 3); GLX.obj('dyn', 'taper', o.x, 1.7, o.z, .78, 1.1, 2.6, 1.1, st, hov, 1, 3); GLX.obj('dyn', 'taper', o.x, 3.2, o.z, .78, .7, .5, .7, col(0x44464c), hov, 1, 3);
       for (let k = 0; k < 4; k++) { const a = k * 1.5708 + .78; GLX.obj('dyn', 'taper', o.x + Math.cos(a) * 1.25, .75, o.z + Math.sin(a) * 1.25, a, .3, 1, .3, st, hov, 1, 3); }
       if (!o.used) { for (const y of [1.1, 1.8, 2.5]) GLX.obj('glow', 'ring', o.x, y, o.z, t * .5 + y, 1.5 - y * .22, 1, 1.5 - y * .22, c, 1.2, .7, -1); GLX.obj('dyn', 'gem', o.x, 4 + Math.sin(t * 2) * .2, o.z, t, .8, 1.2, .8, c, 2.4); GLX.obj('glow', 'cyl', o.x, 7, o.z, t, .5, 9, .5, c, 1, .18); GLX.obj('glow', 'ring', o.x, .3, o.z, -t, 5.6, 1, 5.6, c, 1, .5 + Math.sin(t * 3) * .2, -1); GLX.halo(o.x, 4, o.z, 4.5, c, .7); GLX.light(o.x, 3, o.z, 13, c, 1.3); } }
-    else if (o.kind === 'portal' || o.kind === 'pback') { // build 0046: an Ashen Gothic stone arch round a swirling ember and void gate
+    else if (o.kind === 'pback') { /* build 0063: the way back up is a low waystone circle with a column of pale light, small enough not to hide your hero */
+      const t = G.time, X = o.x, Z0 = o.z, cA = [.45, .78, 1], cC = [.8, .95, 1], st = col(0x5d5a5f), st2 = col(0x46434a), pulse = .5 + Math.sin(t * 2.2) * .5;
+      GLX.obj('dyn', 'cyl', X, .08, Z0, 0, 2.5, .16, 2.5, st2, hov * .3, 1, 3); GLX.obj('dyn', 'cyl', X, .22, Z0, .4, 1.9, .14, 1.9, st, hov * .3, 1, 3);
+      for (let k = 0; k < 6; k++) { const a = k / 6 * 6.2832 + .26; GLX.obj('dyn', 'box', X + Math.cos(a) * 2.15, .55, Z0 + Math.sin(a) * 2.15, -a, .34, .7 + (k % 2) * .25, .3, st, hov * .4, 1, 3); GLX.obj('glow', 'box', X + Math.cos(a) * 2.3, .6 + (k % 2) * .12, Z0 + Math.sin(a) * 2.3, -a, .03, .26, .14, cA, 1.4 + hov * 2, .45 + .35 * Math.sin(t * 2.6 + k)); }
+      GLX.obj('glow', 'ring', X, .31, Z0, t * .3, 1.75, 1, 1.75, cA, 1 + hov, .6 + pulse * .2, -1); GLX.obj('glow', 'disc', X, .3, Z0, 0, 1.6, 1, 1.6, cA, 1, .2 + pulse * .08, 1);
+      GLX.obj('glow', 'cyl', X, 1.6, Z0, 0, .9, 2.6, .9, cA, 1, .1 + pulse * .05); GLX.obj('glow', 'cyl', X, 1.4, Z0, 0, .35, 2.2, .35, cC, 1.3, .2);
+      for (let k = 0; k < 8; k++) { const ph = (t * .4 + k / 8) % 1, an = k * 2.4 + t; GLX.obj('glow', 'sphere', X + Math.cos(an) * .6, .4 + ph * 2.8, Z0 + Math.sin(an) * .6, 0, .07, .07, .07, cC, 2.2, (1 - ph) * .9); }
+      const by = 2.4 + Math.sin(t * 2) * .15; for (const sd of [-1, 1]) GLX.part('glow', 'box', IDM, X + sd * .24, by, Z0, 0, 0, sd * .75, 0, 0, 0, .62, .14, .1, cC, 1.8, .85, 0); /* a floating up chevron */
+      GLX.halo(X, 1.2, Z0, 3.4, cA, .45 + hov * .3); GLX.light(X, 1.5, Z0, 7, cA, .7, 1);
+      if (hov > 0) GLX.obj('glow', 'ring', X, .32, Z0, t, 2.7 + pulse * .2, 1, 2.7 + pulse * .2, cC, 1.6, .7, -1); }
+    else if (o.kind === 'portal') { // build 0046: an Ashen Gothic stone arch round a swirling ember and void gate
       const t = G.time, dn = o.kind === 'portal', H = hov > 0, lo = LOWQ, X = o.x, Z0 = o.z,
         cA = dn ? [1, .46, .12] : [.45, .78, 1], cB = dn ? [.56, .22, 1] : [.16, .32, 1], cC = dn ? [1, .82, .45] : [.8, .95, 1],
         st = col(0x5d5a5f), st2 = col(0x46434a), st3 = col(0x6c686c), pulse = .5 + Math.sin(t * 2.2) * .5, mix = (p, q, k) => [p[0] + (q[0] - p[0]) * k, p[1] + (q[1] - p[1]) * k, p[2] + (q[2] - p[2]) * k],
@@ -1971,11 +2006,12 @@ function drawWorld() {
   for (const d of G.drops) {
     if (Math.hypot(d.x - P.x, d.z - P.z) > 32) continue; const hop = Math.max(0, Math.sin(Math.min(1, d.t * 2.5) * Math.PI)) * 1.6;
     if (d.globe) { const gc = col(0xff2a2a); GLX.obj('dyn', 'sphere', d.x, .6 + Math.sin(G.time * 3 + d.x) * .12, d.z, 0, .7, .7, .7, gc, 1.6); GLX.halo(d.x, .6, d.z, 2.2, gc, .5); GLX.light(d.x, 1, d.z, 4, gc, .6); continue; }
-    if (d.gold) { GLX.obj('dyn', 'cyl', d.x, .1 + hop, d.z, 0, .5, .14, .5, col(0xffc83a), .6); GLX.halo(d.x, .3 + hop, d.z, .9, col(0xffd84a), .3); continue; }
+    if (d.gold) { const gc = col(0xffc83a), n = Math.min(7, 3 + Math.floor(Math.log10(d.gold + 1) * 1.5)); /* build 0063: a little heap of coins that catches the light */ for (let k = 0; k < n; k++) { const a = k * 2.4 + d.x, rr = k ? .12 + (k % 3) * .1 : 0, yy = .06 + (k < 3 ? .1 * (3 - k) / 3 : 0) + hop; GLX.obj('dyn', 'cyl', d.x + Math.cos(a) * rr, yy, d.z + Math.sin(a) * rr, a, .28, .06, .28, gc, .5, 1, 4); } const gl = Math.max(0, Math.sin(G.time * 2.3 + d.x * 5)); GLX.halo(d.x, .3 + hop, d.z, .9 + gl * .5, col(0xffe08a), .25 + gl * .35); continue; }
     if (d.q) { const qc = col(d.qc || 0x8affc0), bob = Math.sin(G.time * 3 + d.x) * .08; if (/Lily/.test(d.q)) { GLX.obj('dyn', 'cyl', d.x, .25 + hop, d.z, 0, .08, .5, .08, col(0x3a8a4a), .2); for (let k = 0; k < 5; k++) GLX.obj('dyn', 'gem', d.x + Math.cos(k * 1.26) * .2, .6 + hop, d.z + Math.sin(k * 1.26) * .2, k * 1.26, .16, .3, .1, qc, 1.4); } else if (/Ham/.test(d.q)) { GLX.obj('dyn', 'sphere', d.x, .35 + hop + bob, d.z, d.x, .7, .45, .45, col(0xb86a4a), .2); GLX.obj('dyn', 'cyl', d.x + .4, .38 + hop + bob, d.z, 1.57, .12, .3, .12, col(0xf0e8d8)); } else if (/Glowcap/.test(d.q)) { GLX.obj('dyn', 'cyl', d.x, .25 + hop, d.z, 0, .14, .5, .14, col(0xe8e0d0), .3); GLX.obj('dyn', 'sphere', d.x, .55 + hop, d.z, 0, .6, .3, .6, qc, 1.2); } else { GLX.obj('dyn', 'sphere', d.x, .4 + hop + bob, d.z, d.x, .7, .75, .6, col(0xc8a868)); GLX.obj('dyn', 'cyl', d.x, .82 + hop + bob, d.z, 0, .2, .14, .2, col(0x8a6a3a)); }
       GLX.obj('glow', 'box', d.x, 1.6, d.z, .78, .16, 3.2, .16, qc, 1, .4); GLX.halo(d.x, .5, d.z, 2, qc, .45); continue; }
-    const r = d.item.rar, c = col(RC[r]); drawItemModel(d, hop);
-    if (r > 0) { const h = BEAM[r], p = .8 + Math.sin(G.time * 4 + d.x) * .2; GLX.obj('glow', 'box', d.x, h / 2, d.z, .78, .14 + r * .05, h, .14 + r * .05, c, 1, .55 * p); GLX.halo(d.x, .4, d.z, 1.4 + r * .9, c, .55 * p); GLX.obj('glow', 'ring', d.x, .06, d.z, G.time, 1.2 + r * .4, 1, 1.2 + r * .4, c, 1, .7, -1); if (r >= 2) GLX.light(d.x, 1.5, d.z, 5 + r * 2, c, .7 + r * .2, r); }
+    const r = d.item.rar, c = col(RC[r]); lootToss(d, r);
+    drawItemModel(d, d.hop); d.tb = 0;
+    if (r > 0 && d.landT !== undefined) drawBeam(d, r, c, G.time - d.landT);
   }
   let pl = 0;
   let busy = G.fx.length * .5 + G.pp.length * 3; for (const a of G.areas) if (a.owner !== 'e') busy += 6; G._gd += ((busy > 60 ? Math.max(.4, 1 - (busy - 60) / 170) : 1) - (G._gd || 1)) * .15 || 0; if (!(G._gd > 0)) G._gd = 1; const GD = G._gd; GLX.glowK && GLX.glowK(GD); /* build 0062 (playtest): when spells pile up their glow dims, while the red danger shapes stay full and get brighter */
