@@ -4,11 +4,11 @@ const STARTED = Date.now(); // build 0073 (Lee): the build label says how long a
 // started much later (it slept and woke up), fall back to the push time plus a typical deploy, so the label never resets to "just now".
 const BUILT_AT = +((/const BUILT_AT = (\d+)/.exec(require('fs').readFileSync(require('path').join(__dirname, 'public', 'js', 'data.js'), 'utf8')) || [])[1] || 0);
 const LIVE_AT = BUILT_AT && STARTED - BUILT_AT > 20 * 60000 ? BUILT_AT + 4 * 60000 : STARTED;
-// Oathbyte dedicated server. No dependencies: plain Node 18+.
+// OathByte dedicated server. No dependencies: plain Node 18+.
 // Serves the game from ./public and runs one shared world per party over WebSockets at /ws.
 const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto'), vm = require('vm');
 const PORT = process.env.PORT || 3000, PUB = process.env.PUBLIC_DIR || path.join(__dirname, 'public');
-const zlib = require('zlib'), GZ = new Map(); const MIME = { '.cdm': 'application/octet-stream', '.cde': 'application/octet-stream', '.cdl': 'application/octet-stream', '.jpg': 'image/jpeg', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.ico': 'image/x-icon', '.mp3': 'audio/mpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml' }; // Oathbyte UI: logo layers are WebP, the favicon is SVG
+const zlib = require('zlib'), GZ = new Map(); const MIME = { '.cdm': 'application/octet-stream', '.cde': 'application/octet-stream', '.cdl': 'application/octet-stream', '.jpg': 'image/jpeg', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.ico': 'image/x-icon', '.mp3': 'audio/mpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml' }; // OathByte UI: logo layers are WebP, the favicon is SVG
 const simSrc = ['js/data.js', 'js/game.js'].map(f => new vm.Script(fs.readFileSync(path.join(PUB, f), 'utf8'), { filename: f }));
 simSrc.push(new vm.Script(fs.readFileSync(path.join(__dirname, 'sim', 'simsrv.js'), 'utf8'), { filename: 'simsrv.js' }));
 const BUILD = (/const BUILD = '([^']+)'/.exec(fs.readFileSync(path.join(PUB, 'js/data.js'), 'utf8')) || [])[1] || '?';
@@ -125,11 +125,11 @@ function lbNote(p, pl, dp, room, fc) {
   lbPut(LB.lvl, e, lvl * 100000 + (lvl >= 60 ? par : 0)); if (cl > 0) lbPut(LB.deep, e, cl);
   if (room && room.daily) { const td = lbToday(); if (room.daily === td) { if (LB.dlyDate !== td) { LB.dlyDate = td; LB.dly = []; } if (d > 1) lbPut(LB.dly, Object.assign({}, e, { d: d - 1 }), d - 1); } }
 }
-// build 0074: moving to the Oathbyte address. Once MOVE_TO is set, the old address answers its front page with a tiny page that reads this
+// build 0074: moving to the OathByte address. Once MOVE_TO is set, the old address answers its front page with a tiny page that reads this
 // browser's heroes and sends the player on with the heroes in the link (after the #, so no server sees them). Empty: nothing changes.
 const MOVE_TO = 'https://oathbyte.onrender.com', MOVE_FROM = 'cinderdeep.onrender.com';
-const MOVE_PAGE = '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Oathbyte has moved</title><body style="background:#121014;color:#e8dcc8;font:16px sans-serif;padding:24px">'
-  + '<p>Cinderdeep is now Oathbyte, at <a style="color:#e0a040" id="go" href="' + MOVE_TO + '/">' + MOVE_TO.replace('https://', '') + '</a>. Taking you there with your heroes…</p>'
+const MOVE_PAGE = '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>OathByte has moved</title><body style="background:#121014;color:#e8dcc8;font:16px sans-serif;padding:24px">'
+  + '<p>Cinderdeep is now OathByte, at <a style="color:#e0a040" id="go" href="' + MOVE_TO + '/">' + MOVE_TO.replace('https://', '') + '</a>. Taking you there with your heroes…</p>'
   + '<script>(function(){var o={},n=0;try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k.indexOf("cinderdeep_")===0){o[k]=localStorage.getItem(k);n++;}}}catch(e){}'
   + 'var u=' + JSON.stringify(MOVE_TO) + '+location.pathname+location.search;if(n){try{u+="#xfer="+btoa(unescape(encodeURIComponent(JSON.stringify(o))));}catch(e){}}document.getElementById("go").href=u;location.replace(u);})();</script>';
 // ---- http + websocket ----
@@ -180,7 +180,7 @@ setInterval(() => { for (const c of conns) { if (!c.alive) { c.close(); continue
 // build 0070: when the host restarts the server for an update, tell everyone first so they reconnect at once to the new one, on the same floor and spot
 let closing = false; function shutdown() { if (closing) return; closing = true; const bye = JSON.stringify({ t: 'bye' }); for (const c of conns) c.sendRaw(bye); setTimeout(() => { for (const c of conns) c.close(); process.exit(0); }, 800); }
 process.on('SIGTERM', shutdown); process.on('SIGINT', shutdown);
-server.listen(PORT, () => console.log('Oathbyte server build ' + BUILD + ' listening on port ' + PORT));
+server.listen(PORT, () => console.log('OathByte server build ' + BUILD + ' listening on port ' + PORT));
 // Keep the free host awake (Lee approved a 10-minute ping, Nov 12). GitHub's scheduled ping only ran a few times a day,
 // so the server also calls its own public address every 10 minutes. Render sets RENDER_EXTERNAL_URL; locally SELF_PING_URL can be used.
 const SELF_URL = process.env.SELF_PING_URL || process.env.RENDER_EXTERNAL_URL;

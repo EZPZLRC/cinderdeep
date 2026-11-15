@@ -1,5 +1,5 @@
 'use strict';
-// build 0074: the game moved to its Oathbyte address. The old address hands this browser's heroes over in the link (the part after #,
+// build 0074: the game moved to its OathByte address. The old address hands this browser's heroes over in the link (the part after #,
 // which never reaches any server). Here they are saved, but only if this browser has no heroes at this address yet, so nothing is overwritten.
 (function () { try { var h = location.hash; if (h.indexOf('#xfer=') !== 0) return; history.replaceState(null, '', location.pathname + location.search);
   for (var i = 0; i < localStorage.length; i++) if (String(localStorage.key(i)).indexOf('cinderdeep_save_v1') === 0) return;
