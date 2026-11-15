@@ -390,5 +390,13 @@ void main(){
     gl.uniform4f(pPost.u.uFx, mid ? env.dof : 0, hi ? env.ao : 0, mid ? .012 : 0, mid ? .28 : 0);
     quad(null, 2, post.sc.t, post.a.t, 0, 0, mid ? post.c.t : null, hi ? post.e.t : null); gl.enable(gl.DEPTH_TEST);
   }
-  return { init, resize, col, base, obj, part, halo, light, setCamera, toScreen, groundAt, begin, statBegin, statChunk, statEnd, render, env, cam };
+  // ---- build 0039: real character models (see models.js). Each drawn copy owns a few dynamic shapes, re-skinned once a frame ----
+  const models = {};
+  function model(name, url) { let m = models[name]; if (m) return m.ready ? m : null; m = models[name] = { ready: false }; if (typeof fetch === 'undefined' || typeof CDM === 'undefined' || !gl) return null;
+    fetch(url).then(r => r.ok ? r.arrayBuffer() : Promise.reject(new Error('HTTP ' + r.status))).then(ab => { Object.assign(m, CDM.parse(ab), { pool: [] }); m.ready = true; }).catch(e => { m.failed = true; console.warn('model ' + name + ' failed to load', e); }); return null; }
+  // pose the model (layers: [[anim, time, loop, weight], ...]) for owner o, skin it and return the shape names, one per colour group
+  function skinModel(m, o, layers) { CDM.pose(m, layers); const now = env.t || 0; let slot = o._ms && o._ms.m === m && m.pool[o._ms.i] && m.pool[o._ms.i].owner === o ? m.pool[o._ms.i] : null;
+    if (!slot) { let i = m.pool.findIndex(s => now - s.used > 2); if (i < 0) { i = m.pool.length; m.pool.push({ geos: m.head.groups.map((g, gi) => { const name = 'm:' + i + ':' + gi + ':' + (m.head.id || ''), vbo = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vbo); gl.bufferData(gl.ARRAY_BUFFER, g.count * 24, gl.DYNAMIC_DRAW); geo[name] = { vbo, count: g.count }; return { name, data: new Float32Array(g.count * 6) }; }) }); } slot = m.pool[i]; slot.owner = o; o._ms = { m, i }; }
+    slot.used = now; for (let gi = 0; gi < slot.geos.length; gi++) { const G = slot.geos[gi]; CDM.skin(m, gi, G.data); gl.bindBuffer(gl.ARRAY_BUFFER, geo[G.name].vbo); gl.bufferSubData(gl.ARRAY_BUFFER, 0, G.data); } return slot.geos.map(G => G.name); }
+  return { init, resize, col, base, obj, part, halo, light, setCamera, toScreen, groundAt, begin, statBegin, statChunk, statEnd, render, env, cam, model, skinModel };
 })();
