@@ -132,7 +132,7 @@ input{background:#0c0a07;border:1px solid #5a4a2e;border-radius:3px;box-shadow:i
 @media (max-width:760px){#party{top:196px;width:112px}#party button{font-size:12px;padding:8px 6px}}
 #onlineN{display:none}
 /* phones */
-@media (pointer:coarse){#ctl #bInv,#ctl #bSkl,#ctl #bTown,#ctl #bAch{display:none}#ctl{max-width:calc(100vw - 130px)}#ctl button{padding:8px 8px}}
+@media (pointer:coarse){#ctl #bInv,#ctl #bSkl,#ctl #bTown{display:none}#ctl{max-width:calc(100vw - 130px)}#ctl button{padding:8px 8px}}
 @media (max-width:760px){#hud{gap:6px;padding:4px 0 2px;background:none;max-width:100vw}.globe{width:58px;height:58px;box-shadow:0 0 0 1px #1a140c,0 0 0 2px #5a4a2e,0 2px 8px #000,inset 0 0 14px #000}.globe .txt{font-size:9.5px}.sk{width:42px;height:42px;font-size:19px}#mid{padding:4px}#bar{gap:3px}#party{top:232px}#chatlog{bottom:176px;width:min(250px,62vw)}#tbtns{bottom:96px;gap:8px}#tbtns button{width:56px;height:56px;font-size:12px}}
 @media (max-height:480px){#tbtns{display:grid;grid-template-columns:repeat(3,52px);gap:6px;bottom:8px;right:calc(8px + env(safe-area-inset-right))}#tbtns button{width:52px;height:52px;font-size:11px}#party{right:auto;left:8px;top:124px;width:132px}#party .pth{text-align:left}#chatlog{bottom:128px;left:8px;width:min(300px,38vw);font-size:11px}#hints{bottom:92px;right:auto;max-width:36vw;font-size:11px}#onl{top:196px;width:110px}#hud{padding:4px 8px 2px;gap:8px}#streak{right:130px}}
 
@@ -376,6 +376,33 @@ body.tj .sk.auto{box-shadow:0 0 10px #5aff7a,inset 0 2px 1px rgba(220,255,225,.4
 @media (prefers-reduced-motion:reduce){#mini.gob{animation:none;box-shadow:0 0 0 1px #000,0 0 0 4px #ffd84a,0 0 16px 4px rgba(255,216,74,.8)}}
 /* the green/red arrow grows with the item size setting */
 body.isz1 .it .ar{width:18px;height:18px;font-size:11px}body.isz2 .it .ar{width:22px;height:22px;font-size:13px}@media (max-width:760px),(max-height:480px){body.isz1 .it .ar,body.isz2 .it .ar{width:14px;height:14px;font-size:8.5px;right:1px;top:1px}}
+/* ---- build 0047: high-res icons (shapes from game-icons.net, CC BY 3.0) filled with forged metal and element colours, and forged menu buttons ---- */
+.gw{display:inline-block;width:1.3em;height:1.3em;vertical-align:middle;position:relative;filter:drop-shadow(0 0 .14em var(--gl,rgba(255,170,80,.5))) drop-shadow(0 .07em .05em #000)}
+.gi{position:absolute;inset:0;background:var(--gf);-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center}
+.el-fire{--gf:linear-gradient(180deg,#fff4c0 0%,#ffc04a 30%,#f0641c 66%,#9a2408 100%);--gl:rgba(255,120,30,.65)}
+.el-cold{--gf:linear-gradient(180deg,#f4fcff 0%,#a8e2ff 32%,#4a9ae8 68%,#1e3e96 100%);--gl:rgba(90,180,255,.6)}
+.el-light{--gf:linear-gradient(180deg,#ffffff 0%,#fff6a0 30%,#8ad0ff 66%,#3a5ae0 100%);--gl:rgba(150,200,255,.65)}
+.el-arc{--gf:linear-gradient(180deg,#fff0ff 0%,#eaa0ff 30%,#a64cf0 66%,#4e1c9a 100%);--gl:rgba(190,100,255,.65)}
+.el-phys{--gf:linear-gradient(180deg,#fffaf0 0%,#ecdcb6 34%,#b8955a 70%,#5e4422 100%);--gl:rgba(255,220,150,.35)}
+.el-util,.el-gold{--gf:linear-gradient(180deg,#fffbe8 0%,#ffe08c 32%,#d6a23a 68%,#7c561a 100%);--gl:rgba(255,200,90,.5)}
+.el-blood{--gf:linear-gradient(180deg,#ffd6d0 0%,#ff6a5a 34%,#c01c1c 70%,#5a0808 100%);--gl:rgba(255,60,50,.6)}
+.el-dim{--gf:linear-gradient(180deg,#8a7c66,#40362a);--gl:rgba(0,0,0,0)}
+.sk .ic{display:flex;align-items:center;justify-content:center;line-height:1}
+.sk.dim .gw{filter:grayscale(.75) brightness(.65)}
+.sk.use .gw{width:1.15em;height:1.15em}
+.srow .si{display:flex;justify-content:center}
+.srow .si .gw{width:1.25em;height:1.25em}
+.pcard .pi .gw{width:1.2em;height:1.2em}
+#ctl{background:linear-gradient(180deg,#2c2319 0,#17120c 60%,#0e0b07 100%)!important;border:1px solid #6b5533!important;box-shadow:inset 0 1px 0 rgba(255,236,190,.2),inset 0 -1px 0 rgba(0,0,0,.6),0 3px 10px #000!important}
+#ctl button{border-radius:3px;font-family:inherit}
+#ctl button::before{content:"";display:inline-block;width:15px;height:15px;margin:-3px 6px 0 0;vertical-align:middle;background:linear-gradient(180deg,#fff0c8,#d8a650 60%,#8a6024);-webkit-mask:var(--gi) center/contain no-repeat;mask:var(--gi) center/contain no-repeat}
+#ctl button:hover{background:linear-gradient(180deg,rgba(255,170,80,.2),rgba(120,50,10,.14))!important;border-color:#a8834a!important;box-shadow:inset 0 0 9px rgba(255,140,50,.28)!important}
+#ctl button:hover::before{background:linear-gradient(180deg,#fff,#ffcf70 50%,#e0782a)}
+#ctl button.on::before{background:linear-gradient(180deg,#eaffea,#7ae08a 60%,#2e7a3a)}
+#tbtns button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;line-height:1.05}
+#tbtns button::before{content:"";width:24px;height:24px;flex:none;background:linear-gradient(180deg,#fff0c8,#e0ae58 55%,#8a6024);-webkit-mask:var(--gi) center/contain no-repeat;mask:var(--gi) center/contain no-repeat;filter:drop-shadow(0 1px 1px #000)}
+#tbtns button:active::before{background:linear-gradient(180deg,#fff,#ffcf70 50%,#e0782a)}
+@media (max-width:760px),(max-height:480px){#tbtns button::before{width:20px;height:20px}#ctl button::before{width:13px;height:13px;margin-right:4px}}
 </style>
 </head>
 <body>
@@ -403,10 +430,10 @@ body.isz1 .it .ar{width:18px;height:18px;font-size:11px}body.isz2 .it .ar{width:
     <div id="mid"><div id="bar"></div><div id="xpT"></div><div id="xp"><div></div></div></div>
     <div class="globe" id="gFury"><div class="fill"></div><div class="txt"></div></div>
   </div>
-  <div id="ctl"><button id="bMenu">Exit</button><button id="bSet">Settings</button><button id="bLb">Leaders</button><button id="bAch">Badges</button><button id="bParty">Parties</button><button id="bInvite">Invite</button><button id="bLeave" class="hide">Leave party</button><button id="bInv">Inventory</button><button id="bSkl">Skills</button><button id="bTown">Town</button><button id="bAuto">Auto-play: off</button><button id="bSpd">Speed 1×</button></div>
+  <div id="ctl"><button id="bMenu" class="giv-exit">Exit</button><button id="bSet" class="giv-set">Settings</button><button id="bLb" class="giv-lb">Leaders</button><button id="bAch" class="giv-ach">Badges</button><button id="bParty" class="giv-party">Parties</button><button id="bInvite" class="giv-invite">Invite</button><button id="bLeave" class="hide giv-leave">Leave party</button><button id="bInv" class="giv-inv">Inventory</button><button id="bSkl" class="giv-skl">Skills</button><button id="bTown" class="giv-town">Town</button><button id="bAuto" class="giv-auto">Auto-play: off</button><button id="bSpd" class="giv-spd">Speed 1×</button></div>
   <div id="party" class="hide"></div><div id="onl" class="hide"></div><div id="chatlog" class="hide"></div>
   <div id="chatRow" class="hide"><button id="chatCh">Global</button><input id="chat" maxlength="140"><button id="chatX" class="xb" aria-label="Close chat">×</button></div>
-  <div id="tbtns"><button id="tChat" class="hide">Chat</button><button id="tTown">Town</button><button id="tLoot">Loot</button><button id="tSkl">Skills</button><button id="tBag">Bag</button></div>
+  <div id="tbtns"><button id="tChat" class="hide giv-chat">Chat</button><button id="tTown" class="giv-town">Town</button><button id="tLoot" class="giv-loot">Loot</button><button id="tSkl" class="giv-skl">Skills</button><button id="tBag" class="giv-inv">Bag</button></div>
   <div id="skl" class="hide"></div>
   <button id="pickBtn" class="hide">★ Choose a new skill</button>
   <div id="pick" class="hide"></div>
@@ -456,11 +483,12 @@ body.isz1 .it .ar{width:18px;height:18px;font-size:11px}body.isz2 .it .ar{width:
   <div id="news"></div>
   <div id="mfoot"><button id="mInvite" class="hide">Share the game</button><button id="mTip" class="hide">♥ Support the game</button><button id="mFeed" class="hide">Send feedback</button></div>
 </div>
-<script src="js/models.js?v=0046"></script>
-<script src="js/gl.js?v=0046"></script>
-<script src="js/data.js?v=0046"></script>
-<script src="js/game.js?v=0046"></script>
-<script src="js/net.js?v=0046"></script>
-<script src="js/ui.js?v=0046"></script>
+<script src="js/models.js?v=0047"></script>
+<script src="js/gl.js?v=0047"></script>
+<script src="js/data.js?v=0047"></script>
+<script src="js/icons.js?v=0047"></script>
+<script src="js/game.js?v=0047"></script>
+<script src="js/net.js?v=0047"></script>
+<script src="js/ui.js?v=0047"></script>
 <div id="mtags"></div></body>
 </html>
