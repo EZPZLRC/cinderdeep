@@ -2,7 +2,7 @@
 // Minimal instanced WebGL2 renderer: lit + shadow-mapped opaque pass, additive glow pass.
 const GLX = (() => {
   const STRIDE = 22, SH = 2048;
-  let gl, cv, pMain, pDepth, pGlow, pPost, fbo, shTex, post = null;
+  let gl, cv, pMain, pDepth, pGlow, pPost, pMainS, pDepthS, fbo, shTex, post = null;
   const geo = {}, sets = { stat: {}, dyn: {}, glow: {}, xr: {} };
   const view = new Float32Array(16), proj = new Float32Array(16), vp = new Float32Array(16), ivp = new Float32Array(16),
     lvp = new Float32Array(16), t1 = new Float32Array(16), t2 = new Float32Array(16), M = new Float32Array(16);
@@ -239,6 +239,14 @@ void main(){
   {float L=dot(c,vec3(.3,.59,.11));vec3 g=mix(vec3(L),c,.6);float warm=clamp((c.r-c.b)*2.2,0.,1.);g=mix(g,c,warm*.65);g=mix(g*vec3(.84,.92,1.08),g*vec3(1.12,1.,.8),smoothstep(.15,.65,L));c=clamp(pow(g,vec3(1.15))*1.04,0.,1.);c*=mix(1.,smoothstep(.9,.2,length(q*vec2(1.,1.08))),.35);} /* build 0025: the Ashen Gothic look, cold grey world, warm fire and magic */
   c*=mix(1.,smoothstep(.98,.28,length(q*vec2(1.,1.08))),.6);
   c+=(fract(sin(dot(uv+fract(uT),vec2(12.9898,78.233)))*43758.5453)-.5)*.016;o=vec4(c,1.);}}`;
+  // build 0039: skinned variants of the hero shaders. Bone matrices live in a float texture (3 texels a bone, one row per drawn copy),
+  // so a real model's mesh stays on the graphics card and only ~19 KB of bones are sent each frame for a full party
+  const SKN = `layout(location=8) in vec4 aJ; layout(location=9) in vec4 aW; uniform highp sampler2D uBones; uniform int uBR;
+mat3x4 bone(float j){int b=int(j)*3;return mat3x4(texelFetch(uBones,ivec2(b,uBR),0),texelFetch(uBones,ivec2(b+1,uBR),0),texelFetch(uBones,ivec2(b+2,uBR),0));}
+mat3x4 skm(){return bone(aJ.x)*aW.x+bone(aJ.y)*aW.y+bone(aJ.z)*aW.z+bone(aJ.w)*aW.w;}`;
+  const skinVS = (vs, main) => vs.replace('void main(){', SKN + '\nvoid main(){mat3x4 SK=skm();vec3 sP=vec4(aP,1.)*SK,sN=vec4(aN,0.)*SK;').replace(main[0], main[1]);
+  const VSS = skinVS(VS, ['vec4 w=wpos(iM,aP,aN,iE.y);vW=w.xyz;vL=aP;', 'vec4 w=wpos(iM,sP,sN,iE.y);vW=w.xyz;vL=aP;']).replace('vN=normalize(m*(aN/', 'vN=normalize(m*(sN/');
+  const VSDS = skinVS(VSD, ['gl_Position=uLVP*wpos(iM,aP,aN,iE.y);', 'gl_Position=uLVP*wpos(iM,sP,sN,iE.y);']);
   function prog(vs, fs, names) {
     const mk = (t, s) => { const sh = gl.createShader(t); gl.shaderSource(sh, s); gl.compileShader(sh); if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh)); return sh; };
     const p = gl.createProgram(); gl.attachShader(p, mk(gl.VERTEX_SHADER, vs)); gl.attachShader(p, mk(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(p);
@@ -253,7 +261,7 @@ void main(){
     addGeo('taper', gCyl(14, .6)); for (const k in BODY) addGeo(k, gLoft(BODY[k], 20, 4)); addGeo('blob', gSphere(10, 7)); addGeo('fol', gCyl(9, 0)); addGeo('trunk', gCyl(7, .6)); addGeo('disc', gDisc(28, 0)); addGeo('ring', gDisc(36, .86));
     pMain = prog(VS, FS, ['uVP', 'uLVP', 'uSh', 'uSun', 'uSunC', 'uSky', 'uGnd', 'uFog', 'uEye', 'uPl', 'uFogR', 'uLR', 'uLP[0]', 'uLC[0]', 'uT', 'uQ', 'uWet', 'uMist', 'uRim', 'uOut']);
     pGlow = prog(VS, FSG, ['uVP', 'uLVP', 'uPl', 'uLR', 'uT']);
-    pDepth = prog(VSD, FSD, ['uLVP', 'uT']); pPost = prog(VSQ, FSQ, ['uA', 'uB', 'uC', 'uD', 'uMode', 'uDir', 'uT', 'uPI', 'uFx']);
+    pDepth = prog(VSD, FSD, ['uLVP', 'uT']); try { pMainS = prog(VSS, FS, ['uVP', 'uLVP', 'uSh', 'uSun', 'uSunC', 'uSky', 'uGnd', 'uFog', 'uEye', 'uPl', 'uFogR', 'uLR', 'uLP[0]', 'uLC[0]', 'uT', 'uQ', 'uWet', 'uMist', 'uRim', 'uOut', 'uBones', 'uBR']); pDepthS = prog(VSDS, FSD, ['uLVP', 'uT', 'uBones', 'uBR']); } catch (e) { pMainS = pDepthS = null; console.warn('skinned models off', e); } pPost = prog(VSQ, FSQ, ['uA', 'uB', 'uC', 'uD', 'uMode', 'uDir', 'uT', 'uPI', 'uFx']);
     shTex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, shTex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24, SH, SH, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
@@ -344,7 +352,7 @@ void main(){
     const nx = mx / cv.clientWidth * 2 - 1, ny = 1 - my / cv.clientHeight * 2; const a = unproj(nx, ny, -1), b = unproj(nx, ny, 1);
     const dy = b[1] - a[1]; if (Math.abs(dy) < 1e-6) return [a[0], a[2]]; const t = -a[1] / dy; return [a[0] + (b[0] - a[0]) * t, a[2] + (b[2] - a[2]) * t];
   }
-  function begin() { env.verts = 0; for (const g in sets.dyn) sets.dyn[g].n = 0; for (const g in sets.glow) sets.glow[g].n = 0; for (const g in sets.xr) sets.xr[g].n = 0; lights.length = 0; }
+  function begin() { env.verts = 0; SKD.length = 0; boneRows = 0; for (const g in sets.dyn) sets.dyn[g].n = 0; for (const g in sets.glow) sets.glow[g].n = 0; for (const g in sets.xr) sets.xr[g].n = 0; lights.length = 0; }
   function statBegin() { for (const k in chunks) { for (const g in chunks[k].b) { gl.deleteBuffer(chunks[k].b[g].buf); gl.deleteVertexArray(chunks[k].b[g].vao); } delete chunks[k]; } statChunk('all', 0, 0, true); }
   function statChunk(key, x, z, always) { curChunk = chunks[key] || (chunks[key] = { x, z, always: !!always, b: {} }); }
   function upload(set, usage) { const box = typeof set === 'string' ? sets[set] : set; for (const g in box) { const b = box[g]; if (!b.n) continue; gl.bindBuffer(gl.ARRAY_BUFFER, b.buf); gl.bufferData(gl.ARRAY_BUFFER, b.data.subarray(0, b.n * STRIDE), usage); } }
@@ -361,7 +369,7 @@ void main(){
     lookAt(t1, [p[0] + s[0] * 60, s[1] * 60, p[2] + s[2] * 60], [p[0], 0, p[2]], [0, 1, 0]); ortho(t2, -38, 38, -38, 38, 1, 140); mul(lvp, t2, t1);
     gl.enable(gl.DEPTH_TEST);
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo); gl.viewport(0, 0, SH, SH); gl.clear(gl.DEPTH_BUFFER_BIT); gl.useProgram(pDepth.p); gl.uniformMatrix4fv(pDepth.u.uLVP, false, lvp); gl.uniform1f(pDepth.u.uT, env.t);
-    gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(2, 4); depthPass = true; if (env.shadows !== false) { drawSet('stat'); drawSet('dyn'); } depthPass = false; gl.disable(gl.POLYGON_OFFSET_FILL);
+    gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(2, 4); depthPass = true; upBones(); if (env.shadows !== false) { drawSet('stat'); drawSet('dyn'); if (SKD.length) { syncS(pDepthS, 0, { uLVP: lvp, uT: [env.t] }); drawSkinned(pDepthS); gl.useProgram(pDepth.p); } } depthPass = false; gl.disable(gl.POLYGON_OFFSET_FILL);
     gl.bindFramebuffer(gl.FRAMEBUFFER, post.ms); gl.viewport(0, 0, cv.width, cv.height);
     const tm = v => { v *= 1.3; v = (v * (2.51 * v + .03)) / (v * (2.43 * v + .59) + .14); return Math.pow(Math.min(1, Math.max(0, v)), 1 / 2.2); }; gl.clearColor(tm(env.fog[0]), tm(env.fog[1]), tm(env.fog[2]), 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     lights.sort((a, b) => (b.pri - a.pri) || ((a.x - p[0]) ** 2 + (a.z - p[2]) ** 2) - ((b.x - p[0]) ** 2 + (b.z - p[2]) ** 2));
@@ -376,6 +384,10 @@ void main(){
     { let n = 0; for (const g in sets.xr) n += sets.xr[g].n; if (n) { const gu = pGlow.u; gl.useProgram(pGlow.p); gl.uniformMatrix4fv(gu.uVP, false, vp); gl.uniformMatrix4fv(gu.uLVP, false, lvp); gl.uniform3fv(gu.uPl, env.player); gl.uniform1f(gu.uLR, env.lightR); gl.uniform1f(gu.uT, env.t); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.depthMask(false); gl.depthFunc(gl.GREATER); drawSet('xr'); gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.disable(gl.BLEND); gl.useProgram(pMain.p); } }
     if (env.q > 0 && env.outline !== false) { gl.uniform1f(pMain.u.uOut, .026); drawSet('dyn'); gl.uniform1f(pMain.u.uOut, 0); } // a thin ink outline so heroes and monsters stand out from the ground
     gl.uniform1f(pMain.u.uRim, env.q > 0 ? .8 : .4); drawSet('dyn'); gl.uniform1f(pMain.u.uRim, 0);
+    if (SKD.length) { const U = { uVP: vp, uLVP: lvp, uT: [env.t], uQ: [env.q], uWet: [env.wet], uMist: [env.mist], uSun: env.sun, uSunC: env.sunC, uSky: env.sky, uGnd: env.gnd, uFog: env.fog, uEye: cam.eye, uPl: env.player, uFogR: [env.fogN, env.fogF], uLR: [env.lightR], 'uLP[0]': LP, 'uLC[0]': LC };
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, shTex); syncS(pMainS, 0, U); const su = pMainS.u;
+      if (env.q > 0 && env.outline !== false) { gl.uniform1f(su.uRim, 0); gl.uniform1f(su.uOut, .026); drawSkinned(pMainS); }
+      gl.uniform1f(su.uOut, 0); gl.uniform1f(su.uRim, env.q > 0 ? .8 : .4); drawSkinned(pMainS); gl.useProgram(pMain.p); }
     u = pGlow.u; gl.useProgram(pGlow.p); gl.uniformMatrix4fv(u.uVP, false, vp); gl.uniformMatrix4fv(u.uLVP, false, lvp); gl.uniform3fv(u.uPl, env.player); gl.uniform1f(u.uLR, env.lightR); gl.uniform1f(u.uT, env.t);
     gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.depthMask(false); drawSet('glow'); gl.depthMask(true); gl.disable(gl.BLEND); gl.bindVertexArray(null);
     gl.bindFramebuffer(gl.READ_FRAMEBUFFER, post.ms); gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, post.sc.f); const mid = env.q > 0; gl.blitFramebuffer(0, 0, post.w, post.h, 0, 0, post.w, post.h, gl.COLOR_BUFFER_BIT, gl.NEAREST);
@@ -390,13 +402,31 @@ void main(){
     gl.uniform4f(pPost.u.uFx, mid ? env.dof : 0, hi ? env.ao : 0, mid ? .012 : 0, mid ? .28 : 0);
     quad(null, 2, post.sc.t, post.a.t, 0, 0, mid ? post.c.t : null, hi ? post.e.t : null); gl.enable(gl.DEPTH_TEST);
   }
-  // ---- build 0039: real character models (see models.js). Each drawn copy owns a few dynamic shapes, re-skinned once a frame ----
-  const models = {};
-  function model(name, url) { let m = models[name]; if (m) return m.ready ? m : null; m = models[name] = { ready: false }; if (typeof fetch === 'undefined' || typeof CDM === 'undefined' || !gl) return null;
-    fetch(url).then(r => r.ok ? r.arrayBuffer() : Promise.reject(new Error('HTTP ' + r.status))).then(ab => { Object.assign(m, CDM.parse(ab), { pool: [] }); m.ready = true; }).catch(e => { m.failed = true; console.warn('model ' + name + ' failed to load', e); }); return null; }
-  // pose the model (layers: [[anim, time, loop, weight], ...]) for owner o, skin it and return the shape names, one per colour group
-  function skinModel(m, o, layers) { CDM.pose(m, layers); const now = env.t || 0; let slot = o._ms && o._ms.m === m && m.pool[o._ms.i] && m.pool[o._ms.i].owner === o ? m.pool[o._ms.i] : null;
-    if (!slot) { let i = m.pool.findIndex(s => now - s.used > 2); if (i < 0) { i = m.pool.length; m.pool.push({ geos: m.head.groups.map((g, gi) => { const name = 'm:' + i + ':' + gi + ':' + (m.head.id || ''), vbo = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vbo); gl.bufferData(gl.ARRAY_BUFFER, g.count * 24, gl.DYNAMIC_DRAW); geo[name] = { vbo, count: g.count }; return { name, data: new Float32Array(g.count * 6) }; }) }); } slot = m.pool[i]; slot.owner = o; o._ms = { m, i }; }
-    slot.used = now; for (let gi = 0; gi < slot.geos.length; gi++) { const G = slot.geos[gi]; CDM.skin(m, gi, G.data); gl.bindBuffer(gl.ARRAY_BUFFER, geo[G.name].vbo); gl.bufferSubData(gl.ARRAY_BUFFER, 0, G.data); } return slot.geos.map(G => G.name); }
-  return { init, resize, col, base, obj, part, halo, light, setCamera, toScreen, groundAt, begin, statBegin, statChunk, statEnd, render, env, cam, model, skinModel };
+  // ---- build 0039: real character models (see models.js). The mesh sits on the graphics card once; each frame only the pose is sent ----
+  const models = {}, SKD = [], BR = 32; let boneTex = null, boneW = 0, boneData = null, boneRows = 0;
+  function model(name, url) { let m = models[name]; if (m) return m.ready ? m : null; m = models[name] = { ready: false }; if (typeof fetch === 'undefined' || typeof CDM === 'undefined' || !gl || !pMainS) return null;
+    fetch(url).then(r => r.ok ? r.arrayBuffer() : Promise.reject(new Error('HTTP ' + r.status))).then(ab => { Object.assign(m, CDM.parse(ab)); upModel(m); m.ready = true; }).catch(e => { m.failed = true; console.warn('model ' + name + ' failed to load', e); }); return null; }
+  function upModel(m) {
+    const V = m.head.v, vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+    const vb = (data, loc, n, type, norm, st) => { const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, n, type, norm, st || 0, 0); };
+    vb(m.pos, 0, 3, gl.FLOAT, false); vb(m.nrm, 1, 3, gl.BYTE, true, 4); vb(m.jn, 8, 4, gl.UNSIGNED_BYTE, false); vb(m.wt, 9, 4, gl.UNSIGNED_BYTE, true);
+    gl.bindVertexArray(null); m.vao = vao; m.pos = m.nrm = m.jn = m.wt = null; m.V = V;
+    const w = m.head.bones * 3; if (w > boneW) { boneW = w; if (boneTex) gl.deleteTexture(boneTex); boneTex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, boneTex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, boneW, BR, 0, gl.RGBA, gl.FLOAT, null); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST); boneData = new Float32Array(boneW * 4 * BR); }
+  }
+  // draw model m posed by layers ([[anim, time, loop, weight], ...]) at matrix B; look(gi, group) gives [colour, glow, material] for each colour group, or null to hide it
+  function drawModel(m, B, layers, look) {
+    if (!m || !m.ready || boneRows >= BR) return false; CDM.pose(m, layers); const r = boneRows++, S = m.S, n = m.head.bones, o = r * boneW * 4;
+    for (let b = 0; b < n; b++) { const s = b * 12, d = o + b * 12; for (let k = 0; k < 3; k++) { boneData[d + k * 4] = S[s + k]; boneData[d + k * 4 + 1] = S[s + 3 + k]; boneData[d + k * 4 + 2] = S[s + 6 + k]; boneData[d + k * 4 + 3] = S[s + 9 + k]; } }
+    const groups = m.head.groups; for (let gi = 0; gi < groups.length; gi++) { const L = look ? look(gi, groups[gi]) : [groups[gi].col, 0, groups[gi].mat]; if (!L) continue; SKD.push({ m, r, start: groups[gi].start, count: groups[gi].count, M: Float32Array.from(B), c: L[0], em: L[1] || 0, mat: L[2] || 0 }); }
+    return true;
+  }
+  function drawSkinned(P) {
+    if (!SKD.length) return; gl.useProgram(P.p); gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D, boneTex); gl.uniform1i(P.u.uBones, 4); gl.activeTexture(gl.TEXTURE0);
+    for (const d of SKD) { gl.bindVertexArray(d.m.vao); gl.uniform1i(P.u.uBR, d.r); for (let i = 0; i < 4; i++) gl.vertexAttrib4f(2 + i, d.M[i * 4], d.M[i * 4 + 1], d.M[i * 4 + 2], d.M[i * 4 + 3]); gl.vertexAttrib4f(6, d.c[0], d.c[1], d.c[2], 1); gl.vertexAttrib2f(7, d.em, d.mat); env.verts += d.count; gl.drawArrays(gl.TRIANGLES, d.start, d.count); }
+    gl.bindVertexArray(null);
+  }
+  function upBones() { if (!boneRows) return; gl.bindTexture(gl.TEXTURE_2D, boneTex); gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, boneW, boneRows, gl.RGBA, gl.FLOAT, boneData.subarray(0, boneW * 4 * boneRows)); }
+  // shared uniforms for the skinned copy of a program, copied from the plain program's current values
+  function syncS(P, keys, vals) { gl.useProgram(P.p); for (const k in vals) { const v = vals[k], u = P.u[k]; if (!u) continue; if (v.length === 16) gl.uniformMatrix4fv(u, false, v); else if (v.length === 32) gl.uniform4fv(u, v); else if (v.length === 24) gl.uniform3fv(u, v); else if (v.length === 3) gl.uniform3fv(u, v); else if (v.length === 2) gl.uniform2fv(u, v); else gl.uniform1f(u, v[0]); } if (P.u.uSh) gl.uniform1i(P.u.uSh, 0); }
+  return { init, resize, col, base, obj, part, halo, light, setCamera, toScreen, groundAt, begin, statBegin, statChunk, statEnd, render, env, cam, model, drawModel, attach: (m, name, o) => m && m.ready ? CDM.attach(m, name, o) : null };
 })();
