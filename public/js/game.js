@@ -1222,6 +1222,34 @@ function gearCode(eq) { let c = ''; for (const sl of GSL) { const it = eq[sl]; i
 function gearDecode(c) { const g = {}; if (typeof c !== 'string' || c.length !== GSL.length * 2) return null; GSL.forEach((sl, i) => { const b = c.charCodeAt(i * 2) - 48, r = c.charCodeAt(i * 2 + 1) - 48; g[sl] = b >= 0 && b <= 9 && r >= 0 && r <= 4 ? [b, r] : null; }); return g; }
 const DEFGEAR = gearDecode('0101011101010101010100');
 const TRIMC = [0x77726a, 0x5878d8, 0xd8b030, 0xff8a2a, 0xb060ff];
+// ---- build 0039: real hero models (free CC0 Quaternius characters), baked by tools/model/build.mjs into public/models ----
+// The Ranger is the first hero on a real model; the others keep their code-built bodies until their outfits are baked.
+// If a model has not loaded (or a graphics card cannot skin on the GPU), the code-built hero is drawn instead.
+const MODEL_HEROES = { ranger: 1 }, MODELS_ON = typeof location !== 'undefined' && /[?&]models=1/.test(location.search), BMm = new Float32Array(16), HAL = new Float32Array(16), HAR = new Float32Array(16), UPMASK = {};
+function heroModel(o, cls, rot, tw, lu, dy, mv, AW, wt, wglow, em) {
+  if (!MODELS_ON || !MODEL_HEROES[cls] || !GLX.model || G.realModels === false) return null;
+  const M = GLX.model(cls, 'models/' + cls + '.cdm?v=' + BUILD); if (!M) return null;
+  const A = M.anims, t = G.time, s = (o.sc || 1.08) * 1.18, up = UPMASK[cls] || (UPMASK[cls] = CDM.mask(M, ['spine_02'], 0));
+  const bm = o._bm || (o._bm = new Float32Array(up.length)), act = !o.dead && !o.dash && o.act && AW > .01 ? AW : 0;
+  for (let b = 0; b < up.length; b++) bm[b] = 1 - act * up[b];
+  const lay = [];
+  if (o.dead) { if (o.fallT0 === undefined) o.fallT0 = t; lay.push(['die', (t - o.fallT0) * 1.3, false, 1]); }
+  else if (o.dash) { if (o._rT0 === undefined) o._rT0 = t; lay.push(['roll', .25 + (t - o._rT0) * 2.6, false, 1]); }
+  else { o._rT0 = undefined; const m = Math.min(1, mv * 1.6), ph = (o.walk || 0) / 6.2832;
+    if (m < 1) lay.push(['idle', t + o.x * .37, true, 1 - m, bm]); if (m > 0) lay.push(['run', ph * A.run.dur, true, m, bm]);
+    if (act) { const k = clamp(o.swing || 0, 0, 1), ranged = wt === 'bow' || wt === 'staff' || wt === 'wand'; lay.push([ranged ? 'cast' : 'attack', k * (ranged ? A.cast.dur : A.attack.dur), false, act, up]); } }
+  GLX.base(BMm, o.x + Math.sin(rot) * lu, o.y + dy - M.head.minY * s, o.z + Math.cos(rot) * lu, rot + tw, s);
+  if (!GLX.drawModel(M, BMm, lay, (gi, gr) => [[1, 1, 1], em, gr.mat])) return null;
+  const col = GLX.col;
+  return { weapon() { // a longbow in the left hand, limbs curving back toward the archer, string tip to tip, an arrow nocked while drawing
+    if (wt !== 'bow' || o.dead) return; const h = GLX.attach(M, 'hand_l', HAL); if (!h) return; const gx = h[12] + .01, gy = h[13], gz = h[14] + .02, bc = wglow || col(0x5a4028), be = wglow ? .6 : 0;
+    const seg = (a, b, w, c, mt, e) => { const dyy = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dyy, dz), ax = Math.atan2(dz, dyy); GLX.part('dyn', 'rbox', BMm, gx, gy + (a[0] + b[0]) / 2, gz + (a[1] + b[1]) / 2, ax, 0, 0, 0, 0, 0, w, L, w * 1.2, c, (e || 0) + em, 1, mt || 0); };
+    const P = [[0, 0], [.3, -.05], [.56, -.15], [.66, -.22]]; for (const sd of [1, -1]) for (let i = 0; i < 3; i++) seg([P[i][0] * sd, P[i][1]], [P[i + 1][0] * sd, P[i + 1][1]], i === 2 ? .022 : .032, bc, 3, be);
+    GLX.part('dyn', 'rbox', BMm, gx, gy, gz, 0, 0, 0, 0, 0, 0, .04, .14, .05, col(0x4a3524), em, 1, 7);
+    const drawn = o.act && AW > .3 && (o.swing || 0) < .42; seg([.66, -.22], drawn ? [0, -.42] : [-.66, -.22], .006, col(0xe8e0d0), 0); if (drawn) seg([0, -.42], [-.66, -.22], .006, col(0xe8e0d0), 0);
+    if (drawn) { GLX.part('dyn', 'rbox', BMm, gx, gy, gz - .1, 0, 0, 0, 0, 0, 0, .012, .012, .72, col(0xb89a6a), em); GLX.part('dyn', 'cone', BMm, gx, gy, gz + .27, 1.5708, 0, 0, 0, 0, 0, .025, .06, .025, col(0xc8ced8), em, 1, 4); }
+  } };
+}
 function drawHero(o, self) {
   const col = GLX.col, cls = o.cls || G.hero.cls, L = LOOK[cls] || LOOK.warden, g = o.gear || DEFGEAR, cloth = col(L.cl), leatherC = col(0x6a4a30), dkLeather = col(0x4a3524), steelC = col(0x8e97a8), skin = col(0xc99a78), blade = col(0xc8ced8), gold = col(0xb08a3a), wood = col(0x5a4028), under = shade(cloth, .55);
   { /* build 0036: real materials. Each hero colour carries what it is made of, so the renderer can draw cloth, leather, skin and hair as themselves */ cloth.mt = under.mt = 6; leatherC.mt = dkLeather.mt = 7; skin.mt = 8; col(o.hair || (cls === 'brawler' ? 0x2a2018 : cls === 'elementalist' ? 0x8a3a18 : cls === 'arcanist' ? 0x9c98ac : 0x4a3626)).mt = 9; }
@@ -1254,6 +1282,7 @@ function drawHero(o, self) {
   const runeE = r => (r >= 3 ? 1.3 : .75) * (.78 + .22 * Math.sin(G.time * 2.4 + o.x * 1.3));
   const rune = (k, px, py, pz, rx, ry, ox, oy, oz, flat, c, e) => { for (const [dx, dy, ww, hh] of RUNES[k & 3]) flat ? p('rbox', px, py, pz, rx, ry, 0, ox + dx, oy, oz + dy, ww, .014, hh, c, 0, e) : p('rbox', px, py, pz, rx, ry, 0, ox + dx, oy + dy, oz, ww, hh, .028, c, 0, e); };
   if (!o.dead) { let lgN = 0, top = 3; for (const k in g) { const it = g[k]; if (Array.isArray(it) && it[1] >= 3) { lgN++; top = Math.max(top, it[1]); } } if (lgN) { const lc = col(TRIMC[top]), pu = .8 + .2 * Math.sin(G.time * 1.7 + o.x); GLX.halo(o.x, (o.y || 0) + 1.3, o.z, 1.5 + .12 * Math.min(lgN, 5), lc, (.05 + .025 * Math.min(lgN, 4)) * pu); for (let k = 0; k < Math.min(3, lgN); k++) { const ph = (G.time * .45 + k / 3 + o.x * .1) % 1; GLX.obj('glow', 'sphere', o.x + Math.sin(k * 2.4 + G.time * .7) * .45, (o.y || 0) + .5 + ph * 2.1, o.z + Math.cos(k * 1.9 + G.time * .6) * .45, 0, .045, .045, .045, lc, 2, (1 - ph) * .8); } } }
+  let MDL = null; try { MDL = heroModel(o, cls, rot, tw, lu, AP ? AP.dy * AW : 0, mv, AW, wt, wglow, em); } catch (e) { G.realModels = false; console.warn('real models switched off', e); } if (!MDL) {
   // legs or robe
   if (L.robe) { p('taper', 0, .62, 0, 0, 0, 0, 0, 0, 0, .86, 1.2, .8, ac, am); p('cap', 0, .08, 0, 0, 0, 0, 0, 0, 0, .9, .1, .84, trim, 4, te); p('rbox', 0, .62, .37, .12, 0, 0, 0, 0, 0, .2, 1.0, .04, trim, 0, te); for (const sd of [1, -1]) p('sphere', .16 * sd, .08, .12 + sd * lg * .25, 0, 0, 0, 0, 0, 0, .2, .14, .38, bm ? bm[0] : skin, bm ? bm[1] : 0); }
   else for (const sd of [1, -1]) {
@@ -1261,12 +1290,15 @@ function drawHero(o, self) {
     if (bm) p('cap', .17 * sd, .95, 0, r * 1.25, 0, 0, 0, -.5, .02, .25, .07, .27, tr(g.boots)[0], 4, tr(g.boots)[1]);
     if (g.pants && g.pants[0] !== 0) p('rbox', .16 * sd, .98, 0, r, 0, 0, sd * .145, -.3, 0, .018, .44, .1, trim, 0, te * .3); if (g.pants) { p('sphere', .17 * sd, .95, 0, r * 1.1, 0, 0, 0, -.46, .1, .2, .18, .2, pm[0], pm[1]); if (g.pants[0] === 0) p('rbox', .2 * sd, 1.0, .02, .06 + sd * lg * .4, 0, -sd * .12, 0, -.2, .14, .24, .36, .06, steelC, 4); else p('rbox', .16 * sd, .98, -.02, .16 + mv * .25, 0, 0, 0, -.3, -.2, .16, .5, .04, cloth); }
   }
+  }
+  const hp = (gm2, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, c, m, e) => p(gm2, px * .84, 1.82 + (py - 1.8) * .84, pz * .84, rx, ry, rz, ox * .84, oy * .84, oz * .84, sx * .84, sy * .84, sz * .84, c, m, e);
   let lean = .06, rx = -lg * .7, ry = 0, lrx = lg * .6 - .2, lry = 0, drw = -1;
   if (AP && AW > .01) { const m = (a, b) => a + (b - a) * AW; rx = m(rx, AP.rx); ry = m(ry, AP.ry); lrx = m(lrx, AP.lrx); lry = m(lry, AP.lry); lean = m(lean, AP.lean); if (o.act) drw = AP.drw; }
   if (false) { const k = o.swing, e = k < .42 ? k / .42 : 1; lean = .28 * Math.sin(k * Math.PI); if (wt === 'bow') { drw = k < .42 ? k / .42 : 0; const pull = k < .42 ? drw : 1; rx = -1.57; ry = -1.0 - pull * .45; lrx = -1.57; lry = .36; lean = .03; } else if (ranged) { rx = -1.55; lrx = -1.5; lean = .05; } else if (o.act.sk.type === 'nova') rx = -3 + e * 2.6; else if (wt === 'fist' || wt === 'none') { rx = -1.5 + Math.sin(k * 6.28) * .5; lrx = -1.5 - Math.sin(k * 6.28) * .5; } else { rx = -1.5; ry = 1.3 - e * 2.6; } }
   if (spin) { rx = -1.5; ry = .3; lrx = -1.5; } if (o.dash) rx = -2.8;
   lean += Math.min(1, mv) * .12; if (o.hurt > 0) { lean -= Math.min(.3, o.hurt) * 1.3; rx -= o.hurt * 2; lrx -= o.hurt * 2; }
   if (o.dead) { rx = lrx = -2.6; }
+  if (!MDL) {
   // torso, belt
   p('torso', 0, 1.36, 0, lean, 0, 0, 0, .07, 0, .84, .74, .52, ac, am); /* build 0037: one sculpted torso: chest, ribs, waist and shoulder slope */ p('cap', 0, 1.76, 0, lean, 0, 0, 0, 0, 0, .3, .07, .28, g.chest ? trim : shade(ac, .8), g.chest ? 4 : 0, g.chest ? te * .5 : 0); p('sphere', 0, 1.06, 0, lean, 0, 0, 0, 0, 0, .6, .34, .42, g.pants && !L.robe ? pm[0] : ac, g.pants && !L.robe ? pm[1] : am); if (!L.robe) p('cap', 0, .98, 0, lean, 0, 0, 0, -.12, 0, .6, .32, .44, g.pants ? pm[0] : under, g.pants ? pm[1] : 0);
   /* build 0038: plate chests come with a chainmail skirt and steel tassets that swing with the legs; leather chests get leather flaps */
@@ -1293,7 +1325,7 @@ function drawHero(o, self) {
   }
   if (g.amulet) { const at = tr(g.amulet); p('gem', 0, 1.6, .3, lean, G.time, 0, 0, 0, 0, .1, .14, .08, at[0], 0, 1.2); }
   // head (drawn a little smaller than the body so the proportions read as human)
-  const hp = (gm2, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, c, m, e) => p(gm2, px * .84, 1.82 + (py - 1.8) * .84, pz * .84, rx, ry, rz, ox * .84, oy * .84, oz * .84, sx * .84, sy * .84, sz * .84, c, m, e);
+  // (hp is defined above the body so the class looks further down can use it)
   p('cap', 0, 1.8, 0, lean, 0, 0, 0, 0, 0, .15, .16, .15, skin); hp('head', 0, 2.0, 0, lean, 0, 0, 0, 0, 0, .36, .45, .44, skin); /* build 0037: one sculpted head with jaw, chin and cheekbones */
   const hb = g.helm ? g.helm[0] : -1, ht = tr(g.helm);
   if (hb === 0) { hp('sphere', 0, 2.04, -.07, lean, 0, 0, 0, 0, 0, .43, .42, .36, steelC, 4); hp('sphere', 0, 2.12, -.03, lean, 0, 0, 0, 0, 0, .45, .3, .46, steelC, 4); hp('rbox', 0, 2.13, .2, lean, 0, 0, 0, 0, 0, .3, .05, .05, ht[0], 4, ht[1]); hp('cone', 0, 2.34, -.08, lean - .5, 0, 0, 0, .1, 0, .1, .5, .16, cloth); for (const sd of [1, -1]) { hp('rbox', .17 * sd, 1.92, .12, lean, 0, 0, 0, 0, 0, .06, .22, .16, steelC, 4); if (g.helm[1] >= 1) hp('cone', .2 * sd, 2.22, -.04, lean, 0, -sd * .8, 0, .12, 0, .09, .2 + g.helm[1] * .08, .09, ht[0], 4, ht[1]); } }
@@ -1334,8 +1366,9 @@ function drawHero(o, self) {
     if (cls === 'brawler') for (const y of [-.47, -.53, -.59]) p('cap', px, 1.62, 0, arx, ary, 0, 0, y, 0, .2, .03, .2, col(0xe8e0cc));
     if (fist) for (let k = 0; k < 3; k++) p('cone', px, 1.62, 0, arx + 1.5708, ary, 0, (k - 1) * .08, .1, .68, .06, .14, .06, wglow || steelC, 4, wglow ? .8 : 0);
   }
+  } // end of the code-built body (build 0039: skipped when a real model is drawn)
   // off-hand
-  if (g.offhand) { const ot = tr(g.offhand);
+  if (g.offhand && !MDL) { const ot = tr(g.offhand);
     if (cls === 'warden') { GLX.part('dyn', 'cyl', BM, -.47, 1.62, 0, lg * .6 - .5, 0, 1.5708, -.5, .17, .2, .8, .06, .8, leatherC, em, 1, 7); GLX.part('dyn', 'cyl', BM, -.47, 1.62, 0, lg * .6 - .5, 0, 1.5708, -.5, .2, .2, .86, .03, .86, steelC, em, 1, 4); GLX.part('dyn', 'cyl', BM, -.47, 1.62, 0, lg * .6 - .5, 0, 1.5708, -.5, .21, .2, .62, .02, .62, cloth, em, 1, 6); GLX.part('dyn', 'sphere', BM, -.47, 1.62, 0, lg * .6 - .5, 0, 1.5708, -.5, .24, .2, .26, .12, .26, ot[0], em + ot[1], 1, 4); }
     else if (cls === 'ranger') { p('rbox', .1, 1.5, -.3, lean + .3, 0, .4, 0, 0, 0, .2, .7, .16, leatherC); for (let k = 0; k < 3; k++) p('rbox', .22 + k * .05, 1.95, -.36, lean + .3, 0, .4, 0, 0, 0, .03, .3, .03, k === 1 ? ot[0] : wood); }
     else if (cls === 'elementalist') { p('rbox', -.34, 1.0, .1, lean, .3, 0, 0, 0, 0, .12, .34, .28, dkLeather); p('rbox', -.41, 1.0, .1, lean, .3, 0, 0, 0, 0, .02, .16, .12, ot[0], 4, ot[1]); }
@@ -1343,7 +1376,7 @@ function drawHero(o, self) {
     else { const a = G.time * 1.3, oc2 = col(L.orb || TRIMC[g.offhand[1]]); GLX.obj('glow', 'sphere', o.x + Math.cos(a) * 1.1, o.y + 2.2 + Math.sin(a * 2) * .15, o.z + Math.sin(a) * 1.1, 0, .34, .34, .34, oc2, 1.4, 1); GLX.halo(o.x + Math.cos(a) * 1.1, o.y + 2.2, o.z + Math.sin(a) * 1.1, 1.4, oc2, .5); }
   }
   // weapon
-  if (wt === 'sword') { /* build 0024: a broadsword that reads from the game camera */ if (wr >= 2) for (let k = 0; k < 3; k++) for (const f of [1, -1]) rune(k + (f > 0 ? 0 : 1), .47, 1.62, 0, rx, ry, 0, -.66 + .03 * f, .5 + k * .32, true, wglow, runeE(wr)); p('rbox', .47, 1.62, 0, rx, ry, 0, 0, -.66, .9, .21, .05, 1.5, blade, 4, .22); p('rbox', .47, 1.62, 0, rx, ry, 0, 0, -.66, .84, .06, .07, 1.22, shade(blade, .62), 4); p('rbox', .47, 1.62, 0, rx, ry, 0, 0, -.66, 1.72, .13, .05, .2, blade, 4, .22); p('rbox', .47, 1.62, 0, rx, ry, 0, 0, -.66, 1.86, .06, .045, .14, col(0xeef2f8), 4, .45); p('rbox', .47, 1.62, 0, rx, ry, 0, 0, -.66, .12, .58, .09, .11, gold, 4); p('sphere', .47, 1.62, 0, rx, ry, 0, .29, -.66, .12, .08, .08, .08, gold, 4); p('sphere', .47, 1.62, 0, rx, ry, 0, -.29, -.66, .12, .08, .08, .08, gold, 4); p('cap', .47, 1.62, 0, rx + 1.5708, ry, 0, 0, -.04, .66, .07, .3, .07, dkLeather); if (wglow) p('rbox', .47, 1.62, 0, rx, ry, 0, 0, -.66, .9, .23, .03, 1.52, wglow, 0, .55); }
+  if (MDL) { try { MDL.weapon(); } catch (e) { } } else if (wt === 'sword') { /* build 0024: a broadsword that reads from the game camera */ if (wr >= 2) for (let k = 0; k < 3; k++) for (const f of [1, -1]) rune(k + (f > 0 ? 0 : 1), .47, 1.62, 0, rx, ry, 0, -.66 + .03 * f, .5 + k * .32, true, wglow, runeE(wr)); p('rbox', .47, 1.62, 0, rx, ry, 0, 0, -.66, .9, .21, .05, 1.5, blade, 4, .22); p('rbox', .47, 1.62, 0, rx, ry, 0, 0, -.66, .84, .06, .07, 1.22, shade(blade, .62), 4); p('rbox', .47, 1.62, 0, rx, ry, 0, 0, -.66, 1.72, .13, .05, .2, blade, 4, .22); p('rbox', .47, 1.62, 0, rx, ry, 0, 0, -.66, 1.86, .06, .045, .14, col(0xeef2f8), 4, .45); p('rbox', .47, 1.62, 0, rx, ry, 0, 0, -.66, .12, .58, .09, .11, gold, 4); p('sphere', .47, 1.62, 0, rx, ry, 0, .29, -.66, .12, .08, .08, .08, gold, 4); p('sphere', .47, 1.62, 0, rx, ry, 0, -.29, -.66, .12, .08, .08, .08, gold, 4); p('cap', .47, 1.62, 0, rx + 1.5708, ry, 0, 0, -.04, .66, .07, .3, .07, dkLeather); if (wglow) p('rbox', .47, 1.62, 0, rx, ry, 0, 0, -.66, .9, .23, .03, 1.52, wglow, 0, .55); }
   else if (wt === 'axe' || wt === 'maul') { p('cap', .47, 1.62, 0, rx + 1.5708, ry, 0, 0, .5, .66, .08, 1.9, .08, wood, 3); if (wt === 'axe') { p('rbox', .47, 1.62, 0, rx, ry, 0, .2, -.66, 1.3, .44, .05, .44, blade, 4, .2); if (wr >= 2) for (const f of [1, -1]) rune(f > 0 ? 0 : 2, .47, 1.62, 0, rx, ry, .2, -.66 + .03 * f, 1.3, true, wglow, runeE(wr)); p('rbox', .47, 1.62, 0, rx, ry, 0, .44, -.66, 1.3, .06, .04, .6, wglow || col(0xeef2f8), 4, wglow ? .8 : .4); } else { p('rbox', .47, 1.62, 0, rx, ry, 0, 0, -.66, 1.36, .62, .36, .42, steelC, 4); p('rbox', .47, 1.62, 0, rx, ry, 0, 0, -.66, 1.36, .66, .12, .46, wglow || gold, 4, wglow ? .8 : 0); } }
   else if (wt === 'staff') {
     const len = wb === 4 ? 1.0 : 2.1, tip = wb === 4 ? .86 : 1.4; p('cap', .47, 1.62, 0, rx + 1.5708, ry, 0, 0, wb === 4 ? .36 : .25, .64, .07, len, .07, wood, 3); const oc = wglow || col(L.orb || 0x9ad0ff), act = o.act ? 1.6 : 1; p('gem', .47, 1.62, 0, rx + 1.5708, ry, 0, 0, tip, .64, .26 * act, .32 * act, .26 * act, oc, 0, 2.2);
@@ -1359,17 +1392,17 @@ function drawHero(o, self) {
   }
   if (L.robe) for (let k = 0; k < 3; k++) { const a = G.time * 1.6 + k * 2.09; GLX.obj('glow', 'gem', o.x + Math.cos(a) * .95, o.y + 1.5 + Math.sin(a * 1.7) * .25, o.z + Math.sin(a) * .95, a, .12, .2, .12, col(L.orb), 1.5, .9); }
   if (cls === 'brawler') for (const sd of [1, -1]) p('rbox', .2 * sd, 1.0, -.2, lean + .3 + mv * .4 + sw2, 0, 0, 0, -.34, 0, .12, .6, .03, cloth);
-  if (L.cape) { p('rbox', 0, 1.66, -.28, lean + .12 + mv * .3 + sw2, 0, 0, 0, -.36, 0, .78, .74, .05, cloth); p('rbox', 0, 1.66, -.28, lean + .22 + mv * .5 + sw2 * 2, 0, 0, 0, -1.0, -.06, .84, .62, .04, shade(cloth, .8)); p('rbox', 0, 1.7, -.26, lean, 0, 0, 0, 0, 0, .7, .08, .1, trim, 4, te); }
+  if (L.cape && !MDL) { p('rbox', 0, 1.66, -.28, lean + .12 + mv * .3 + sw2, 0, 0, 0, -.36, 0, .78, .74, .05, cloth); p('rbox', 0, 1.66, -.28, lean + .22 + mv * .5 + sw2 * 2, 0, 0, 0, -1.0, -.06, .84, .62, .04, shade(cloth, .8)); p('rbox', 0, 1.7, -.26, lean, 0, 0, 0, 0, 0, .7, .08, .1, trim, 4, te); }
 
   // ---- class signature look (build 0016): silhouette, class colour, moving cloth, aura, rarity glow ----
   { const CC = col(CLASS_COL[cls] || 0xd8a040), t = G.time, sway = Math.sin(t * 2.6 + o.x) * .08 + Math.min(1, mv) * .35, cr = Math.cos(rot), sr = Math.sin(rot);
     const hand = (sd, arx) => { const lx = .47 * sd * 1.08, ly = (1.62 - .68 * Math.cos(arx)) * 1.08, lz = -.68 * Math.sin(arx) * 1.08; return [o.x + cr * lx + sr * lz, o.y + ly, o.z - sr * lx + cr * lz]; };
-    const HERO = !!CLASS_COL[cls]; if (HERO) p('rbox', 0, 1.12, .25, lean, 0, 0, 0, -.18, 0, .2, .56, .04, shade(CC, .3)); // tabard in the class colour (plain material: the rock/bark one bends thin parts)
-    if (HERO) p('rbox', 0, 1.12, .27, lean, 0, 0, 0, .06, 0, .08, .08, .03, shade(CC, .75), 4);
+    const HERO = !!CLASS_COL[cls]; if (HERO && !MDL) p('rbox', 0, 1.12, .25, lean, 0, 0, 0, -.18, 0, .2, .56, .04, shade(CC, .3)); // tabard in the class colour (plain material: the rock/bark one bends thin parts)
+    if (HERO && !MDL) p('rbox', 0, 1.12, .27, lean, 0, 0, 0, .06, 0, .08, .08, .03, shade(CC, .75), 4);
     if (cls === 'warden') {
       for (const sd of [1, -1]) { p('sphere', .5 * sd, 1.76, 0, 0, 0, -sd * .25, 0, 0, 0, .42, .24, .42, shade(steelC, .7), 4); p('cap', .5 * sd, 1.7, 0, 0, 0, -sd * .25, 0, 0, 0, .45, .04, .45, shade(CC, .7), 4); hp('cone', .2 * sd, 2.28, -.02, lean, 0, -sd * 1.1, 0, .14, 0, .07, .34, .07, col(0xe8dcc0), 3); }
       if (!g.offhand) { p('rbox', 0, 1.35, -.34, lean * .5, 0, 0, 0, 0, 0, .78, 1.0, .07, steelC, 4); p('rbox', 0, 1.35, -.38, lean * .5, 0, 0, 0, 0, 0, .58, .8, .03, CC, 0, .1); }
-    } else if (cls === 'ranger') {
+    } else if (cls === 'ranger' && !MDL) {
       if (!g.helm) { hp('sphere', 0, 2.08, -.08, lean, 0, 0, 0, 0, 0, .5, .48, .5, cloth); hp('cone', 0, 2.1, -.3, lean - 1.2 - sway * .4, 0, 0, 0, .12, 0, .2, .4, .16, cloth); }
       if (!g.offhand) { p('rbox', .1, 1.5, -.3, lean + .3, 0, .4, 0, 0, 0, .2, .7, .16, leatherC); for (let k = 0; k < 3; k++) p('rbox', .22 + k * .05, 1.95, -.36, lean + .3, 0, .4, 0, 0, 0, .03, .3, .03, k === 1 ? CC : wood); }
       p('rbox', 0, 1.62, -.26, lean + .1 + sway, 0, 0, 0, -.5, 0, .6, 1.0, .03, shade(CC, .55));
