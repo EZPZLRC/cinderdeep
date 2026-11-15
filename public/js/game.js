@@ -333,7 +333,7 @@ function genZone(def) {
   return Z;
 }
 const LOWQ = typeof matchMedia !== 'undefined' && matchMedia('(pointer:coarse)').matches;
-function shade(c, f, g, b) { return [c[0] * f, c[1] * (g || f), c[2] * (b || f)]; }
+function shade(c, f, g, b) { const r = [c[0] * f, c[1] * (g || f), c[2] * (b || f)]; if (c.mt) r.mt = c.mt; return r; } // a shaded colour keeps its material (build 0036)
 function buildStatic(Z) { Z.torches = [];
   GLX.statBegin(); const th = Z.th, S = GW * CS, c = Z.cell, col = GLX.col;
   GLX.obj('stat', 'box', S / 2, -.5, S / 2, 0, S + 120, 1, S + 120, col(th.ground), 0, 1, th.gdet);
@@ -1224,6 +1224,7 @@ const DEFGEAR = gearDecode('0101011101010101010100');
 const TRIMC = [0x77726a, 0x5878d8, 0xd8b030, 0xff8a2a, 0xb060ff];
 function drawHero(o, self) {
   const col = GLX.col, cls = o.cls || G.hero.cls, L = LOOK[cls] || LOOK.warden, g = o.gear || DEFGEAR, cloth = col(L.cl), leatherC = col(0x6a4a30), dkLeather = col(0x4a3524), steelC = col(0x8e97a8), skin = col(0xc99a78), blade = col(0xc8ced8), gold = col(0xb08a3a), wood = col(0x5a4028), under = shade(cloth, .55);
+  { /* build 0036: real materials. Each hero colour carries what it is made of, so the renderer can draw cloth, leather, skin and hair as themselves */ cloth.mt = under.mt = 6; leatherC.mt = dkLeather.mt = 7; skin.mt = 8; col(o.hair || (cls === 'brawler' ? 0x2a2018 : cls === 'elementalist' ? 0x8a3a18 : cls === 'arcanist' ? 0x9c98ac : 0x4a3626)).mt = 9; }
   const mat = (it, base0, alt) => !it ? null : it[0] === 0 ? [steelC, 4] : [alt || leatherC, 0], tr = it => { const r = it ? it[1] : 0; return [col(TRIMC[r]), r >= 3 ? .7 : r === 2 ? .15 : 0]; };
   const cm = g.chest ? (g.chest[0] === 0 ? [steelC, 4] : g.chest[0] === 2 ? [cloth, 0] : [leatherC, 0]) : [under, 0], ac = cm[0], am = cm[1], ct = tr(g.chest), trim = ct[0], te = ct[1];
   const pm = mat(g.pants) || [under, 0], bm = mat(g.boots, 0, dkLeather), gm = mat(g.gloves), brm = mat(g.bracers), sm = mat(g.shoulders), plate = !!g.chest && g.chest[0] === 0;
@@ -1245,7 +1246,7 @@ function drawHero(o, self) {
   }
   const AW = o.actW, AP = o.lastA, tw = AP ? AP.tw * AW : 0, lu = AP ? AP.lu * AW : 0;
   const breath = (1 - Math.min(1, mv)) * Math.sin(G.time * 2.3 + o.x) * .022; GLX.base(BM, o.x + Math.sin(rot) * lu, o.y + bob + breath + (AP ? AP.dy * AW : 0), o.z + Math.cos(rot) * lu, rot + tw, o.sc || 1.08);
-  if (o.dead) { if (o.fallT0 === undefined) o.fallT0 = G.time; const fk = Math.min(1, (G.time - o.fallT0) * 2.6), fa = 1.45 * fk * fk; const c = Math.cos(fa), sn = Math.sin(fa); for (let i = 0; i < 3; i++) { const u = BM[4 + i], f = BM[8 + i]; BM[4 + i] = u * c - f * sn; BM[8 + i] = u * sn + f * c; } BM[13] += .12 * fk; } else o.fallT0 = undefined; const p = (gm2, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, c, m, e) => GLX.part('dyn', gm2, BM, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, c, e === undefined ? em : e + em, 1, m || 0);
+  if (o.dead) { if (o.fallT0 === undefined) o.fallT0 = G.time; const fk = Math.min(1, (G.time - o.fallT0) * 2.6), fa = 1.45 * fk * fk; const c = Math.cos(fa), sn = Math.sin(fa); for (let i = 0; i < 3; i++) { const u = BM[4 + i], f = BM[8 + i]; BM[4 + i] = u * c - f * sn; BM[8 + i] = u * sn + f * c; } BM[13] += .12 * fk; } else o.fallT0 = undefined; const p = (gm2, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, c, m, e) => GLX.part('dyn', gm2, BM, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, c, e === undefined ? em : e + em, 1, m || c.mt || 0);
   { const st = Math.sin(w) > 0; if (mv > .5 && o.lstep !== undefined && st !== o.lstep && !o.dash && G.state === 'play') { const sd = st ? 1 : -1; for (let i = 0; i < 3; i++) G.fx.push({ dust: 1, x: o.x + Math.cos(rot) * .16 * sd + (Math.random() - .5) * .3, y: .12, z: o.z - Math.sin(rot) * .16 * sd + (Math.random() - .5) * .3, vx: (Math.random() - .5) * .8, vy: .5 + Math.random() * .5, vz: (Math.random() - .5) * .8, life: .55, max: .55, c: GLX.col(G.zone && G.zone.th && G.zone.th.dust || 0xa89878) }); } o.lstep = st; }
   const lg = Math.sin(w) * .8 * mv, air = o.dash ? -1 : 0, ranged = wt === 'bow' || wt === 'staff';
   // legs or robe
@@ -1322,7 +1323,7 @@ function drawHero(o, self) {
   }
   // off-hand
   if (g.offhand) { const ot = tr(g.offhand);
-    if (cls === 'warden') { GLX.part('dyn', 'cyl', BM, -.47, 1.62, 0, lg * .6 - .5, 0, 1.5708, -.5, .17, .2, .8, .06, .8, leatherC, em, 1, 0); GLX.part('dyn', 'cyl', BM, -.47, 1.62, 0, lg * .6 - .5, 0, 1.5708, -.5, .2, .2, .86, .03, .86, steelC, em, 1, 4); GLX.part('dyn', 'cyl', BM, -.47, 1.62, 0, lg * .6 - .5, 0, 1.5708, -.5, .21, .2, .62, .02, .62, cloth, em, 1, 0); GLX.part('dyn', 'sphere', BM, -.47, 1.62, 0, lg * .6 - .5, 0, 1.5708, -.5, .24, .2, .26, .12, .26, ot[0], em + ot[1], 1, 4); }
+    if (cls === 'warden') { GLX.part('dyn', 'cyl', BM, -.47, 1.62, 0, lg * .6 - .5, 0, 1.5708, -.5, .17, .2, .8, .06, .8, leatherC, em, 1, 7); GLX.part('dyn', 'cyl', BM, -.47, 1.62, 0, lg * .6 - .5, 0, 1.5708, -.5, .2, .2, .86, .03, .86, steelC, em, 1, 4); GLX.part('dyn', 'cyl', BM, -.47, 1.62, 0, lg * .6 - .5, 0, 1.5708, -.5, .21, .2, .62, .02, .62, cloth, em, 1, 6); GLX.part('dyn', 'sphere', BM, -.47, 1.62, 0, lg * .6 - .5, 0, 1.5708, -.5, .24, .2, .26, .12, .26, ot[0], em + ot[1], 1, 4); }
     else if (cls === 'ranger') { p('rbox', .1, 1.5, -.3, lean + .3, 0, .4, 0, 0, 0, .2, .7, .16, leatherC); for (let k = 0; k < 3; k++) p('rbox', .22 + k * .05, 1.95, -.36, lean + .3, 0, .4, 0, 0, 0, .03, .3, .03, k === 1 ? ot[0] : wood); }
     else if (cls === 'elementalist') { p('rbox', -.34, 1.0, .1, lean, .3, 0, 0, 0, 0, .12, .34, .28, dkLeather); p('rbox', -.41, 1.0, .1, lean, .3, 0, 0, 0, 0, .02, .16, .12, ot[0], 4, ot[1]); }
     else if (cls === 'brawler') { for (let k = 0; k < 7; k++) { const a = -1.2 + k * .4; p('sphere', Math.sin(a) * .26, 1.72 - Math.cos(a) * .1, .2 + Math.cos(a) * .06, lean, 0, 0, 0, 0, 0, .09, .09, .09, ot[0], 0, ot[1]); } }

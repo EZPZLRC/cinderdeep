@@ -112,20 +112,20 @@ vec4 wpos(mat4 m,vec3 p,vec3 n,float mat){vec4 w=m*vec4(p,1.);
  return w;}`;
   const VS = `#version 300 es
 layout(location=0) in vec3 aP; layout(location=1) in vec3 aN; layout(location=2) in mat4 iM; layout(location=6) in vec4 iC; layout(location=7) in vec2 iE;
-uniform mat4 uVP,uLVP; uniform float uOut; uniform vec3 uEye; out vec3 vW,vN,vL; out vec4 vC; out vec2 vE; out vec4 vS;
+uniform mat4 uVP,uLVP; uniform float uOut; uniform vec3 uEye; out vec3 vW,vN,vL,vO; out vec4 vC; out vec2 vE; out vec4 vS;
 ${N3}
 ${WPOS}
-void main(){vec4 w=wpos(iM,aP,aN,iE.y);vW=w.xyz;vL=aP;mat3 m=mat3(iM);vec3 sc=vec3(dot(m[0],m[0]),dot(m[1],m[1]),dot(m[2],m[2]));vN=normalize(m*(aN/max(sc,vec3(1e-6))));if(uOut>0.){w.xyz+=vN*uOut+normalize(w.xyz-uEye)*uOut*3.;}vC=iC;vE=iE;vS=uLVP*w;gl_Position=uVP*w;}`;
+void main(){vec4 w=wpos(iM,aP,aN,iE.y);vW=w.xyz;vL=aP;mat3 m=mat3(iM);vec3 sc=vec3(dot(m[0],m[0]),dot(m[1],m[1]),dot(m[2],m[2]));vN=normalize(m*(aN/max(sc,vec3(1e-6))));vO=aP*sqrt(sc);if(uOut>0.){w.xyz+=vN*uOut+normalize(w.xyz-uEye)*uOut*3.;}vC=iC;vE=iE;vS=uLVP*w;gl_Position=uVP*w;}`;
   const FS = `#version 300 es
 precision highp float; precision highp sampler2DShadow;
-in vec3 vW,vN,vL; in vec4 vC; in vec2 vE; in vec4 vS;
+in vec3 vW,vN,vL,vO; in vec4 vC; in vec2 vE; in vec4 vS;
 uniform sampler2DShadow uSh; uniform vec3 uSun,uSunC,uSky,uGnd,uFog,uEye,uPl; uniform vec2 uFogR; uniform float uLR,uQ,uT,uWet,uMist,uRim,uOut; uniform vec4 uLP[8]; uniform vec3 uLC[8]; out vec4 o;
 float h(vec2 p){uvec2 q=uvec2(ivec2(p))*uvec2(1597334673U,3812015801U);uint n=(q.x^q.y)*1597334673U;n^=n>>15;n*=2246822519U;n^=n>>13;return float(n>>8)*(1./16777216.);}
 float ns(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
 ${N3}
 void main(){if(uOut>0.){o=vec4(.016,.012,.009,1.);return;}float mat=vE.y;
  if(uRim==0.&&mat>1.5&&mat<3.5&&vW.y>2.3){float hd=length(vec2(vW.x,vW.z-(vW.y-1.)*.72)-uPl.xz);if(hd<4.2){float th=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))));if(th>smoothstep(3.55,4.15,hd))discard;}} // whatever stands between the camera and the hero thins out so you can always see the fight
- vec3 n=normalize(vN);vec3 a=vC.rgb;float spec=.12,shin=20.,wrap=0.,ao=1.,wet=0.;
+ vec3 n=normalize(vN);vec3 a=vC.rgb;float spec=.12,shin=20.,wrap=0.,ao=1.,wet=0.;vec3 ex=vec3(0.);
  if(mat>0.&&mat<1.5){
   float f1=ns(vW.xz*.11)*.6+ns(vW.xz*.31)*.4,f2=ns(vW.xz*1.1),f3=ns(vW.xz*7.);
   vec3 dirt=vec3(dot(a,vec3(.45)))*vec3(1.5,1.12,.72);
@@ -136,7 +136,25 @@ void main(){if(uOut>0.){o=vec4(.016,.012,.009,1.);return;}float mat=vE.y;
   ao=mix(.42,1.,smoothstep(0.,1.6,vW.y));
   if(mat>1.5&&mat<2.5){a*=.55+.9*n3(vW*2.4);wrap=.5;spec=.05;if(uQ>.5){float lf=n3(vW*8.5),l2=n3(vW*17.+3.);a*=mix(.5,1.3,smoothstep(.28,.72,lf));a=mix(a,a*vec3(1.35,1.25,.7),smoothstep(.6,.9,l2)*max(dot(n,uSun),0.)*.8);a*=.62+.38*clamp(n.y*.6+.6,0.,1.);n=normalize(n+(vec3(n3(vW*3.1),n3(vW*3.1+5.),n3(vW*3.1+9.))-.5)*1.1+(vec3(lf,l2,n3(vW*8.5+4.))-.5)*.9);}}
   else if(mat>2.5&&mat<3.5){a*=.6+.8*n3(vW*vec3(3.,1.2,3.));spec=.06;if(uQ>.5){float bk=n3(vec3(vW.x*9.,vW.y*1.1,vW.z*9.)),cr=n3(vW*vec3(14.,3.,14.)+9.);a*=mix(.55,1.2,bk);a*=1.-.45*smoothstep(.7,.85,cr);a=mix(a,a*vec3(.7,1.15,.6),smoothstep(.55,.8,n3(vW*1.7+30.))*clamp(n.y*.8+.3,0.,1.)*.6);n=normalize(n+(vec3(n3(vW*4.),n3(vW*4.+5.),n3(vW*4.+9.))-.5)*.9+vec3(bk-.5,0.,cr-.5)*.8);}}
-  else if(mat>3.5&&mat<4.5){spec=.5;shin=56.;a*=.5+.25*n3(vW*9.);}
+  else if(mat>3.5&&mat<4.5){if(uRim>0.&&uQ>.5){ /* build 0036: hero steel. Brushed grain, grime, worn bright edges, scratches and a reflection of the room */
+    vec3 Vv=normalize(uEye-vW),R=reflect(-Vv,n);float br=n3(vec3(vO.x*60.,vO.y*4.,vO.z*60.)),wr=n3(vO*6.+2.),gm=n3(vO*14.+5.),fr=pow(1.-max(dot(n,Vv),0.),4.);
+    a*=.48+.3*br;a*=1.-.35*smoothstep(.55,.75,gm);a=mix(a,a*1.5,smoothstep(.62,.8,wr)*.5);spec=.9;shin=60.+50.*br;
+    vec3 env=mix(uGnd*1.4,uSky*2.2+vec3(.06,.055,.05),smoothstep(-.3,.6,R.y))+vec3(1.,.55,.25)*.3*(1.-smoothstep(0.,.18,abs(R.y-.05)));
+    ex+=env*(.1+.7*fr)*mix(a*1.5,vec3(.8),.2)*(1.-.5*gm);
+    if(uQ>1.5){float s2=abs(n3(vec3(vO.x*3.+vO.y*30.,vO.z*30.,vO.y*3.-vO.x*9.))-.5),scr=(1.-smoothstep(0.,.018,s2))*smoothstep(.62,.78,n3(vO*5.+9.));scr*=1.-smoothstep(.4,1.2,fwidth(vO.y*30.));a*=1.+scr*.7;ex+=scr*.2*(uSky+uSunC*.3);}
+   }else{spec=.5;shin=56.;a*=.5+.25*n3(vW*9.);}}
+  else if(mat>5.5&&uRim>0.&&uQ>.5){vec3 Vv=normalize(uEye-vW);float nv=max(dot(n,Vv),0.);
+   if(mat<6.5){ /* build 0036: cloth. A woven thread pattern that fades out before it can shimmer, soft folds, fuzz and a velvet sheen */
+    float f=uQ>1.5?95.:60.,u=(vO.x+vO.z)*f,v=vO.y*f,wv=sin(u)*sin(v),fw=fwidth(u)+fwidth(v);wv*=1.-smoothstep(.6,2.,fw);float fo=n3(vO*vec3(5.,2.,5.)+7.),fz=n3(vO*30.);
+    a*=(1.+.12*wv)*(.72+.5*fo)*(.9+.2*fz);wrap=.35;spec=.04;shin=8.;n=normalize(n+(vec3(n3(vO*vec3(5.,2.,5.)+8.),.5,n3(vO*vec3(5.,2.,5.)+9.))-.5)*.5);ex+=a*(uSky*1.2+uSunC*.25)*pow(1.-nv,2.)*.55;}
+   else if(mat<7.5){ /* leather: pebbled grain, creases, lighter scuffed patches and a waxy shine */
+    float gr=n3(vO*70.),pt=n3(vO*3.5+3.),cr=n3(vO*vec3(24.,5.,24.)+11.);gr=mix(gr,.5,smoothstep(.5,1.5,fwidth(vO.x*70.)));
+    a*=.9+.16*gr;a*=1.-.28*smoothstep(.6,.78,cr);float wo=smoothstep(.5,.85,pt);a=mix(a*.85,a*vec3(1.3,1.18,1.02)+.015,wo);spec=.3*(1.-.6*wo)+.08*gr;shin=18.;n=normalize(n+(vec3(gr,n3(vO*70.+4.),n3(vO*70.+8.))-.5)*.22);ex+=a*uSky*pow(1.-nv,3.)*.5*(1.-wo);}
+   else if(mat<8.5){ /* skin: soft wrapped light, warm blood glow where light turns to shadow and through thin edges */
+    float nd=dot(n,uSun);a*=.95+.1*n3(vO*25.);wrap=.45;spec=.1;shin=14.;ex+=a*uSunC*vec3(.9,.28,.16)*.24*smoothstep(-.45,.15,nd)*(1.-smoothstep(.15,.7,nd))+a*vec3(1.,.55,.45)*pow(1.-nv,3.)*.2;}
+   else{ /* hair: strands that run down the head with a soft shine along them */
+    float st=n3(vec3(vO.x*90.,vO.y*7.,vO.z*90.));st=mix(st,.5,smoothstep(.5,1.5,fwidth(vO.x*90.)));a*=.65+.6*st;spec=.12+.3*st;shin=34.;wrap=.2;}
+  }
   else if(mat>4.5&&mat<5.5){float t=clamp(vL.y+.5,0.,1.);a*=mix(.6,1.3,t)*(.8+.4*ns(vW.xz*1.3));ao=mix(.85,1.,t);wrap=.7;spec=.02;}
   else a*=.88+.24*n3(vW*5.);
  }
@@ -145,7 +163,7 @@ void main(){if(uOut>0.){o=vec4(.016,.012,.009,1.);return;}float mat=vE.y;
  vec3 V=normalize(uEye-vW);
  float dif=max((dot(n,uSun)+wrap)/(1.+wrap),0.);
  float sl=pow(max(dot(n,normalize(uSun+V)),0.),shin)*spec;
- vec3 c=a*(mix(uGnd,uSky,n.y*.5+.5)*ao+uSunC*dif*sh)+uSunC*sl*sh;
+ vec3 c=a*(mix(uGnd,uSky,n.y*.5+.5)*ao+uSunC*dif*sh)+uSunC*sl*sh+ex*(.4+.6*sh)*ao;
  for(int i=0;i<8;i++){vec3 d=uLP[i].xyz-vW;float dist=length(d);float at=clamp(1.-dist/uLP[i].w,0.,1.);at*=at;vec3 L=d/max(dist,.001);c+=uLC[i]*at*(a*max(dot(n,L),.2)+.5*spec*pow(max(dot(n,normalize(L+V)),0.),shin));}
  c+=a*uSky*pow(1.-max(dot(n,V),0.),3.)*1.2*ao;
  if(uRim>0.){float fr=pow(1.-max(dot(n,V),0.),3.6);c+=(uSunC*.4+uSky*.6)*fr*uRim*(.35+.65*sh)+a*uSunC*.18*uRim*max(dot(n,normalize(vec3(-uSun.x,.6,-uSun.z))),0.);} // characters catch a rim of light so they read against the ground
