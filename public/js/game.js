@@ -1028,6 +1028,7 @@ function tryCast(slot, tx, tz) {
   const h = G.hero, s = P.stats; let id = h.bar[slot];
   if (!h.eq.weapon) { if (slot !== 0) { if (G.time - P.oomT > 1.5) { P.oomT = G.time; hint('Unarmed: you can only punch until you equip a weapon.'); } return false; } id = 'punch'; }
   if (!id) return false; const sk = talSk(id);
+  if (slot > 0) goalDone('skill'); /* build 0097 (Lee): pressing a skill counts for First Steps even when it can't fire yet (not enough Fury, on cooldown), and so does an autocast */
   if (P.act || P.dash || (P.cds[id] || 0) > 0) return false; if (sk.type === 'spin' && P.spin) return false;
   if (P.mana < (sk.cost || 0)) { if (G.time - P.oomT > 1.5) { P.oomT = G.time; hint('Not enough ' + CLASSES[h.cls].res.n + '.'); } return false; }
   if (tx === undefined) { tx = IN.gx; tz = IN.gz; }
@@ -1035,7 +1036,6 @@ function tryCast(slot, tx, tz) {
   if (sk.buff && sk.buff.s) { P.buffs = P.buffs.filter(b => b.n !== sk.buff.n); P.buffs.push({ s: sk.buff.s, t: sk.buff.t, n: sk.buff.n }); computeStats(); } /* build 0074: a talent card's short boost */
   const sp = (1 + s.aspd / 100) * aspdK();
   if (sk.type === 'spin') { P.spin = { t: sk.dur, tk: 0, sk }; return true; }
-  if (slot > 0 && !P._auto) goalDone('skill'); /* build 0062 (playtest): only a skill you cast yourself ticks First Steps, not autocast */
   if (sk.type === 'buff') { P.buffs = P.buffs.filter(b => b.n !== sk.n); P.buffs.push({ s: sk.s, t: sk.dur, n: sk.n }); computeStats(); ring(P.x, P.z, 0, 7, .5, 0xffb03a); SFX.play('shrine'); P.mana = Math.min(s.maxMana, P.mana + 20); return true; }
   P.rot = Math.atan2(tx - P.x, tz - P.z); const dur = sk.basic ? 1 / (s.wspd * sp * (sk.as || 1)) : (sk.ct || .35) / sp;
   P.act = { sk, id, t: 0, dur, fireAt: dur * .42, fired: false, tx, tz }; P.swing = 0; SFX.play('swing'); return true;
@@ -1271,6 +1271,7 @@ function updPlayer(dt) {
   if (P.spin) { const sp = P.spin; sp.t -= dt; sp.tk -= dt; if (sp.tk <= 0) { sp.tk = sp.sk.tick / ((1 + s.aspd / 100) * aspdK()); areaHit(P.x, P.z, sp.sk.r * (1 + s.area / 100), sp.sk); SFX.play('whirl'); } if (sp.t <= 0) P.spin = null; }
   if (P.act) { const a = P.act; a.t += dt; P.swing = a.t / a.dur; if (!a.fired && a.t >= a.fireAt) { a.fired = true; fireSkill(a); } if (a.t >= a.dur) P.act = null; } /* build 0093 (Lee): heroes keep walking while an attack or skill plays; the legs run and the arms swing */
   if (G.auto && botStep(dt)) return;
+  if ((IN.rmb && h.bar[1]) || (IN.keys.q && h.bar[2]) || (IN.keys.w && h.bar[3])) goalDone('skill'); /* build 0097 (Lee): pressing a skill counts for First Steps even mid-swing */
   if (!P.act) void ((IN.rmb && tryCast(1)) || (IN.keys.q && tryCast(2)) || (IN.keys.w && tryCast(3))); /* build 0093: a skill no longer stops the hero where they stand */
   // thumb joystick + attack buttons: aim at the nearest foe by itself; a melee button held with the stick at rest walks you into reach
   { const K = IN.keys, kx = (K.arrowright ? 1 : 0) - (K.arrowleft ? 1 : 0), kz = (K.arrowdown ? 1 : 0) - (K.arrowup ? 1 : 0); if (kx || kz) { const l = Math.hypot(kx, kz); IN.joy.on = true; IN.joy.x = kx / l; IN.joy.z = kz / l; IN.joy.kb = true; } else if (IN.joy.kb) { IN.joy.kb = false; IN.joy.on = false; IN.joy.x = IN.joy.z = 0; } } // arrow keys steer like the thumb stick
