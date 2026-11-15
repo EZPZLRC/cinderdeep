@@ -1517,6 +1517,35 @@ function bossTele(e) { // build 0048: between its usual attacks a guardian marks
   else if (k === 2) addArea({ x: P.x, z: P.z, sh: 'cross', ang: an + rnd(-.4, .4), len: 24, w: 2.6, delay: 1.25, owner: 'e', dmg: e.dmg * 1.8, el, c: 0xff5a2a, src: e, hvy: heavyK(1.2) });
   else addArea({ x: e.x, z: e.z, sh: 'rays', n: 6, ang: an, len: 17, w: 1.9, delay: 1.3, owner: 'e', dmg: e.dmg * 1.8, el, c: 0xff5a2a, src: e, hvy: heavyK(1.2) });
   e.st = 'hwind'; e.t = 1; }
+// build 0089 (Lee: make the boss fights more interesting): each guardian's signature moves. Every one is marked on the ground first, from a
+// second to two seconds ahead, in a shape you can step out of, and the ones in two waves leave a safe moment between them.
+function bossSig(e, mv) {
+  const an = Math.atan2(P.x - e.x, P.z - e.z), el = G.zone.th.elem, D = e.dmg, A = o => addArea(Object.assign({ owner: 'e', el, src: e }, o)), col = e.md && e.md.e || 0xff5a2a;
+  if (mv === 'roots') { /* roots tear up the ground in a fan toward you, then again in the gaps: step sideways twice */
+    for (const k of [-1, 0, 1]) A({ x: e.x, z: e.z, sh: 'line', ang: an + k * .5, len: 20, w: 2, delay: 1.1, dmg: D * 1.7, c: col, hvy: heavyK(1.1) });
+    for (const k of [-.5, .5]) A({ x: e.x, z: e.z, sh: 'line', ang: an + k * .5, len: 20, w: 2, delay: 1.9, dmg: D * 1.7, c: col, hvy: heavyK(1.1) }); }
+  else if (mv === 'cage') { /* a ring closes around you, then the middle: hold still until the ring lands, then get out */
+    for (let i = 0; i < 8; i++) { const a = i / 8 * 6.2832; A({ x: P.x + Math.sin(a) * 4.2, z: P.z + Math.cos(a) * 4.2, r: 1.9, delay: 1.2, dmg: D * 1.5, c: col, hvy: heavyK(.6) }); }
+    A({ x: P.x, z: P.z, r: 2.8, delay: 2, dmg: D * 2, c: 0xff4a2a, hvy: heavyK(1.3) }); }
+  else if (mv === 'trail') { /* it tears a path straight through you, landing step by step: move off the line */
+    for (let i = 0; i < 6; i++) { const d = 2.5 + i * 3.2; A({ x: e.x + Math.sin(an) * d, z: e.z + Math.cos(an) * d, r: 2.6, delay: .95 + i * .2, dmg: D * 1.6, c: col, hvy: heavyK(.9) }); } }
+  else if (mv === 'twincross') { /* a cross on you, then the same cross turned: leave on a diagonal, then not back the way you came */
+    A({ x: P.x, z: P.z, sh: 'cross', ang: an, len: 24, w: 2.6, delay: 1.15, dmg: D * 1.6, c: col, hvy: heavyK(1.1) });
+    A({ x: P.x, z: P.z, sh: 'cross', ang: an + .7854, len: 24, w: 2.6, delay: 1.9, dmg: D * 1.6, c: 0xff4a2a, hvy: heavyK(1.1) }); }
+  else if (mv === 'twinrays') { /* rays burst from it, then again between them */
+    A({ x: e.x, z: e.z, sh: 'rays', n: 7, ang: an, len: 18, w: 1.8, delay: 1.2, dmg: D * 1.6, c: col, hvy: heavyK(1.1) });
+    A({ x: e.x, z: e.z, sh: 'rays', n: 7, ang: an + Math.PI / 7, len: 18, w: 1.8, delay: 1.95, dmg: D * 1.6, c: 0xff4a2a, hvy: heavyK(1.1) }); }
+  else if (mv === 'twincone') { /* a breath at you, then sweeping to both sides: get behind it or far away */
+    A({ x: e.x, z: e.z, sh: 'cone', ang: an, arc: .55, r: 11 + e.r, delay: 1.1, dmg: D * 1.8, c: col, hvy: heavyK(1.2) });
+    for (const k of [-1, 1]) A({ x: e.x, z: e.z, sh: 'cone', ang: an + k * 1, arc: .55, r: 11 + e.r, delay: 1.75, dmg: D * 1.8, c: 0xff4a2a, hvy: heavyK(1.2) }); }
+  else if (mv === 'fault') { /* the ground splits in a cross through it, then the far ends erupt */
+    A({ x: e.x, z: e.z, sh: 'cross', ang: an, len: 34, w: 2.6, delay: 1.2, dmg: D * 1.7, c: col, hvy: heavyK(1.2) });
+    for (let i = 0; i < 4; i++) { const a = an + i * 1.5708; A({ x: e.x + Math.sin(a) * 12, z: e.z + Math.cos(a) * 12, r: 3.4, delay: 1.9, dmg: D * 1.6, c: 0xff4a2a, hvy: heavyK(.9) }); } }
+  else if (mv === 'halo') { /* a ring lands around it, then everything inside: stay outside the ring, or cross it once it has landed */
+    for (let i = 0; i < 10; i++) { const a = an + i / 10 * 6.2832; A({ x: e.x + Math.sin(a) * 7, z: e.z + Math.cos(a) * 7, r: 2, delay: 1.1, dmg: D * 1.5, c: col, hvy: heavyK(.6) }); }
+    A({ x: e.x, z: e.z, r: 5.6, delay: 1.9, dmg: D * 2.1, c: 0xff4a2a, hvy: heavyK(1.4) }); }
+  e.st = 'hwind'; e.t = 1;
+}
 function updEnemy(e, dt) {
   if (e.dummy) { if (e.flash > 0) e.flash -= dt; e.wob = Math.max(0, (e.wob || 0) - dt * 1.6); if (e.burnT > 0) { e.burnT -= dt; dummyHit(e, e.burn * dt); } e.chill = e.shock = e.frozen = 0; e.awake = true; return; }
   if (e.flash > 0) e.flash -= dt; if (e.atk > 0) e.atk -= dt * 3; if (e.chill > 0) e.chill -= dt; if (e.shock > 0) e.shock -= dt;
@@ -1527,6 +1556,7 @@ function updEnemy(e, dt) {
   const hitT = (v, el) => T === P ? dmgPlayer(v, el, e) : tankHit(T, e);
   if (!e.awake) { if (Math.hypot(P.x - e.x, P.z - e.z) < (e.boss ? 17 : 14) && !P.dead && !(e.dozeT > G.time && !los(e.x, e.z, P.x, P.z))) wake(e); else return; }
   if (P.dead) return; if (e.frozen > 0) { e.frozen -= dt; return; }
+  if (e.boss) { e.pt -= dt; e.tt = (e.tt === undefined ? 1.4 : e.tt) - dt; if (e.bd && e.bd.sig) e.sigT = (e.sigT === undefined ? 4.5 : e.sigT) - dt; } /* build 0089: a guardian's attack clocks keep running while it swings or recovers, so standing in its reach no longer stops its big moves */
   const slow = e.chill > 0 ? .6 : 1, sp = e.spd * slow, a = e.a; e.cd -= dt * slow; e.t -= dt * slow;
   if (e.arch === 'goblin') { e.escT = (e.escT || 0) + dt; if (e.escT > 30) { e.alive = false; e.deadT = .45; e.escaped = 1; if (typeof __emit === 'function') __emit(null, { t: 'gone', id: e.id }); else goblinGone(e); return; }
     const st = sp * dt; if (d < 20) { if (!moveEnt(e, -dx / d * st, -dz / d * st, e.r * .8)) { const sd = (e.id & 1) ? 1 : -1; moveEnt(e, -dz / d * st * sd, dx / d * st * sd, e.r * .8); } e.walk += st * 1.8; let da = Math.atan2(-dx, -dz) - e.rot; while (da > Math.PI) da -= 6.2832; while (da < -Math.PI) da += 6.2832; e.rot += da * Math.min(1, dt * 10); } return; }
@@ -1547,8 +1577,11 @@ function updEnemy(e, dt) {
     const q = Math.ceil(e.hp / e.maxHp * 4); if (e.q && q < e.q) for (let i = 0; i < 2; i++) G.drops.push({ x: e.x + rnd(-4, 4), z: e.z + rnd(-4, 4), globe: 1, t: 0 }); e.q = q;
     if (e.spiral > 0) { e.spiral -= dt; e.spT = (e.spT || 0) - dt; if (e.spT <= 0) { e.spT = .09; e.spA = (e.spA || 0) + .5; eShoot(e, e.spA, 10, .7, G.zone.th.elem); eShoot(e, e.spA + Math.PI, 10, .7, G.zone.th.elem); } return; }
     if (e.bd.phases) { const ph = e.hp > e.maxHp * .66 ? 0 : e.hp > e.maxHp * .33 ? 1 : 2; if (ph > (e.ph || 0)) { e.ph = ph; e.pi = 0; e.pt = .6; e.spiral = 0; } } /* build 0074: Vaeloth changes his whole fight at two thirds and one third of his life */
-    e.pt -= dt; if (e.pt <= 0) { e.pt = (e.hp < e.maxHp * .4 ? 2.3 : 3.3) * (e.ph === 2 ? .8 : 1); bossPattern(e); return; }
-    e.tt = (e.tt === undefined ? 1.4 : e.tt) - dt; if (e.tt <= 0 && d < 16) { e.tt = e.hp < e.maxHp * .4 ? 4.6 : 6; bossTele(e); return; }
+    const sg = e.bd.sig; if (sg && !e.p2 && e.hp < e.maxHp * .5) { e.p2 = 1; e.pt = Math.min(e.pt, .8); e.sigT = 1.2; e.spiral = 0; ring(e.x, e.z, 0, 9, .7, 0xff4a2a); burst(e.x, 2, e.z, 0xff4a2a, 30, 8); } /* build 0089: enraged at half life */
+    const fast = e.p2 || e.hp < e.maxHp * .4;
+    if (sg) { if (e.sigT <= 0 && d < 20) { e.sigT = e.p2 ? 6.5 : 9; e.pt = Math.max(e.pt, 2.2); e.tt = Math.max(e.tt, 2.6); /* nothing else lands while its two waves play out */ bossSig(e, e.p2 ? sg[(e.si = (e.si || 0) + 1) % 2] : sg[0]); return; } }
+    if (e.pt <= 0) { e.pt = (fast ? 2.3 : 3.3) * (e.ph === 2 ? .8 : 1); bossPattern(e); return; }
+    if (e.tt <= 0 && d < 16) { e.tt = fast ? 4.6 : 6; bossTele(e); return; }
   }
   if (e.arch === 'caster') { if (d > 11) go(1); else if (d < 6) go(-1, .8); else { const sd = Math.sin(G.time * .5 + e.id) > 0 ? 1 : -1, st = sp * dt * .55; moveEnt(e, dz / d * st * sd, -dx / d * st * sd, e.r * .8); e.walk += st * 1.6; } // keeps moving sideways so it is harder to line up
     if (!e.elite && e.md.v !== 'lob') { e.sgT = (e.sgT === undefined ? rnd(2, 5) : e.sgT) - dt; if (e.sgT <= 0 && d < 13) { const an = Math.atan2(dx, dz), o = eTele({ x: e.x, z: e.z, sh: 'line', ang: an, len: 15, w: 1.5, delay: 1.15, owner: 'e', dmg: e.dmg * 1.5, el: G.zone.th.elem, c: e.md.e, src: e, hvy: heavyK(.9) }); if (o) { e.sgT = rnd(8, 11); e.st = 'hwind'; e.t = o.delay; e.rot = an; return; } e.sgT = .5; } } // build 0048: casters also charge a beam along a marked line

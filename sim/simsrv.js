@@ -103,9 +103,11 @@ function wbAdd() {
     if (Math.hypot(tx - Z.bossAt[0], tz - Z.bossAt[1]) < 26) continue; let near = 1e9; for (const p of pls) near = Math.min(near, Math.hypot(p.x - tx, p.z - tz)); if (near < 20) continue;
     const sc = 100 - Math.abs(d - 9) * 4 + Math.random() * 3; if (sc > best) { best = sc; x = tx; z = tz; } if (d >= 7 && d <= 12) break; }
   const b = { id: ++G.eid, md: { a: 'boss', n: bd.n, c: bd.c, c2: bd.c2, e: bd.e }, a: { r: 2.3, sc: bd.sc, rec: .9, wind: .8, reach: 4.4, xp: 40, spd: 4 }, arch: 'boss', boss: true, wb: 1, bd, x, z, rot: 0, lvl: lv + 1, elite: 3, pack: -3, r: 2.3, sc: bd.sc,
-    maxHp: Math.round(2.8 * hit * 40 * 1.6 * WB_LIFE * WBS.k), dmg: 5 * Math.pow(1.095, lv + 1) * 3, spd: 4, st: 'chase', t: 0, cd: 1, walk: 0, awake: false, flash: 0, chill: 0, shock: 0, frozen: 0, burn: 0, burnT: 0, atk: 0, alive: true, deadT: 0, pt: 2.5, pi: 0, name: bd.n, mods: [] };
+    maxHp: Math.round(2.8 * hit * 40 * 1.6 * WB_LIFE * WBS.k), dmg: 5 * Math.pow(1.095, lv + 1) * 3 * (WBS.dk || 1), spd: 4, st: 'chase', t: 0, cd: 1, walk: 0, awake: false, flash: 0, chill: 0, shock: 0, frozen: 0, burn: 0, burnT: 0, atk: 0, alive: true, deadT: 0, pt: 2.5, pi: 0, name: bd.n, mods: [] };
   b.hp = Math.max(1, Math.round(b.maxHp * WBS.f)); G.ents.push(b); return b;
 }
 // called by the host every tick while the boss lives: keeps every floor's copy on the shared life, and puts the boss on floors that do not have it yet
-function srvWbSync(f, k) { if (!WBS) WBS = { f: f, k: k }; WBS.f = f; let e = wbEnt(); if (!e) e = wbAdd(); if (e) e.hp = Math.max(1, Math.round(e.maxHp * f)); }
+function srvWbSync(f, k, dk) { dk = dk > 0 ? dk : 1; if (!WBS) WBS = { f: f, k: k, dk: dk }; WBS.f = f; let e = wbEnt(); if (!e) e = wbAdd();
+  if (e) { let ch = 0; /* build 0089: follow the players online while it lives */ if (k > 0 && Math.abs(k - WBS.k) > 1e-6) { e.maxHp = Math.max(1, Math.round(e.maxHp * k / WBS.k)); WBS.k = k; ch = 1; } if (Math.abs(dk - (WBS.dk || 1)) > 1e-6) { e.dmg = e.dmg * dk / (WBS.dk || 1); WBS.dk = dk; ch = 1; }
+    e.hp = Math.max(1, Math.round(e.maxHp * f)); if (ch && typeof __emit === 'function') __emit(null, { t: 'wbk', id: e.id, m: e.maxHp, hp: e.hp }); } }
 function srvWbEnd() { const e = wbEnt(); WBS = null; if (e) killEnemy(e); }

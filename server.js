@@ -22,7 +22,12 @@ let wbDirty = false; setInterval(() => { if (!wbDirty) return; wbDirty = false; 
 function everyone(msg) { const raw = JSON.stringify(msg); for (const r of rooms.values()) for (const q of r.players.values()) q.conn.sendRaw(raw); }
 function wbInfo() { return [WB.on ? WB_NEED : WB.k, WB_NEED, WB.on ? 1 : 0, WB.n]; }
 function wbKill() { if (WB.on) return; WB.k++; wbDirty = true; if (WB.k >= WB_NEED) wbStart(); else if (WB.k === Math.round(WB_NEED * .9)) everyone({ t: 'wb', ev: 'soon', left: WB_NEED - WB.k }); }
-function wbStart() { let online = 0; for (const r of rooms.values()) online += r.players.size; WB.k = WB_NEED; WB.on = { f: 1, k: Math.min(6, 1 + .5 * Math.max(0, online - 1)), hit: new Set() }; wbDirty = true; everyone({ t: 'wb', ev: 'up', n: WB.n }); console.log('[WORLD BOSS] risen, ' + online + ' online'); }
+// build 0089 (Lee: the world boss should scale with the players on the server): its life is 1x for one player online and grows by half
+// for each extra player (2 online 1.5x, 3 online 2x, up to 10x), and its hits grow by a tenth for each extra player (up to 1.5x). Both follow
+// the count while it lives, so it toughens as players join and eases as they leave, and the share of life already knocked off stays knocked off.
+function wbK(n) { return Math.min(10, 1 + .5 * Math.max(0, n - 1)); }
+function wbDk(n) { return Math.min(1.5, 1 + .1 * Math.max(0, n - 1)); }
+function wbStart() { const online = onlineCount(); WB.k = WB_NEED; WB.on = { f: 1, k: wbK(online), dk: wbDk(online), hit: new Set() }; wbDirty = true; everyone({ t: 'wb', ev: 'up', n: WB.n }); console.log('[WORLD BOSS] risen, ' + online + ' online'); }
 function wbHit(room, df, pid) { const A = WB.on; if (!A || !(df > 0)) return; A.f -= Math.min(df, .05); const p = room.players.get(pid); if (p && p.name) A.hit.add(p.name); if (A.f <= 0) wbDead(); }
 function wbDead() { const A = WB.on; if (!A) return; WB.on = null; WB.k = 0; WB.n++; wbDirty = true; for (const r of rooms.values()) { try { r.ctx.srvWbEnd(); } catch (e) { console.error('wb end', e); } } const by = [...A.hit]; everyone({ t: 'wb', ev: 'dead', n: WB.n - 1, by: by.slice(0, 6), c: by.length }); console.log('[WORLD BOSS] slain by ' + by.join(', ')); }
 const PARTY_MAX = 10; // players per party, for both party codes and blank-code matching (build 0022)
@@ -105,7 +110,7 @@ setInterval(() => {
     if (!room.players.size) { if (now - room.emptyAt > 60000) rooms.delete(code); continue; }
     // build 0075 (party sync): a player whose game has gone quiet (phone locked, tab in the background) stops counting as a target, so monsters do not stand around a frozen hero
     for (const q of room.players.values()) { if (q.st && q.lastP && now - q.lastP > 4000 && !q.st[8]) { q.st[8] = 1; const sp = room.ctx.SP[q.id]; if (sp) sp.dead = true; } }
-    try { if (WB.on) room.ctx.srvWbSync(Math.max(0, WB.on.f), WB.on.k); room.ctx.srvTick(dt); if (tickN % 2 === 0) cast(room, { t: 's', o: online, w: wbInfo(), e: room.ctx.srvSnap(), p: [...room.players.values()].filter(p => p.st).map(p => p.st) }); }
+    try { if (WB.on) { WB.on.k = wbK(online); WB.on.dk = wbDk(online); room.ctx.srvWbSync(Math.max(0, WB.on.f), WB.on.k, WB.on.dk); } room.ctx.srvTick(dt); if (tickN % 2 === 0) cast(room, { t: 's', o: online, w: wbInfo(), e: room.ctx.srvSnap(), p: [...room.players.values()].filter(p => p.st).map(p => p.st) }); }
     catch (err) { console.error('room', code, err); }
   }
 }, 50);
