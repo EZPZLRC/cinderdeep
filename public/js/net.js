@@ -75,8 +75,8 @@ const NET = (() => {
       case 'give': { const it = cleanItem(m.item); if (!it) break; if (addItem(it)) { hint(txt(m.n, 16) + (m.back ? ' could not carry it, so it came back: ' : ' gave you ') + it.name + '.'); UI.invDirty = true; saveGame(); } else if (!m.back) N.send({ t: 'give', to: m.from, item: m.item, back: true }); break; }
     }
   }
-  N.status = async () => { try { if (!/^https?:$/.test(location.protocol)) return null; const r = await fetch('cinderdeep-server', { cache: 'no-store' }); if (!r.ok) return null; const j = await r.json(); return j && j.cinderdeep ? j : null; } catch (e) { return null; } };
-  N.probe = async () => { try { if (!/^https?:$/.test(location.protocol)) return false; const r = await fetch('cinderdeep-server', { cache: 'no-store' }); if (!r.ok) return false; const j = await r.json(); return !!(j && j.cinderdeep); } catch (e) { return false; } };
+  N.status = async () => { try { if (!/^https?:$/.test(location.protocol)) return null; const r = await fetch('oathbyte-server', { cache: 'no-store' }); if (!r.ok) return null; const j = await r.json(); return j && j.oathbyte ? j : null; } catch (e) { return null; } };
+  N.probe = async () => { try { if (!/^https?:$/.test(location.protocol)) return false; const r = await fetch('oathbyte-server', { cache: 'no-store' }); if (!r.ok) return false; const j = await r.json(); return !!(j && j.oathbyte); } catch (e) { return false; } };
   N.close = () => { if (ws) { N.quit = true; N.on = false; G.online = false; N.peers = {}; try { ws.close(); } catch (e) { } ws = null; } };
   N.send = o => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); };
   const seen = {}; N.quiet = k => { const t = Date.now(); if (seen[k] && t - seen[k] < 60000) return false; seen[k] = t; return true; }; // a flaky connection should not flood chat
