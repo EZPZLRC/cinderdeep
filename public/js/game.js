@@ -1226,9 +1226,9 @@ function updPlayer(dt) {
     return;
   }
   if (P.spin) { const sp = P.spin; sp.t -= dt; sp.tk -= dt; if (sp.tk <= 0) { sp.tk = sp.sk.tick / ((1 + s.aspd / 100) * aspdK()); areaHit(P.x, P.z, sp.sk.r * (1 + s.area / 100), sp.sk); SFX.play('whirl'); } if (sp.t <= 0) P.spin = null; }
-  if (P.act) { const a = P.act; a.t += dt; P.swing = a.t / a.dur; if (!a.fired && a.t >= a.fireAt) { a.fired = true; fireSkill(a); } if (a.t >= a.dur) P.act = null; } /* build 0092 (Lee): heroes keep walking while an attack or skill plays; the legs run and the arms swing */
+  if (P.act) { const a = P.act; a.t += dt; P.swing = a.t / a.dur; if (!a.fired && a.t >= a.fireAt) { a.fired = true; fireSkill(a); } if (a.t >= a.dur) P.act = null; } /* build 0093 (Lee): heroes keep walking while an attack or skill plays; the legs run and the arms swing */
   if (G.auto && botStep(dt)) return;
-  if (!P.act) void ((IN.rmb && tryCast(1)) || (IN.keys.q && tryCast(2)) || (IN.keys.w && tryCast(3))); /* build 0092: a skill no longer stops the hero where they stand */
+  if (!P.act) void ((IN.rmb && tryCast(1)) || (IN.keys.q && tryCast(2)) || (IN.keys.w && tryCast(3))); /* build 0093: a skill no longer stops the hero where they stand */
   // thumb joystick + attack buttons: aim at the nearest foe by itself; a melee button held with the stick at rest walks you into reach
   { const K = IN.keys, kx = (K.arrowright ? 1 : 0) - (K.arrowleft ? 1 : 0), kz = (K.arrowdown ? 1 : 0) - (K.arrowup ? 1 : 0); if (kx || kz) { const l = Math.hypot(kx, kz); IN.joy.on = true; IN.joy.x = kx / l; IN.joy.z = kz / l; IN.joy.kb = true; } else if (IN.joy.kb) { IN.joy.kb = false; IN.joy.on = false; IN.joy.x = IN.joy.z = 0; } } // arrow keys steer like the thumb stick
   const jx = IN.joy.x, jz = IN.joy.z, jm = IN.joy.on ? Math.hypot(jx, jz) : 0; let chase = null;
@@ -1242,7 +1242,7 @@ function updPlayer(dt) {
     if (e && melee) { const d = Math.hypot(e.x - P.x, e.z - P.z); if (d > sk.range * .78 + e.r) { if (steer) continue; chase = e; break; } } // out of reach: the stick steers, or at rest the hero closes in
     if (!e && steer && sk && (melee || sk.basic)) continue; // nothing to hit while running: keep running
     const t = steer && (dash || !e) ? [P.x + jx / jm * far, P.z + jz / jm * far] : e && !(dash && !sk.land) ? [e.x, e.z] : [P.x + Math.sin(P.rot) * far, P.z + Math.cos(P.rot) * far];
-    if (P.act || tryCast(i, t[0], t[1])) break; /* build 0092: cast and keep moving with the stick */
+    if (P.act || tryCast(i, t[0], t[1])) break; /* build 0093: cast and keep moving with the stick */
   }
   if (IN.lmb || IN.lmbFresh) {
     if (IN.shift) { P.atk = P.move = P.inter = P.pick = null; IN.lmbFresh = false; tryCast(0); return; }
@@ -1253,14 +1253,14 @@ function updPlayer(dt) {
   if (P.atk && !P.atk.alive) { P.atk = null; }
   if (jm >= .18) { P.atk = P.inter = P.pick = P.move = null; tx = P.x + jx / jm * 4; tz = P.z + jz / jm * 4; spK = Math.min(1, .45 + jm * .7); }
   else if (chase) { P.atk = P.inter = P.pick = P.move = null; tx = chase.x; tz = chase.z; }
-  else if (P.atk) { const e = P.atk, d = Math.hypot(e.x - P.x, e.z - P.z); if (d <= (talSk(G.hero.bar[0]) || SKILLS.cleave).range * .78 + e.r) { if (!P.act) { tryCast(0, e.x, e.z); if (!IN.lmb) P.atk = null; } return; } /* build 0092: a click on a foe mid-skill waits for the skill, then swings */ tx = e.x; tz = e.z; }
+  else if (P.atk) { const e = P.atk, d = Math.hypot(e.x - P.x, e.z - P.z); if (d <= (talSk(G.hero.bar[0]) || SKILLS.cleave).range * .78 + e.r) { if (!P.act) { tryCast(0, e.x, e.z); if (!IN.lmb) P.atk = null; } return; } /* build 0093: a click on a foe mid-skill waits for the skill, then swings */ tx = e.x; tz = e.z; }
   else if (P.pick) { if (!G.drops.includes(P.pick)) P.pick = null; else { if (Math.hypot(P.pick.x - P.x, P.pick.z - P.z) < 2.3) { pickup(P.pick); P.pick = null; return; } tx = P.pick.x; tz = P.pick.z; } }
   else if (P.inter) { const o = P.inter; if (Math.hypot(o.x - P.x, o.z - P.z) < (P.gateGo === o ? 3.4 : 2.6)) { interact(o); P.inter = null; return; } tx = o.x; tz = o.z; }
   else if (P.move) { tx = P.move[0]; tz = P.move[1]; if (Math.hypot(tx - P.x, tz - P.z) < .3) { P.move = null; tx = undefined; } }
   if (tx !== undefined && jm < .18) { const w = navStep(tx, tz, dt); P.navTo = w; tx = w[0]; tz = w[1]; } else { NAV.key = -1; NAV.pts = null; P.navTo = null; }
   if (tx !== undefined) {
     const dx = tx - P.x, dz = tz - P.z, d = Math.hypot(dx, dz) || 1, sp = s.msT * (P.spin ? .8 : 1) * spK, st = Math.min(d, sp * dt);
-    if (!P.spin && !P.act) { let da = Math.atan2(dx, dz) - P.rot; /* build 0092: mid-attack the hero keeps facing the target and walks on */ while (da > Math.PI) da -= 6.2832; while (da < -Math.PI) da += 6.2832; P.rot += da * Math.min(1, dt * 18); }
+    if (!P.spin && !P.act) { let da = Math.atan2(dx, dz) - P.rot; /* build 0093: mid-attack the hero keeps facing the target and walks on */ while (da > Math.PI) da -= 6.2832; while (da < -Math.PI) da += 6.2832; P.rot += da * Math.min(1, dt * 18); }
     const ox = P.x, oz = P.z, mx = dx / d * st, mz = dz / d * st; if (P.navTo && !blocked(P.x + mx, P.z + mz, .55)) { P.x += mx; P.z += mz; } else moveEnt(P, mx, mz, .55); let moved = Math.hypot(P.x - ox, P.z - oz); /* build 0071: a clear diagonal step is taken whole, so the hero does not catch on corners */
     if (moved < st * .5 && !P.navTo) { const ccx = (Math.floor(P.x / CS) + .5) * CS, ccz = (Math.floor(P.z / CS) + .5) * CS; if (Math.abs(dx) > Math.abs(dz)) moveEnt(P, 0, Math.sign(ccz - P.z) * Math.min(st, Math.abs(ccz - P.z)), .55); else moveEnt(P, Math.sign(ccx - P.x) * Math.min(st, Math.abs(ccx - P.x)), 0, .55); moved = Math.hypot(P.x - ox, P.z - oz); }
     if (moved < st * .15) { NAV.stuck += dt; if (P.move && !IN.lmb && NAV.stuck > 1.2) { P.move = null; NAV.stuck = 0; } } else { NAV.stuck = Math.max(0, NAV.stuck - dt); P.moving = true; P.walk += moved * 1.5; const sn = Math.floor(P.walk / Math.PI); if (sn !== P.stepN) { P.stepN = sn; SFX.play('step'); } }
