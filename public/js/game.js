@@ -1225,11 +1225,11 @@ const TRIMC = [0x77726a, 0x5878d8, 0xd8b030, 0xff8a2a, 0xb060ff];
 // ---- build 0039: real hero models (free CC0 Quaternius characters), baked by tools/model/build.mjs into public/models ----
 // The Ranger is the first hero on a real model; the others keep their code-built bodies until their outfits are baked.
 // If a model has not loaded (or a graphics card cannot skin on the GPU), the code-built hero is drawn instead.
-const MODEL_HEROES = { ranger: 1 }, MODELS_ON = typeof location !== 'undefined' && /[?&]models=1/.test(location.search), BMm = new Float32Array(16), HAL = new Float32Array(16), HAR = new Float32Array(16), UPMASK = {};
+const MLIFT = [1.55, 1.55, 1.5], MLIFT_SKIN = [1.15, 1.12, 1.1], MODEL_HEROES = { ranger: 1 }, MODELS_ON = typeof location !== 'undefined' && /[?&]models=1/.test(location.search), BMm = new Float32Array(16), HAL = new Float32Array(16), HAR = new Float32Array(16), UPMASK = {};
 function heroModel(o, cls, rot, tw, lu, dy, mv, AW, wt, wglow, em) {
   if (!MODELS_ON || !MODEL_HEROES[cls] || !GLX.model || G.realModels === false) return null;
   const M = GLX.model(cls, 'models/' + cls + '.cdm?v=' + BUILD); if (!M) return null;
-  const A = M.anims, t = G.time, s = (o.sc || 1.08) * 1.18, up = UPMASK[cls] || (UPMASK[cls] = CDM.mask(M, ['spine_02'], 0));
+  const A = M.anims, t = G.time, s = (o.sc || 1.08) * 1.32, /* build 0041: as tall as the other heroes, so he doesn't look small next to them */ up = UPMASK[cls] || (UPMASK[cls] = CDM.mask(M, ['spine_02'], 0));
   const bm = o._bm || (o._bm = new Float32Array(up.length)), act = !o.dead && !o.dash && o.act && AW > .01 ? AW : 0;
   for (let b = 0; b < up.length; b++) bm[b] = 1 - act * up[b];
   const lay = [];
@@ -1239,7 +1239,7 @@ function heroModel(o, cls, rot, tw, lu, dy, mv, AW, wt, wglow, em) {
     if (m < 1) lay.push(['idle', t + o.x * .37, true, 1 - m, bm]); if (m > 0) lay.push(['run', ph * A.run.dur, true, m, bm]);
     if (act) { const k = clamp(o.swing || 0, 0, 1), ranged = wt === 'bow' || wt === 'staff' || wt === 'wand'; lay.push([ranged ? 'cast' : 'attack', k * (ranged ? A.cast.dur : A.attack.dur), false, act, up]); } }
   GLX.base(BMm, o.x + Math.sin(rot) * lu, o.y + dy - M.head.minY * s, o.z + Math.cos(rot) * lu, rot + tw, s);
-  if (!GLX.drawModel(M, BMm, lay, (gi, gr) => [[1, 1, 1], em, gr.mat])) return null;
+  if (!GLX.drawModel(M, BMm, lay, (gi, gr) => [gr.mat === 8 ? MLIFT_SKIN : MLIFT, em, gr.mat] /* build 0041: lifted so the outfit reads from the game camera instead of melting into the ground */)) return null;
   const col = GLX.col;
   return { weapon() { // a longbow in the left hand, limbs curving back toward the archer, string tip to tip, an arrow nocked while drawing
     if (wt !== 'bow' || o.dead) return; const h = GLX.attach(M, 'hand_l', HAL); if (!h) return; const gx = h[12] + .01, gy = h[13], gz = h[14] + .02, bc = wglow || col(0x5a4028), be = wglow ? .6 : 0;
