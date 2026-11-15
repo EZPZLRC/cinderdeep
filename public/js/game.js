@@ -636,7 +636,7 @@ function genTown() {
   Z.objs.push({ kind: 'rift', x: cx + 11.6, z: cz + 4.4, name: 'Rift Stone', used: false });
   return Z;
 }
-function setEnv(Z) { const e = GLX.env, th = Z.th, n = Math.hypot(.55, .66, .42); e.sun = [.55 / n, .66 / n, .42 / n]; e.sunC = th.sunC; e.sky = th.sky; e.gnd = th.gnd; e.fog = GLX.col(th.fog); e.lightR = th.lightR; if (th !== THEMES.forest && th !== THEMES.town && th !== THEMES.ice) { e.lightR *= 1.3; e.sky = e.sky.map(v => v * 1.45); e.gnd = e.gnd.map(v => v * 1.3);  } /* deeper regions were too dark to read */ e.wet = th.wet === undefined ? .4 : th.wet; e.mist = th.mist === undefined ? .35 : th.mist; e.gr = th.gr || [.45, .2, .05, 0]; e.ge = GLX.col(th.lamp || 0xff7a2a); SFX.ambient(Object.keys(THEMES).find(k => THEMES[k] === th)); }
+function setEnv(Z) { const e = GLX.env, th = Z.th, n = Math.hypot(.55, .66, .42); e.sun = [.55 / n, .66 / n, .42 / n]; e.sunC = th.sunC; e.sky = th.sky; e.gnd = th.gnd; e.fog = GLX.col(th.fog); e.lightR = th.lightR; if (th !== THEMES.forest && th !== THEMES.town && th !== THEMES.ice) { e.lightR *= 1.3; e.sky = e.sky.map(v => v * 1.45); e.gnd = e.gnd.map(v => v * 1.3);  } /* deeper regions were too dark to read */ e.wet = th.wet === undefined ? .4 : th.wet; e.mist = th.mist === undefined ? .35 : th.mist; e.gr = th.gr || [.45, .2, .05, 0]; e.scat = th.scat !== undefined ? th.scat : .012 + e.mist * .03; e.ge = GLX.col(th.lamp || 0xff7a2a); SFX.ambient(Object.keys(THEMES).find(k => THEMES[k] === th)); }
 function enterTown() {
   if (G.inTown || P.dead || G.state !== 'play') return; for (const e of G.ents) if (e.alive && e.awake && Math.hypot(e.x - P.x, e.z - P.z) < 16) { hint('You cannot leave while enemies are near. Finish the fight or step away first.'); return; }
   goalDone('town'); P.fl = FLASK_MAX; P.flaskCd = 0; /* build 0026: only a real trip to town counts (and refills potions) */ if (P.meter) P.meter.peak = 0; /* Sprint 1: peak hit resets in town */
@@ -745,6 +745,8 @@ function fightHeat(dt) {
   if (k > 0) { G.heatK = Math.max(k, (G.heatK || 0) * .97); G.heatT = 4.5; } else if ((G.heatT = (G.heatT || 0) - dt) > 0) k = (G.heatK || 0) * .8; else G.heatK = 0;
   return k;
 }
+/* build 0052: fire flickers like fire: three waves that drift in and out of step, and now and then a gust that dips it */
+function fireFl(t, s) { const g = Math.sin(t * 1.9 + s * 3.1) * Math.sin(t * .73 + s); return 1 + Math.sin(t * 9.7 + s) * .055 + Math.sin(t * 15.3 + s * 1.7) * .04 + Math.sin(t * 23.1 + s * 2.3) * .025 - Math.max(0, g - .55) * .5; }
 function furyDR() { return G.hero && G.hero.cls === 'warden' && P.mana >= 30 ? 15 : 0; }
 function aspdK() { return G.hero && G.hero.cls === 'brawler' && P.mana > 60 ? 1.1 : 1; }
 // Sprint 1 damage meter: every hit you land, for DPS over the last 10 seconds and the biggest single hit
@@ -1615,7 +1617,9 @@ function drawHero(o, self) {
     if (self && GLX.cam.eye && typeof blocked === 'function') { const E = GLX.cam.eye, dx = E[0] - o.x, dz = E[2] - o.z, dl = Math.hypot(dx, dz) || 1; let hid = false; for (let d = 1; d <= 5 && !hid; d += .5) hid = blocked(o.x + dx / dl * d, o.z + dz / dl * d, .1);
       o.xrK = (o.xrK || 0) + ((hid ? 1 : 0) - (o.xrK || 0)) * .12; const k = o.xrK; if (k > .02) { GLX.obj('xr', 'sphere', o.x, o.y + 1.3, o.z, rot, .62, 1.05, .5, CC, 1, .5 * k); GLX.obj('xr', 'sphere', o.x, o.y + 2.08, o.z, rot, .3, .32, .3, CC, 1, .5 * k); GLX.obj('xr', 'sphere', o.x, o.y + .5, o.z, rot, .42, .7, .36, CC, 1, .45 * k); } }
   }
-  if (self) GLX.light(o.x, 3, o.z, 15, col(G.zone.th.torch), 1.1 * (G.zone.th.torchI || 1), 10);
+  if (self) { const th = G.zone.th, t = G.time, tk = 1.1 * (th.torchI || 1) * fireFl(t, 0); /* build 0052: the torch flickers; in crypts and the void it is the light that throws shadows */
+    if (th.torchSh && !G.inTown && GLX.env.shadows !== false) { const c = col(th.torch), E = GLX.env; E.pt = [o.x + Math.sin(t * 9.3) * .08, 5.2, o.z + 1.2 + Math.cos(t * 11.1) * .08, 2.55]; E.ptc = [c[0] * tk, c[1] * tk, c[2] * tk]; E.ptr = 17; }
+    else GLX.light(o.x, 3, o.z, 15, col(th.torch), tk, 10); }
   if (spin) { for (let i = 0; i < 3; i++) { const a = G.time * 20 + i * 2.09; GLX.obj('glow', 'box', o.x + Math.sin(a) * 2.2, 1.2, o.z + Math.cos(a) * 2.2, a + 1.57, .16, .1, 3, col(0xfff0d0), 1, .7); } GLX.obj('glow', 'ring', o.x, .1, o.z, 0, o.spin.sk.r * 2, 1, o.spin.sk.r * 2, col(0xfff0d0), 1, .25, -1); }
   if (o.buffs && o.buffs.length) GLX.obj('glow', 'ring', o.x, .08, o.z, G.time, 2.4, 1, 2.4, col(0xffd84a), 1, .5, -1);
   if (o.flaskT > 0) GLX.halo(o.x, 1.4, o.z, 3.5, col(0xff3a3a), .5);
@@ -1763,9 +1767,9 @@ const BEAM = [0, 3.2, 6.5, 12, 18], RC = [0xc9c9c9, 0x5a8cff, 0xffd84a, 0xff8a2a
 function drawWorld() {
   const col = GLX.col, Z = G.zone;
   const sh = G.set.shake ? G.shake * G.shake * 1.5 : 0, sx = (Math.random() - .5) * sh, sz = (Math.random() - .5) * sh;
-  GLX.env.player = [P.x, 0, P.z]; GLX.env.t = G.time; const zf = innerWidth < innerHeight ? 1.42 : 1; /* portrait phones see a little more around the hero */ GLX.setCamera([P.x + sx, 25 * G.zoom * zf + sz, P.z + 18 * G.zoom * zf], [P.x + sx, 1, P.z + sz], .66);
+  GLX.env.player = [P.x, 0, P.z]; GLX.env.t = G.time; GLX.env.pt = null; const zf = innerWidth < innerHeight ? 1.42 : 1; /* portrait phones see a little more around the hero */ GLX.setCamera([P.x + sx, 25 * G.zoom * zf + sz, P.z + 18 * G.zoom * zf], [P.x + sx, 1, P.z + sz], .66);
   for (const a of aiAll()) drawHero(a, false); drawPet(); if (G.inTown) drawTownLife(); else drawQuestBits();
-  if (!G.inTown && G.zone.torches) { const tc = GLX.col(0xffa040), tw = GLX.col(0xffe0a0); for (const t of G.zone.torches) { if (Math.abs(t[0] - P.x) > 26 || Math.abs(t[2] - P.z) > 26) continue; const fl = .85 + Math.sin(G.time * 11 + t[0]) * .08 + Math.sin(G.time * 17.3 + t[2]) * .07; GLX.obj('glow', 'cone', t[0], t[1] + .12 * fl, t[2], 0, .2 * fl, .42 * fl, .2 * fl, tc, 1.6, 1); GLX.obj('glow', 'cone', t[0], t[1] + .08, t[2], 0, .1, .26 * fl, .1, tw, 2.2, 1); GLX.halo(t[0], t[1] + .1, t[2], 1.6 * fl, tc, .5); GLX.halo(t[0], .06, t[2] + .9, 3.4 * fl, tc, .14); } }
+  if (!G.inTown && G.zone.torches) { const tc = GLX.col(0xffa040), tw = GLX.col(0xffe0a0); for (const t of G.zone.torches) { if (Math.abs(t[0] - P.x) > 26 || Math.abs(t[2] - P.z) > 26) continue; const fl = .85 * fireFl(G.time, t[0] + t[2] * 1.7); if (Math.abs(t[0] - P.x) < 18 && Math.abs(t[2] - P.z) < 18) GLX.light(t[0], t[1] + .3, t[2] + .9, 10, tc, 1.5 * fl); /* build 0052: wall torches light the stone around them */ GLX.obj('glow', 'cone', t[0], t[1] + .12 * fl, t[2], 0, .2 * fl, .42 * fl, .2 * fl, tc, 1.6, 1); GLX.obj('glow', 'cone', t[0], t[1] + .08, t[2], 0, .1, .26 * fl, .1, tw, 2.2, 1); GLX.halo(t[0], t[1] + .1, t[2], 1.6 * fl, tc, .5); GLX.halo(t[0], .06, t[2] + .9, 3.4 * fl, tc, .14); } }
   { const gl = G.hero.goals, nx = gl && !gl.all ? GOALS.find(g => !gl[g[0]]) : null; let tx = null; // tutorial pointer in the world: a bouncing arrow over what to go for
     if (nx && !G.inTown && !P.dead) { if (nx[0] === 'kill') { let bd = 26; for (const e of G.ents) { if (!e.alive || e.boss) continue; const d = Math.hypot(e.x - P.x, e.z - P.z); if (d < bd) { bd = d; tx = [e.x, e.z, 2.6 * e.sc + .8]; } } }
       else if (nx[0] === 'equip' && !G.hero.inv.some(Boolean)) { let bd = 30; for (const d of G.drops) { if (!d.item) continue; const dd = Math.hypot(d.x - P.x, d.z - P.z); if (dd < bd) { bd = dd; tx = [d.x, d.z, 1.8]; } } } }
@@ -1778,7 +1782,7 @@ function drawWorld() {
   }
   drawHero(P, true); if (G.online && !G.inTown) for (const id in NET.peers) { const q = NET.peers[id]; if (!q.dead) drawHero(q, false); }
   for (const e of G.ents) { if (Math.abs(e.x - P.x) > 34 || Math.abs(e.z - P.z) > 34) continue; drawEnemy(e); }
-  for (const L of Z.lamps) { const d = Math.hypot(L.x - P.x, L.z - P.z); if (d > 32) continue; const c = col(L.big ? 0xff9a3a : Z.th.lamp), fl = 1 + Math.sin(G.time * 9 + L.x) * .08; GLX.light(L.x, L.big ? 2.2 : 1.2, L.z, L.big ? 13 : 7, c, (L.big ? 1.3 : .8) * fl); GLX.halo(L.x, L.big ? 1.6 : .5, L.z, L.big ? 3.2 : 1.8, c, .4 * fl); }
+  for (const L of Z.lamps) { const d = Math.hypot(L.x - P.x, L.z - P.z); if (d > 32) continue; const c = col(L.big ? 0xff9a3a : Z.th.lamp), fl = fireFl(G.time, L.x + L.z); GLX.light(L.x, L.big ? 2.2 : 1.2, L.z, L.big ? 13 : 7, c, (L.big ? 1.3 : .8) * fl); GLX.halo(L.x, L.big ? 1.6 : .5, L.z, L.big ? 3.2 : 1.8, c, .4 * fl); }
   for (const o of Z.objs) {
     if (Math.hypot(o.x - P.x, o.z - P.z) > 34) continue; const hov = G.hoverObj === o ? .5 : 0;
     if (o.kind === 'vendor') { NPCV.x = o.x; NPCV.z = o.z - 1.1; NPCV.rot = Math.atan2(P.x - NPCV.x, P.z - NPCV.z); drawHero(NPCV, false); if (hov) GLX.obj('glow', 'ring', o.x, .07, o.z, G.time, 4.6, 1, 4.6, col(0xffd84a), 1, .5, -1); continue; }
