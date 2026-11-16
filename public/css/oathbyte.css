@@ -163,7 +163,7 @@ body.tj .sk:active{box-shadow:inset 0 2px 1px rgba(255,255,255,.28),inset 0 -3px
 .sk-tabs button{flex:1;position:relative;padding:7px 8px;font-family:var(--ob-head);font-weight:700;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#9aa1ae;background:linear-gradient(180deg,#1e2026,#121318);border:1px solid #343842;border-bottom:2px solid transparent;border-radius:3px;box-shadow:none;transition:color .15s,border-color .15s,background .15s}
 .sk-tabs button:hover{color:#e6e9ee;border-color:#5a5f6a}
 .sk-tabs button.on{color:#f2f4f8;background:linear-gradient(180deg,#3a1a17,#1a0d0c);border-color:#6a3a34;border-bottom-color:var(--ob-crim-hi)}
-.sk-tabs .tnew{margin-left:6px;font-family:inherit;letter-spacing:0;vertical-align:1px}
+.sk-tabs .tnew{display:inline-block;min-width:18px;height:18px;margin-left:7px;padding:0 5px;border-radius:9px;font:700 11px/18px system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:0;text-align:center;vertical-align:1px;color:#111;background:#ffd84a}
 #skl{transition:width .22s ease}
 #skl.tl-wide{width:min(660px,94vw)}
 .tl-in{animation:tlIn .22s ease-out}
