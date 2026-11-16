@@ -558,6 +558,7 @@ body.tj #dock{z-index:25}@media (pointer:coarse){#dock{z-index:25}} /* phones: o
 .it img.m3{position:relative;z-index:1;width:94%;height:94%;object-fit:contain;pointer-events:none;-webkit-user-drag:none;filter:drop-shadow(0 3px 3px rgba(0,0,0,.65))}.it .m3w{display:contents}.it .lv,.it .ar,.it .lk{z-index:2}
 #tip .show3{margin:-10px -12px 8px;height:210px;border-bottom:1px solid #6b5533;border-radius:4px 4px 0 0;background:radial-gradient(ellipse at 50% 55%,rgba(255,140,40,.28),rgba(255,120,30,.07) 45%,rgba(0,0,0,0) 70%),linear-gradient(#1b1510,#0b0907);overflow:hidden}#tip .show3 canvas{display:block;width:100%;height:100%}
 @media (max-height:700px){#tip .show3{height:150px}}@media (max-height:480px){#tip .show3{height:110px}}
+#tip.pin .show3{height:min(150px,22vh)}#tip.pin{max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px);overflow-y:auto;overscroll-behavior:contain}
 </style>
 <script src="js/move.js?v=0107"></script>
 <script src="js/models.js?v=0107"></script>
