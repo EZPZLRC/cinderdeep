@@ -12,7 +12,7 @@ const UI = (() => {
   let I3 = null, i3s = 'wait', tipIt = null;
   const i3off = () => { if (i3s !== 'wait') return; i3s = 'off'; U.invDirty = true; };
   setTimeout(i3off, 8000);
-  (window.__i3load || (() => import(new URL('js/items3d.js?v=0129', location.href).href)))().then(m => { const d = m.default; if (!d || !d.ok) return i3off(); return Promise.resolve(d.ready).then(() => { if (i3s !== 'wait' || !d.ok) return i3off(); I3 = d; i3s = 'on'; U.invDirty = true; i3warm(); }); }).catch(i3off);
+  (window.__i3load || (() => import(new URL('js/items3d.js?v=0132', location.href).href)))().then(m => { const d = m.default; if (!d || !d.ok) return i3off(); return Promise.resolve(d.ready).then(() => { if (i3s !== 'wait' || !d.ok) return i3off(); I3 = d; i3s = 'on'; U.invDirty = true; i3warm(); }); }).catch(i3off);
   /* build 0130: every item the hero owns (bag, worn, stash) and the shop's goods get their picture drawn in the background as soon as 3D is ready and again when play starts,
      so it is usually done before a panel opens. Pictures are also kept on the device, so the next visit shows them straight away */
   function i3warm() { if (!I3) return; try { const h = G.hero, all = [].concat(h ? h.inv : [], h ? Object.values(h.eq || {}) : [], G.stash || [], h && h.stock || []); for (const it of all) if (it && it.slot) { I3.icon(it, false); if (itemH(it) === 2) I3.icon(it, true); } } catch (e) { } }
