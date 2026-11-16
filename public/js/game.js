@@ -1112,7 +1112,8 @@ function hitEnemy(e, sk, mult, noProc) { if (e && e.alive && e.arch === 'goblin'
   if (sk.type === 'ally' && e.boss) v = Math.max(1, Math.round(v * .4)); /* build 0062: teammates chip a guardian, the hero brings it down */ if (!e.boss && !e.elite && !e.dummy) { if (!noProc) e.nh = (e.nh || 0) + 1; if (e.nh < 2) v = Math.min(v, Math.max(1, Math.floor(e.hp - 1))); } /* build 0062 (playtest): nothing finishes an ordinary monster before its second hit */ if (sk.type === 'ally' && !e.dummy) { const cap = Math.floor(e.hp - e.maxHp * .12); if (cap < 1) { e.flash = .06; wake(e); return; } v = Math.min(v, cap); } // build 0054: teammates soften monsters up, the hero lands the kill
   const over = v > 3 * Math.max(1, e.hp); /* Sprint 1: overkill, more than three times the life it had left */ meterHit(v); if (e.dummy) dummyHit(e, v);
   e.hp -= v; e.flash = .13; wake(e); P.lastHit = G.time; if (sk.gen) P.mana = Math.min(s.maxMana, P.mana + sk.gen); if (sk.heal && sk.type !== 'ally') P.hp = Math.min(s.maxLife, P.hp + s.maxLife * sk.heal / 100); if (sk.ref) P.mana = Math.min(s.maxMana, P.mana + sk.ref);
-  floatText(e.x, 1.6 * e.sc + .6, e.z, (d.crit ? '✦' : '') + v, d.crit ? '#ffe14a' : EL_CSS[sk.el], d.crit ? 1.1 : .8, d.crit ? 21 : 15);
+  const xc = d.crit && typeof FXL !== 'undefined' && typeof document !== 'undefined'; /* build 0137 (Lee's pick): a critical hit is a red X slash with its own number, see FXL.crit */
+  if (!xc) floatText(e.x, 1.6 * e.sc + .6, e.z, (d.crit ? '✦' : '') + v, d.crit ? '#ffe14a' : EL_CSS[sk.el], d.crit ? 1.1 : .8, d.crit ? 21 : 15);
   if (sk.freeze && !e.boss) e.frozen = sk.freeze;
   if (sk.el === 'fire' && sk.type !== 'ally') { e.burn = Math.max(e.burn, v * .15); e.burnT = 3; } else if (sk.el === 'cold') e.chill = 2.5; else if (sk.el === 'light') e.shock = 3;
   if (s.lifeOnHit) P.hp = Math.min(s.maxLife, P.hp + s.lifeOnHit); if (s.leech) P.hp = Math.min(s.maxLife, P.hp + v * s.leech / 100);
@@ -1120,8 +1121,9 @@ function hitEnemy(e, sk, mult, noProc) { if (e && e.alive && e.arch === 'goblin'
     e.hdx = dx / l; e.hdz = dz / l; e.hf = .22; e.hp0 = pw; e.lheavy = heavy || d.crit;
     if (!G.online && !e.dummy && !e.boss) { const kb = 7 * pw; e.kvx = (e.kvx || 0) + e.hdx * kb; e.kvz = (e.kvz || 0) + e.hdz * kb; }
     if (!G.online && !e.boss && !e.dummy && (heavy || d.crit) && (!e.elite || d.crit) && (e.st === 'wind' || e.st === 'hwind' || e.st === 'cwind') && e.arch !== 'bomber') { e.st = 'rec'; e.t = .45; e.atk = 0; for (const a of G.areas) if (a.src === e && !a.done && a.owner === 'e') { a.done = true; a.t = a.delay; } floatText(e.x, 2.2 * e.sc + .4, e.z, 'Staggered', '#ffd27a', .7, 13); } }
-  burst(e.x, 1.1 * e.sc, e.z, d.crit ? 0xffe14a : EL_COL[sk.el], d.crit ? 12 : 6, d.crit ? 7 : 5); hitSpray(e, sk, d.crit, sk.type === 'melee' || !!sk.land || sk.type === 'nova');
+  if (xc) FXL.crit(e, sk, v); else { burst(e.x, 1.1 * e.sc, e.z, d.crit ? 0xffe14a : EL_COL[sk.el], d.crit ? 12 : 6, d.crit ? 7 : 5); hitSpray(e, sk, d.crit, sk.type === 'melee' || !!sk.land || sk.type === 'nova');
   { const heavy = sk.type === 'melee' || !!sk.land || sk.type === 'nova'; G.fx.push({ flash: 1, x: e.x, y: 1.1 * e.sc, z: e.z, r: d.crit ? 3.2 : heavy ? 2.2 : 1.4, life: .12, max: .12, c: GLX.col(d.crit ? 0xfff2b0 : EL_COL[sk.el]) }); if (d.crit) G.shake = Math.min(.5, G.shake + .12); }
+  { const L = (typeof FXL !== 'undefined' ? FXL.of(sk) : null); if (L && L.hit) L.hit(e, sk); } }
   if (over) { burst(e.x, 1.1 * e.sc, e.z, e.md.c2, 30, 10); burst(e.x, .4, e.z, 0x7a1010, 18, 6); ring(e.x, e.z, 0, 3.4 * e.sc, .35, 0xffd0a0); G.fx.push({ scorch: 1, x: e.x, z: e.z, r: 1.6 * e.sc, life: 2, max: 2, c: GLX.col(0x5a0c0c) }); G.shake = Math.min(.6, G.shake + .2); }
   if (G.time - G.hitSfx > .05) { G.hitSfx = G.time; SFX.play(d.crit ? 'crit' : 'hit', sk); }
   if (!noProc && s.procLight && Math.random() * 100 < s.procLight) addArea({ x: e.x, z: e.z, r: 2.6, delay: .15, owner: 'p', sk: { el: 'light', m: 1.5 }, c: 0xfff07a, proc: 1 });
@@ -1191,22 +1193,22 @@ function tryCast(slot, tx, tz) {
   P.rot = Math.atan2(tx - P.x, tz - P.z); const dur = sk.basic ? 1 / (s.wspd * sp * (sk.as || 1)) : (sk.ct || .35) / sp;
   P.act = { sk, id, t: 0, dur, fireAt: dur * .42, fired: false, tx, tz }; P.swing = 0; SFX.play('swing', sk); return true;
 }
-function shoot(ang, sk) {
+function shoot(ang, sk, i) {
   const sx = Math.sin(ang), cz = Math.cos(ang), c = sk.c || EL_COL[sk.el];
-  G.pp.push({ x: P.x + sx * .8, z: P.z + cz * .8, vx: sx * sk.spd, vz: cz * sk.spd, rot: ang, life: (sk.range || 15) / sk.spd, r: sk.pr || .45, sk, pierce: sk.pierce || 0, hit: new Set(), c: GLX.col(c), arrow: !!sk.arrow });
+  G.pp.push({ x: P.x + sx * .8, z: P.z + cz * .8, vx: sx * sk.spd, vz: cz * sk.spd, rot: ang, life: (sk.range || 15) / sk.spd, r: sk.pr || .45, sk, pierce: sk.pierce || 0, hit: new Set(), c: GLX.col(c), arrow: !!sk.arrow, i: i || 0, vid: G.vid || 0, age: 0 }); /* build 0137: i and vid say which shot of which cast it is (Shock Pulse links the shots of one cast), age how long it has flown */
   if (G.online) NET.send({ t: 'fx', k: 'p', x: P.x + sx * .8, z: P.z + cz * .8, rot: ang, r: sk.spd, arc: (sk.range || 15) / sk.spd, c });
 }
 function areaHit(x, z, r, sk, mult) { let n = 0; for (const e of G.ents) if (e.alive && Math.hypot(e.x - x, e.z - z) <= r + e.r) { hitEnemy(e, sk, mult); n++; } return n; }
 function fireSkill(a) {
-  const sk = a.sk, s = P.stats, ar = 1 + s.area / 100;
+  const sk = a.sk, s = P.stats, ar = 1 + s.area / 100, LK = (typeof FXL !== 'undefined' ? FXL.of(sk) : null); /* build 0137: the look Lee picked for this skill, if any (fxlook.js) */
   if (sk.echo && !a.echoed) G.timers.push({ t: .3, fn: () => { if (!P.dead) fireSkill(Object.assign({}, a, { echoed: 1, sk: Object.assign({}, sk, { m: sk.m * sk.echo / 100, echo: 0 }) })); } }); /* build 0074: a talent card's second go */
   if (sk.type !== 'melee' && !sk.basic && EL_COL[sk.el] !== undefined) { const c = GLX.col(EL_COL[sk.el]), fx = P.x + Math.sin(P.rot) * .8, fz = P.z + Math.cos(P.rot) * .8; G.fx.push({ flash: 1, x: fx, y: 1.6, z: fz, r: 2.4, life: .22, max: .22, c }); ring(P.x, P.z, .3, 1.8, .3, EL_COL[sk.el]); for (let i = 0; i < 8; i++) { const an = P.rot + rnd(-.7, .7), sp = rnd(4, 9); G.fx.push({ spk: 1, x: fx, y: 1.5, z: fz, vx: Math.sin(an) * sp, vy: rnd(1, 4), vz: Math.cos(an) * sp, life: rnd(.2, .4), max: .4, c }); } } // casting flare at the hands
   if (sk.type === 'melee') {
     const range = sk.range * Math.sqrt(ar); let n = 0;
     for (const e of G.ents) { if (!e.alive) continue; const dx = e.x - P.x, dz = e.z - P.z, d = Math.hypot(dx, dz); if (d > range + e.r) continue; let da = Math.atan2(dx, dz) - P.rot; while (da > Math.PI) da -= 6.2832; while (da < -Math.PI) da += 6.2832; if (Math.abs(da) <= sk.arc / 2 || d < 1.2) { hitEnemy(e, sk); n++; } }
-    G.fx.push({ slash: 1, x: P.x, z: P.z, rot: P.rot, r: range, arc: sk.arc, life: .16, max: .16, c: GLX.col(0xfff0d0) }); if (G.online) NET.send({ t: 'fx', k: 's', x: P.x, z: P.z, rot: P.rot, r: range, arc: sk.arc }); if (n) G.shake = Math.min(.5, G.shake + .06);
+    if (LK && LK.slash) LK.slash(sk, range); else G.fx.push({ slash: 1, x: P.x, z: P.z, rot: P.rot, r: range, arc: sk.arc, life: .16, max: .16, c: GLX.col(0xfff0d0) }); if (G.online) NET.send({ t: 'fx', k: 's', x: P.x, z: P.z, rot: P.rot, r: range, arc: sk.arc }); if (n) G.shake = Math.min(.5, G.shake + .06);
   } else if (sk.type === 'nova') {
-    const r = sk.r * ar; areaHit(P.x, P.z, r, sk); ring(P.x, P.z, .5, r, .35, EL_COL[sk.el]); if (G.online) NET.send({ t: 'fx', k: 'r', x: P.x, z: P.z, r, c: EL_COL[sk.el] }); burst(P.x, .4, P.z, 0xc8b89a, 26, 9); impact(P.x, P.z, r * .6, EL_COL[sk.el], true); G.shake = .45; SFX.play('slam');
+    const r = sk.r * ar; areaHit(P.x, P.z, r, sk); if (LK && LK.nova) LK.nova(P.x, P.z, r, sk); else ring(P.x, P.z, .5, r, .35, EL_COL[sk.el]); if (G.online) NET.send({ t: 'fx', k: 'r', x: P.x, z: P.z, r, c: EL_COL[sk.el] }); if (!(LK && LK.nova)) { burst(P.x, .4, P.z, 0xc8b89a, 26, 9); impact(P.x, P.z, r * .6, EL_COL[sk.el], true); } G.shake = .45; SFX.play('slam');
   } else if (sk.type === 'dash') {
     let dx = a.tx - P.x, dz = a.tz - P.z; const d = Math.hypot(dx, dz) || 1, L = Math.min(d, sk.range); dx /= d; dz /= d; let ex = P.x, ez = P.z;
     for (let t = .5; t <= L; t += .5) { const nx = P.x + dx * t, nz = P.z + dz * t; if (!blocked(nx, nz, .55)) { ex = nx; ez = nz; } }
@@ -1218,20 +1220,22 @@ function fireSkill(a) {
     G.shake = .4; SFX.play('slam');
   } else if (sk.type === 'proj') {
     const n = (sk.cnt || 1) + (s.projExtra || 0), base = Math.atan2(a.tx - P.x, a.tz - P.z), sp = n > 1 ? Math.max(sk.spread || 0, .12 * (n - 1)) : 0;
-    for (let i = 0; i < n; i++) shoot(base + (n > 1 ? (i / (n - 1) - .5) * sp : 0), sk);
+    G.vid = (G.vid || 0) + 1; if (LK && LK.projCast) LK.projCast(sk, base);
+    for (let i = 0; i < n; i++) shoot(base + (n > 1 ? (i / (n - 1) - .5) * sp : 0), sk, i);
   } else if (sk.type === 'chain') {
     let cur = null, bd = 6; for (const e of G.ents) { if (!e.alive) continue; const d = Math.hypot(e.x - a.tx, e.z - a.tz); if (d < bd) { bd = d; cur = e; } }
     if (!cur) { bd = sk.range; for (const e of G.ents) { if (!e.alive || !e.awake) continue; const d = Math.hypot(e.x - P.x, e.z - P.z); if (d < bd) { bd = d; cur = e; } } }
     if (cur && Math.hypot(cur.x - P.x, cur.z - P.z) > sk.range + 2) cur = null;
     if (!cur) { G.fx.push({ bolt: 1, x1: P.x, z1: P.z, x2: P.x + Math.sin(P.rot) * 8, z2: P.z + Math.cos(P.rot) * 8, life: .18, max: .18, c: GLX.col(EL_COL[sk.el]) }); return; }
-    const hit = new Set(); let px = P.x, pz = P.z;
+    const hit = new Set(), path = [], ents = G.ents; let px = P.x, pz = P.z;
     for (let j = 0; j <= sk.jumps && cur; j++) {
-      G.fx.push({ bolt: 1, x1: px, z1: pz, x2: cur.x, z2: cur.z, life: .2, max: .2, c: GLX.col(EL_COL[sk.el]) }); hit.add(cur); px = cur.x; pz = cur.z; hitEnemy(cur, sk, 1 - j * .07);
+      if (LK && LK.chain) path.push([px, pz, cur.x, cur.z, cur]); else { G.fx.push({ bolt: 1, x1: px, z1: pz, x2: cur.x, z2: cur.z, life: .2, max: .2, c: GLX.col(EL_COL[sk.el]) }); hitEnemy(cur, sk, 1 - j * .07); } hit.add(cur); px = cur.x; pz = cur.z;
       let nx = null, nd = 7.5; for (const e of G.ents) { if (!e.alive || hit.has(e)) continue; const d = Math.hypot(e.x - px, e.z - pz); if (d < nd) { nd = d; nx = e; } } cur = nx;
     }
+    if (path.length) LK.chain(path, (e, j) => { if (G.ents === ents && !P.dead) hitEnemy(e, sk, 1 - j * .07); }); /* build 0137 (Lee's pick, Jumping arc): the same targets as before, struck one after another so the bolt is seen jumping */
     if (G.online) NET.send({ t: 'fx', k: 'r', x: px, z: pz, r: 2.5, c: EL_COL[sk.el] });
   } else if (sk.type === 'barrage') {
-    for (let w = 0; w < sk.waves; w++) G.timers.push({ t: w * .22, fn: () => { if (P.dead) return; const n = sk.cnt + (s.projExtra || 0); for (let i = 0; i < n; i++) shoot(i / n * 6.2832 + w * .17, sk); SFX.play('swing', sk); } });
+    for (let w = 0; w < sk.waves; w++) G.timers.push({ t: w * .22, fn: () => { if (P.dead) return; const n = sk.cnt + (s.projExtra || 0); if (LK && LK.wave) LK.wave(sk, w); for (let i = 0; i < n; i++) shoot(i / n * 6.2832 + w * .17, sk, i); SFX.play('swing', sk); } });
   }
 }
 
@@ -1935,18 +1939,18 @@ function update(dt) {
   for (let i = G.projs.length - 1; i >= 0; i--) { const p = G.projs[i]; p.x += p.vx * dt; p.z += p.vz * dt; p.life -= dt; trailFx(p, p.el, dt, .6); let dead = p.life <= 0 || cellAt(p.x, p.z); if (!dead && !p.peer && !P.dead && Math.hypot(p.x - P.x, p.z - P.z) < p.r + .6 && P.y < 1.5) { if (!p.vis) dmgPlayer(p.dmg, p.el, null); dead = true; } if (dead) { burst(p.x, 1.2, p.z, 0xffffff, 3, 3); elemHit(p.x, p.z, p.el, false); G.projs.splice(i, 1); } }
   for (let i = G.timers.length - 1; i >= 0; i--) { const t = G.timers[i]; t.t -= dt; if (t.t <= 0) { G.timers.splice(i, 1); t.fn(); } }
   for (let i = G.pp.length - 1; i >= 0; i--) {
-    const p = G.pp[i], n = Math.max(1, Math.ceil(Math.hypot(p.vx, p.vz) * dt / .45)), h = dt / n; let dead = false; p.life -= dt; if (!p.arrow) trailFx(p, p.sk.el, dt);
+    const p = G.pp[i], n = Math.max(1, Math.ceil(Math.hypot(p.vx, p.vz) * dt / .45)), h = dt / n, LK = (typeof FXL !== 'undefined' ? FXL.of(p.sk) : null); let dead = false; p.life -= dt; p.age = (p.age || 0) + dt; if (LK && LK.trail) LK.trail(p, dt); else if (!p.arrow) trailFx(p, p.sk.el, dt);
     for (let k = 0; k <= n && !dead; k++) {   // sub-steps so fast shots cannot skip past a close enemy or a wall corner
       if (k) { p.x += p.vx * h; p.z += p.vz * h; } if (cellAt(p.x, p.z)) { dead = true; break; }
-      for (const e of G.ents) { if (!e.alive || p.hit.has(e) || Math.hypot(e.x - p.x, e.z - p.z) > p.r + e.r) continue; if (p.sk.explode) { dead = true; break; } p.hit.add(e); hitEnemy(e, p.sk); if (p.pierce-- <= 0) { dead = true; break; } }
+      for (const e of G.ents) { if (!e.alive || p.hit.has(e) || Math.hypot(e.x - p.x, e.z - p.z) > p.r + e.r) continue; if (p.sk.explode) { dead = true; break; } p.hit.add(e); hitEnemy(e, p.sk); if (LK && LK.pierce) LK.pierce(p, e); if (p.pierce-- <= 0) { dead = true; break; } }
     }
     if (p.life <= 0) dead = true;
-    if (dead) { if (p.sk.explode) { const r = p.sk.explode * (1 + P.stats.area / 100); areaHit(p.x, p.z, r, p.sk); ring(p.x, p.z, .4, r, .35, EL_COL[p.sk.el]); impact(p.x, p.z, r * .7, EL_COL[p.sk.el], true); SFX.play('slam'); } else if (!p.arrow) impact(p.x, p.z, .7, EL_COL[p.sk.el], false); if (!p.arrow) elemHit(p.x, p.z, p.sk.el, !!p.sk.explode); burst(p.x, 1.2, p.z, EL_COL[p.sk.el], 5, 4); G.pp.splice(i, 1); }
+    if (dead) { const ld = LK && LK.die; if (p.sk.explode) { const r = p.sk.explode * (1 + P.stats.area / 100); areaHit(p.x, p.z, r, p.sk); if (ld) LK.die(p, r); else { ring(p.x, p.z, .4, r, .35, EL_COL[p.sk.el]); impact(p.x, p.z, r * .7, EL_COL[p.sk.el], true); } SFX.play('slam'); } else if (ld) LK.die(p); else if (!p.arrow) impact(p.x, p.z, .7, EL_COL[p.sk.el], false); if (!ld) { if (!p.arrow) elemHit(p.x, p.z, p.sk.el, !!p.sk.explode); burst(p.x, 1.2, p.z, EL_COL[p.sk.el], 5, 4); } G.pp.splice(i, 1); }
   }
   // areas
   for (let i = G.areas.length - 1; i >= 0; i--) {
     const a = G.areas[i]; a.t += dt; if (a.hvy && !a.done && !a.was && a.t < a.delay * .8 && !P.dead && inArea(a, P.x, P.z, 0)) a.was = 1;
-    if (!a.done && a.t >= a.delay) { a.done = true; if (a.owner === 'p') { for (const e of G.ents) if (e.alive && Math.hypot(e.x - a.x, e.z - a.z) <= a.r + e.r) hitEnemy(e, a.sk, a.mult, a.proc); } else { const inn = !P.dead && inArea(a, P.x, P.z, .3) && P.y < 1.5, seen = bossSees(a.src, P.x, P.z); if (!a.vis && inn && seen) dmgPlayer(a.dmg, a.el, a.src, a.hvy); else if (!a.vis && inn && !seen) floatText(P.x, 2.8, P.z, 'Blocked', '#cdb', .8, 15); else if (a.hvy && a.was && !inn && !P.dead) { floatText(P.x, 2.8, P.z, 'Evaded', '#9fe', .8, 15); SFX.play('evade'); } } areaLand(a); if (a.owner === 'p' && !a.proc) impact(a.x, a.z, a.r * .8, a.c, a.r >= 2.5); if (a.owner === 'e') G.shake = Math.min(.5, G.shake + .08); }
+    if (!a.done && a.t >= a.delay) { a.done = true; if (a.owner === 'p') { for (const e of G.ents) if (e.alive && Math.hypot(e.x - a.x, e.z - a.z) <= a.r + e.r) hitEnemy(e, a.sk, a.mult, a.proc); } else { const inn = !P.dead && inArea(a, P.x, P.z, .3) && P.y < 1.5, seen = bossSees(a.src, P.x, P.z); if (!a.vis && inn && seen) dmgPlayer(a.dmg, a.el, a.src, a.hvy); else if (!a.vis && inn && !seen) floatText(P.x, 2.8, P.z, 'Blocked', '#cdb', .8, 15); else if (a.hvy && a.was && !inn && !P.dead) { floatText(P.x, 2.8, P.z, 'Evaded', '#9fe', .8, 15); SFX.play('evade'); } } { const LK = a.owner === 'p' ? (typeof FXL !== 'undefined' ? FXL.of(a.sk) : null) : null; if (LK && LK.land) LK.land(a); else { areaLand(a); if (a.owner === 'p' && !a.proc) impact(a.x, a.z, a.r * .8, a.c, a.r >= 2.5); } } if (a.owner === 'e') G.shake = Math.min(.5, G.shake + .08); }
     if (a.t >= a.delay + .05) G.areas.splice(i, 1);
   }
   // drops
@@ -1955,7 +1959,7 @@ function update(dt) {
   for (const d of G.drops.slice()) { d.t += dt; if (d.item && !G.hero.got1 && G.hero.level <= 2 && !G.inTown && !P.dead && d.t > .4) { /* build 0072 (Lee's playtest): the very first item is hard to miss: it says so, and it comes to you */ const dd = Math.hypot(d.x - P.x, d.z - P.z); if (!G.firstHint && dd < 20) { G.firstHint = 1; hint('Loot! Walk over the glowing item to pick it up.'); floatText(d.x, 1.8, d.z, 'Loot!', '#ffe08a', 1.6, 18); } if (dd < 10 && dd > .3) { const st = Math.min(dd, 9 * dt); if (!blocked(d.x + (P.x - d.x) / dd * st, d.z + (P.z - d.z) / dd * st, .2)) { d.x += (P.x - d.x) / dd * st; d.z += (P.z - d.z) / dd * st; } } }
     if (d.item && d.t > .5 && G.set.autoLoot !== false && !P.dead && d.item.rar >= G.hero.filter && Math.hypot(d.x - P.x, d.z - P.z) < 1.8 && G.time - (d.tryT || -9) > 2.5) { d.tryT = G.time; pickup(d); continue; } // walk over loot to collect it
     if (d.globe) { if (Math.hypot(d.x - P.x, d.z - P.z) < 1.8 && P.hp < P.stats.maxLife) pickup(d); } else if ((d.gold || d.q || d.map) && d.t > .3) { const dd = Math.hypot(d.x - P.x, d.z - P.z); if (dd < 4.5) { d.x += (P.x - d.x) / dd * 14 * dt; d.z += (P.z - d.z) / dd * 14 * dt; if (dd < .9) pickup(d); } } }
-  for (let i = G.fx.length - 1; i >= 0; i--) { const f = G.fx[i]; f.life -= dt; if (f.life <= 0) { G.fx.splice(i, 1); continue; } if (!f.ring && !f.slash && !f.bolt && !f.flash && !f.pillar && !f.shock && !f.scorch && !f.shard && !f.flame && !f.xfl && !f.rem && !f.wisp) { if (f.ember) { f.vx *= .95; f.vz *= .95; f.vy += 15.2 * dt; } else if (f.smoke) { f.vx *= .96; f.vz *= .96; f.vy += 13 * dt; } f.x += f.vx * dt; f.y += f.vy * dt; f.z += f.vz * dt; f.vy -= 14 * dt; if (f.y < .05) { f.y = .05; f.vy *= -.3; if (f.chunk) { f.vx *= .8; f.vz *= .8; f.spin *= .7; } } } }
+  for (let i = G.fx.length - 1; i >= 0; i--) { const f = G.fx[i]; f.life -= dt; if (f.life <= 0) { G.fx.splice(i, 1); continue; } if (f.nk) { const N = typeof FXL !== 'undefined' && FXL.kinds[f.nk]; if (N && N.step) N.step(f, dt); continue; } /* build 0137: the new effect kinds move themselves */ if (!f.ring && !f.slash && !f.bolt && !f.flash && !f.pillar && !f.shock && !f.scorch && !f.shard && !f.flame && !f.xfl && !f.rem && !f.wisp) { if (f.ember) { f.vx *= .95; f.vz *= .95; f.vy += 15.2 * dt; } else if (f.smoke) { f.vx *= .96; f.vz *= .96; f.vy += 13 * dt; } f.x += f.vx * dt; f.y += f.vy * dt; f.z += f.vz * dt; f.vy -= 14 * dt; if (f.y < .05) { f.y = .05; f.vy *= -.3; if (f.chunk) { f.vx *= .8; f.vz *= .8; f.spin *= .7; } } } }
   for (let i = G.texts.length - 1; i >= 0; i--) { const t = G.texts[i]; t.life -= dt; t.y += dt * 1.6; if (t.life <= 0) G.texts.splice(i, 1); }
   for (let i = G.hints.length - 1; i >= 0; i--) { G.hints[i].life -= dt; if (G.hints[i].life <= 0) G.hints.splice(i, 1); }
   // fog of war
@@ -2824,16 +2828,19 @@ function drawWorld() {
   }
   let pl = 0;
   let busy = G.fx.length * .5 + G.pp.length * 3; for (const a of G.areas) if (a.owner !== 'e') busy += 6; G._gd += ((busy > 60 ? Math.max(.4, 1 - (busy - 60) / 170) : 1) - (G._gd || 1)) * .15 || 0; if (!(G._gd > 0)) G._gd = 1; const GD = G._gd; GLX.glowK && GLX.glowK(GD); /* build 0062 (playtest): when spells pile up their glow dims, while the red danger shapes stay full and get brighter */
-  for (const p of G.pp) {
+  const LKon = typeof FXL !== 'undefined'; if (LKon) FXL.begin(); /* build 0137: Lee's picked looks, see fxlook.js */
+  for (const p of G.pp) { const LK = LKon ? FXL.of(p.sk) : null; if (LK && LK.draw) { LK.draw(p); continue; }
     if (p.arrow) { GLX.obj('dyn', 'box', p.x, 1.25, p.z, p.rot, .05, .05, 1.2, col(0xd8c8a0), .3); GLX.obj('dyn', 'cone', p.x + Math.sin(p.rot) * .65, 1.25, p.z + Math.cos(p.rot) * .65, p.rot, .1, .1, .22, col(0xc8ced8), .2, 1, 4); GLX.halo(p.x, 1.25, p.z, 1.1, p.c, .35); GLX.obj('glow', 'box', p.x - Math.sin(p.rot) * 1.8, 1.25, p.z - Math.cos(p.rot) * 1.8, p.rot, .03, .03, 2.4, p.c, 1, .18); GLX.obj('glow', 'box', p.x - Math.sin(p.rot) * .9, 1.25, p.z - Math.cos(p.rot) * .9, p.rot, .05, .05, 1.6, p.c, 1, .35); }
     else if (FX_EL[p.sk.el]) drawSpell(p.x, 1.25, p.z, p.rot, p.r, p.sk.el, p.c, pl++ < 3);
     else { const s = p.r * 1.5, sx = Math.sin(p.rot), cz2 = Math.cos(p.rot); GLX.obj('glow', 'sphere', p.x, 1.25, p.z, 0, s, s, s, p.c, 2.2, 1); GLX.obj('glow', 'sphere', p.x, 1.25, p.z, 0, s * .5, s * .5, s * .5, col(0xffffff), 2, .9); GLX.halo(p.x, 1.25, p.z, p.r * 7, p.c, .7); for (let k = 1; k <= 5; k++) { const q = s * (1 - k * .15), wob = Math.sin(G.time * 30 + k * 1.7) * .08 * k; GLX.obj('glow', 'sphere', p.x - sx * k * .42 + cz2 * wob, 1.25 + Math.cos(G.time * 26 + k) * .05 * k, p.z - cz2 * k * .42 - sx * wob, 0, q, q, q, p.c, 1.4, .6 - k * .1); } GLX.obj('glow', 'ring', p.x, 1.25, p.z, G.time * 8, s * 1.9, 1, s * 1.9, p.c, 1, .35, -1); GLX.obj('glow', 'box', p.x - Math.sin(p.rot) * .8, 1.25, p.z - Math.cos(p.rot) * .8, p.rot, p.r * .5, p.r * .5, 1.6, p.c, 1, .4); if (pl++ < 3) GLX.light(p.x, 1.5, p.z, 6, p.c, .8, 1); }
   }
-  GLX.glowK && GLX.glowK(1);
+  GLX.glowK && GLX.glowK(1); if (LKon) FXL.frame();
   for (const p of G.projs) { const rt = Math.atan2(p.vx, p.vz); if (FX_EL[p.el]) { drawSpell(p.x, 1.2, p.z, rt, p.r * .85, p.el, p.c, pl++ < 4); continue; } GLX.obj('glow', 'sphere', p.x, 1.2, p.z, 0, p.r * 1.6, p.r * 1.6, p.r * 1.6, p.c, 1.6, 1); GLX.obj('glow', 'sphere', p.x, 1.2, p.z, 0, p.r * .7, p.r * .7, p.r * .7, col(0xffffff), 2, .8); for (let k = 1; k <= 3; k++) { const q = p.r * (1.4 - k * .3); GLX.obj('glow', 'sphere', p.x - Math.sin(rt) * k * .4, 1.2, p.z - Math.cos(rt) * k * .4, 0, q, q, q, p.c, 1.3, .55 - k * .13); } GLX.halo(p.x, 1.2, p.z, p.r * 5, p.c, .6); } // build 0057: enemy shots get a hot core and a trail too
   for (const a of G.areas) {
     GLX.glowK && GLX.glowK(a.owner === 'e' ? 1 + (1 - GD) * .8 : GD);
     const c = col(a.c), k = clamp(a.t / a.delay, 0, 1), d = a.r * 2, fl = a.hvy && !a.done && k > .72 ? .55 + .45 * Math.sin(G.time * 38) : 0; // build 0048: heavy blows flash just before they land
+    if (LKon && a.owner === 'e') { GLX.glowK && GLX.glowK(1); FXL.tele(a, k); continue; } /* build 0137 (Lee's pick, Stripes): a red outline filled with moving stripes, the fill flashing only just before it lands; no longer brightened in busy fights */
+    if (LKon && a.owner === 'p') { const LK = FXL.of(a.sk); if (LK && LK.areaDraw) { LK.areaDraw(a, k); continue; } }
     if (a.sh) { drawTele(a, c, k, fl); continue; }
     GLX.obj('glow', 'ring', a.x, .09, a.z, 0, d, 1, d, c, 1 + fl, a.owner === 'e' ? .9 : .5, -1); GLX.obj('glow', 'disc', a.x, .08, a.z, 0, d * k, 1, d * k, c, 1, a.owner === 'e' ? .35 : .2, 0);
     if (a.hvy && !a.done) { GLX.obj('glow', 'disc', a.x, .07, a.z, 0, d, 1, d, c, 1, .12 + fl * .2, 0); GLX.obj('glow', 'ring', a.x, .1, a.z, 0, d * k * 1.02, 1, d * k * 1.02, col(0xffd0a0), 1.4, .7, -1); }
@@ -2865,6 +2872,7 @@ function drawWorld() {
   GLX.glowK && GLX.glowK(GD);
   for (const f of G.fx) {
     const k = f.life / f.max;
+    if (f.nk) { const N = LKon && FXL.kinds[f.nk]; if (N) N.draw(f, k); continue; }
     if (f.pillar) { const e = Math.min(1, (1 - k) * 6), w = (1.3 + (1 - k) * .4) * e; f.x = P.x; f.z = P.z; GLX.obj('glow', 'cyl', f.x, 9, f.z, G.time, w, 18, w, f.c, 1.5, k * .55); GLX.obj('glow', 'cyl', f.x, 9, f.z, -G.time, w * .4, 18, w * .4, col(0xffffff), 2, k * .7); GLX.halo(f.x, 1.2, f.z, 5 * e, f.c, k * .6); for (let i = 0; i < 10; i++) { const ph = ((1 - k) * 1.6 + i / 10) % 1, a = i * .63 + G.time * 2; GLX.obj('glow', 'gem', f.x + Math.cos(a) * w * .9, ph * 10, f.z + Math.sin(a) * w * .9, a, .1, .2, .1, f.c, 2, k); } GLX.light(f.x, 3, f.z, 12, f.c, 1.6 * k, 9); }
     else if (f.shock) { const e = 1 - Math.pow(k, 2.2), r = f.r * (.3 + e * 1.1) * 2; GLX.obj('glow', 'ring', f.x, .14, f.z, 0, r, 1, r, f.c, 1.4, k * 1.1, -1); GLX.obj('glow', 'ring', f.x, .18, f.z, G.time, r * .86, 1, r * .86, col(0xffffff), 1.6, k * .7, -1); GLX.obj('glow', 'disc', f.x, .1, f.z, 0, r * .9, 1, r * .9, f.c, 1, k * k * .45, 0);
       const fl = Math.max(0, 1 - (1 - k) * 4); if (fl > 0) { GLX.obj('glow', 'sphere', f.x, 1.1, f.z, 0, f.r * .9 * (1.4 - fl * .4), f.r * .7, f.r * .9 * (1.4 - fl * .4), col(0xffffff), 2.4, fl * .85); GLX.halo(f.x, 1.2, f.z, f.r * 2.8, f.c, fl); }
