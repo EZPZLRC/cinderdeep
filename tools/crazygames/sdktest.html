@@ -1,0 +1,27 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>OathByte CrazyGames SDK check</title>
+<!-- Opens public/js/cg.js on its own and prints what the CrazyGames SDK answered. Use with ?cg=1&useLocalSdk=true
+     (local test mode) from any address. Not served by the game server. -->
+<body style="background:#111;color:#ddd;font:14px monospace;padding:12px"><pre id="out">waiting for the SDK…</pre>
+<script>var G = { state: 'menu' };</script>
+<script src="../../public/js/cg.js"></script>
+<script>
+(function () {
+  const out = document.getElementById('out'), t0 = Date.now(), lines = [];
+  const say = s => { lines.push(s); out.textContent = lines.join('\n'); };
+  say('CG.on = ' + CG.on + ', server = "' + CG.server + '", ws = ' + CG.ws());
+  const iv = setInterval(() => {
+    if (!CG.ready && Date.now() - t0 < 15000) return; clearInterval(iv);
+    if (!CG.ready) { say('SDK not ready after 15 s'); return; }
+    const s = CG.sdk; say('SDK ready, environment = ' + s.environment);
+    say('settings = ' + JSON.stringify(s.game.settings) + ', muted = ' + CG.muted + ', chat off = ' + CG.noChat);
+    try { G.state = 'play'; setTimeout(() => { say('gameplay on: ' + CG.playing); G.state = 'menu'; setTimeout(() => say('gameplay off: ' + !CG.playing), 900); }, 900); } catch (e) { say('gameplay error ' + e); }
+    try { CG.room('pgtest1', true); say('updateRoom ok'); } catch (e) { say('updateRoom error ' + e); }
+    try { say('invite link = ' + CG.inviteLink('pgtest1')); } catch (e) { say('inviteLink error ' + e); }
+    try { say('getInviteParam(room) = ' + s.game.getInviteParam('room')); } catch (e) { say('getInviteParam error ' + e); }
+    ['gameplayStart', 'gameplayStop', 'happytime', 'updateRoom', 'leftRoom', 'inviteLink', 'getInviteParam', 'addSettingsChangeListener'].forEach(k => say('game.' + k + ': ' + typeof s.game[k]));
+  }, 300);
+})();
+</script>
+</body>
