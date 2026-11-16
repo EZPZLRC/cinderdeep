@@ -1998,7 +1998,7 @@ const TRIMC = [0x77726a, 0x5878d8, 0xd8b030, 0xff8a2a, 0xb060ff];
 // each class has its own outfit, and weapons, shields, hats and helmets are held by the model's own hand and head bones.
 // If a model has not loaded (or a graphics card cannot skin on the GPU), the code-built character is drawn instead.
 const MLIFT = [1.55, 1.55, 1.5], MLIFT_SKIN = [1.15, 1.12, 1.1], MODELS_ON = !(typeof location !== 'undefined' && /[?&]models=0/.test(location.search)), MODELS_BADGE = typeof location !== 'undefined' && /[?&]models=1/.test(location.search), BMm = new Float32Array(16), HAL = new Float32Array(16), HAR = new Float32Array(16), UPMASK = {};
-const MODEL_OF = { warden: 'warden', ranger: 'ranger', arcanist: 'arcanist', elementalist: 'elementalist', brawler: 'brawler', vil1: 'folkm', vil4: 'folkm', vil5: 'folkm', kid: 'folkm', vendor: 'folkm', vil2: 'folkf', vil3: 'folkf', vil6: 'folkf' }, HAIR_ALT = { vil4: 1, vil5: 1, vil3: 1, vendor: 1 }, MSC = 1.32;
+const MODEL_OF = { warden: 'warden', ranger: 'ranger', arcanist: 'arcanist', elementalist: 'elementalist', brawler: 'folkm' /* build 0125: Street Brawler look (Lee's pick) wears the townsman's shirt */, vil1: 'folkm', vil4: 'folkm', vil5: 'folkm', kid: 'folkm', vendor: 'folkm', vil2: 'folkf', vil3: 'folkf', vil6: 'folkf' }, HAIR_ALT = { vil4: 1, vil5: 1, vil3: 1, vendor: 1 }, MSC = 1.32;
 const MBK = new Float32Array(16), MT1 = new Float32Array(16), MT2 = new Float32Array(16), MHB = new Float32Array(16), MAT = new Float32Array(16), DYE = new Map();
 function m4mul(o, a, b) { for (let c = 0; c < 4; c++) { const x = b[c * 4], y = b[c * 4 + 1], z = b[c * 4 + 2], w = b[c * 4 + 3]; for (let r = 0; r < 4; r++) MT2[c * 4 + r] = a[r] * x + a[4 + r] * y + a[8 + r] * z + a[12 + r] * w; } o.set(MT2); return o; }
 // the same placement GLX.part uses (pivot, rotation Y then X then Z), and its inverse, as 4x4 matrices
@@ -2008,6 +2008,7 @@ function m4rig(o, px, py, pz, rx, ry, rz, ox, oy, oz) { const cx = Math.cos(rx),
 function m4inv(o, m) { const t0 = m[12], t1 = m[13], t2 = m[14]; o[0] = m[0]; o[1] = m[4]; o[2] = m[8]; o[3] = 0; o[4] = m[1]; o[5] = m[5]; o[6] = m[9]; o[7] = 0; o[8] = m[2]; o[9] = m[6]; o[10] = m[10]; o[11] = 0;
   o[12] = -(m[0] * t0 + m[1] * t1 + m[2] * t2); o[13] = -(m[4] * t0 + m[5] * t1 + m[6] * t2); o[14] = -(m[8] * t0 + m[9] * t1 + m[10] * t2); o[15] = 1; return o; }
 // dye a model group to an exact colour (on average), keeping the texture's light and dark
+const HDYE = new Map(); function hdye(gr, d) { const key = gr.avg + '|' + d[0] + '|' + d[1] + '|' + gr.mat; let c = HDYE.get(key); if (!c) { const T = GLX.col(d[0]), a = gr.avg || [.1, .1, .1], lift = gr.mat === 8 ? MLIFT_SKIN : MLIFT; c = [0, 1, 2].map(i => lift[i] * ((1 - d[1]) + d[1] * T[i] / Math.max(.004, a[i]))); HDYE.set(key, c); } return c; } /* build 0125: hero look dyes, lifted like the plain hero colours */
 function mdye(gr, hex, k, lift) { const key = gr.avg + '|' + hex + '|' + k + '|' + lift; let c = DYE.get(key); if (!c) { const T = GLX.col(hex), a = gr.avg || [.1, .1, .1]; c = [0, 1, 2].map(i => lift * ((1 - k) + k * T[i] / Math.max(.004, a[i]))); DYE.set(key, c); } return c; }
 // ---- build 0114: every weapon has its own way of being held and swung ----
 // Poses are written in the chest's frame (metres: +l to the hero's left, +u up, +f forward). The arm bends to put the wrist there
@@ -2138,8 +2139,9 @@ function heroModel(o, cls, rot, tw, lu, dy, mv, AW, wt, wglow, em, wk) {
       else lay.push([an, k * A[an].dur, false, act, msk]); } }
   if (GFIT.force) { lay.length = 0; for (const L of GFIT.force) lay.push([L[0], L[1], L[2], L[3], L[4] ? (UPMASK[nm + L[4]] || (UPMASK[nm + L[4]] = CDM.mask(M, L[4].split(','), 0))) : null]); } /* test hook */
   GLX.base(BMm, o.x + Math.sin(rot) * lu, o.y + dy - M.head.minY * s, o.z + Math.cos(rot) * lu, rot + tw, s);
-  const folk = !hero, alt = HAIR_ALT[cls] ? 1 : 0, L = LOOK[cls] || LOOK.vil1, hairC = o.hair || 0x4a3626;
-  const look = (gi, gr) => { const k = gr.kind, mt = gr.mat; if (k === 'beard' && !o.beard) return null; if (k === 'hair' && alt && M.head.groups.some(g => g.kind === 'hairb')) return null; if (k === 'hairb' && !alt) return null;
+  const folk = !hero, alt = HAIR_ALT[cls] ? 1 : 0, L = LOOK[cls] || LOOK.vil1, hairC = o.hair || 0x4a3626, HL = hero && typeof HLOOK !== 'undefined' ? HLOOK[cls] : null;
+  const look = (gi, gr) => { const k = gr.kind, mt = gr.mat; if (k === 'beard' && !o.beard && !(HL && HL.beard)) return null; if (k === 'hair' && alt && M.head.groups.some(g => g.kind === 'hairb')) return null; if (k === 'hairb' && !alt) return null;
+    if (HL && HL.dye[k] && !o.hair) { const d = HL.dye[k]; return [hdye(gr, d), em + (d[2] || 0), d[3] || mt]; } /* build 0125: Lee's picked look */
     if (folk) { if (k === 'cloth') return [mdye(gr, L.cl, .9, 1), em, mt]; if (k === 'leather') return [mdye(gr, L.d, .45, 1.3), em, mt]; }
     if ((k === 'hair' || k === 'hairb' || k === 'beard') && (folk || o.hair)) return [mdye(gr, hairC, .85, 1), em, mt];
     return [mt === 8 ? MLIFT_SKIN : MLIFT, em, mt] /* build 0041: lifted so the outfit reads from the game camera */; };
@@ -2339,7 +2341,7 @@ function drawHero(o, self) {
   }
   if (MSW) MDL.done();
   if (L.robe) for (let k = 0; k < 3; k++) { const a = G.time * 1.6 + k * 2.09; GLX.obj('glow', 'gem', o.x + Math.cos(a) * .95, o.y + 1.5 + Math.sin(a * 1.7) * .25, o.z + Math.sin(a) * .95, a, .12, .2, .12, col(L.orb), 1.5, .9); }
-  if (cls === 'brawler') for (const sd of [1, -1]) p('rbox', .2 * sd, 1.0, -.2, lean + .3 + mv * .4 + sw2, 0, 0, 0, -.34, 0, .12, .6, .03, cloth);
+  if (cls === 'brawler' && !MDL) for (const sd of [1, -1]) p('rbox', .2 * sd, 1.0, -.2, lean + .3 + mv * .4 + sw2, 0, 0, 0, -.34, 0, .12, .6, .03, cloth);
   if (L.cape && !MDL) { p('rbox', 0, 1.66, -.28, lean + .12 + mv * .3 + sw2, 0, 0, 0, -.36, 0, .78, .74, .05, cloth); p('rbox', 0, 1.66, -.28, lean + .22 + mv * .5 + sw2 * 2, 0, 0, 0, -1.0, -.06, .84, .62, .04, shade(cloth, .8)); p('rbox', 0, 1.7, -.26, lean, 0, 0, 0, 0, 0, .7, .08, .1, trim, 4, te); }
 
   // ---- class signature look (build 0016): silhouette, class colour, moving cloth, aura, rarity glow ----
@@ -2349,13 +2351,23 @@ function drawHero(o, self) {
     if (HERO && !MDL) p('rbox', 0, 1.12, .27, lean, 0, 0, 0, .06, 0, .08, .08, .03, shade(CC, .75), 4);
     if (MDL) { // build 0042: class headgear and back pieces on the real model, carried by its head and spine
       const hc = cloth;
-      if (cls === 'warden') { if (MDL.head()) { p('sphere', 0, 2.08, -.01, 0, 0, 0, 0, 0, 0, .37, .35, .39, steelC, 4); p('cap', 0, 1.99, 0, 0, 0, 0, 0, 0, 0, .42, .04, .44, shade(steelC, .8), 4); p('rbox', 0, 2.0, .19, 0, 0, 0, 0, 0, 0, .04, .15, .03, steelC, 4); p('rbox', 0, 2.27, -.02, 0, 0, 0, 0, 0, 0, .04, .1, .36, CC, 0, .1); for (const sd of [1, -1]) p('cone', .15 * sd, 2.2, -.02, 0, 0, -sd * 1.1, 0, .1, 0, .05, .26, .05, col(0xe8dcc0), 3); MDL.done(); }
-        if ((!g.offhand || slung) && MDL.back()) { p('rbox', 0, 1.35, -.3, 0, 0, 0, 0, 0, 0, .62, .8, .06, steelC, 4); p('rbox', 0, 1.35, -.34, 0, 0, 0, 0, 0, 0, .46, .64, .03, CC, 0, .1); MDL.done(); } }
-      else if (cls === 'ranger') { if (!g.offhand && MDL.back()) { p('rbox', .1, 1.5, -.26, .3, 0, .4, 0, 0, 0, .16, .56, .13, leatherC); for (let k = 0; k < 3; k++) p('rbox', .2 + k * .04, 1.86, -.31, .3, 0, .4, 0, 0, 0, .025, .24, .025, k === 1 ? CC : wood); MDL.done(); } }
-      else if (cls === 'arcanist') { if (!g.helm && MDL.head()) { p('cap', 0, 2.14, 0, 0, 0, 0, 0, 0, 0, .52, .04, .52, hc); p('cone', 0, 2.16, -.02, -.15 - sway * .3, 0, 0, 0, .3, 0, .26, .62, .26, hc); p('cap', 0, 2.17, 0, 0, 0, 0, 0, 0, 0, .3, .05, .3, CC, 0, .6); MDL.done(); }
-        if (!g.offhand) { const a = t * 1.3, x = o.x + Math.cos(a) * .9, z = o.z + Math.sin(a) * .9, y = o.y + 2.1 + Math.sin(a * 2) * .15; GLX.obj('glow', 'sphere', x, y, z, 0, .18, .18, .18, CC, 1.2, .9); GLX.halo(x, y, z, .55, CC, .22); } }
-      else if (cls === 'brawler') { if (MDL.head()) { p('cap', 0, 2.1, 0, 0, 0, 0, 0, 0, 0, .37, .05, .39, CC); p('rbox', 0, 2.08, -.2, .4 + sway * .5, 0, 0, 0, -.12, 0, .06, .24, .02, CC); MDL.done(); }
-        if (MDL.back()) { p('cap', 0, 1.0, .02, 0, 0, 0, 0, 0, 0, .56, .08, .4, CC, 0, .05); p('rbox', .2, .96, .16, .1 + sway, 0, -.2, 0, -.26, 0, .1, .42, .03, CC); MDL.done(); } }
+      /* build 0125: Lee's picked looks (Hero Looks page): Blackened Iron, Autumn Hunter, Molten, Starweaver, Street Brawler */
+      const q = (sh, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, c, m, e) => p(sh, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, typeof c === 'number' ? col(c) : c, m, e);
+      const fnd = self ? G.founder : o.founder, cw = Math.sin((o.walk || 0) * .9) * .05 + sway * .6 + .06; /* the Founder Pack cape takes the back when it is on */
+      if (cls === 'warden') { if (MDL.head()) { q('sphere', 0, 2.09, -.01, 0, 0, 0, 0, 0, 0, .42, .5, .44, 0x4a4e58, 4); q('cyl', 0, 1.9, 0, 0, 0, 0, 0, 0, 0, .38, .12, .4, 0x3a3d44, 4); q('rbox', 0, 2.1, .2, 0, 0, 0, 0, 0, 0, .24, .035, .05, 0x0a0a0c, 0); q('rbox', 0, 2.0, .205, 0, 0, 0, 0, 0, 0, .05, .17, .05, 0x0a0a0c, 0);
+          for (const sd of [1, -1]) { q('cone', .2 * sd, 2.18, -.02, 0, 0, -sd * 1.25, 0, .12, 0, .1, .26, .1, 0xd8ccb0, 3); q('cone', .37 * sd, 2.33, -.02, 0, 0, -sd * .35, 0, .12, 0, .065, .28, .065, 0xd8ccb0, 3); } MDL.done(); }
+        if (slung && MDL.back()) { q('rbox', 0, 1.35, -.34, 0, 0, 0, 0, 0, 0, .62, .8, .06, 0x3a3d44, 4); q('rbox', 0, 1.35, -.38, 0, 0, 0, 0, 0, 0, .46, .64, .03, 0x7a1c12, 6); MDL.done(); }
+        if (!fnd && MDL.back()) { q('rbox', 0, 1.66, -.2, cw, 0, 0, 0, -.55, -.03, .7, 1.06, .035, 0x1a1414, 6); for (let k = 0; k < 4; k++) q('rbox', -.24 + k * .16, 1.66, -.2, cw, 0, 0, 0, -1.1 - (k % 2) * .06, -.03, .13, .14 + (k % 2) * .1, .03, 0x1a1414, 6);
+          q('rbox', 0, 1.66, -.2, 0, 0, 0, 0, 0, 0, .72, .08, .07, 0x7a1c12, 6); for (const sd of [1, -1]) q('sphere', .3 * sd, 1.66, -.15, 0, 0, 0, 0, 0, 0, .08, .08, .06, 0xff6a2a, 4, .9); MDL.done(); } }
+      else if (cls === 'ranger') { if (MDL.head()) { q('sphere', .18, 2.2, -.12, -.6, 0, -.6, 0, .14, 0, .08, .3, .02, 0xf0ece0, 0); q('sphere', .18, 2.2, -.12, -.6, 0, -.6, 0, .26, 0, .07, .1, .025, 0xb02a1a, 0); MDL.done(); }
+        if (MDL.back()) { if (!g.offhand) { q('rbox', .1, 1.5, -.26, .3, 0, .4, 0, 0, 0, .16, .56, .13, 0x7a5a36, 7); for (let k = 0; k < 3; k++) q('rbox', .2 + k * .04, 1.86, -.31, .3, 0, .4, 0, 0, 0, .025, .24, .025, k === 1 ? 0xb02a1a : wood, k === 1 ? 0 : 3); }
+          for (let k = 0; k < 9; k++) { const a = -1.4 + k * .35; q('sphere', Math.sin(a) * .26, 1.8, -.02 - Math.cos(a) * .14, 0, 0, 0, 0, 0, 0, .17, .14, .17, 0x8a6a4a, 0); } MDL.done(); } }
+      else if (cls === 'arcanist') { if (!g.helm && MDL.head()) { q('cap', 0, 2.14, 0, 0, 0, 0, 0, 0, 0, .66, .035, .66, 0x1c2458, 6); q('cone', 0, 2.17, -.02, -.22 - sway * .3, 0, 0, 0, .38, 0, .3, .78, .3, 0x1c2458, 6); q('cap', 0, 2.18, 0, 0, 0, 0, 0, 0, 0, .33, .05, .33, 0xc8d0e0, 4, .2);
+          for (let k = 0; k < 3; k++) q('gem', .08 - k * .06, 2.36 + k * .12, -.04 - k * .03, 0, 0, t * 2 + k, 0, 0, 0, .05, .05, .05, 0xdfe8ff, 0, 1.6); MDL.done(); }
+        if (!fnd && MDL.back()) { q('rbox', 0, 1.66, -.2, cw, 0, 0, 0, -.62, -.03, .66, 1.2, .035, 0x1c2458, 6); q('rbox', 0, 1.66, -.2, cw, 0, 0, 0, -1.22, -.035, .68, .06, .04, 0xc8d0e0, 4, .3); q('rbox', 0, 1.66, -.2, 0, 0, 0, 0, 0, 0, .7, .07, .06, 0xc8d0e0, 4, .1);
+          for (const sd of [1, -1]) q('sphere', .3 * sd, 1.66, -.15, 0, 0, 0, 0, 0, 0, .07, .07, .05, 0xc8d0e0, 4, .3); for (let k = 0; k < 7; k++) q('gem', ((k * 37) % 9 - 4) * .07, 1.66, -.2, cw, 0, 0, 0, -.25 - k * .12, -.06, .035, .035, .02, 0xdfe8ff, 0, 1.4); MDL.done(); }
+        if (!g.offhand) { const oc = col(HLOOK.arcanist.orb), a = t * 1.3, x = o.x + Math.cos(a) * .9, z = o.z + Math.sin(a) * .9, y = o.y + 2.1 + Math.sin(a * 2) * .15; GLX.obj('glow', 'sphere', x, y, z, 0, .18, .18, .18, oc, 1.2, .9); GLX.halo(x, y, z, .55, oc, .22); } }
+      else if (cls === 'brawler') { if (MDL.head()) { q('sphere', 0, 2.12, -.03, 0, 0, 0, 0, 0, 0, .29, .15, .33, CC, 6); q('sphere', 0, 2.1, -.19, 0, 0, 0, 0, 0, 0, .1, .08, .07, CC, 6); q('rbox', .03, 2.09, -.2, .5 + sway * .5, .2, 0, 0, -.12, 0, .07, .24, .02, CC, 6); q('rbox', -.03, 2.09, -.2, .7 + sway * .4, -.2, 0, 0, -.1, 0, .06, .2, .02, CC, 6); MDL.done(); } }
       else if (cls === 'elementalist') { for (let k = 0; k < 5; k++) { const a = t * .9 + k * 1.2566, x = o.x + Math.cos(a) * .42, z = o.z + Math.sin(a) * .42, y = o.y + 2.45 + Math.sin(t * 2 + k) * .06; GLX.obj('glow', 'gem', x, y, z, a, .08, .14, .08, k % 2 ? CC : col(0xffd06a), 1.6, .95); }
         for (const sd of [1, -1]) { const h = hand(sd); GLX.obj('glow', 'sphere', h[0], h[1], h[2], 0, .12, .12, .12, CC, 1.6, .7); GLX.halo(h[0], h[1], h[2], .5, CC, .28); } }
     } else if (cls === 'warden') {
