@@ -1919,7 +1919,105 @@ function m4inv(o, m) { const t0 = m[12], t1 = m[13], t2 = m[14]; o[0] = m[0]; o[
   o[12] = -(m[0] * t0 + m[1] * t1 + m[2] * t2); o[13] = -(m[4] * t0 + m[5] * t1 + m[6] * t2); o[14] = -(m[8] * t0 + m[9] * t1 + m[10] * t2); o[15] = 1; return o; }
 // dye a model group to an exact colour (on average), keeping the texture's light and dark
 function mdye(gr, hex, k, lift) { const key = gr.avg + '|' + hex + '|' + k + '|' + lift; let c = DYE.get(key); if (!c) { const T = GLX.col(hex), a = gr.avg || [.1, .1, .1]; c = [0, 1, 2].map(i => lift * ((1 - k) + k * T[i] / Math.max(.004, a[i]))); DYE.set(key, c); } return c; }
-function heroModel(o, cls, rot, tw, lu, dy, mv, AW, wt, wglow, em) {
+// ---- build 0113: every weapon has its own way of being held and swung ----
+// Poses are written in the chest's frame (metres: +l to the hero's left, +u up, +f forward). The arm bends to put the wrist there
+// and the hand turns so the weapon points along d, with its edge (sword), bit (axe) or head (maul) facing e. The legs and body keep the
+// shared animations; only the arms (and the weapon in them) change. Swings are keyed on the attack's own 0-1 progress, so hit
+// timing, attack speed and damage are untouched.
+// key: [k, wrist, d, e]
+const GSTY = {
+  sword: { carry: [[-.27, -.34, .17], [-.2, -.45, .87], [-1, 0, 0]], runC: [[-.28, -.34, .14], [-.3, -.42, .86], [-1, 0, 0]], runOnly: 1 }, /* standing, the sword keeps its own guard animation */
+  // the war axe rests on the shoulder, then comes down in a big overhead chop
+  axe: { carry: [[-.2, .02, .16], [-.12, .55, -.83], [0, 0, 1]], runC: [[-.21, -.02, .14], [-.15, .5, -.85], [0, 0, 1]], body: 'punch',
+    atk: [[0, [-.2, .02, .16], [-.12, .55, -.83], [0, 0, 1]], [.3, [-.2, .4, -.02], [-.05, .45, -.89], [0, .3, 1]], [.45, [-.08, .12, .42], [.02, -.2, .98], [0, -1, .2]], [.6, [.04, -.28, .4], [.25, -.85, .45], [0, -.6, -.8]], [.8, [-.12, -.2, .3], [-.1, -.4, .9], [0, -1, 0]], [1, [-.2, .02, .16], [-.12, .55, -.83], [0, 0, 1]]] },
+  // the maul is held in both hands across the body and slammed down over the head into the ground
+  maul: { two: .3, carry: [[-.13, -.25, .26], [.55, .62, .3], [0, .2, 1]], runC: [[-.15, -.28, .22], [.6, .6, .2], [0, .2, 1]], body: 'jland',
+    atk: [[0, [-.13, -.25, .26], [.55, .62, .3], [0, .2, 1]], [.32, [-.06, .42, .02], [.05, .55, -.83], [0, 1, 0]], [.5, [-.04, -.12, .5], [0, -.8, .6], [0, .2, 1]], [.72, [-.04, -.2, .5], [0, -.85, .5], [0, .2, 1]], [1, [-.13, -.25, .26], [.55, .62, .3], [0, .2, 1]]] },
+  // the staff stands upright at the side, then thrusts its gem at the foe
+  staff: { carry: [[-.26, -.12, .18], [-.05, .98, .15], [0, 0, 1]], runC: [[-.26, -.2, .2], [-.1, .85, .5], [0, 0, 1]],
+    atk: [[0, [-.26, -.12, .18], [-.05, .98, .15], [0, 0, 1]], [.38, [-.22, .12, .12], [-.05, .9, -.4], [0, 0, 1]], [.55, [-.14, .06, .44], [0, .45, .9], [0, 0, 1]], [.8, [-.18, -.02, .34], [-.05, .6, .8], [0, 0, 1]], [1, [-.26, -.12, .18], [-.05, .98, .15], [0, 0, 1]]] },
+  // the wand is carried low, drawn back to the shoulder and flicked out
+  wand: { carry: [[-.24, -.3, .2], [-.15, -.35, .92], [0, 1, 0]], runC: [[-.25, -.32, .16], [-.15, -.3, .94], [0, 1, 0]],
+    atk: [[0, [-.24, -.3, .2], [-.15, -.35, .92], [0, 1, 0]], [.38, [-.25, .16, .02], [-.1, .9, .4], [0, 1, 0]], [.52, [-.12, .1, .5], [0, .1, 1], [0, 1, 0]], [.75, [-.16, .02, .42], [-.05, -.1, 1], [0, 1, 0]], [1, [-.24, -.3, .2], [-.15, -.35, .92], [0, 1, 0]]] },
+  // fists up in a guard between punches
+  fist: { carry: [[-.11, .08, .28], [0, .2, 1], [0, 1, 0]], runC: [[-.13, .0, .25], [0, .1, 1], [0, 1, 0]], left: [[.11, .1, .25], [0, .2, 1], [0, 1, 0]], noAtkIK: 1 },
+  // the bow: left arm out holding it, right hand draws the string to the cheek
+  bow: { bow: 1 }
+};
+const GPOLE_R = [-.7, -.55, -.45], GPOLE_L = [.7, -.55, -.45], GPOLE_UP = [-.9, .1, -.4];
+function gk(keys, k) { let i = 0; while (i < keys.length - 2 && k > keys[i + 1][0]) i++; const a = keys[i], b = keys[i + 1], f = Math.max(0, Math.min(1, (k - a[0]) / ((b[0] - a[0]) || 1))), e = f * f * (3 - 2 * f);
+  const L = (x, y) => [x[0] + (y[0] - x[0]) * e, x[1] + (y[1] - x[1]) * e, x[2] + (y[2] - x[2]) * e]; return [L(a[1], b[1]), L(a[2], b[2]), L(a[3], b[3])]; }
+const gmix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+// the arm targets for this frame; called from inside the pose, after the animations are blended, so it can read the chest
+function gstyIK(md, S, o, mv, act, k, drw) {
+  const H = md.head, W = md.W; let ci = md._gci; if (ci === undefined) ci = md._gci = H.boneNames.indexOf('spine_03'); if (ci < 0 || !W) return null;
+  // the frame stands upright at the chest and turns only partly with the chest (the run and swing clips twist and pitch it a lot)
+  const i = ci * 12, O = [W[i + 9], W[i + 10], W[i + 11]]; let fx = W[i + 6] * .35, fz = .65 + W[i + 8] * .35; const fl = Math.hypot(fx, fz) || 1; fx /= fl; fz /= fl;
+  const Z = [fx, 0, fz], Y = [0, 1, 0], X = [fz, 0, -fx];
+  const P = v => [O[0] + X[0] * v[0] + Y[0] * v[1] + Z[0] * v[2], O[1] + X[1] * v[0] + Y[1] * v[1] + Z[1] * v[2], O[2] + X[2] * v[0] + Y[2] * v[1] + Z[2] * v[2]], D = v => [X[0] * v[0] + Y[0] * v[1] + Z[0] * v[2], X[1] * v[0] + Y[1] * v[1] + Z[1] * v[2], X[2] * v[0] + Y[2] * v[1] + Z[2] * v[2]];
+  const crs = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]], m = Math.min(1, mv * 1.6), out = [];
+  if (S.bow) { if (!(act > 0) || drw < 0) return null; const pull = Math.max(0, Math.min(1, drw)), rel = drw === 0 ? 1 : 0;
+    out.push({ s: 'l', p: P([.06, .11, .5]), w: act, pole: D([.6, -.7, -.3]) }); out.push({ s: 'r', p: P(gmix([-.02, .11, .42], rel ? [-.16, .18, -.02] : [-.09, .2, .08], rel ? 1 : pull)), w: act * .9, pole: D([-.9, .1, -.4]) }); return out; }
+  const cp = gmix(S.carry[0], S.runC[0], m), cd = gmix(S.carry[1], S.runC[1], m), ce = S.carry[2];
+  let wp = cp, wd = cd, we = ce, w = 1; const atk = S.atk && act > 0;
+  if (atk) { const [ap, ad, ae] = gk(S.atk, k); wp = gmix(cp, ap, act); wd = gmix(cd, ad, act); we = gmix(ce, ae, act); } else if (act > 0) w = 1 - act; /* clip-driven swings (sword, fists) take the arm over */
+  if (S.runOnly) w *= m; if (w <= .001) return null; const up = wp[1] > .2, d = D(wd);
+  out.push({ s: 'r', p: P(wp), d, u: crs(d, D(we)), w, pole: D(up ? GPOLE_UP : GPOLE_R) });
+  if (S.two) { const lp = [wp[0] + wd[0] * S.two, wp[1] + wd[1] * S.two, wp[2] + wd[2] * S.two], ld = D([-wd[0], -wd[1], -wd[2]]); out.push({ s: 'l', p: P(lp), d, u: crs(d, D(we)), w, dw: .6, pole: D(up ? [.9, .1, -.4] : GPOLE_L) }); }
+  if (S.left && !(act > 0)) { const d2 = D(S.left[1]); out.push({ s: 'l', p: P(gmix(S.left[0], [S.left[0][0] + .02, S.left[0][1] - .06, S.left[0][2] - .03], m)), d: d2, u: crs(d2, D(S.left[2])), w: 1, dw: .5, pole: D(GPOLE_L) }); }
+  return out;
+}
+// ---- build 0113: worn gear keeps clear of the body ----
+// Each frame the weapon in the hand is tested against simple shapes around the hero's own bones (a ball for the head, rounded
+// tubes for the neck, chest and belly). If any part of the blade, haft or staff would pass through them, the weapon turns about
+// the grip just far enough to clear (a shield or a bow slides out instead). A handful of distance checks a hero, no physics.
+const GFIT = { on: !(typeof location !== 'undefined' && /[?&]gearfit=0/.test(location.search)), dbg: null };
+// what each weapon reaches along the hand (old hero units): samples [along, thickness]
+const GREACH = { sword: [[.42, .08], [.75, .08], [1.1, .08], [1.45, .08], [1.8, .07], [1.95, .05]], axe: [[.4, .05], [.8, .05], [1.15, .2], [1.45, .25], [1.62, .12]], maul: [[.4, .06], [.8, .06], [1.15, .26], [1.45, .32], [1.62, .2]],
+  staff: [[-.8, .06], [-.5, .06], [.5, .06], [.9, .06], [1.25, .08], [1.5, .17]], wand: [[.35, .05], [.65, .05], [.9, .1]] };
+const GBN = {}; // bone indices per model
+function gfitCols(M, BMm, s, out) { // world colliders: [ax,ay,az, bx,by,bz, r] (a ball when a == b), from the posed bones
+  const H = M.head, nm = H.boneNames, W = M.W, T = M.T; if (!W || !T) return 0; const key = nm.length + nm[0] + nm[nm.length - 1]; let k = GBN[key];
+  if (!k) { const f = n => nm.findIndex(x => x.toLowerCase() === n); k = GBN[key] = { pel: f('pelvis'), sp1: f('spine_01'), nk: f('neck_01'), ah: H.attach.indexOf('Head'), ac: H.attach.indexOf('spine_03'), tr: f('thigh_r'), cr: f('calf_r'), fr: f('foot_r'), tl: f('thigh_l'), cl: f('calf_l'), fl: f('foot_l') }; }
+  const w3 = (x, y, z) => [BMm[0] * x + BMm[4] * y + BMm[8] * z + BMm[12], BMm[1] * x + BMm[5] * y + BMm[9] * z + BMm[13], BMm[2] * x + BMm[6] * y + BMm[10] * z + BMm[14]];
+  const bp = b => b < 0 ? null : w3(W[b * 12 + 9], W[b * 12 + 10], W[b * 12 + 11]), ap = a => a < 0 ? null : w3(T[a * 12 + 9], T[a * 12 + 10], T[a * 12 + 11]);
+  const hd = ap(k.ah), ch = ap(k.ac), nk = bp(k.nk), s1 = bp(k.sp1), pl = bp(k.pel); let n = 0; const put = (a, b, r) => { if (!a || !b) return; const c = out[n++]; c[0] = a[0]; c[1] = a[1]; c[2] = a[2]; c[3] = b[0]; c[4] = b[1]; c[5] = b[2]; c[6] = r * s; };
+  put(hd, hd, .15); put(nk || hd, ch, .1); put(ch, s1 || pl, .15); put(s1 || ch, pl, .14);
+  put(bp(k.tr), bp(k.cr), .075); put(bp(k.cr), bp(k.fr), .06); put(bp(k.tl), bp(k.cl), .075); put(bp(k.cl), bp(k.fl), .06); return n; /* and the legs, so a lowered blade never cuts through a thigh */
+}
+// turn the weapon held by hand frame HF (world, old units) about its grip until its samples clear the body; returns the world rotation (quaternion)
+function gfitTurn(C, n, HF, reach, dbg) {
+  const g = [HF[12], HF[13], HF[14]], sc = Math.hypot(HF[8], HF[9], HF[10]) || 1; let d = [HF[8] / sc, HF[9] / sc, HF[10] / sc], q = [0, 0, 0, 1], worst0 = -1;
+  for (let it = 0; it < 4; it++) { let best = 0, bp = null, bn = null;
+    for (const [z, r] of reach) { const L = z * sc, px = g[0] + d[0] * L, py = g[1] + d[1] * L, pz = g[2] + d[2] * L, pen = gfitPen(C, n, px, py, pz, r * sc, GNV); if (pen > best) { best = pen; bp = [px, py, pz, L]; bn = GNV.slice(); } }
+    if (it === 0) worst0 = best; if (best < .004 * sc || !bp) break;
+    const L = bp[3], tx = bp[0] + bn[0] * (best + .01 * sc) - g[0], ty = bp[1] + bn[1] * (best + .01 * sc) - g[1], tz = bp[2] + bn[2] * (best + .01 * sc) - g[2], tl = Math.hypot(tx, ty, tz) || 1;
+    const nd = L >= 0 ? [tx / tl, ty / tl, tz / tl] : [-tx / tl, -ty / tl, -tz / tl], r = qfrom(d, nd); q = qmul(r, q); d = nd; }
+  if (dbg) dbg.push(worst0 / sc);
+  // never turn more than about 70 degrees: a bigger miss means the pose itself is wrong, and a wild flip looks worse than a graze
+  const ang = 2 * Math.acos(Math.min(1, Math.abs(q[3]))); if (ang > 1.2) { const k = 1.2 / ang, a2 = ang * k / 2, s0 = Math.sin(ang / 2) || 1, sg = q[3] < 0 ? -1 : 1, s2 = Math.sin(a2); q = [q[0] / s0 * s2 * sg, q[1] / s0 * s2 * sg, q[2] / s0 * s2 * sg, Math.cos(a2)]; }
+  return q;
+}
+// apply a world rotation q about point (gx,gy,gz) to matrix B in place
+function gfitRot(B, q, gx, gy, gz) { qrot(GQ, q[0], q[1], q[2], q[3]); GQ[12] = gx - (GQ[0] * gx + GQ[4] * gy + GQ[8] * gz); GQ[13] = gy - (GQ[1] * gx + GQ[5] * gy + GQ[9] * gz); GQ[14] = gz - (GQ[2] * gx + GQ[6] * gy + GQ[10] * gz); m4mul(B, GQ, B); }
+// push vector (world) that slides a set of world points (ball radius r) out of the body
+function gfitSlide(C, n, P, out) { out[0] = out[1] = out[2] = 0; let w = 0;
+  for (let it = 0; it < 3; it++) { let best = 0, bn = null; for (const p of P) { const pen = gfitPen(C, n, p[0] + out[0], p[1] + out[1], p[2] + out[2], p[3], GNV); if (pen > best) { best = pen; bn = GNV.slice(); } } if (it === 0) w = best; if (!bn || best < .003) break; for (let k = 0; k < 3; k++) out[k] += bn[k] * (best + .005); }
+  return w; }
+// deepest overlap of a ball (p, r) with the colliders; fills push direction into nv
+function gfitPen(C, n, px, py, pz, r, nv) { let best = 0;
+  for (let i = 0; i < n; i++) { const c = C[i], ax = c[0], ay = c[1], az = c[2], ex = c[3] - ax, ey = c[4] - ay, ez = c[5] - az, L2 = ex * ex + ey * ey + ez * ez; let t = L2 > 1e-9 ? ((px - ax) * ex + (py - ay) * ey + (pz - az) * ez) / L2 : 0; t = t < 0 ? 0 : t > 1 ? 1 : t;
+    let dx = px - (ax + ex * t), dy = py - (ay + ey * t), dz = pz - (az + ez * t); let d = Math.hypot(dx, dy, dz); const pen = c[6] + r - d;
+    if (pen > best) { best = pen; if (d < 1e-5) { dx = -ez; dy = 0; dz = ex; d = Math.hypot(dx, dz) || 1; if (d < 1e-5) { dx = 1; d = 1; } } nv[0] = dx / d; nv[1] = dy / d; nv[2] = dz / d; } }
+  return best; }
+const GC = [[], [], [], [], [], [], [], []].map(() => new Array(7)), GNV = [0, 0, 0], GQ = new Float32Array(16), GT = new Float32Array(16);
+function qrot(o, x, y, z, w) { o[0] = 1 - 2 * (y * y + z * z); o[1] = 2 * (x * y + z * w); o[2] = 2 * (x * z - y * w); o[3] = 0; o[4] = 2 * (x * y - z * w); o[5] = 1 - 2 * (x * x + z * z); o[6] = 2 * (y * z + x * w); o[7] = 0; o[8] = 2 * (x * z + y * w); o[9] = 2 * (y * z - x * w); o[10] = 1 - 2 * (x * x + y * y); o[11] = 0; o[12] = o[13] = o[14] = 0; o[15] = 1; return o; }
+function qmul(a, b) { return [a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1], a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0], a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3], a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]]; }
+function qapply(q, v) { const [x, y, z, w] = q, ix = w * v[0] + y * v[2] - z * v[1], iy = w * v[1] + z * v[0] - x * v[2], iz = w * v[2] + x * v[1] - y * v[0], iw = -x * v[0] - y * v[1] - z * v[2]; return [ix * w + iw * -x + iy * -z - iz * -y, iy * w + iw * -y + iz * -x - ix * -z, iz * w + iw * -z + ix * -y - iy * -x]; }
+function qfrom(a, b) { const c = [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]], d = a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; let q = [c[0], c[1], c[2], 1 + d]; const l = Math.hypot(q[0], q[1], q[2], q[3]); if (l < 1e-6) return [0, 0, 0, 1]; return q.map(v => v / l); }
+// smooth a hero's correction so it never snaps: slerp-lite toward the target
+function gfitEase(o, key, q, dtp) { let c = o[key]; if (!c || !(dtp > 0) || dtp > .25) { o[key] = q.slice(); return o[key]; } const k = 1 - Math.exp(-dtp * 28); if (c[0] * q[0] + c[1] * q[1] + c[2] * q[2] + c[3] * q[3] < 0) q = q.map(v => -v); for (let i = 0; i < 4; i++) c[i] += (q[i] - c[i]) * k; const l = Math.hypot(c[0], c[1], c[2], c[3]) || 1; for (let i = 0; i < 4; i++) c[i] /= l; return c; }
+function heroModel(o, cls, rot, tw, lu, dy, mv, AW, wt, wglow, em, wk) {
   const nm = o.mdl || MODEL_OF[cls]; if (!MODELS_ON || !nm || !GLX.model || G.realModels === false) return null;
   const M = GLX.model(nm, 'models/' + nm + '.cdm?v=' + BUILD); if (!M || !M.anims || !M.anims.idle) return null;
   const A = M.anims, t = G.time, s = (o.sc || 1.08) * MSC, /* build 0041: as tall as the code-built heroes */ up = UPMASK[nm] || (UPMASK[nm] = CDM.mask(M, ['spine_02'], 0)), hero = !!CLASS_COL[cls];
@@ -1943,14 +2041,21 @@ function heroModel(o, cls, rot, tw, lu, dy, mv, AW, wt, wglow, em) {
       const still = mv < .15, msk = still && !ranged ? null : up; /* standing still, the whole body swings: feet plant and the hips turn into the blow */
       if ((wt === 'staff' || wt === 'wand') && A.spenter && k < .38) lay.push(['spenter', k / .38 * A.spenter.dur, false, act, still ? null : up]); /* spells gather power before they fly */
       else if (wt === 'staff' || wt === 'wand') lay.push(['cast', (k - .38) / .62 * A.cast.dur, false, act, still ? null : up]);
+      else if (hero && wk === 'maul' && A.jland) { /* build 0113: the maul winds up from a braced stance and the knees drop into the slam */ const jw = clamp((k - .42) / .12, 0, 1) * clamp((1 - k) / .3, 0, 1); lay.push(['cstance', k * A.cstance.dur, false, act * (1 - jw) + .001, msk]); if (jw > 0) lay.push(['jland', clamp((k - .42) / .58, 0, 1) * A.jland.dur * .8, false, act * jw, null]); }
+      else if (hero && wk === 'axe' && A.punch) { /* build 0113: the chop turns the whole body into it; the shield arm keeps its guard */ const ky = nm + '|noL' + (msk ? 'u' : ''); let NL = UPMASK[ky], LA = UPMASK[nm + '|L'];
+        if (!NL) { LA = UPMASK[nm + '|L'] = CDM.mask(M, ['clavicle_l'], 0); NL = UPMASK[ky] = LA.map((v, b) => (1 - v) * (msk ? msk[b] : 1)); }
+        lay.push(['punch', k * A.punch.dur, false, act, NL]); lay.push([A.cstance ? 'cstance' : 'idle', t, true, act, LA]); }
       else lay.push([an, k * A[an].dur, false, act, msk]); } }
+  if (GFIT.force) { lay.length = 0; for (const L of GFIT.force) lay.push([L[0], L[1], L[2], L[3], L[4] ? (UPMASK[nm + L[4]] || (UPMASK[nm + L[4]] = CDM.mask(M, L[4].split(','), 0))) : null]); } /* test hook */
   GLX.base(BMm, o.x + Math.sin(rot) * lu, o.y + dy - M.head.minY * s, o.z + Math.cos(rot) * lu, rot + tw, s);
   const folk = !hero, alt = HAIR_ALT[cls] ? 1 : 0, L = LOOK[cls] || LOOK.vil1, hairC = o.hair || 0x4a3626;
   const look = (gi, gr) => { const k = gr.kind, mt = gr.mat; if (k === 'beard' && !o.beard) return null; if (k === 'hair' && alt && M.head.groups.some(g => g.kind === 'hairb')) return null; if (k === 'hairb' && !alt) return null;
     if (folk) { if (k === 'cloth') return [mdye(gr, L.cl, .9, 1), em, mt]; if (k === 'leather') return [mdye(gr, L.d, .45, 1.3), em, mt]; }
     if ((k === 'hair' || k === 'hairb' || k === 'beard') && (folk || o.hair)) return [mdye(gr, hairC, .85, 1), em, mt];
     return [mt === 8 ? MLIFT_SKIN : MLIFT, em, mt] /* build 0041: lifted so the outfit reads from the game camera */; };
-  if (!GLX.drawModel(M, BMm, lay, look)) return null;
+  const STY = hero && !o.dead && !o.dash && !o.talk && !GFIT.force && GFIT.sty !== false ? GSTY[wk] : null, drw0 = o.act && o.lastA ? o.lastA.drw : -1;
+  M.ik = STY ? md => gstyIK(md, STY, o, mv, act, clamp(o.swing || 0, 0, 1), drw0) : null;
+  const drew = GLX.drawModel(M, BMm, lay, look); M.ik = null; if (!drew) return null;
   const col = GLX.col;
   // a bone's frame in the world, sized to the code-built hero's units, so the old weapon, shield and hat shapes fit the hand or head
   const frame = (name, out) => { const h = GLX.attach(M, name, MAT); if (!h) return null; m4mul(out, BMm, h); for (let i = 0; i < 12; i++) out[i] /= MSC; return out; };
@@ -1964,8 +2069,29 @@ function heroModel(o, cls, rot, tw, lu, dy, mv, AW, wt, wglow, em) {
     back() { if (!frame('spine_03', MHB)) return false; m4rig(MT1, 0, -1.5, 0, 0, 0, 0, 0, 0, 0); MBK.set(BM); m4mul(BM, MHB, MT1); return true; },
     done() { BM.set(MBK); },
     handW(sd) { return frame(sd > 0 ? 'hand_r' : 'hand_l', MHB) ? [MHB[12], MHB[13], MHB[14]] : [o.x, o.y + 1.2, o.z]; },
+    // build 0113: right after arm(), turn the held weapon about the grip so it clears the head and body
+    fit(kind) { this.tip(kind, null); if (!GFIT.on || !GREACH[kind] || o.dead) return; const n = gfitCols(M, BMm, s, GC); if (!n) return; const D = GFIT.dbg;
+      let q = gfitTurn(GC, n, MHB, GREACH[kind], D && D.w); const dt = t - (o._gft === undefined ? t : o._gft); o._gft = t; const c = o._gq;
+      if (c && dt > 0 && dt < .25 && Math.abs(q[3]) > Math.abs(c[3]) - 1e-6) q = gfitEase(o, '_gq', q, dt); else o._gq = q.slice(); /* growing: follow at once; letting go: ease back */
+      q = o._gq; gfitRot(BM, q, MHB[12], MHB[13], MHB[14]); this.tip(kind, q); if (D && D.r) { GT.set(MHB); gfitRot(GT, q, MHB[12], MHB[13], MHB[14]); gfitTurn(GC, n, GT, GREACH[kind], D.r); } },
+    // build 0113: where the weapon's tip and middle are this frame (after any turn), kept for a short while for the swing trail
+    tip(kind, q) { const R = GREACH[kind]; if (!R || (kind !== 'sword' && kind !== 'axe' && kind !== 'maul')) return; let a = [MHB[8], MHB[9], MHB[10]]; if (q) a = qapply(q, a); const z1 = R[R.length - 1][0], z0 = R[Math.max(0, R.length - 3)][0], g = [MHB[12], MHB[13], MHB[14]];
+      const h = o._trl || (o._trl = []); const pt = [g[0] + a[0] * z1, g[1] + a[1] * z1, g[2] + a[2] * z1, g[0] + a[0] * z0, g[1] + a[1] * z0, g[2] + a[2] * z0, t];
+      if (h.length && h[h.length - 1][6] === t) h[h.length - 1] = pt; else h.push(pt); while (h.length && (t - h[0][6] > .16 || h.length > 12)) h.shift(); },
+    // build 0113: a shield on the forearm slides out of the chest instead of sinking into it
+    fitShield() { if (!GFIT.on || o.dead) return; const n = gfitCols(M, BMm, s, GC); if (!n) return; const P = [], sc = Math.hypot(MHB[0], MHB[1], MHB[2]) || 1, H = MHB;
+      for (let k = -1; k < 8; k++) { const ly = .16 + (k < 0 ? 0 : .38 * Math.cos(k * .785)), lz = .2 + (k < 0 ? 0 : .38 * Math.sin(k * .785)), lx = -.17; P.push([H[0] * lx + H[4] * ly + H[8] * lz + H[12], H[1] * lx + H[5] * ly + H[9] * lz + H[13], H[2] * lx + H[6] * ly + H[10] * lz + H[14], .05 * sc]); }
+      const pv = [0, 0, 0], w = gfitSlide(GC, n, P, pv); const D = GFIT.dbg; if (D && D.ws) D.ws.push(w / sc);
+      const dt = t - (o._gst === undefined ? t : o._gst); o._gst = t; let c = o._gs; const a = Math.hypot(pv[0], pv[1], pv[2]);
+      if (!c || !(dt > 0) || dt > .25 || a >= Math.hypot(c[0], c[1], c[2])) c = o._gs = pv; else { const k = 1 - Math.exp(-dt * 20); for (let i = 0; i < 3; i++) c[i] += (pv[i] - c[i]) * k; }
+      BM[12] += c[0]; BM[13] += c[1]; BM[14] += c[2]; if (D && D.rs) { for (const p of P) { p[0] += c[0]; p[1] += c[1]; p[2] += c[2]; } D.rs.push(gfitSlide(GC, n, P, [0, 0, 0]) / sc); } },
     weapon() { // a longbow in the left hand, limbs curving back toward the archer, string tip to tip, an arrow nocked while drawing
-    if (wt !== 'bow' || o.dead) return; const h = GLX.attach(M, 'hand_l', HAL); if (!h) return; const gx = h[12] + .01, gy = h[13], gz = h[14] + .02, bc = wglow || col(0x5a4028), be = wglow ? .6 : 0;
+    if (wt !== 'bow' || o.dead) return; const h = GLX.attach(M, 'hand_l', HAL); if (!h) return; let gx = h[12] + .01, gy = h[13], gz = h[14] + .02; const bc = wglow || col(0x5a4028), be = wglow ? .6 : 0;
+    if (GFIT.on) { /* build 0113: the bow slides out of the head and chest (the limbs reach well past the hand) */ const n = gfitCols(M, BMm, s, GC); if (n) { const B = BMm, P = []; for (const [yy, zz] of [[0, 0], [.3, -.05], [.56, -.15], [.66, -.22], [-.3, -.05], [-.56, -.15], [-.66, -.22]]) { const x = gx, y = gy + yy, z = gz + zz; P.push([B[0] * x + B[4] * y + B[8] * z + B[12], B[1] * x + B[5] * y + B[9] * z + B[13], B[2] * x + B[6] * y + B[10] * z + B[14], .03 * s]); }
+      const pv = [0, 0, 0], w = gfitSlide(GC, n, P, pv), D = GFIT.dbg; if (D && D.wb) D.wb.push(w / s); const dt = t - (o._gbt === undefined ? t : o._gbt); o._gbt = t; let c = o._gb;
+      if (!c || !(dt > 0) || dt > .25 || Math.hypot(pv[0], pv[1], pv[2]) >= Math.hypot(c[0], c[1], c[2])) c = o._gb = pv; else { const k = 1 - Math.exp(-dt * 20); for (let i = 0; i < 3; i++) c[i] += (pv[i] - c[i]) * k; }
+      const s2 = s * s; gx += (B[0] * c[0] + B[1] * c[1] + B[2] * c[2]) / s2; gy += (B[4] * c[0] + B[5] * c[1] + B[6] * c[2]) / s2; gz += (B[8] * c[0] + B[9] * c[1] + B[10] * c[2]) / s2;
+      if (D && D.rb) { for (const p of P) { p[0] += c[0]; p[1] += c[1]; p[2] += c[2]; } D.rb.push(gfitSlide(GC, n, P, [0, 0, 0]) / s); } } }
     const seg = (a, b, w, c, mt, e) => { const dyy = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dyy, dz), ax = Math.atan2(dz, dyy); GLX.part('dyn', 'rbox', BMm, gx, gy + (a[0] + b[0]) / 2, gz + (a[1] + b[1]) / 2, ax, 0, 0, 0, 0, 0, w, L, w * 1.2, c, (e || 0) + em, 1, mt || 0); };
     const P = [[0, 0], [.3, -.05], [.56, -.15], [.66, -.22]]; for (const sd of [1, -1]) for (let i = 0; i < 3; i++) seg([P[i][0] * sd, P[i][1]], [P[i + 1][0] * sd, P[i + 1][1]], i === 2 ? .022 : .032, bc, 3, be);
     GLX.part('dyn', 'rbox', BMm, gx, gy, gz, 0, 0, 0, 0, 0, 0, .04, .14, .05, col(0x4a3524), em, 1, 7);
@@ -2007,7 +2133,7 @@ function drawHero(o, self) {
   const runeE = r => (r >= 3 ? 1.3 : .75) * (.78 + .22 * Math.sin(G.time * 2.4 + o.x * 1.3));
   const rune = (k, px, py, pz, rx, ry, ox, oy, oz, flat, c, e) => { for (const [dx, dy, ww, hh] of RUNES[k & 3]) flat ? p('rbox', px, py, pz, rx, ry, 0, ox + dx, oy, oz + dy, ww, .014, hh, c, 0, e) : p('rbox', px, py, pz, rx, ry, 0, ox + dx, oy + dy, oz, ww, hh, .028, c, 0, e); };
   if (!o.dead) { let lgN = 0, top = 3; for (const k in g) { const it = g[k]; if (Array.isArray(it) && it[1] >= 3) { lgN++; top = Math.max(top, it[1]); } } if (lgN) { const lc = col(TRIMC[top]), pu = .8 + .2 * Math.sin(G.time * 1.7 + o.x); GLX.halo(o.x, (o.y || 0) + 1.3, o.z, 1.5 + .12 * Math.min(lgN, 5), lc, (.05 + .025 * Math.min(lgN, 4)) * pu); for (let k = 0; k < Math.min(3, lgN); k++) { const ph = (G.time * .45 + k / 3 + o.x * .1) % 1; GLX.obj('glow', 'sphere', o.x + Math.sin(k * 2.4 + G.time * .7) * .45, (o.y || 0) + .5 + ph * 2.1, o.z + Math.cos(k * 1.9 + G.time * .6) * .45, 0, .045, .045, .045, lc, 2, (1 - ph) * .8); } } }
-  let MDL = null; try { MDL = heroModel(o, cls, rot, tw, lu, AP ? AP.dy * AW : 0, mv, AW, wt, wglow, em); } catch (e) { G.realModels = false; if (GLX.modelInfo) { const mi = GLX.modelInfo(); mi.state = 'off'; mi.why = 'hero code: ' + String(e && e.message || e).slice(0, 120); } console.warn('real models switched off', e); } if (!MDL) {
+  let MDL = null; try { MDL = heroModel(o, cls, rot, tw, lu, AP ? AP.dy * AW : 0, mv, AW, wt, wglow, em, wb === 4 ? 'wand' : wt); } catch (e) { G.realModels = false; if (GLX.modelInfo) { const mi = GLX.modelInfo(); mi.state = 'off'; mi.why = 'hero code: ' + String(e && e.message || e).slice(0, 120); } console.warn('real models switched off', e); } if (!MDL) {
   // legs or robe
   if (L.robe) { p('taper', 0, .62, 0, 0, 0, 0, 0, 0, 0, .86, 1.2, .8, ac, am); p('cap', 0, .08, 0, 0, 0, 0, 0, 0, 0, .9, .1, .84, trim, 4, te); p('rbox', 0, .62, .37, .12, 0, 0, 0, 0, 0, .2, 1.0, .04, trim, 0, te); for (const sd of [1, -1]) p('sphere', .16 * sd, .08, .12 + sd * lg * .25, 0, 0, 0, 0, 0, 0, .2, .14, .38, bm ? bm[0] : skin, bm ? bm[1] : 0); }
   else for (const sd of [1, -1]) {
@@ -2093,8 +2219,9 @@ function drawHero(o, self) {
   }
   } // end of the code-built body (build 0039: skipped when a real model is drawn)
   // off-hand
-  const MOH = MDL && g.offhand ? (cls === 'warden' ? MDL.arm(-1, lg * .6 - .5, 0) && 2 : (cls === 'ranger' || cls === 'elementalist' || cls === 'brawler') ? MDL.back() && 2 : 1) : 0;
-  if (g.offhand && (!MDL || MOH)) { const ot = tr(g.offhand);
+  const wk = wb === 4 ? 'wand' : wt, slung = !!MDL && cls === 'warden' && wk === 'maul' && !!g.offhand; /* build 0113: both hands on the maul, so the shield is slung on the back */
+  const MOH = MDL && g.offhand ? (cls === 'warden' ? (slung ? 0 : MDL.arm(-1, lg * .6 - .5, 0) && (MDL.fitShield(), 2)) : (cls === 'ranger' || cls === 'elementalist' || cls === 'brawler') ? MDL.back() && 2 : 1) : 0;
+  if (g.offhand && (!MDL || MOH) && !slung) { const ot = tr(g.offhand);
     if (cls === 'warden') { GLX.part('dyn', 'cyl', BM, -.47, 1.62, 0, lg * .6 - .5, 0, 1.5708, -.5, .17, .2, .8, .06, .8, leatherC, em, 1, 7); GLX.part('dyn', 'cyl', BM, -.47, 1.62, 0, lg * .6 - .5, 0, 1.5708, -.5, .2, .2, .86, .03, .86, steelC, em, 1, 4); GLX.part('dyn', 'cyl', BM, -.47, 1.62, 0, lg * .6 - .5, 0, 1.5708, -.5, .21, .2, .62, .02, .62, cloth, em, 1, 6); GLX.part('dyn', 'sphere', BM, -.47, 1.62, 0, lg * .6 - .5, 0, 1.5708, -.5, .24, .2, .26, .12, .26, ot[0], em + ot[1], 1, 4); }
     else if (cls === 'ranger') { p('rbox', .1, 1.5, -.3, lean + .3, 0, .4, 0, 0, 0, .2, .7, .16, leatherC); for (let k = 0; k < 3; k++) p('rbox', .22 + k * .05, 1.95, -.36, lean + .3, 0, .4, 0, 0, 0, .03, .3, .03, k === 1 ? ot[0] : wood); }
     else if (cls === 'elementalist') { p('rbox', -.34, 1.0, .1, lean, .3, 0, 0, 0, 0, .12, .34, .28, dkLeather); p('rbox', -.41, 1.0, .1, lean, .3, 0, 0, 0, 0, .02, .16, .12, ot[0], 4, ot[1]); }
@@ -2103,7 +2230,7 @@ function drawHero(o, self) {
   }
   if (MOH === 2) MDL.done();
   // weapon
-  const MSW = MDL && !MDL.bow && wt !== 'fist' && wt !== 'none' && !o.dead ? MDL.arm(1, rx, ry) : false; /* build 0042: the old weapon shapes, carried by the model's right hand */
+  const MSW = MDL && !MDL.bow && wt !== 'fist' && wt !== 'none' && !o.dead ? MDL.arm(1, rx, ry) && (MDL.fit(wb === 4 ? 'wand' : wt), true) : false; /* build 0042: the old weapon shapes, carried by the model's right hand */
   if (MDL && (MDL.bow || o.dead || wt === 'fist' || wt === 'none')) { try { MDL.weapon(); } catch (e) { } if (wt === 'fist' && !o.dead) for (const sd of [1, -1]) if (MDL.arm(sd, 0, 0)) { for (let k = 0; k < 3; k++) p('cone', .47 * sd, 1.62, 0, 1.5708, 0, 0, (k - 1) * .08, .1, .68, .06, .14, .06, wglow || steelC, 4, wglow ? .8 : 0); p('sphere', .47 * sd, 1.62, 0, 0, 0, 0, 0, -.68, 0, .2, .2, .2, dkLeather, 7); MDL.done(); } }
   else if (MDL && !MSW) { }
   else if (wt === 'sword') { /* build 0024: a broadsword that reads from the game camera */ if (wr >= 2) for (let k = 0; k < 3; k++) for (const f of [1, -1]) rune(k + (f > 0 ? 0 : 1), .47, 1.62, 0, rx, ry, 0, -.66 + .03 * f, .5 + k * .32, true, wglow, runeE(wr)); p('rbox', .47, 1.62, 0, rx, ry, 0, 0, -.66, .9, .21, .05, 1.5, blade, 4, .22); p('rbox', .47, 1.62, 0, rx, ry, 0, 0, -.66, .84, .06, .07, 1.22, shade(blade, .62), 4); p('rbox', .47, 1.62, 0, rx, ry, 0, 0, -.66, 1.72, .13, .05, .2, blade, 4, .22); p('rbox', .47, 1.62, 0, rx, ry, 0, 0, -.66, 1.86, .06, .045, .14, col(0xeef2f8), 4, .45); p('rbox', .47, 1.62, 0, rx, ry, 0, 0, -.66, .12, .58, .09, .11, gold, 4); p('sphere', .47, 1.62, 0, rx, ry, 0, .29, -.66, .12, .08, .08, .08, gold, 4); p('sphere', .47, 1.62, 0, rx, ry, 0, -.29, -.66, .12, .08, .08, .08, gold, 4); p('cap', .47, 1.62, 0, rx + 1.5708, ry, 0, 0, -.04, .66, .07, .3, .07, dkLeather); if (wglow) p('rbox', .47, 1.62, 0, rx, ry, 0, 0, -.66, .9, .23, .03, 1.52, wglow, 0, .55); }
@@ -2133,7 +2260,7 @@ function drawHero(o, self) {
     if (MDL) { // build 0042: class headgear and back pieces on the real model, carried by its head and spine
       const hc = cloth;
       if (cls === 'warden') { if (MDL.head()) { p('sphere', 0, 2.08, -.01, 0, 0, 0, 0, 0, 0, .37, .35, .39, steelC, 4); p('cap', 0, 1.99, 0, 0, 0, 0, 0, 0, 0, .42, .04, .44, shade(steelC, .8), 4); p('rbox', 0, 2.0, .19, 0, 0, 0, 0, 0, 0, .04, .15, .03, steelC, 4); p('rbox', 0, 2.27, -.02, 0, 0, 0, 0, 0, 0, .04, .1, .36, CC, 0, .1); for (const sd of [1, -1]) p('cone', .15 * sd, 2.2, -.02, 0, 0, -sd * 1.1, 0, .1, 0, .05, .26, .05, col(0xe8dcc0), 3); MDL.done(); }
-        if (!g.offhand && MDL.back()) { p('rbox', 0, 1.35, -.3, 0, 0, 0, 0, 0, 0, .62, .8, .06, steelC, 4); p('rbox', 0, 1.35, -.34, 0, 0, 0, 0, 0, 0, .46, .64, .03, CC, 0, .1); MDL.done(); } }
+        if ((!g.offhand || slung) && MDL.back()) { p('rbox', 0, 1.35, -.3, 0, 0, 0, 0, 0, 0, .62, .8, .06, steelC, 4); p('rbox', 0, 1.35, -.34, 0, 0, 0, 0, 0, 0, .46, .64, .03, CC, 0, .1); MDL.done(); } }
       else if (cls === 'ranger') { if (!g.offhand && MDL.back()) { p('rbox', .1, 1.5, -.26, .3, 0, .4, 0, 0, 0, .16, .56, .13, leatherC); for (let k = 0; k < 3; k++) p('rbox', .2 + k * .04, 1.86, -.31, .3, 0, .4, 0, 0, 0, .025, .24, .025, k === 1 ? CC : wood); MDL.done(); } }
       else if (cls === 'arcanist') { if (!g.helm && MDL.head()) { p('cap', 0, 2.14, 0, 0, 0, 0, 0, 0, 0, .52, .04, .52, hc); p('cone', 0, 2.16, -.02, -.15 - sway * .3, 0, 0, 0, .3, 0, .26, .62, .26, hc); p('cap', 0, 2.17, 0, 0, 0, 0, 0, 0, 0, .3, .05, .3, CC, 0, .6); MDL.done(); }
         if (!g.offhand) { const a = t * 1.3, x = o.x + Math.cos(a) * .9, z = o.z + Math.sin(a) * .9, y = o.y + 2.1 + Math.sin(a * 2) * .15; GLX.obj('glow', 'sphere', x, y, z, 0, .18, .18, .18, CC, 1.2, .9); GLX.halo(x, y, z, .55, CC, .22); } }
@@ -2164,7 +2291,12 @@ function drawHero(o, self) {
     if (HERO) for (let k = 0; k < 6; k++) { const ph = (t * .35 + k / 6 + o.x * .1) % 1, a = k * 1.047 + t * .4, r = .55 + ph * .2; GLX.obj('glow', 'gem', o.x + Math.cos(a) * r, o.y + .1 + ph * 2.2, o.z + Math.sin(a) * r, a, .05, .09, .05, CC, 1.4, (1 - ph) * .7); }
     if (HERO) GLX.obj('glow', 'ring', o.x, o.y + .05, o.z, t * .3, 1.5, 1, 1.5, CC, 1, .12 + Math.sin(t * 2) * .04, -1);
     // swing trail: a bright arc behind melee weapons during the strike
-    if (o.act && AP && AP.trail >= 0 && (wt === 'sword' || wt === 'axe' || wt === 'maul')) { const sp = AP.trail, fade = sp > 1 ? Math.max(0, 2 - sp) : 1, tc = wglow || col(0xfff2d8), sx = .47 * 1.08, base = rot + tw;
+    if (MDL && o.act && o._trl && o._trl.length > 1 && (wt === 'sword' || wt === 'axe' || wt === 'maul')) { /* build 0113: the trail follows the real weapon tip, so a chop leaves a falling arc and a slam a downward one */
+      const h = o._trl, tc = wglow || col(0xfff2d8);
+      for (let j = h.length - 1; j > 0; j--) { const A = h[j], B = h[j - 1], dtt = A[6] - B[6]; if (!(dtt > 0)) continue; const age = t - A[6], al = Math.max(0, 1 - age / .16); if (al <= 0) continue;
+        for (const [o0, w, c2, em2, a2] of [[0, .07, col(0xffffff), 2.2, .9], [3, .2, tc, 1.4, .45]]) { const ax = A[o0], ay = A[o0 + 1], az = A[o0 + 2], dx = B[o0] - ax, dy = B[o0 + 1] - ay, dz = B[o0 + 2] - az, L = Math.hypot(dx, dy, dz); if (L / dtt < 5 || L < .02) continue; /* only while it really sweeps */
+          GLX.part('glow', 'box', IDM, ax + dx / 2, ay + dy / 2, az + dz / 2, -Math.asin(clamp(dy / L, -1, 1)), Math.atan2(dx, dz), 0, 0, 0, 0, w, .04, L + .02, c2, em2, al * a2); } } }
+    else if (!MDL && o.act && AP && AP.trail >= 0 && (wt === 'sword' || wt === 'axe' || wt === 'maul')) { const sp = AP.trail, fade = sp > 1 ? Math.max(0, 2 - sp) : 1, tc = wglow || col(0xfff2d8), sx = .47 * 1.08, base = rot + tw;
       const ca = Math.cos(base), sa = Math.sin(base), px = o.x + ca * sx + Math.sin(rot) * lu, pz = o.z - sa * sx + Math.cos(rot) * lu, pt = (q, rr) => { const a = base + 1.6 - 3.0 * eo(q); return [px + Math.sin(a) * rr, o.y + 1.55 - (rr - 1) * .22, pz + Math.cos(a) * rr]; };
       for (let j = 0; j < 9; j++) { const q0 = Math.min(1, sp - j * .08), q1 = Math.min(1, sp - (j + 1) * .08); if (q1 < 0) break; const al = (1 - j / 9) * fade;
         for (const [rr, w, c2, em2, a2] of [[1.7, .09, col(0xffffff), 2.2, .9], [1.45, .22, tc, 1.6, .55], [1.15, .3, tc, 1.2, .25]]) { const A = pt(q0, rr), B = pt(q1, rr), dx = B[0] - A[0], dz = B[2] - A[2], L = Math.hypot(dx, dz) + .02; GLX.part('glow', 'box', IDM, (A[0] + B[0]) / 2, (A[1] + B[1]) / 2, (A[2] + B[2]) / 2, 0, Math.atan2(dx, dz), 0, 0, 0, 0, .04, w, L, c2, em2, al * a2); } } }

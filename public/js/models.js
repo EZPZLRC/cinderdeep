@@ -51,9 +51,53 @@ const CDM = (() => {
       LOC[9] = tv[0] + dT[b * 3] * dv; LOC[10] = tv[1] + dT[b * 3 + 1] * dv; LOC[11] = tv[2] + dT[b * 3 + 2] * dv;
       const p = par[b]; if (p < 0) W.set(LOC, b * 12); else mm(W, b * 12, W, p * 12, LOC, 0);
       mm(S, b * 12, W, b * 12, md.ibm, b * 12); }
+    if (md.ik) ikArms(md);
     // attach points: the bone's skin matrix moved to its grip point, so a sword turns with the wrist and a hat with the head
     const T = md.T, gr = H.grip; for (let i = 0; i < md.amap.length; i++) { const s = md.amap[i] * 12, o = i * 12, g = gr ? gr[i] : null; for (let j = 0; j < 9; j++) T[o + j] = S[s + j];
       for (let r = 0; r < 3; r++) T[o + 9 + r] = S[s + 9 + r] + (g ? S[s + r] * g[0] + S[s + 3 + r] * g[1] + S[s + 6 + r] * g[2] : 0); }
+  }
+
+  // build 0113: reach. Each md.ik entry {s: 'r' or 'l', p: wrist target, d: weapon axis (hand z), u: second axis (hand x), w: weight, pole: elbow hint}
+  // bends that arm (shoulder and elbow) so the wrist lands on p and turns the hand so a held weapon points along d, then refreshes the skin.
+  // Everything is in model space. This is how each weapon gets its own carry, stance and swing on top of the shared animations.
+  const IKC = new Float32Array(9);
+  function sub3(a, i, b, j) { return [a[i] - b[j], a[i + 1] - b[j + 1], a[i + 2] - b[j + 2]]; }
+  function nrm(v) { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; }
+  function crs(a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
+  function dot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+  function qm(q) { const [x, y, z, w] = q; IKC[0] = 1 - 2 * (y * y + z * z); IKC[1] = 2 * (x * y + z * w); IKC[2] = 2 * (x * z - y * w); IKC[3] = 2 * (x * y - z * w); IKC[4] = 1 - 2 * (x * x + z * z); IKC[5] = 2 * (y * z + x * w); IKC[6] = 2 * (x * z + y * w); IKC[7] = 2 * (y * z - x * w); IKC[8] = 1 - 2 * (x * x + y * y); return IKC; }
+  function qft(a, b) { a = nrm(a); b = nrm(b); const c = crs(a, b), d = dot(a, b); if (d < -.9999) { let ax = crs(a, [1, 0, 0]); if (Math.hypot(ax[0], ax[1], ax[2]) < 1e-3) ax = crs(a, [0, 1, 0]); ax = nrm(ax); return [ax[0], ax[1], ax[2], 0]; } const q = [c[0], c[1], c[2], 1 + d], l = Math.hypot(q[0], q[1], q[2], q[3]); return q.map(v => v / l); }
+  function qpow(q, w) { if (w >= 1) return q; const c = Math.max(-1, Math.min(1, q[3])), a = Math.acos(c), sa = Math.sin(a); if (sa < 1e-6) return [0, 0, 0, 1]; const k = Math.sin(a * w) / sa; return [q[0] * k, q[1] * k, q[2] * k, Math.cos(a * w)]; }
+  // mat3 (columns) to quaternion
+  function m2q(m) { const t = m[0] + m[4] + m[8]; let x, y, z, w; if (t > 0) { const s = Math.sqrt(t + 1) * 2; w = s / 4; x = (m[5] - m[7]) / s; y = (m[6] - m[2]) / s; z = (m[1] - m[3]) / s; }
+    else if (m[0] > m[4] && m[0] > m[8]) { const s = Math.sqrt(1 + m[0] - m[4] - m[8]) * 2; w = (m[5] - m[7]) / s; x = s / 4; y = (m[3] + m[1]) / s; z = (m[6] + m[2]) / s; }
+    else if (m[4] > m[8]) { const s = Math.sqrt(1 + m[4] - m[0] - m[8]) * 2; w = (m[6] - m[2]) / s; x = (m[3] + m[1]) / s; y = s / 4; z = (m[7] + m[5]) / s; }
+    else { const s = Math.sqrt(1 + m[8] - m[0] - m[4]) * 2; w = (m[1] - m[3]) / s; x = (m[6] + m[2]) / s; y = (m[7] + m[5]) / s; z = s / 4; } if (w < 0) { x = -x; y = -y; z = -z; w = -w; } return [x, y, z, w]; }
+  function spin(md, list, q, c) { const R = qm(q), W = md.W; for (const b of list) { const i = b * 12; for (let k = 0; k < 4; k++) { const o = i + k * 3; let x = W[o], y = W[o + 1], z = W[o + 2]; if (k === 3) { x -= c[0]; y -= c[1]; z -= c[2]; }
+        const nx = R[0] * x + R[3] * y + R[6] * z, ny = R[1] * x + R[4] * y + R[7] * z, nz = R[2] * x + R[5] * y + R[8] * z; W[o] = nx + (k === 3 ? c[0] : 0); W[o + 1] = ny + (k === 3 ? c[1] : 0); W[o + 2] = nz + (k === 3 ? c[2] : 0); } } }
+  function ikArms(md) {
+    const H = md.head, W = md.W, S = md.S; if (!md._ikc) { const nm = H.boneNames, par = H.parents, f = n => nm.indexOf(n), subOf = r => { const out = []; for (let b = 0; b < H.bones; b++) { let k = b; while (k >= 0 && k !== r) k = par[k]; if (k === r) out.push(b); } return out; };
+      md._ikc = {}; for (const sd of ['r', 'l']) { const ua = f('upperarm_' + sd), la = f('lowerarm_' + sd), ha = f('hand_' + sd); if (ua < 0 || la < 0 || ha < 0) continue; md._ikc[sd] = { ua, la, ha, su: subOf(ua), sl: subOf(la), sh: subOf(ha) }; } }
+    const L = typeof md.ik === 'function' ? md.ik(md) : md.ik; if (!L) return;
+    for (const k of L) { const C = md._ikc[k.s], w = Math.max(0, Math.min(1, k.w)); if (!C || !(w > .001)) continue;
+      const Sp = [W[C.ua * 12 + 9], W[C.ua * 12 + 10], W[C.ua * 12 + 11]], Ep = [W[C.la * 12 + 9], W[C.la * 12 + 10], W[C.la * 12 + 11]], Hp = [W[C.ha * 12 + 9], W[C.ha * 12 + 10], W[C.ha * 12 + 11]];
+      const a = Math.hypot(Ep[0] - Sp[0], Ep[1] - Sp[1], Ep[2] - Sp[2]), b = Math.hypot(Hp[0] - Ep[0], Hp[1] - Ep[1], Hp[2] - Ep[2]);
+      const P = [Hp[0] + (k.p[0] - Hp[0]) * w, Hp[1] + (k.p[1] - Hp[1]) * w, Hp[2] + (k.p[2] - Hp[2]) * w]; let dv = [P[0] - Sp[0], P[1] - Sp[1], P[2] - Sp[2]], d = Math.hypot(dv[0], dv[1], dv[2]);
+      const dc = Math.max(Math.abs(a - b) + 1e-3, Math.min(a + b - 1e-3, d)); const n = d > 1e-6 ? [dv[0] / d, dv[1] / d, dv[2] / d] : [0, -1, 0];
+      let h = k.pole || [Ep[0] - Sp[0], Ep[1] - Sp[1], Ep[2] - Sp[2]]; h = [h[0] - n[0] * dot(h, n), h[1] - n[1] * dot(h, n), h[2] - n[2] * dot(h, n)]; if (Math.hypot(h[0], h[1], h[2]) < 1e-4) h = [0, -1, 0]; h = nrm(h);
+      const cA = Math.max(-1, Math.min(1, (a * a + dc * dc - b * b) / (2 * a * dc))), sA = Math.sqrt(1 - cA * cA), E2 = [Sp[0] + (n[0] * cA + h[0] * sA) * a, Sp[1] + (n[1] * cA + h[1] * sA) * a, Sp[2] + (n[2] * cA + h[2] * sA) * a];
+      spin(md, C.su, qft([Ep[0] - Sp[0], Ep[1] - Sp[1], Ep[2] - Sp[2]], [E2[0] - Sp[0], E2[1] - Sp[1], E2[2] - Sp[2]]), Sp);
+      const H1 = [W[C.ha * 12 + 9], W[C.ha * 12 + 10], W[C.ha * 12 + 11]], Pc = [Sp[0] + n[0] * dc, Sp[1] + n[1] * dc, Sp[2] + n[2] * dc];
+      spin(md, C.sl, qft([H1[0] - E2[0], H1[1] - E2[1], H1[2] - E2[2]], [Pc[0] - E2[0], Pc[1] - E2[1], Pc[2] - E2[2]]), E2);
+      if (k.d) { // the hand's skin frame (what a held weapon follows) is W * ibm; turn the hand so that frame's z is d and x lies along u
+        const hi = C.ha * 12, ib = md.ibm, R = new Float32Array(9); for (let c = 0; c < 3; c++) for (let r = 0; r < 3; r++) R[c * 3 + r] = W[hi + r] * ib[hi + c * 3] + W[hi + 3 + r] * ib[hi + c * 3 + 1] + W[hi + 6 + r] * ib[hi + c * 3 + 2];
+        const zc = nrm([R[6], R[7], R[8]]), xc0 = [R[0], R[1], R[2]], xc = nrm(crs(crs(zc, xc0), zc)), yc = crs(zc, xc);
+        const zt = nrm(k.d); let xt = k.u ? [k.u[0] - zt[0] * dot(k.u, zt), k.u[1] - zt[1] * dot(k.u, zt), k.u[2] - zt[2] * dot(k.u, zt)] : crs(crs(zt, xc), zt); if (Math.hypot(xt[0], xt[1], xt[2]) < 1e-4) xt = crs(crs(zt, xc), zt); xt = nrm(xt); const yt = crs(zt, xt);
+        const M3 = new Array(9);
+        // rotation taking current frame (xc,yc,zc) to target (xt,yt,zt): Rm = T * C^T
+        for (let c = 0; c < 3; c++) for (let r = 0; r < 3; r++) M3[c * 3 + r] = xt[r] * xc[c] + yt[r] * yc[c] + zt[r] * zc[c];
+        spin(md, C.sh, qpow(m2q(M3), w * (k.dw === undefined ? 1 : k.dw)), Pc); }
+      for (const bb of C.su) mm(S, bb * 12, W, bb * 12, md.ibm, bb * 12); }
   }
   // add w x (frame-blended matrices of one animation at time t) into dst, per bone (mask: optional weight per bone); loop or hold the last frame
   function acc(dst, tot, src, an, t, loop, w, n, mask, map) {
