@@ -98,9 +98,10 @@ function srvCleared() { return !!(G.zone && G.zone.cleared); }
 // Every kill by every player on the server fills one shared count (kept by server.js). When it is full, the same boss rises on every party's floor.
 // It has one life shared by the whole server: each hit takes the same share off it whatever floor or level the hitter is on.
 var WBS = null; // set by the host while the boss lives: { f: share of life left (1 to 0), k: life scale for how many players were online }
+function wbLow() { for (const k in SP) if ((SP[k].lvl | 0) < WB_MIN_LVL) return true; return false; } // build 0134: any hero in the party below level 10 keeps the world boss off this floor
 function wbEnt() { for (const e of G.ents) if (e.wb && e.alive) return e; return null; }
 function wbAdd() {
-  if (!WBS || !G.zone || rift || mapRun || wbEnt()) return null; /* build 0119: not inside Atlas maps either */
+  if (!WBS || !G.zone || rift || mapRun || wbEnt() || wbLow()) return null; /* build 0119: not inside Atlas maps either */
   const Z = G.zone, lv = Z.def.lvl, hit = refHit(lv + 2), bd = WORLD_BOSS, pls = Object.values(SP).filter(p => p.x > -900 && !p.dead);
   // it waits in open ground a short walk from the floor entrance, never on top of a player: you go to it when you are ready
   let x = Z.start[0], z = Z.start[1], best = -1;
@@ -112,7 +113,7 @@ function wbAdd() {
   b.hp = Math.max(1, Math.round(b.maxHp * WBS.f)); G.ents.push(b); return b;
 }
 // called by the host every tick while the boss lives: keeps every floor's copy on the shared life, and puts the boss on floors that do not have it yet
-function srvWbSync(f, k, dk) { dk = dk > 0 ? dk : 1; if (!WBS) WBS = { f: f, k: k, dk: dk }; WBS.f = f; let e = wbEnt(); if (!e) e = wbAdd();
+function srvWbSync(f, k, dk) { dk = dk > 0 ? dk : 1; if (!WBS) WBS = { f: f, k: k, dk: dk }; WBS.f = f; let e = wbEnt(); if (e && wbLow()) { e.alive = false; e.deadT = .45; if (typeof __emit === 'function') __emit(null, { t: 'gone', id: e.id }); return; } /* build 0134: a hero under level 10 joined, so it quietly leaves this floor */ if (!e) e = wbAdd();
   if (e) { let ch = 0; /* build 0089: follow the players online while it lives */ if (k > 0 && Math.abs(k - WBS.k) > 1e-6) { e.maxHp = Math.max(1, Math.round(e.maxHp * k / WBS.k)); WBS.k = k; ch = 1; } if (Math.abs(dk - (WBS.dk || 1)) > 1e-6) { e.dmg = e.dmg * dk / (WBS.dk || 1); WBS.dk = dk; ch = 1; }
     e.hp = Math.max(1, Math.round(e.maxHp * f)); if (ch && typeof __emit === 'function') __emit(null, { t: 'wbk', id: e.id, m: e.maxHp, hp: e.hp }); } }
 function srvWbEnd() { const e = wbEnt(); WBS = null; if (e) killEnemy(e); }

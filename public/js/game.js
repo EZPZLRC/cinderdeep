@@ -843,7 +843,7 @@ function spawnAll(Z) {
 }
 function addReplica(i) {
   if (G.ents.some(e => e.id === i.id)) return; const e = Object.assign({}, i, { a: i.boss ? { r: 1.7, sc: 2.3, rec: .9, wind: .8, reach: 3.6, xp: 40, spd: 4 } : ARCH[i.arch], tx: i.x, tz: i.z, trot: i.rot || 0, rot: i.rot || 0, st: 'chase', t: 0, cd: 1, modT: 2, walk: Math.random() * 6, flash: 0, chill: 0, shock: 0, frozen: 0, burn: 0, burnT: 0, atk: 0, alive: true, deadT: 0 });
-  if (!e.a || !e.md) return; for (const k of e.mods || []) e[k] = true; if (e.boss) { if (e.wb) { e.bd = WORLD_BOSS; e.a = { r: 2.3, sc: WORLD_BOSS.sc, rec: .9, wind: .8, reach: 4.4, xp: 40, spd: 4 }; G.wboss = e; } else { e.bd = zoneBoss(G.zone); G.boss = e; } } G.ents.push(e);
+  if (!e.a || !e.md) return; for (const k of e.mods || []) e[k] = true; if (e.wb && !wbMine()) return; /* build 0134 */ if (e.boss) { if (e.wb) { e.bd = WORLD_BOSS; e.a = { r: 2.3, sc: WORLD_BOSS.sc, rec: .9, wind: .8, reach: 4.4, xp: 40, spd: 4 }; G.wboss = e; } else { e.bd = zoneBoss(G.zone); G.boss = e; } } G.ents.push(e);
 }
 function repEnemy(e, dt) {
   if (e.flash > 0) e.flash -= dt; if (e.atk > 0) e.atk -= dt * 3; if (e.burnT > 0) e.burnT -= dt; if (e.shock > 0) e.shock -= dt; const ox = e.x, oz = e.z, k = Math.min(1, dt * 12); if (e.sT1 && e.sT1 > e.sT0) { /* play back 100 ms behind the server and slide evenly between its last two updates */ const u = Math.min(1.2, Math.max(0, (performance.now() / 1000 - .1 - e.sT0) / (e.sT1 - e.sT0))), gx = e.sx0 + (e.sx1 - e.sx0) * u, gz = e.sz0 + (e.sz1 - e.sz0) * u, kk = Math.min(1, dt * 20); e.x += (gx - e.x) * kk; e.z += (gz - e.z) * kk; } else { e.x += (e.tx - e.x) * k; e.z += (e.tz - e.z) * k; }
@@ -896,8 +896,11 @@ function teleportTo(id) {
 }
 // ---- build 0075 (Lee, Nov 15): the world boss ----
 // One tap takes you to it. From town it walks you out through the portal first, like teleporting to a player.
+// build 0134 (Lee, Nov 16): heroes below level 10 never see the world boss, and it skips any party that has one
+function wbMine() { return !!(G.hero && G.hero.level >= WB_MIN_LVL); }
+function wbParty() { if (!wbMine()) return false; if (typeof NET !== 'undefined') for (const i in NET.peers) { const q = NET.peers[i]; if (q && q.lvl > 0 && q.lvl < WB_MIN_LVL) return false; } return true; }
 function wbGo() {
-  if (!G.online || P.dead) return; if (G.inTown) { G.tpWb = G.time + 8; leaveTown(); return; } G.tpWb = 0;
+  if (!G.online || P.dead || !wbMine()) return; if (!wbParty()) { hint('The world boss waits until everyone in your party is level ' + WB_MIN_LVL + '.'); return; } if (G.inTown) { G.tpWb = G.time + 8; leaveTown(); return; } G.tpWb = 0;
   const e = G.wboss; if (!e || !e.alive) { hint(G.zone && G.zone.def && G.zone.def.rift ? 'The world boss does not enter rifts. It waits on your next floor.' : 'The world boss is not on this floor yet. Try again in a moment.'); return; }
   const a0 = Math.atan2(P.x - e.x, P.z - e.z); let x = 0, z = 0, ok = false;
   for (const R of [10, 9, 11, 8, 13]) { for (let k = 0; k < 12 && !ok; k++) { const a = a0 + (k % 2 ? -1 : 1) * Math.ceil(k / 2) * .5236, tx = e.x + Math.sin(a) * R, tz = e.z + Math.cos(a) * R; if (!blocked(tx, tz, .6) && los(tx, tz, e.x, e.z)) { x = tx; z = tz; ok = true; } } if (ok) break; }
@@ -911,9 +914,9 @@ function wbReward(x, z) {
   dropItem(x, z, it);
 }
 function wbEvent(m) {
-  if (typeof UI === 'undefined' || !m) return; const nm = WORLD_BOSS.n;
+  if (typeof UI === 'undefined' || !m) return; const nm = WORLD_BOSS.n; if (!wbMine() && !G.wbHit) return; /* build 0134: below level 10 you hear nothing of it */
   if (m.ev === 'soon') UI.chat('', nm + ' stirs. ' + (m.left | 0) + ' more kills, by anyone on the server, will wake it.', 'm');
-  else if (m.ev === 'up') { G.wbHit = 0; UI.zoneBanner('World boss: ' + nm, 'It has risen on every floor. Land a hit to earn a Mythic'); UI.chat('', 'World boss! ' + nm + ' has risen. Tap World boss to go to it.', 'm'); SFX.play('boss'); }
+  else if (m.ev === 'up') { G.wbHit = 0; if (wbParty()) { UI.zoneBanner('World boss: ' + nm, 'It has risen on every floor. Land a hit to earn a Mythic'); UI.chat('', 'World boss! ' + nm + ' has risen. Tap World boss to go to it.', 'm'); } else UI.chat('', 'World boss! ' + nm + ' has risen, but it waits until everyone in your party is level ' + WB_MIN_LVL + '.', 'm'); SFX.play('boss'); }
   else if (m.ev === 'dead') { const by = Array.isArray(m.by) ? m.by.map(n => String(n).replace(/[<>&"'`]/g, '').slice(0, 16)).filter(Boolean) : [], more = Math.max(0, (m.c | 0) - by.length), who = by.length ? by.join(', ') + (more ? ' and ' + more + ' more' : '') : 'the heroes of OathByte';
     UI.zoneBanner('World boss slain', 'Brought down by ' + who); UI.chat('', nm + ' was slain by ' + who + '. The kill count starts again.', 'm'); if (G.wbHit) wbReward(); }
 }
