@@ -518,9 +518,9 @@ body.tj #dock{z-index:25}@media (pointer:coarse){#dock{z-index:25}} /* phones: o
 #bTown.tbusy,#tTown.tbusy{opacity:.42!important;filter:grayscale(1)!important;cursor:not-allowed}/* build 0122: enemies too close to leave */
 .srow2.poor{opacity:.42;filter:grayscale(.9)}.srow2.poor:hover{border-color:#3a3226}/* build 0127: items you cannot afford */
 </style>
-<link rel="stylesheet" href="css/oathbyte.css?v=0130">
-<link rel="stylesheet" href="css/keyart.css?v=0130">
-<link rel="stylesheet" href="css/advisor.css?v=0130">
+<link rel="stylesheet" href="css/oathbyte.css?v=0135">
+<link rel="stylesheet" href="css/keyart.css?v=0135">
+<link rel="stylesheet" href="css/advisor.css?v=0135">
 </head>
 <body>
 <canvas id="gl"></canvas><canvas id="ov"></canvas>
@@ -549,11 +549,11 @@ body.tj #dock{z-index:25}@media (pointer:coarse){#dock{z-index:25}} /* phones: o
     <div class="globe" id="gFury"><div class="fill"></div><div class="txt"></div></div>
   </div>
   <!-- build 0098 (playtest: the menu bar sat where you click to walk): the four buttons you use most sit in the bottom-right corner; the rest live under Menu -->
-  <div id="dock"><button id="bInv" class="giv-inv" title="Bag (I)">Bag</button><button id="bSkl" class="giv-skl" title="Skills (S)">Skills</button><button id="bTown" class="giv-town" title="Town (T)">Town</button><button id="bJoin" class="giv-party" title="Join a party, or see who is playing">Party</button><button id="bAdv" class="giv-adv" title="Advisor: your next best move">Advice</button><button id="bMore" title="Menu (Esc)">Menu</button></div>
+  <div id="dock"><button id="bInv" class="giv-inv" title="Bag (I)">Bag</button><button id="bSkl" class="giv-skl" title="Skills (S)">Skills</button><button id="bTown" class="giv-town" title="Town (T)">Town</button><button id="bJoin" class="giv-party" title="Join a party, or see who is playing">Party</button><button id="bAdv" class="giv-adv" title="Advisor: your next best move">Advice</button><button id="bLee" class="hide giv-auto" title="Auto-play">Auto: off</button><button id="bMore" title="Menu (Esc)">Menu</button></div>
   <div id="more" class="hide"><button id="bSet" class="giv-set">Settings</button><button id="bPL" class="giv-loot">Pet and loot</button><button id="bParty" class="giv-party">Join a party</button><button id="bInvite" class="giv-invite">Invite a friend</button><button id="bLeave" class="hide giv-leave">Leave party</button><button id="bLb" class="giv-lb">Leaderboard</button><button id="bAch" class="giv-ach">Badges</button><button id="bAuto" class="giv-auto">Auto-play: off</button><button id="bSpd" class="giv-spd">Speed 1×</button><button id="bMenu" class="giv-exit">Exit to title</button></div>
   <div id="party" class="hide"></div><div id="onl" class="hide"></div><div id="chatlog" class="hide"></div>
   <div id="chatRow" class="hide"><button id="chatCh">Global</button><input id="chat" maxlength="140"><button id="chatX" class="xb" aria-label="Close chat">×</button></div>
-  <div id="tbtns"><button id="tChat" class="hide giv-chat">Chat</button><button id="tTown" class="giv-town">Town</button><button id="tLoot" class="giv-loot">Loot</button><button id="tSkl" class="giv-skl">Skills</button><button id="tBag" class="giv-inv">Bag</button></div>
+  <div id="tbtns"><button id="tLee" class="hide giv-auto">Auto</button><button id="tChat" class="hide giv-chat">Chat</button><button id="tTown" class="giv-town">Town</button><button id="tLoot" class="giv-loot">Loot</button><button id="tSkl" class="giv-skl">Skills</button><button id="tBag" class="giv-inv">Bag</button></div>
   <div id="skl" class="hide"></div>
   <button id="pickBtn" class="hide">★ Choose a new skill</button>
   <div id="pick" class="hide"></div>
@@ -622,16 +622,17 @@ body.tj #dock{z-index:25}@media (pointer:coarse){#dock{z-index:25}} /* phones: o
 #tip .show3{margin:-10px -12px 8px;height:210px;border-bottom:1px solid #6b5533;border-radius:4px 4px 0 0;background:radial-gradient(ellipse at 50% 55%,rgba(255,140,40,.28),rgba(255,120,30,.07) 45%,rgba(0,0,0,0) 70%),linear-gradient(#1b1510,#0b0907);overflow:hidden}#tip .show3 canvas{display:block;width:100%;height:100%}
 @media (max-height:700px){#tip .show3{height:150px}}@media (max-height:480px){#tip .show3{height:110px}}
 #tip.pin .show3{height:min(150px,22vh)}#tip.pin{max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px);overflow-y:auto;overscroll-behavior:contain}
+#bLee.on,#tLee.on{border-color:#7ad06a!important;box-shadow:0 0 12px rgba(120,220,100,.45)!important;color:#c8ffb8}/* build 0135: hidden auto-play, only for the name Lee */
 </style>
-<script src="js/move.js?v=0130"></script>
-<script src="js/models.js?v=0130"></script>
-<script src="js/gl.js?v=0130"></script>
-<script src="js/data.js?v=0130"></script>
-<script src="js/cg.js?v=0130"></script>
-<script src="js/icons.js?v=0130"></script>
-<script src="js/game.js?v=0130"></script>
-<script src="js/net.js?v=0130"></script>
-<script src="js/ui.js?v=0130"></script>
-<script src="js/advisor.js?v=0130"></script>
+<script src="js/move.js?v=0135"></script>
+<script src="js/models.js?v=0135"></script>
+<script src="js/gl.js?v=0135"></script>
+<script src="js/data.js?v=0135"></script>
+<script src="js/cg.js?v=0135"></script>
+<script src="js/icons.js?v=0135"></script>
+<script src="js/game.js?v=0135"></script>
+<script src="js/net.js?v=0135"></script>
+<script src="js/ui.js?v=0135"></script>
+<script src="js/advisor.js?v=0135"></script>
 <div id="mtags"></div></body>
 </html>
