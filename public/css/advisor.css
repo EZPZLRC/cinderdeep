@@ -17,12 +17,12 @@
 .advB button:hover{filter:brightness(1.15)}
 .advO{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:#a8957a;cursor:pointer}.advO input{margin:0}
 #dock #bAdv.new{border-color:#ffb04a;box-shadow:0 0 0 1px #000,0 0 12px rgba(255,160,60,.55)}
-#dock #bAdv.new::after{content:"";width:7px;height:7px;margin-left:auto;border-radius:50%;background:#ffb04a;box-shadow:0 0 6px #ff9a2a;animation:advDot 1.4s ease-in-out infinite}
+#dock #bAdv{position:relative}#dock #bAdv.new::after{content:"";position:absolute;top:2px;right:2px;width:9px;height:9px;border-radius:50%;background:#ffb04a;box-shadow:0 0 6px #ff9a2a;animation:advDot 1.4s ease-in-out infinite}
 @keyframes advIn{from{opacity:0;transform:translateY(6px) scale(.97)}to{opacity:1;transform:none}}
 @keyframes advLife{from{transform:scaleX(1)}to{transform:scaleX(0)}}
 @keyframes advDot{50%{opacity:.35}}
 @media (prefers-reduced-motion:reduce){#adv,#adv.auto::after,#dock #bAdv.new::after{animation:none}}
 /* phones: a round button beside Party and Menu, and the card opens under them */
-@media (pointer:coarse){#dock #bAdv{min-width:0;width:40px;height:40px;padding:0;border-radius:50%;font-size:0;justify-content:center;position:relative}#dock #bAdv::before{width:18px;height:18px}#dock #bAdv.new::after{position:absolute;right:1px;top:1px;margin:0}#adv{right:auto;bottom:auto;left:calc(8px + env(safe-area-inset-left));top:calc(92px + env(safe-area-inset-top));width:min(300px,calc(100vw - 150px));max-width:none;transform-origin:0 0;font-size:12.5px}}
-body.tj #dock #bAdv{min-width:0;width:40px;height:40px;padding:0;border-radius:50%;font-size:0;justify-content:center;position:relative}body.tj #dock #bAdv::before{width:18px;height:18px}body.tj #dock #bAdv.new::after{position:absolute;right:1px;top:1px;margin:0}
+@media (pointer:coarse){#dock #bAdv{min-width:0;width:40px;height:40px;padding:0;border-radius:50%;font-size:0;justify-content:center}#dock #bAdv::before{width:18px;height:18px}#adv{right:auto;bottom:auto;left:calc(8px + env(safe-area-inset-left));top:calc(92px + env(safe-area-inset-top));width:min(300px,calc(100vw - 150px));max-width:none;transform-origin:0 0;font-size:12.5px}}
+body.tj #dock #bAdv{min-width:0;width:40px;height:40px;padding:0;border-radius:50%;font-size:0;justify-content:center}body.tj #dock #bAdv::before{width:18px;height:18px}body.tj 
 body.tj #adv{right:auto;bottom:auto;left:calc(8px + env(safe-area-inset-left));top:calc(92px + env(safe-area-inset-top));width:min(300px,calc(100vw - 150px));max-width:none;transform-origin:0 0;font-size:12.5px}
