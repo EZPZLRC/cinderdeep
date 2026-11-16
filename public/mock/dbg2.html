@@ -1,0 +1,11 @@
+<!doctype html><html><head><meta charset="utf-8"><title>dbg2</title><link rel="stylesheet" href="../css/oathbyte.css"><link rel="stylesheet" href="../css/keyart.css">
+<style>body{background:#222;margin:0}#menu.ka{position:static!important;display:block!important;background:#222!important;padding:20px}.row{display:flex;gap:30px}.ccard{width:300px!important;height:225px;flex:none}
+#a .crim::before{-webkit-mask:none!important;mask:none!important}
+#c .crim::before{animation:none!important;--kaA:200deg}
+#d .crim{animation:none!important}
+</style></head><body><div id="menu" class="ka"><div class="row">
+<div id="a" class="ccard on" style="--cc:#4aa850"><i class="cpic"></i><i class="crim"></i><div class="cn">no mask</div></div>
+<div id="b" class="ccard on" style="--cc:#4aa850"><i class="cpic"></i><i class="crim"></i><div class="cn">as is</div></div>
+<div id="c" class="ccard on" style="--cc:#4aa850"><i class="cpic"></i><i class="crim"></i><div class="cn">static 200</div></div>
+<div id="d" class="ccard on" style="--cc:#4aa850"><i class="cpic"></i><i class="crim"></i><div class="cn">no flash</div></div>
+</div></div><script>setTimeout(()=>{document.getAnimations().forEach(a=>{a.pause();a.currentTime=1500});document.title='done'},1200)</script></body></html>
