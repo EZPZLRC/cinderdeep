@@ -508,8 +508,8 @@ const TIERS = [
 // Maps drop as loot only once a hero has the Atlas. Every loot and XP number in this block applies inside maps only; nothing outside the Atlas changes.
 const ATLAS_NAMES = { forest: ['Rotwood Hollow', 'Thornmere', 'Mossgrave', 'Witherglade'], crypt: ['Ossuary Deep', 'Drowned Vaults', 'Bellfall Crypt', 'Saints\' Rest'], lava: ['Slagfall', 'Cinder Steps', 'Brimstone Maw', 'The Forge Pits'], ice: ['Rimeholt', 'Glass Lake', 'Frostspire', 'Whiteout Pass'], void: ['Starless Reach', 'The Hollow Sky', 'Null Garden', 'Riftmouth'] };
 // 20 regions in ten tiers, two per tier, climbing from the forests at the bottom of the board to the Voidscar at the top. x and y are board positions (0-100)
-const ATLAS = (() => { const th = ['forest', 'crypt', 'lava', 'ice', 'void'], X = [[22, 70], [34, 80], [18, 62], [30, 82], [20, 66], [36, 78], [22, 64], [32, 80], [26, 70], [38, 62]], out = [];
-  for (let t = 1; t <= 10; t++) for (let s = 0; s < 2; s++) { const i = out.length, T = th[(t - 1) >> 1], k = ((t - 1) & 1) * 2 + s; out.push({ id: i, n: ATLAS_NAMES[T][k], th: T, t, b: k & 1, x: X[t - 1][s], y: 95 - (t - 1) * 9, l: [] }); }
+const ATLAS = (() => { const th = ['forest', 'crypt', 'lava', 'ice', 'void'], X = [30, 42, 28, 40, 30, 42, 28, 40, 30, 38], out = []; /* left column; the right one mirrors it, and names sit on the outer side */
+  for (let t = 1; t <= 10; t++) for (let s = 0; s < 2; s++) { const i = out.length, T = th[(t - 1) >> 1], k = ((t - 1) & 1) * 2 + s; out.push({ id: i, n: ATLAS_NAMES[T][k], th: T, t, b: k & 1, x: s ? 100 - X[t - 1] : X[t - 1], y: 92 - (t - 1) * 8.6, l: [] }); }
   const link = (a, b) => { if (!out[a].l.includes(b)) out[a].l.push(b); if (!out[b].l.includes(a)) out[b].l.push(a); };
   for (let t = 0; t < 10; t++) { const L = t * 2, R = L + 1; link(L, R); if (t < 9) { link(L, L + 2); link(R, R + 2); if (t % 3 === 1) link(L, R + 2); if (t % 3 === 2) link(R, L + 2); } }
   return out; })();
