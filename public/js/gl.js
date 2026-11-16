@@ -478,8 +478,10 @@ void main(){float mat=vE.y;${DITHM}if(vAl>.5&&texture(uTex,vec3(vU,vLy)).a<.5)di
     if (pre) gl.depthMask(true);
     // hero ghost: drawn against the world only, before the hero, so it shows only where walls or trees hide them
     { let n = 0; for (const g in sets.xr) n += sets.xr[g].n; if (n && !env.solo) { const gu = pGlow.u; gl.useProgram(pGlow.p); gl.uniformMatrix4fv(gu.uVP, false, vp); gl.uniformMatrix4fv(gu.uLVP, false, lvp); gl.uniform3fv(gu.uPl, env.player); gl.uniform1f(gu.uLR, env.lightR); gl.uniform1f(gu.uT, env.t); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.depthMask(false); gl.depthFunc(gl.GREATER); drawSet('xr'); gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.disable(gl.BLEND); gl.useProgram(pMain.p); } }
+    /* build 0139: heroes and monsters get the same depth-first treatment after the hero ghost, so a big boss built from many overlapping parts is lit once per pixel */
+    const preD = pre && env.preDyn !== false; if (preD) { gl.colorMask(false, false, false, false); gl.useProgram(pPre.p); gl.uniform1f(pPre.u.uRim, 1); drawSet('dyn'); gl.colorMask(true, true, true, true); gl.useProgram(pMain.p); }
     if (env.q > 0 && env.outline !== false) { gl.uniform1f(pMain.u.uOut, .026); drawSet('dyn'); gl.uniform1f(pMain.u.uOut, 0); } // a thin ink outline so heroes and monsters stand out from the ground
-    gl.uniform1f(pMain.u.uRim, env.q > 0 ? .8 : .4); drawSet('dyn'); gl.uniform1f(pMain.u.uRim, 0);
+    if (preD) gl.depthMask(false); gl.uniform1f(pMain.u.uRim, env.q > 0 ? .8 : .4); drawSet('dyn'); gl.uniform1f(pMain.u.uRim, 0); if (preD) gl.depthMask(true);
     if (SKD.length) { const U = UM();
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, shTex); syncS(pMainS, 0, U); const su = pMainS.u;
       if (env.q > 0 && env.outline !== false) { gl.uniform1f(su.uRim, 0); gl.uniform1f(su.uOut, .026); drawSkinned(pMainS); }
