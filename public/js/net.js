@@ -49,14 +49,15 @@ const NET = (() => {
       if (m.t === 'die') { const e = fa(m.id); if (e && e.alive && !e.boss) { e.alive = false; e.deadT = 0; } }
       return; }
     if (G.inTown && (m.t === 's' || m.t === 'spawn' || m.t === 'die' || m.t === 'dmg' || m.t === 'area' || m.t === 'proj' || m.t === 'fx' || m.t === 'scale' || m.t === 'rest')) { if (m.t === 's' && Array.isArray(m.p)) peersUpd(m.p); return; }
-    if (G.inTown && m.t === 'zone' && !m.sync && m.rift === undefined) { hint('Your party has moved deeper. Take the portal to rejoin them.'); return; }
+    if (m.t === 'zone' && m.home && !m.sync) { if (G.inTown || G.state !== 'play') G.away = null; else mapHome(); return; } /* build 0119: out of a cleared map, home to Emberwatch; your floor waits behind the town portal */
+    if (G.inTown && m.t === 'zone' && !m.sync && m.rift === undefined && !m.map) { hint('Your party has moved deeper. Take the portal to rejoin them.'); return; }
     switch (m.t) {
       case 'hello': N.id = m.id; N.room = m.room; N.on = true; G.online = true; G.speed = 1; if (m.fd === 0) { N.founderSet(''); hint('Your Founder code was not accepted by the server, so the Founder look is off. You can enter it again in Settings.'); } break;
       case 'error': UI.netFail(m.m); break;
       case 'bye': N.bye = true; break; /* build 0070: the server is restarting for an update; reconnect at once */
       case 'note': hint(txt(m.m, 160)); break;
       case 'scale': { const r = +m.r; if (!(r > 0 && r < 20)) break; for (const e of G.ents) { if (!e.alive || e.wb) continue; e.maxHp = Math.max(1, Math.round(e.maxHp * r)); e.hp = Math.min(e.maxHp, Math.round(e.hp * r)); } break; } // party size changed (build 0022)
-      case 'zone': N.gotZone = true; if (N.retry > 0) { if (N.back && N.back.seed === m.seed) { m.sync = 1; m.pos = G.zone && !G.inTown && G.zone.def && G.zone.def.seed === m.seed ? [P.x, P.z] : [N.back.x, N.back.z]; } /* build 0070: back where you stood, on the same layout */ else if (N.back && N.back.d > 1) N.upd = N.back.d; N.retry = 0; N.back = null; UI.reconnecting(0); if (G.inTown) { G.away = null; } } if (m.sync && G.away && G.away.seed === m.seed) m.pos = [G.away.x, G.away.z]; enterZone(m); if (N.upd) { const d = N.upd; N.upd = 0; setTimeout(() => { if (typeof UI !== 'undefined' && UI.zoneBanner) UI.zoneBanner('The game was updated', 'You are back on floor ' + d + ' with a fresh layout'); }, 600); } if (m.cleared && m.bossAt) { G.zone.cleared = true; G.zone.objs.push({ kind: 'portal', x: m.bossAt[0], z: m.bossAt[1], name: 'Next floor', used: false }); } UI.netZone(); break;
+      case 'zone': N.gotZone = true; if (N.retry > 0) { if (N.back && N.back.seed === m.seed) { m.sync = 1; m.pos = G.zone && !G.inTown && G.zone.def && G.zone.def.seed === m.seed ? [P.x, P.z] : [N.back.x, N.back.z]; } /* build 0070: back where you stood, on the same layout */ else if (N.back && N.back.d > 1) N.upd = N.back.d; N.retry = 0; N.back = null; UI.reconnecting(0); if (G.inTown) { G.away = null; } } if (m.sync && G.away && G.away.seed === m.seed) m.pos = [G.away.x, G.away.z]; if (m.map && m.by === N.id) mapSpend(); enterZone(m); if (N.upd) { const d = N.upd; N.upd = 0; setTimeout(() => { if (typeof UI !== 'undefined' && UI.zoneBanner) UI.zoneBanner('The game was updated', 'You are back on floor ' + d + ' with a fresh layout'); }, 600); } if (m.cleared && m.bossAt) { G.zone.cleared = true; G.zone.objs.push({ kind: 'portal', x: m.bossAt[0], z: m.bossAt[1], name: G.zone.def.map ? 'Back to Emberwatch' : 'Next floor', used: false }); } UI.netZone(); break;
       case 'gone': { const e = find(m.id); if (e && e.alive) { e.alive = false; e.deadT = .45; goblinGone(e); } break; } /* build 0027: the goblin got away */
       case 's': {
         for (const a of m.e) { const e = find(a[0]); if (!e || !e.alive) continue; const nt = performance.now() / 1000; if (e.sT1 && nt - e.sT1 < .5) { e.sx0 = e.sx1; e.sz0 = e.sz1; e.sT0 = e.sT1; } else { e.sx0 = e.x; e.sz0 = e.z; e.sT0 = nt - .1; } e.sx1 = a[1]; e.sz1 = a[2]; e.sT1 = nt; /* build 0024: glide between server updates */ e.tx = a[1]; e.tz = a[2]; e.trot = a[3]; e.hp = a[4] > e.hp + e.maxHp * .04 ? a[4] : Math.min(e.hp, a[4]); e.st = STN[a[5]] || 'chase'; if (!e.awake) e.awake = true; /* the boss intro card is the one announcement */ }
@@ -65,6 +66,7 @@ const NET = (() => {
       }
       case 'rest': if (Array.isArray(m.e)) for (const a of m.e) { const e = find(a[0]); if (!e || !e.alive) continue; e.awake = false; e.st = 'chase'; e.x = e.tx = a[1]; e.z = e.tz = a[2]; e.hp = Math.min(e.maxHp, a[3]); e.sT1 = 0; e.atk = 0; } break; /* build 0075: the whole party fell or left, so the monsters went back to rest (and the guardian healed). Before this the screen kept the old picture */
       case 'spawn': for (const i of m.ents) { addReplica(i); const e = find(i.id); if (e) ring(e.x, e.z, 0, 2, .4, e.md.e); } break;
+      case 'mapNo': G.mapPend = null; hint(txt(m.m, 160)); break; /* build 0119 */
       case 'riftDone': if (G.zone && G.zone.def.rift && !G.riftDone) riftDone(+m.ms || 0, m.tier | 0); break;
       case 'wbk': { const e = find(m.id); if (e && e.wb && m.m > 0) { e.maxHp = m.m; if (m.hp > 0) e.hp = Math.min(e.maxHp, m.hp); } break; } /* build 0089: the world boss's life follows the players online */
       case 'die': { const e = find(m.id); if (e && e.alive) { e.hp = 0; killEnemy(e); } else if (!e && m.l > 0 && G.hero && !G.inTown) { const xp = xpFor(Math.min(99, m.l | 0), Math.min(4, Math.max(0, +m.xm || 1)), m.el | 0); if (xp > 0) { G.hero.kills++; gainXp(xp); } } break; } /* build 0072: a party kill always pays XP, even if this screen never saw that monster */
@@ -103,7 +105,7 @@ const NET = (() => {
   function drop(me) {
     if (me && ws === me) ws = null; if (N.quit) { N.quit = false; return; } const was = N.on || N.retry > 0; N.on = false; N.peers = {};
     if (!(was && G.state === 'play')) { if (was) { N.retry = 0; G.online = false; } else UI.netFail('Could not reach the server. Try again in a minute; a sleeping server takes about a minute to wake.'); return; }
-    if (!(N.retry > 0)) { N.retry = 0; N.t0 = Date.now(); N.back = G.inTown || !G.zone || G.zone.def.rift ? null : { seed: G.zone.def.seed, x: P.x, z: P.z, d: G.zone.def.depth, clr: !!G.zone.cleared }; }
+    if (!(N.retry > 0)) { N.retry = 0; N.t0 = Date.now(); N.back = G.inTown || !G.zone || G.zone.def.rift || G.zone.def.map ? null : { seed: G.zone.def.seed, x: P.x, z: P.z, d: G.zone.def.depth, clr: !!G.zone.cleared }; }
     N.retry++; const left = RETRY_MS - (Date.now() - N.t0);
     if (left <= 0) { N.retry = 0; G.online = false; UI.reconnecting(0, true); UI.lost('The server did not answer for three minutes. Press Play online to try again, or play solo: your hero and floor are saved.'); return; }
     P.iframes = Math.max(P.iframes || 0, 6); UI.reconnecting(N.retry, false, Math.round((Date.now() - N.t0) / 1000), N.bye);
@@ -111,7 +113,7 @@ const NET = (() => {
     setTimeout(async () => { if (G.state !== 'play' || !(N.retry > 0)) return; if (N.retry > 2) await N.probe(); if (G.state === 'play' && N.retry > 0) N.connect(N.me, N.room); }, wait);
   }
   // build 0070: give up on the server and keep going solo on the same floor (same layout, same spot)
-  N.goSolo = () => { const b = N.back || (G.zone && !G.inTown && G.zone.def && !G.zone.def.rift ? { seed: G.zone.def.seed, x: P.x, z: P.z, d: G.zone.def.depth } : null); N.retry = 0; N.quit = !!ws; const w = ws; ws = null; if (w) { w.onclose = w.onerror = w.onmessage = null; try { w.close(); } catch (e) { } } N.quit = false; N.on = false; G.online = false; N.peers = {}; N.back = null;
+  N.goSolo = () => { const b = N.back || (G.zone && !G.inTown && G.zone.def && !G.zone.def.rift && !G.zone.def.map ? { seed: G.zone.def.seed, x: P.x, z: P.z, d: G.zone.def.depth } : null); N.retry = 0; N.quit = !!ws; const w = ws; ws = null; if (w) { w.onclose = w.onerror = w.onmessage = null; try { w.close(); } catch (e) { } } N.quit = false; N.on = false; G.online = false; N.peers = {}; N.back = null;
     if (b) { G.hero.depth = b.d - 1; G.resumeAt = { seed: b.seed, d: b.d, x: P.x, z: P.z }; } return b; };
   N.tick = dt => {
     for (const id in N.peers) {

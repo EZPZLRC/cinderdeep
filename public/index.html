@@ -469,9 +469,55 @@ body.tj #dock{z-index:25}@media (pointer:coarse){#dock{z-index:25}} /* phones: o
 /* build 0098 (Lee's playtest): the landing page shows name and Play; party code, Solo, Hardcore, Daily, Parties, Leaderboard and Settings wait behind More options */
 #kaLeft:not(.kaOpen) #oRoom,#kaLeft:not(.kaOpen) #soloWrap,#kaLeft:not(.kaOpen) #kaOpts>:not(#kaMore){display:none!important}
 #kaMore{background:none;border:0;box-shadow:none;color:#d8c38a;font-size:13px;letter-spacing:.06em;cursor:pointer;padding:4px 10px}#kaMore:hover{color:#fff}
+/* build 0119: the Atlas board */
+#atlas{position:fixed;inset:0;z-index:48;display:flex;align-items:center;justify-content:center;background:rgba(6,4,2,.72);padding:12px}
+#atlas .atl{width:min(980px,100%);max-height:100%;overflow:auto;background:linear-gradient(180deg,rgba(32,24,14,.98),rgba(14,11,8,.98));border:1px solid #8a6a3a;border-top:3px solid #d8a040;border-radius:8px;padding:12px 16px;box-shadow:0 8px 40px #000;color:#e8dcc4}
+#atlas .atlH{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+#atlas .fn{font-family:"Palatino Linotype",Palatino,Georgia,serif;font-size:22px;color:#ffe0a0}
+#atlas .ft{font-size:13px;letter-spacing:.06em;color:#cfc3aa}
+#atlas .ft b{color:#9affc8}
+#atlas .atlX{min-width:40px;font-size:18px}
+#atlas .atlTabs{display:flex;gap:6px;margin:8px 0}
+#atlas .atlTabs button.on{outline:2px solid #d8a040;color:#ffe0a0}
+#atlas .atlB{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+#atlas .atlSvg{flex:1 1 440px;min-width:280px;max-height:70vh;aspect-ratio:1;background:radial-gradient(circle at 50% 40%,#3a2c1a,#1a120a 75%);border:1px solid #5a4428;border-radius:6px}
+#atlas .ln{stroke:#5a4a36;stroke-width:.5}
+#atlas .ln.on{stroke:#ffd27a;stroke-width:.7}
+#atlas .nd{cursor:pointer}
+#atlas .nd circle{fill:#1a140c;stroke:var(--c);stroke-width:.6;opacity:.45}
+#atlas .nd.av circle{opacity:1;fill:#2a1e10;animation:atlP 1.8s ease-in-out infinite}
+#atlas .nd.lit circle{opacity:1;fill:var(--c);stroke:#ffe9b0}
+#atlas .nd.sel circle{stroke:#fff;stroke-width:1.1}
+#atlas .nd.pin circle{fill:#3a1a0a;stroke:#ffd27a;opacity:1}
+#atlas .nd .tt{font-size:3px;font-weight:700;text-anchor:middle;fill:#f4ead4;pointer-events:none}
+#atlas .nd.lit .tt{fill:#1a120a}
+#atlas .nd .nn{font-size:2.5px;text-anchor:middle;fill:#d8ccb0;pointer-events:none}
+#atlas .nd.lk .nn,#atlas .nd.lk .tt{opacity:.5}
+@keyframes atlP{50%{stroke-width:1.1}}
+#atlas .atlS{flex:1 1 300px;min-width:260px}
+#atlas .atlN{font-family:"Palatino Linotype",Palatino,Georgia,serif;font-size:20px;color:var(--c)}
+#atlas .atlSub{font-size:13px;color:#cfc3aa;margin:2px 0 6px}
+#atlas .atlSt{font-size:14px;color:#e8dcc4;margin-bottom:10px}
+#atlas .atlMH{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#9affc8;margin-bottom:4px}
+#atlas .atlML{display:flex;flex-direction:column;gap:4px;max-height:34vh;overflow:auto;margin-bottom:10px}
+#atlas .atlM{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;text-align:left;padding:6px 8px;border-left:3px solid var(--tc)}
+#atlas .atlM b{color:var(--tc)}
+#atlas .atlM span{font-size:13px;color:#d8ccb4}
+#atlas .atlM i{font-style:normal;font-size:12px;color:#9affc8}
+#atlas .atlM.on{outline:2px solid #ffd27a}
+#atlas .atlM:disabled{opacity:.4}
+#atlas .atlE{font-size:13px;color:#cfc3aa;margin:4px 0 8px}
+#atlas .atlP{font-size:14px;color:#d9c79c;margin:4px 0 8px}
+#atlas .atlTr{border-top:1px solid #3a2e1e;padding:8px 0}
+#atlas .atlTn{color:#ffe2a0;font-weight:600}
+#atlas .atlTn .pips{color:#ffd84a;letter-spacing:2px;margin-left:6px}
+#atlas .atlTd{color:#cfc3aa;font-size:.92em;margin:2px 0 6px}
+#atlas .atlTb{display:flex;gap:8px;justify-content:flex-end}
+#atlas .row{display:flex;gap:8px;flex-wrap:wrap}
+@media (max-width:640px){#atlas{padding:6px}#atlas .atl{padding:10px}#atlas .atlSvg{flex-basis:100%;max-height:52vh}#atlas .atlML{max-height:28vh}}
 </style>
-<link rel="stylesheet" href="css/oathbyte.css?v=0118">
-<link rel="stylesheet" href="css/keyart.css?v=0118">
+<link rel="stylesheet" href="css/oathbyte.css?v=0119">
+<link rel="stylesheet" href="css/keyart.css?v=0119">
 </head>
 <body>
 <canvas id="gl"></canvas><canvas id="ov"></canvas>
@@ -482,6 +528,7 @@ body.tj #dock{z-index:25}@media (pointer:coarse){#dock{z-index:25}} /* phones: o
   <div id="tutTip" class="hide"></div>
 <div id="questBox" class="hide"><div id="qfs" class="hide"></div><div id="riftT" class="hide"></div><span>Quest</span><div id="quest"></div><div id="tq" class="hide"></div><div id="wbar" class="hide"><div id="wbT"></div><div class="wbB"><i id="wbF"></i></div></div></div>
 <div id="folk" class="hide"></div>
+<div id="atlas" class="hide"></div>
   <div id="goals" class="hide"></div>
   <div id="recon" class="hide"></div>
   <div id="gateAsk" class="hide"></div><div id="gateCd" class="hide"><b id="gcN"></b><span id="gcT"></span></div>
@@ -572,14 +619,14 @@ body.tj #dock{z-index:25}@media (pointer:coarse){#dock{z-index:25}} /* phones: o
 @media (max-height:700px){#tip .show3{height:150px}}@media (max-height:480px){#tip .show3{height:110px}}
 #tip.pin .show3{height:min(150px,22vh)}#tip.pin{max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px);overflow-y:auto;overscroll-behavior:contain}
 </style>
-<script src="js/move.js?v=0118"></script>
-<script src="js/models.js?v=0118"></script>
-<script src="js/gl.js?v=0118"></script>
-<script src="js/data.js?v=0118"></script>
-<script src="js/cg.js?v=0118"></script>
-<script src="js/icons.js?v=0118"></script>
-<script src="js/game.js?v=0118"></script>
-<script src="js/net.js?v=0118"></script>
-<script src="js/ui.js?v=0118"></script>
+<script src="js/move.js?v=0119"></script>
+<script src="js/models.js?v=0119"></script>
+<script src="js/gl.js?v=0119"></script>
+<script src="js/data.js?v=0119"></script>
+<script src="js/cg.js?v=0119"></script>
+<script src="js/icons.js?v=0119"></script>
+<script src="js/game.js?v=0119"></script>
+<script src="js/net.js?v=0119"></script>
+<script src="js/ui.js?v=0119"></script>
 <div id="mtags"></div></body>
 </html>

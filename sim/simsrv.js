@@ -9,20 +9,21 @@ let depth = 0, rift = null, tierV = 0; // tierV (build 0074): the party's diffic
 function srvTierName(v) { return TIERS[Math.max(0, Math.min(TIERS.length - 1, v | 0))].n; }
 function srvTier(v) { tierV = Math.max(0, Math.min(TIERS.length - 1, v | 0)); return tierV; }
  // rift (build 0021): a timed floor; the party races to slay its guardian
+var mapRun = null; // build 0119: the Atlas map this party is in, if any
 function srvNewZone(lvl, nPlayers, next) {
-  const wasRift = !!rift; if (next === 'rift') rift = { t0: Date.now(), tier: Math.max(1, lvl | 0) + 2 }; else { rift = null; if (next === 'prev') depth = Math.max(0, depth - 1); else if (next && !wasRift) depth++; }
-  const zd = rift ? zoneFor(((r12) => r12 === 9 ? 8 : r12)((Math.random() * 12) | 0)) /* build 0074: floor 10 is the Heart, so a rift rolls the Voidscar there instead */ : zoneFor(depth), def = { type: 'zone', theme: zd.theme, rift: rift ? 1 : 0, lvl: rift ? rift.tier : Math.max(1, lvl | 0), seed: !rift && forceSeed ? forceSeed : !rift && typeof DAILY === 'number' ? (Math.imul(DAILY ^ (depth + 1), 2654435761) >>> 0) % 1000000000 : (Math.random() * 1e9) | 0, name: rift ? 'Rift · ' + zd.name : zd.name, depth: depth + 1, tier: tierV };
+  const wasRift = !!rift, wasMap = !!mapRun, mp = next && typeof next === 'object' && next.map ? mapNorm(next.map) : null; mapRun = mp; if (next === 'rift') rift = { t0: Date.now(), tier: Math.max(1, lvl | 0) + 2 }; else { rift = null; if (mp) { } else if (next === 'prev') depth = Math.max(0, depth - 1); else if (next && !wasRift && !wasMap) depth++; } /* build 0119: a map, and the way back out of one, leave the party's own floor where it was */
+  const zd = rift ? zoneFor(((r12) => r12 === 9 ? 8 : r12)((Math.random() * 12) | 0)) /* build 0074: floor 10 is the Heart, so a rift rolls the Voidscar there instead */ : zoneFor(depth), def = { type: 'zone', theme: zd.theme, rift: rift ? 1 : 0, lvl: rift ? rift.tier : Math.max(1, lvl | 0), seed: !rift && forceSeed ? forceSeed : !rift && typeof DAILY === 'number' ? (Math.imul(DAILY ^ (depth + 1), 2654435761) >>> 0) % 1000000000 : (Math.random() * 1e9) | 0, name: rift ? 'Rift · ' + zd.name : zd.name, depth: depth + 1, tier: tierV }; if (mp) { mapDef(def, mp, lvl); def.seed = (Math.random() * 1e9) | 0; }
   G.zone = genZone(def); G.ents.length = 0; G.projs.length = 0; G.areas.length = 0; G.boss = null; spawnAll(G.zone);
   const k = partyK(nPlayers); curK = k; known = new Set();
   for (const e of G.ents) { e.maxHp = Math.round(e.maxHp * k); e.hp = e.maxHp; known.add(e.id); }
   { const w = wbAdd(); if (w) known.add(w.id); } /* build 0075: the world boss is on every new floor while it lives */
-  return { t: 'zone', seed: def.seed, lvl: def.lvl, d: depth, tier: def.tier, theme: def.theme, rift: rift ? Date.now() - rift.t0 : undefined, ents: G.ents.map(entInfo) };
+  return { t: 'zone', seed: def.seed, lvl: def.lvl, d: depth, tier: def.tier, theme: def.theme, rift: rift ? Date.now() - rift.t0 : undefined, map: mp || undefined, by: mp && next.by ? next.by : undefined, home: wasMap && !mp ? 1 : undefined, ents: G.ents.map(entInfo) };
 }
 // build 0062 (playtest): a party that reconnects after a server update gets a fresh floor at the depth it was on, not floor 1
 var forceSeed = 0;
 // build 0070 (Lee's playtest): after a dropped connection or a server restart the floor comes back with the same layout, so the hero keeps their exact spot.
 // Monsters right around that spot are not put back, and a guardian already slain stays slain.
-function srvResume(lvl, nPlayers, d, seed, x, z, clr) { rift = null; depth = Math.max(0, Math.min(500, (d | 0) - 1)); forceSeed = seed > 0 && seed < 1e9 ? seed | 0 : 0; let m; try { m = srvNewZone(lvl, nPlayers, false); } finally { forceSeed = 0; }
+function srvResume(lvl, nPlayers, d, seed, x, z, clr) { rift = null; mapRun = null; depth = Math.max(0, Math.min(500, (d | 0) - 1)); forceSeed = seed > 0 && seed < 1e9 ? seed | 0 : 0; let m; try { m = srvNewZone(lvl, nPlayers, false); } finally { forceSeed = 0; }
   if (m.seed !== (seed | 0)) return m; const near = e => isFinite(x) && isFinite(z) && Math.hypot(e.x - x, e.z - z) < 12;
   for (let i = G.ents.length - 1; i >= 0; i--) { const e = G.ents[i]; if ((!e.boss && near(e)) || (e.boss && clr)) G.ents.splice(i, 1); } if (clr) { G.zone.cleared = true; G.boss = null; }
   return srvState(); }
@@ -31,7 +32,7 @@ function partyK(n) { return 1 + .5 * Math.max(0, n - 1); }
 // someone joined or left: scale the life of every monster on the floor to the new party size, keeping how hurt it is (build 0022)
 function srvScale(n) { if (!G.zone || n < 1) return 0; const k = partyK(n), r = k / curK; if (Math.abs(r - 1) < .001) return 0; curK = k; for (const e of G.ents) { if (!e.alive || e.wb) continue; e.maxHp = Math.max(1, Math.round(e.maxHp * r)); e.hp = Math.min(e.maxHp, Math.max(1, Math.round(e.hp * r))); } return Math.round(r * 10000) / 10000; }
 function srvFloor() { return depth + 1; } /* the floor this party is on, for the party browser */
-function srvState() { return { t: 'zone', seed: G.zone.def.seed, lvl: G.zone.def.lvl, d: depth, tier: G.zone.def.tier | 0, theme: G.zone.def.theme, rift: rift ? (rift.done ? -1 : Date.now() - rift.t0) : undefined, cleared: !!G.zone.cleared, bossAt: G.zone.bossAt, ents: G.ents.filter(e => e.alive).map(entInfo) }; }
+function srvState() { return { t: 'zone', seed: G.zone.def.seed, lvl: G.zone.def.lvl, d: depth, tier: G.zone.def.tier | 0, theme: G.zone.def.theme, rift: rift ? (rift.done ? -1 : Date.now() - rift.t0) : undefined, map: G.zone.def.map || undefined, cleared: !!G.zone.cleared, bossAt: G.zone.bossAt, ents: G.ents.filter(e => e.alive).map(entInfo) }; }
 dmgPlayer = function (v, el, src) { if (curTarget) __emit(curTarget.id, { t: 'dmg', v: Math.round(v), el: el, src: src ? src.id : 0 }); };
 addArea = function (o) { o.t = 0; G.areas.push(o); if (o.owner === 'e') __emit(null, { t: 'area', x: r2(o.x), z: r2(o.z), r: o.r, delay: o.delay, c: o.c, sh: o.sh, ang: o.ang === undefined ? undefined : r2(o.ang), arc: o.arc, len: o.len, w: o.w, n: o.n, hv: o.hvy }); return o; }; // build 0048: shapes and heavy blows go to every player
 eShoot = function (e, ang, spd, dmgM, el) {
@@ -87,6 +88,7 @@ function srvTick(dt) {
 }
 function srvSnap() { const o = []; for (const e of G.ents) if (e.alive && e.awake) o.push([e.id, r2(e.x), r2(e.z), r2(e.rot), Math.max(0, Math.round(e.hp)), ST[e.st] | 0]); return o; }
 function srvIsRift() { return !!(G.zone && G.zone.def && G.zone.def.rift); }
+function srvIsMap() { return !!(G.zone && G.zone.def && G.zone.def.map); } /* build 0119 */
 function srvCleared() { return !!(G.zone && G.zone.cleared); }
 
 // ---- build 0075 (Lee, Nov 15): the world boss ----
@@ -95,7 +97,7 @@ function srvCleared() { return !!(G.zone && G.zone.cleared); }
 var WBS = null; // set by the host while the boss lives: { f: share of life left (1 to 0), k: life scale for how many players were online }
 function wbEnt() { for (const e of G.ents) if (e.wb && e.alive) return e; return null; }
 function wbAdd() {
-  if (!WBS || !G.zone || rift || wbEnt()) return null;
+  if (!WBS || !G.zone || rift || mapRun || wbEnt()) return null; /* build 0119: not inside Atlas maps either */
   const Z = G.zone, lv = Z.def.lvl, hit = refHit(lv + 2), bd = WORLD_BOSS, pls = Object.values(SP).filter(p => p.x > -900 && !p.dead);
   // it waits in open ground a short walk from the floor entrance, never on top of a player: you go to it when you are ready
   let x = Z.start[0], z = Z.start[1], best = -1;
