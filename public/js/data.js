@@ -294,10 +294,10 @@ const STORY = [
       done: [["Vaeloth", "Ten years I listened to it beat. Ten years. It was going to make the world clean."], ["Vaeloth", "Tell Hesta... tell her I was only ever trying to light the dark."], ["", "The Prophet falls, and the Heart under the floor slows, and stops. The fire in the stone goes grey."], ["", "Emberwatch is safe. Captain Roek is waiting for you."]],
       recap: "You stopped Vaeloth at the Heart of Cinders, and the dead god's heart went still." },
     { id: "a3s5", k: "talk", by: "roek", goal: "Bring the news to Captain Roek",
-      lines: [["Captain Roek", "It is over, then. The fire under the world is out, and the dead lie still in the Hollow."], ["Captain Roek", "But the Voidscar is still open, and the stair under the Heart keeps going down. Maren sat up all night with Vaeloth's book, and he has gone very quiet."], ["Captain Roek", "Rest while you can, hero. Emberwatch will be here when you come back. It always will be, now."]], /* build 0109: the Rift Stone was removed in 0098, so Roek now points down the stair, where Act IV begins */
+      lines: [["Captain Roek", "It is over, then. The fire under the world is out, and the dead lie still in the Hollow."], ["Captain Roek", "But the Voidscar is still open, and the stair under the Heart keeps going down. Maren sat up all night with Vaeloth's book, and he has gone very quiet."], ["Captain Roek", "Rest while you can, hero. Emberwatch will be here when you come back. It always will be, now."]], /* Act IV (Nov 16): the Rift Stone was removed in 0098, so Roek now points down the stair, where Act IV begins */
       recap: "Captain Roek thanked you. The Voidscar was still open, and the stair under the Heart kept going down." }
   ] },
-  // build 0109 (Lee, Nov 16: write Act IV, carry the story past floor 10): The Sworn Flame, floors 11 to 20. Below the Heart the deep folds back on itself:
+  // Act IV (Lee, Nov 16: write Act IV, carry the story past floor 10): The Sworn Flame, floors 11 to 20. Below the Heart the deep folds back on itself:
   // the Gaping Star, a hungry star looking in through the Voidscar, remakes the regions and guardians you already beat in its own cold light.
   // Only steps are added at the end (nothing moved), so STORY_V stays 2: heroes who finished Act III simply open Act IV on their next floor.
   // vil is the line under a story guardian's name on this act's floors, bc the brand colours, and bl overrides vil for one guardian.
