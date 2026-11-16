@@ -1928,17 +1928,17 @@ function mdye(gr, hex, k, lift) { const key = gr.avg + '|' + hex + '|' + k + '|'
 const GSTY = {
   sword: { carry: [[-.27, -.34, .17], [-.2, -.45, .87], [-1, 0, 0]], runC: [[-.28, -.34, .14], [-.3, -.42, .86], [-1, 0, 0]], runOnly: 1 }, /* standing, the sword keeps its own guard animation */
   // the war axe rests on the shoulder, then comes down in a big overhead chop
-  axe: { carry: [[-.2, .02, .16], [-.12, .55, -.83], [0, 0, 1]], runC: [[-.21, -.02, .14], [-.15, .5, -.85], [0, 0, 1]], body: 'punch',
+  axe: { perp: .4, carry: [[-.2, .02, .16], [-.12, .55, -.83], [0, 0, 1]], runC: [[-.21, -.02, .14], [-.15, .5, -.85], [0, 0, 1]], body: 'punch',
     atk: [[0, [-.2, .02, .16], [-.12, .55, -.83], [0, 0, 1]], [.3, [-.2, .4, -.02], [-.05, .45, -.89], [0, .3, 1]], [.45, [-.08, .12, .42], [.02, -.2, .98], [0, -1, .2]], [.6, [.04, -.28, .4], [.25, -.85, .45], [0, -.6, -.8]], [.8, [-.12, -.2, .3], [-.1, -.4, .9], [0, -1, 0]], [1, [-.2, .02, .16], [-.12, .55, -.83], [0, 0, 1]]] },
   // the maul is held in both hands across the body and slammed down over the head into the ground
-  maul: { two: .3, carry: [[-.13, -.25, .26], [.55, .62, .3], [0, .2, 1]], runC: [[-.15, -.28, .22], [.6, .6, .2], [0, .2, 1]], body: 'jland',
-    atk: [[0, [-.13, -.25, .26], [.55, .62, .3], [0, .2, 1]], [.32, [-.06, .42, .02], [.05, .55, -.83], [0, 1, 0]], [.5, [-.04, -.12, .5], [0, -.8, .6], [0, .2, 1]], [.72, [-.04, -.2, .5], [0, -.85, .5], [0, .2, 1]], [1, [-.13, -.25, .26], [.55, .62, .3], [0, .2, 1]]] },
+  maul: { perp: .4, two: .3, carry: [[-.13, -.25, .26], [.55, .62, .3], [0, .2, 1]], runC: [[-.15, -.28, .22], [.6, .6, .2], [0, .2, 1]], body: 'jland',
+    atk: [[0, [-.13, -.25, .26], [.55, .62, .3], [0, .2, 1]], [.32, [-.06, .48, .1], [.05, .75, -.66], [0, 1, 0]], [.42, [-.06, .5, .4], [0, .2, .98], [0, 1, 0]], [.5, [-.04, -.12, .5], [0, -.8, .6], [0, .2, 1]], [.72, [-.04, -.2, .5], [0, -.85, .5], [0, .2, 1]], [1, [-.13, -.25, .26], [.55, .62, .3], [0, .2, 1]]] },
   // the staff stands upright at the side, then thrusts its gem at the foe
   staff: { carry: [[-.26, -.12, .18], [-.05, .98, .15], [0, 0, 1]], runC: [[-.26, -.2, .2], [-.1, .85, .5], [0, 0, 1]],
     atk: [[0, [-.26, -.12, .18], [-.05, .98, .15], [0, 0, 1]], [.38, [-.22, .12, .12], [-.05, .9, -.4], [0, 0, 1]], [.55, [-.14, .06, .44], [0, .45, .9], [0, 0, 1]], [.8, [-.18, -.02, .34], [-.05, .6, .8], [0, 0, 1]], [1, [-.26, -.12, .18], [-.05, .98, .15], [0, 0, 1]]] },
   // the wand is carried low, drawn back to the shoulder and flicked out
   wand: { carry: [[-.24, -.3, .2], [-.15, -.35, .92], [0, 1, 0]], runC: [[-.25, -.32, .16], [-.15, -.3, .94], [0, 1, 0]],
-    atk: [[0, [-.24, -.3, .2], [-.15, -.35, .92], [0, 1, 0]], [.38, [-.25, .16, .02], [-.1, .9, .4], [0, 1, 0]], [.52, [-.12, .1, .5], [0, .1, 1], [0, 1, 0]], [.75, [-.16, .02, .42], [-.05, -.1, 1], [0, 1, 0]], [1, [-.24, -.3, .2], [-.15, -.35, .92], [0, 1, 0]]] },
+    atk: [[0, [-.24, -.3, .2], [-.15, -.35, .92], [0, 1, 0]], [.38, [-.33, .12, .02], [-.2, .88, .4], [0, 1, 0]], [.52, [-.12, .1, .5], [0, .1, 1], [0, 1, 0]], [.75, [-.16, .02, .42], [-.05, -.1, 1], [0, 1, 0]], [1, [-.24, -.3, .2], [-.15, -.35, .92], [0, 1, 0]]] },
   // fists up in a guard between punches
   fist: { carry: [[-.11, .08, .28], [0, .2, 1], [0, 1, 0]], runC: [[-.13, .0, .25], [0, .1, 1], [0, 1, 0]], left: [[.11, .1, .25], [0, .2, 1], [0, 1, 0]], noAtkIK: 1 },
   // the bow: left arm out holding it, right hand draws the string to the cheek
@@ -1962,8 +1962,8 @@ function gstyIK(md, S, o, mv, act, k, drw) {
   let wp = cp, wd = cd, we = ce, w = 1; const atk = S.atk && act > 0;
   if (atk) { const [ap, ad, ae] = gk(S.atk, k); wp = gmix(cp, ap, act); wd = gmix(cd, ad, act); we = gmix(ce, ae, act); } else if (act > 0) w = 1 - act; /* clip-driven swings (sword, fists) take the arm over */
   if (S.runOnly) w *= m; if (w <= .001) return null; const up = wp[1] > .2, d = D(wd);
-  out.push({ s: 'r', p: P(wp), d, u: crs(d, D(we)), w, pole: D(up ? GPOLE_UP : GPOLE_R) });
-  if (S.two) { const lp = [wp[0] + wd[0] * S.two, wp[1] + wd[1] * S.two, wp[2] + wd[2] * S.two], ld = D([-wd[0], -wd[1], -wd[2]]); out.push({ s: 'l', p: P(lp), d, u: crs(d, D(we)), w, dw: .6, pole: D(up ? [.9, .1, -.4] : GPOLE_L) }); }
+  out.push({ s: 'r', p: P(wp), d, u: crs(d, D(we)), w, pole: D(up ? GPOLE_UP : GPOLE_R), perp: S.perp });
+  if (S.two) { const lp = [wp[0] + wd[0] * S.two, wp[1] + wd[1] * S.two, wp[2] + wd[2] * S.two], ld = D([-wd[0], -wd[1], -wd[2]]); out.push({ s: 'l', p: P(lp), d, u: crs(d, D(we)), w, dw: .6, pole: D(up ? [.9, .1, -.4] : GPOLE_L), perp: S.perp, follow: S.two }); }
   if (S.left && !(act > 0)) { const d2 = D(S.left[1]); out.push({ s: 'l', p: P(gmix(S.left[0], [S.left[0][0] + .02, S.left[0][1] - .06, S.left[0][2] - .03], m)), d: d2, u: crs(d2, D(S.left[2])), w: 1, dw: .5, pole: D(GPOLE_L) }); }
   return out;
 }
@@ -1973,44 +1973,59 @@ function gstyIK(md, S, o, mv, act, k, drw) {
 // the grip just far enough to clear (a shield or a bow slides out instead). A handful of distance checks a hero, no physics.
 const GFIT = { on: !(typeof location !== 'undefined' && /[?&]gearfit=0/.test(location.search)), dbg: null };
 // what each weapon reaches along the hand (old hero units): samples [along, thickness]
-const GREACH = { sword: [[.42, .08], [.75, .08], [1.1, .08], [1.45, .08], [1.8, .07], [1.95, .05]], axe: [[.4, .05], [.8, .05], [1.15, .2], [1.45, .25], [1.62, .12]], maul: [[.4, .06], [.8, .06], [1.15, .26], [1.45, .32], [1.62, .2]],
+const GREACH = { sword: [[.42, .08], [.75, .08], [1.1, .08], [1.45, .08], [1.8, .07], [1.95, .05]], axe: [[-.38, .05], [.4, .05], [.8, .05], [1.15, .2], [1.45, .25], [1.62, .12]], maul: [[-.38, .06], [.4, .06], [.8, .06], [1.15, .26], [1.45, .32], [1.62, .2]],
   staff: [[-.8, .06], [-.5, .06], [.5, .06], [.9, .06], [1.25, .08], [1.5, .17]], wand: [[.35, .05], [.65, .05], [.9, .1]] };
+const GSPAN = { sword: [.15, 1.95], axe: [-.42, 1.62], maul: [-.42, 1.62], staff: [-.8, 1.5], wand: [-.12, .9] }; // how far each weapon really runs along the hand, both ways (for the test harness)
 const GBN = {}; // bone indices per model
-function gfitCols(M, BMm, s, out) { // world colliders: [ax,ay,az, bx,by,bz, r] (a ball when a == b), from the posed bones
-  const H = M.head, nm = H.boneNames, W = M.W, T = M.T; if (!W || !T) return 0; const key = nm.length + nm[0] + nm[nm.length - 1]; let k = GBN[key];
-  if (!k) { const f = n => nm.findIndex(x => x.toLowerCase() === n); k = GBN[key] = { pel: f('pelvis'), sp1: f('spine_01'), nk: f('neck_01'), ah: H.attach.indexOf('Head'), ac: H.attach.indexOf('spine_03'), tr: f('thigh_r'), cr: f('calf_r'), fr: f('foot_r'), tl: f('thigh_l'), cl: f('calf_l'), fl: f('foot_l') }; }
+const GNEAR1 = ['lowerarm_r'], GNEAR2 = ['lowerarm_r', 'lowerarm_l'], GSKIPL = ['lowerarm_l']; // the forearm holding a weapon only counts past the grip; the arm a shield or bow is strapped to never
+function gfitCols(M, BMm, s, out, skip, near) { // world colliders: [ax,ay,az, bx,by,bz, r, near] (a ball when a == b), from the posed bones
+  const H = M.head, nm = H.boneNames, W = M.W, T = M.T; if (!W || !T) return 0;
   const w3 = (x, y, z) => [BMm[0] * x + BMm[4] * y + BMm[8] * z + BMm[12], BMm[1] * x + BMm[5] * y + BMm[9] * z + BMm[13], BMm[2] * x + BMm[6] * y + BMm[10] * z + BMm[14]];
+  let n = 0;
+  if (M.caps && M.caps.length) { /* build 0115: tubes fitted to this hero's own mesh, carried by the posed bones */
+    const ks = Math.hypot(BMm[0], BMm[1], BMm[2]);
+    for (const cp of M.caps) { if (skip && skip.includes(cp.n)) continue; const o = cp.b * 12, bs = Math.hypot(W[o], W[o + 1], W[o + 2]) * ks, c = out[n++];
+      const L = (v, k) => { const x = W[o] * v[0] + W[o + 3] * v[1] + W[o + 6] * v[2] + W[o + 9], y = W[o + 1] * v[0] + W[o + 4] * v[1] + W[o + 7] * v[2] + W[o + 10], z = W[o + 2] * v[0] + W[o + 5] * v[1] + W[o + 8] * v[2] + W[o + 11]; const q = w3(x, y, z); c[k] = q[0]; c[k + 1] = q[1]; c[k + 2] = q[2]; };
+      L(cp.a, 0); L(cp.c, 3); c[6] = cp.r * bs; c[7] = near && near.includes(cp.n) ? 1 : 0; }
+    return n; }
+  const key = nm.length + nm[0] + nm[nm.length - 1]; let k = GBN[key];
+  if (!k) { const f = n2 => nm.findIndex(x => x.toLowerCase() === n2); k = GBN[key] = { pel: f('pelvis'), sp1: f('spine_01'), nk: f('neck_01'), ah: H.attach.indexOf('Head'), ac: H.attach.indexOf('spine_03'), tr: f('thigh_r'), cr: f('calf_r'), fr: f('foot_r'), tl: f('thigh_l'), cl: f('calf_l'), fl: f('foot_l') }; }
   const bp = b => b < 0 ? null : w3(W[b * 12 + 9], W[b * 12 + 10], W[b * 12 + 11]), ap = a => a < 0 ? null : w3(T[a * 12 + 9], T[a * 12 + 10], T[a * 12 + 11]);
-  const hd = ap(k.ah), ch = ap(k.ac), nk = bp(k.nk), s1 = bp(k.sp1), pl = bp(k.pel); let n = 0; const put = (a, b, r) => { if (!a || !b) return; const c = out[n++]; c[0] = a[0]; c[1] = a[1]; c[2] = a[2]; c[3] = b[0]; c[4] = b[1]; c[5] = b[2]; c[6] = r * s; };
+  const hd = ap(k.ah), ch = ap(k.ac), nk = bp(k.nk), s1 = bp(k.sp1), pl = bp(k.pel); const put = (a, b, r) => { if (!a || !b) return; const c = out[n++]; c[0] = a[0]; c[1] = a[1]; c[2] = a[2]; c[3] = b[0]; c[4] = b[1]; c[5] = b[2]; c[6] = r * s; c[7] = 0; };
   put(hd, hd, .15); put(nk || hd, ch, .1); put(ch, s1 || pl, .15); put(s1 || ch, pl, .14);
   put(bp(k.tr), bp(k.cr), .075); put(bp(k.cr), bp(k.fr), .06); put(bp(k.tl), bp(k.cl), .075); put(bp(k.cl), bp(k.fl), .06); return n; /* and the legs, so a lowered blade never cuts through a thigh */
 }
 // turn the weapon held by hand frame HF (world, old units) about its grip until its samples clear the body; returns the world rotation (quaternion)
 function gfitTurn(C, n, HF, reach, dbg) {
-  const g = [HF[12], HF[13], HF[14]], sc = Math.hypot(HF[8], HF[9], HF[10]) || 1; let d = [HF[8] / sc, HF[9] / sc, HF[10] / sc], q = [0, 0, 0, 1], worst0 = -1;
-  for (let it = 0; it < 4; it++) { let best = 0, bp = null, bn = null;
-    for (const [z, r] of reach) { const L = z * sc, px = g[0] + d[0] * L, py = g[1] + d[1] * L, pz = g[2] + d[2] * L, pen = gfitPen(C, n, px, py, pz, r * sc, GNV); if (pen > best) { best = pen; bp = [px, py, pz, L]; bn = GNV.slice(); } }
-    if (it === 0) worst0 = best; if (best < .004 * sc || !bp) break;
-    const L = bp[3], tx = bp[0] + bn[0] * (best + .01 * sc) - g[0], ty = bp[1] + bn[1] * (best + .01 * sc) - g[1], tz = bp[2] + bn[2] * (best + .01 * sc) - g[2], tl = Math.hypot(tx, ty, tz) || 1;
-    const nd = L >= 0 ? [tx / tl, ty / tl, tz / tl] : [-tx / tl, -ty / tl, -tz / tl], r = qfrom(d, nd); q = qmul(r, q); d = nd; }
-  if (dbg) dbg.push(worst0 / sc);
-  // never turn more than about 70 degrees: a bigger miss means the pose itself is wrong, and a wild flip looks worse than a graze
-  const ang = 2 * Math.acos(Math.min(1, Math.abs(q[3]))); if (ang > 1.2) { const k = 1.2 / ang, a2 = ang * k / 2, s0 = Math.sin(ang / 2) || 1, sg = q[3] < 0 ? -1 : 1, s2 = Math.sin(a2); q = [q[0] / s0 * s2 * sg, q[1] / s0 * s2 * sg, q[2] / s0 * s2 * sg, Math.cos(a2)]; }
+  const g = [HF[12], HF[13], HF[14]], sc = Math.hypot(HF[8], HF[9], HF[10]) || 1, d0 = [HF[8] / sc, HF[9] / sc, HF[10] / sc];
+  // deepest overlap of the weapon pointing along d; fills the worst sample (point, along) and its push direction
+  const worst = (d, W) => { let best = 0; for (const [z, r] of reach) { const L = z * sc, px = g[0] + d[0] * L, py = g[1] + d[1] * L, pz = g[2] + d[2] * L, pen = gfitPen(C, n, px, py, pz, (r + GMARG) * sc, GNV, Math.abs(z) < .35); if (pen > best) { best = pen; if (W) { W[0] = px; W[1] = py; W[2] = pz; W[3] = L; W[4] = GNV[0]; W[5] = GNV[1]; W[6] = GNV[2]; } } } return best; };
+  let d = d0, q = [0, 0, 0, 1], cur = worst(d, GWA); const w0 = cur; /* build 0115: a turn is kept only when it really leaves the weapon clearer, so freeing one end never drives the other in deeper */
+  for (let it = 0; it < 6 && cur > .004 * sc; it++) { const L = GWA[3], k = cur + .012 * sc, tx = GWA[0] + GWA[4] * k - g[0], ty = GWA[1] + GWA[5] * k - g[1], tz = GWA[2] + GWA[6] * k - g[2], tl = Math.hypot(tx, ty, tz) || 1;
+    const nd = L >= 0 ? [tx / tl, ty / tl, tz / tl] : [-tx / tl, -ty / tl, -tz / tl]; let step = qfrom(d, nd), ok = false;
+    for (let h = 0; h < 3 && !ok; h++) { const q2 = qmul(step, q), d2 = qapply(q2, d0), a2 = 2 * Math.acos(Math.min(1, Math.abs(q2[3]))), w2 = a2 > 1.2 ? 1e9 : worst(d2, GWB);
+      if (w2 < cur - 1e-5) { q = q2; d = d2; cur = w2; for (let i = 0; i < 7; i++) GWA[i] = GWB[i]; ok = true; } else step = qpow4(step, .5); }
+    if (!ok) break; }
+  if (dbg) dbg.push(w0 / sc);
   return q;
 }
+const GMARG = .035; /* build 0115: a little room past the fitted shapes, for armour edges, hoods and brims */
+const GWA = [0, 0, 0, 0, 0, 0, 0], GWB = [0, 0, 0, 0, 0, 0, 0];
+function qpow4(q, f) { const w = Math.max(-1, Math.min(1, q[3])), a = Math.acos(w), s0 = Math.sin(a); if (s0 < 1e-6) return [0, 0, 0, 1]; const s1 = Math.sin(a * f) / s0; return [q[0] * s1, q[1] * s1, q[2] * s1, Math.cos(a * f)]; }
 // apply a world rotation q about point (gx,gy,gz) to matrix B in place
 function gfitRot(B, q, gx, gy, gz) { qrot(GQ, q[0], q[1], q[2], q[3]); GQ[12] = gx - (GQ[0] * gx + GQ[4] * gy + GQ[8] * gz); GQ[13] = gy - (GQ[1] * gx + GQ[5] * gy + GQ[9] * gz); GQ[14] = gz - (GQ[2] * gx + GQ[6] * gy + GQ[10] * gz); m4mul(B, GQ, B); }
 // push vector (world) that slides a set of world points (ball radius r) out of the body
-function gfitSlide(C, n, P, out) { out[0] = out[1] = out[2] = 0; let w = 0;
-  for (let it = 0; it < 3; it++) { let best = 0, bn = null; for (const p of P) { const pen = gfitPen(C, n, p[0] + out[0], p[1] + out[1], p[2] + out[2], p[3], GNV); if (pen > best) { best = pen; bn = GNV.slice(); } } if (it === 0) w = best; if (!bn || best < .003) break; for (let k = 0; k < 3; k++) out[k] += bn[k] * (best + .005); }
+function gfitSlide(C, n, P, out) { out[0] = out[1] = out[2] = 0; let w = 0; /* build 0115: push along the sum of every overlap, so a shield wedged between chest and shoulder moves out of both at once */
+  for (let it = 0; it < 12; it++) { let best = 0, vx = 0, vy = 0, vz = 0; for (const p of P) for (let i = 0; i < n; i++) { const pen = gfitPen(C, i + 1, p[0] + out[0], p[1] + out[1], p[2] + out[2], p[3], GNV, false, i); if (pen > 0) { vx += GNV[0] * pen; vy += GNV[1] * pen; vz += GNV[2] * pen; if (pen > best) best = pen; } }
+    if (it === 0) w = best; if (best < .003) break; const l = Math.hypot(vx, vy, vz); if (l < 1e-6) break; const st = best + .008; out[0] += vx / l * st; out[1] += vy / l * st; out[2] += vz / l * st; }
   return w; }
 // deepest overlap of a ball (p, r) with the colliders; fills push direction into nv
-function gfitPen(C, n, px, py, pz, r, nv) { let best = 0;
-  for (let i = 0; i < n; i++) { const c = C[i], ax = c[0], ay = c[1], az = c[2], ex = c[3] - ax, ey = c[4] - ay, ez = c[5] - az, L2 = ex * ex + ey * ey + ez * ez; let t = L2 > 1e-9 ? ((px - ax) * ex + (py - ay) * ey + (pz - az) * ez) / L2 : 0; t = t < 0 ? 0 : t > 1 ? 1 : t;
+function gfitPen(C, n, px, py, pz, r, nv, nearSkip, i0) { let best = 0;
+  for (let i = i0 || 0; i < n; i++) { const c = C[i]; if (nearSkip && c[7]) continue; const ax = c[0], ay = c[1], az = c[2], ex = c[3] - ax, ey = c[4] - ay, ez = c[5] - az, L2 = ex * ex + ey * ey + ez * ez; let t = L2 > 1e-9 ? ((px - ax) * ex + (py - ay) * ey + (pz - az) * ez) / L2 : 0; t = t < 0 ? 0 : t > 1 ? 1 : t;
     let dx = px - (ax + ex * t), dy = py - (ay + ey * t), dz = pz - (az + ez * t); let d = Math.hypot(dx, dy, dz); const pen = c[6] + r - d;
     if (pen > best) { best = pen; if (d < 1e-5) { dx = -ez; dy = 0; dz = ex; d = Math.hypot(dx, dz) || 1; if (d < 1e-5) { dx = 1; d = 1; } } nv[0] = dx / d; nv[1] = dy / d; nv[2] = dz / d; } }
   return best; }
-const GC = [[], [], [], [], [], [], [], []].map(() => new Array(7)), GNV = [0, 0, 0], GQ = new Float32Array(16), GT = new Float32Array(16);
+const GC = Array.from({ length: 24 }, () => new Array(8)), GNV = [0, 0, 0], GQ = new Float32Array(16), GT = new Float32Array(16);
 function qrot(o, x, y, z, w) { o[0] = 1 - 2 * (y * y + z * z); o[1] = 2 * (x * y + z * w); o[2] = 2 * (x * z - y * w); o[3] = 0; o[4] = 2 * (x * y - z * w); o[5] = 1 - 2 * (x * x + z * z); o[6] = 2 * (y * z + x * w); o[7] = 0; o[8] = 2 * (x * z + y * w); o[9] = 2 * (y * z - x * w); o[10] = 1 - 2 * (x * x + y * y); o[11] = 0; o[12] = o[13] = o[14] = 0; o[15] = 1; return o; }
 function qmul(a, b) { return [a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1], a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0], a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3], a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]]; }
 function qapply(q, v) { const [x, y, z, w] = q, ix = w * v[0] + y * v[2] - z * v[1], iy = w * v[1] + z * v[0] - x * v[2], iz = w * v[2] + x * v[1] - y * v[0], iw = -x * v[0] - y * v[1] - z * v[2]; return [ix * w + iw * -x + iy * -z - iz * -y, iy * w + iw * -y + iz * -x - ix * -z, iz * w + iw * -z + ix * -y - iy * -x]; }
@@ -2053,8 +2068,9 @@ function heroModel(o, cls, rot, tw, lu, dy, mv, AW, wt, wglow, em, wk) {
     if (folk) { if (k === 'cloth') return [mdye(gr, L.cl, .9, 1), em, mt]; if (k === 'leather') return [mdye(gr, L.d, .45, 1.3), em, mt]; }
     if ((k === 'hair' || k === 'hairb' || k === 'beard') && (folk || o.hair)) return [mdye(gr, hairC, .85, 1), em, mt];
     return [mt === 8 ? MLIFT_SKIN : MLIFT, em, mt] /* build 0041: lifted so the outfit reads from the game camera */; };
-  const STY = hero && !o.dead && !o.dash && !o.talk && !GFIT.force && GFIT.sty !== false ? GSTY[wk] : null, drw0 = o.act && o.lastA ? o.lastA.drw : -1;
-  M.ik = STY ? md => gstyIK(md, STY, o, mv, act, clamp(o.swing || 0, 0, 1), drw0) : null;
+  const sprt = !!(o.dash && typeof o.dash === 'object' && o.dash.sk && o.dash.sk.flat && o.dash.sk.n); /* build 0115: a Charge or Flame Dash is a sprint, so the weapon keeps its running carry */
+  const STY = hero && !o.dead && (!o.dash || sprt) && !o.talk && !GFIT.force && GFIT.sty !== false ? GSTY[wk] : null, drw0 = o.act && o.lastA ? o.lastA.drw : -1;
+  M.ik = STY ? md => gstyIK(md, STY, o, sprt ? 1 : mv, act, clamp(o.swing || 0, 0, 1), drw0) : null;
   const drew = GLX.drawModel(M, BMm, lay, look); M.ik = null; if (!drew) return null;
   const col = GLX.col;
   // a bone's frame in the world, sized to the code-built hero's units, so the old weapon, shield and hat shapes fit the hand or head
@@ -2070,27 +2086,28 @@ function heroModel(o, cls, rot, tw, lu, dy, mv, AW, wt, wglow, em, wk) {
     done() { BM.set(MBK); },
     handW(sd) { return frame(sd > 0 ? 'hand_r' : 'hand_l', MHB) ? [MHB[12], MHB[13], MHB[14]] : [o.x, o.y + 1.2, o.z]; },
     // build 0114: right after arm(), turn the held weapon about the grip so it clears the head and body
-    fit(kind) { this.tip(kind, null); if (!GFIT.on || !GREACH[kind] || o.dead) return; const n = gfitCols(M, BMm, s, GC); if (!n) return; const D = GFIT.dbg;
+    fit(kind) { this.tip(kind, null); if (!GFIT.on || !GREACH[kind] || o.dead) return; const n = gfitCols(M, BMm, s, GC, null, kind === 'maul' ? GNEAR2 : GNEAR1); if (!n) return; const D = GFIT.dbg;
       let q = gfitTurn(GC, n, MHB, GREACH[kind], D && D.w); const dt = t - (o._gft === undefined ? t : o._gft); o._gft = t; const c = o._gq;
       if (c && dt > 0 && dt < .25 && Math.abs(q[3]) > Math.abs(c[3]) - 1e-6) q = gfitEase(o, '_gq', q, dt); else o._gq = q.slice(); /* growing: follow at once; letting go: ease back */
-      q = o._gq; gfitRot(BM, q, MHB[12], MHB[13], MHB[14]); this.tip(kind, q); if (D && D.r) { GT.set(MHB); gfitRot(GT, q, MHB[12], MHB[13], MHB[14]); gfitTurn(GC, n, GT, GREACH[kind], D.r); } },
+      q = o._gq; gfitRot(BM, q, MHB[12], MHB[13], MHB[14]); this.tip(kind, q); if (D && D.mesh) { const a = qapply(q, [MHB[8], MHB[9], MHB[10]]), R = GSPAN[kind], P = []; for (let z = R[0]; z <= R[1] + 1e-6; z += .08) P.push([MHB[12] + a[0] * z, MHB[13] + a[1] * z, MHB[14] + a[2] * z, z]); D.mesh.push({ k: kind, P, S: M.S.slice(), W: M.W.slice(), B: BMm.slice(), M, side: 'r' }); }
+      if (D && D.r) { GT.set(MHB); gfitRot(GT, q, MHB[12], MHB[13], MHB[14]); gfitTurn(GC, n, GT, GREACH[kind], D.r); } },
     // build 0114: where the weapon's tip and middle are this frame (after any turn), kept for a short while for the swing trail
     tip(kind, q) { const R = GREACH[kind]; if (!R || (kind !== 'sword' && kind !== 'axe' && kind !== 'maul')) return; let a = [MHB[8], MHB[9], MHB[10]]; if (q) a = qapply(q, a); const z1 = R[R.length - 1][0], z0 = R[Math.max(0, R.length - 3)][0], g = [MHB[12], MHB[13], MHB[14]];
       const h = o._trl || (o._trl = []); const pt = [g[0] + a[0] * z1, g[1] + a[1] * z1, g[2] + a[2] * z1, g[0] + a[0] * z0, g[1] + a[1] * z0, g[2] + a[2] * z0, t];
       if (h.length && h[h.length - 1][6] === t) h[h.length - 1] = pt; else h.push(pt); while (h.length && (t - h[0][6] > .16 || h.length > 12)) h.shift(); },
     // build 0114: a shield on the forearm slides out of the chest instead of sinking into it
-    fitShield() { if (!GFIT.on || o.dead) return; const n = gfitCols(M, BMm, s, GC); if (!n) return; const P = [], sc = Math.hypot(MHB[0], MHB[1], MHB[2]) || 1, H = MHB;
-      for (let k = -1; k < 8; k++) { const ly = .16 + (k < 0 ? 0 : .38 * Math.cos(k * .785)), lz = .2 + (k < 0 ? 0 : .38 * Math.sin(k * .785)), lx = -.17; P.push([H[0] * lx + H[4] * ly + H[8] * lz + H[12], H[1] * lx + H[5] * ly + H[9] * lz + H[13], H[2] * lx + H[6] * ly + H[10] * lz + H[14], .05 * sc]); }
+    fitShield() { if (!GFIT.on || o.dead) return; const n = gfitCols(M, BMm, s, GC, GSKIPL); if (!n) return; const P = [], sc = Math.hypot(MHB[0], MHB[1], MHB[2]) || 1, H = MHB;
+      for (let k = -1; k < 8; k++) { const ly = .16 + (k < 0 ? 0 : .38 * Math.cos(k * .785)), lz = .2 + (k < 0 ? 0 : .38 * Math.sin(k * .785)), lx = -.17; P.push([H[0] * lx + H[4] * ly + H[8] * lz + H[12], H[1] * lx + H[5] * ly + H[9] * lz + H[13], H[2] * lx + H[6] * ly + H[10] * lz + H[14], ((k < 0 ? .1 : .05) + GMARG) * sc]); }
       const pv = [0, 0, 0], w = gfitSlide(GC, n, P, pv); const D = GFIT.dbg; if (D && D.ws) D.ws.push(w / sc);
       const dt = t - (o._gst === undefined ? t : o._gst); o._gst = t; let c = o._gs; const a = Math.hypot(pv[0], pv[1], pv[2]);
       if (!c || !(dt > 0) || dt > .25 || a >= Math.hypot(c[0], c[1], c[2])) c = o._gs = pv; else { const k = 1 - Math.exp(-dt * 20); for (let i = 0; i < 3; i++) c[i] += (pv[i] - c[i]) * k; }
-      BM[12] += c[0]; BM[13] += c[1]; BM[14] += c[2]; if (D && D.rs) { for (const p of P) { p[0] += c[0]; p[1] += c[1]; p[2] += c[2]; } D.rs.push(gfitSlide(GC, n, P, [0, 0, 0]) / sc); } },
+      BM[12] += c[0]; BM[13] += c[1]; BM[14] += c[2]; if (D && D.mesh) D.mesh.push({ k: 'shield', P: P.map(p => [p[0] + c[0], p[1] + c[1], p[2] + c[2], 0]), S: M.S.slice(), W: M.W.slice(), B: BMm.slice(), M, side: 'l' }); if (D && D.rs) { for (const p of P) { p[0] += c[0]; p[1] += c[1]; p[2] += c[2]; } D.rs.push(gfitSlide(GC, n, P, [0, 0, 0]) / sc); } },
     weapon() { // a longbow in the left hand, limbs curving back toward the archer, string tip to tip, an arrow nocked while drawing
     if (wt !== 'bow' || o.dead) return; const h = GLX.attach(M, 'hand_l', HAL); if (!h) return; let gx = h[12] + .01, gy = h[13], gz = h[14] + .02; const bc = wglow || col(0x5a4028), be = wglow ? .6 : 0;
-    if (GFIT.on) { /* build 0114: the bow slides out of the head and chest (the limbs reach well past the hand) */ const n = gfitCols(M, BMm, s, GC); if (n) { const B = BMm, P = []; for (const [yy, zz] of [[0, 0], [.3, -.05], [.56, -.15], [.66, -.22], [-.3, -.05], [-.56, -.15], [-.66, -.22]]) { const x = gx, y = gy + yy, z = gz + zz; P.push([B[0] * x + B[4] * y + B[8] * z + B[12], B[1] * x + B[5] * y + B[9] * z + B[13], B[2] * x + B[6] * y + B[10] * z + B[14], .03 * s]); }
+    if (GFIT.on) { /* build 0114: the bow slides out of the head and chest (the limbs reach well past the hand) */ const n = gfitCols(M, BMm, s, GC, GSKIPL); if (n) { const B = BMm, P = []; for (const [yy, zz] of [[0, 0], [.3, -.05], [.56, -.15], [.66, -.22], [-.3, -.05], [-.56, -.15], [-.66, -.22]]) { const x = gx, y = gy + yy, z = gz + zz; P.push([B[0] * x + B[4] * y + B[8] * z + B[12], B[1] * x + B[5] * y + B[9] * z + B[13], B[2] * x + B[6] * y + B[10] * z + B[14], .03 * s]); }
       const pv = [0, 0, 0], w = gfitSlide(GC, n, P, pv), D = GFIT.dbg; if (D && D.wb) D.wb.push(w / s); const dt = t - (o._gbt === undefined ? t : o._gbt); o._gbt = t; let c = o._gb;
       if (!c || !(dt > 0) || dt > .25 || Math.hypot(pv[0], pv[1], pv[2]) >= Math.hypot(c[0], c[1], c[2])) c = o._gb = pv; else { const k = 1 - Math.exp(-dt * 20); for (let i = 0; i < 3; i++) c[i] += (pv[i] - c[i]) * k; }
-      const s2 = s * s; gx += (B[0] * c[0] + B[1] * c[1] + B[2] * c[2]) / s2; gy += (B[4] * c[0] + B[5] * c[1] + B[6] * c[2]) / s2; gz += (B[8] * c[0] + B[9] * c[1] + B[10] * c[2]) / s2;
+      const s2 = s * s; gx += (B[0] * c[0] + B[1] * c[1] + B[2] * c[2]) / s2; gy += (B[4] * c[0] + B[5] * c[1] + B[6] * c[2]) / s2; gz += (B[8] * c[0] + B[9] * c[1] + B[10] * c[2]) / s2; if (D && D.mesh) D.mesh.push({ k: 'bow', P: P.map(p => [p[0] + c[0], p[1] + c[1], p[2] + c[2], 0]), S: M.S.slice(), W: M.W.slice(), B: BMm.slice(), M, side: 'l' });
       if (D && D.rb) { for (const p of P) { p[0] += c[0]; p[1] += c[1]; p[2] += c[2]; } D.rb.push(gfitSlide(GC, n, P, [0, 0, 0]) / s); } } }
     const seg = (a, b, w, c, mt, e) => { const dyy = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dyy, dz), ax = Math.atan2(dz, dyy); GLX.part('dyn', 'rbox', BMm, gx, gy + (a[0] + b[0]) / 2, gz + (a[1] + b[1]) / 2, ax, 0, 0, 0, 0, 0, w, L, w * 1.2, c, (e || 0) + em, 1, mt || 0); };
     const P = [[0, 0], [.3, -.05], [.56, -.15], [.66, -.22]]; for (const sd of [1, -1]) for (let i = 0; i < 3; i++) seg([P[i][0] * sd, P[i][1]], [P[i + 1][0] * sd, P[i + 1][1]], i === 2 ? .022 : .032, bc, 3, be);
