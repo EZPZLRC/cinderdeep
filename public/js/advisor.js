@@ -165,6 +165,7 @@ const ADV = (() => {
     const now = performance.now(), dt = Math.min(1, (now - last) / 1000 || 0); last = now;
     if (typeof G === 'undefined' || G.state !== 'play' || !G.hero || !P.stats) { if (open) show(false); return; }
     watch(dt); const prev = tips[idx] && tips[idx].k; tips = think();
+    if (open && UI.panelOpen && UI.panelOpen() && (autoT > 0 || document.body.classList.contains('tj') || matchMedia('(pointer:coarse)').matches)) { show(false); refreshBadge(); return; } /* a panel opened: the card would sit on top of it */
     if (open) { const j = tips.findIndex(t => t.k === prev); idx = j >= 0 ? j : 0; if (!$('adv').matches(':hover') || !tips[idx]) render(); if (autoT > 0 && !$('adv').matches(':hover')) { autoT -= dt; if (autoT <= 0) show(false); } }
     else { idx = 0; const top = tips[0], panel = UI.panelOpen && UI.panelOpen(), gap = G.time - lastAuto;
       if (opt.auto && top && !seen.has(top.k) && !panel && ((top.urgent && gap > 40) || (top.pri >= 60 && gap > 45 && calm()))) { lastAuto = G.time; show(true, true); } }
