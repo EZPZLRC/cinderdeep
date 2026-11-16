@@ -19,7 +19,7 @@ const NET = (() => {
   G.founder = !!N.founderKey();
   N.founderSet = k => { try { if (k) localStorage.setItem(FKEY, k); else localStorage.removeItem(FKEY); } catch (e) { } G.founder = !!k; };
   N.founderTry = async k => { k = String(k || '').trim().slice(0, 40); if (!k) return false; let ok = false;
-    try { const r = await fetch('founder', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ k }) }); const j = r.ok ? await r.json() : null; ok = !!(j && j.ok); } catch (e) { return null; } /* null: no server to ask */
+    try { const r = await fetch(CG.url('founder'), { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ k }) }); const j = r.ok ? await r.json() : null; ok = !!(j && j.ok); } catch (e) { return null; } /* null: no server to ask */
     if (ok) { N.founderSet(k); if (N.on) N.send({ t: 'founder', k }); } return ok; };
   const find = id => G.ents.find(e => e.id === id);
   // everyone else in the party. In town the monsters' part of an update is skipped but this still runs, so party members in town see each other (build 0075)
@@ -81,9 +81,9 @@ const NET = (() => {
       case 'give': { const it = cleanItem(m.item); if (!it) break; if (addItem(it)) { hint(txt(m.n, 16) + (m.back ? ' could not carry it, so it came back: ' : ' gave you ') + it.name + '.'); UI.invDirty = true; saveGame(); } else if (!m.back) N.send({ t: 'give', to: m.from, item: m.item, back: true }); break; }
     }
   }
-  N.status = async () => { try { if (!/^https?:$/.test(location.protocol)) return null; const r = await fetch('oathbyte-server', { cache: 'no-store' }); if (!r.ok) return null; const j = await r.json(); return j && j.oathbyte ? j : null; } catch (e) { return null; } };
-  N.probe = async () => { try { if (!/^https?:$/.test(location.protocol)) return false; const r = await fetch('oathbyte-server', { cache: 'no-store' }); if (!r.ok) return false; const j = await r.json(); return !!(j && j.oathbyte); } catch (e) { return false; } };
-  N.close = () => { if (ws) { N.quit = true; N.on = false; G.online = false; N.peers = {}; try { ws.close(); } catch (e) { } ws = null; } };
+  N.status = async () => { try { if (!/^https?:$/.test(location.protocol)) return null; const r = await fetch(CG.url('oathbyte-server'), { cache: 'no-store' }); if (!r.ok) return null; const j = await r.json(); return j && j.oathbyte ? j : null; } catch (e) { return null; } };
+  N.probe = async () => { try { if (!/^https?:$/.test(location.protocol)) return false; const r = await fetch(CG.url('oathbyte-server'), { cache: 'no-store' }); if (!r.ok) return false; const j = await r.json(); return !!(j && j.oathbyte); } catch (e) { return false; } };
+  N.close = () => { if (ws) { CG.room(''); N.quit = true; N.on = false; G.online = false; N.peers = {}; try { ws.close(); } catch (e) { } ws = null; } };
   N.send = o => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); };
   const seen = {}; N.quiet = k => { const t = Date.now(); if (seen[k] && t - seen[k] < 60000) return false; seen[k] = t; return true; }; // a flaky connection should not flood chat
   // build 0070 (Lee's playtest, item 1 and 9): a reconnect could hang on "try 1" forever when the socket never opened or never answered.
@@ -91,11 +91,11 @@ const NET = (() => {
   // Retries run for up to three minutes (a sleeping server takes about a minute to wake), and the box offers solo play the whole time.
   const RETRY_MS = 180000;
   N.connect = (name, room) => { N.me = name; N.gotZone = false;
-    let me; try { me = ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws'); } catch (e) { me = null; }
+    let me; try { me = ws = new WebSocket(CG.ws()); } catch (e) { me = null; }
     if (!me) { if (N.retry > 0) drop(null); else UI.netFail('Could not reach the server.'); return; }
     const kill = () => { if (ws !== me) return; me.onclose = me.onerror = me.onmessage = null; try { me.close(); } catch (e) { } drop(me); };
     const t1 = setTimeout(() => { if (ws === me && me.readyState !== 1) kill(); }, 8000); /* never opened */
-    me.onopen = () => { clearTimeout(t1); const b = N.retry > 0 && N.back; N.send({ t: 'join', sid: N.sid || (N.sid = Math.random().toString(36).slice(2) + Date.now().toString(36)), name, room, lvl: G.hero.level, cls: G.hero.cls, tier: tierPick(G.hero), dep: b && b.d ? b.d : (!/^dly/.test(room) && (G.hero.depth | 0) > 0 ? (G.hero.depth | 0) + 1 : 0) /* build 0112 (play test): a new party opens on the floor this hero last reached, not floor 1; an existing party keeps its own floor */, sd: b && b.seed, px: b ? Math.round(P.x * 10) / 10 : undefined, pz: b ? Math.round(P.z * 10) / 10 : undefined, clr: b && b.clr ? 1 : 0, fk: N.founderKey() || undefined, wb: (() => { try { const j = JSON.parse(localStorage.getItem('oathbyte-wb') || 'null'); return Array.isArray(j) ? [j[0] | 0, j[1] | 0] : undefined; } catch (e) { return undefined; } })() });
+    me.onopen = () => { clearTimeout(t1); CG.room(room, !/^solo/.test(room)); /* CrazyGames: tell it which party you are in */ const b = N.retry > 0 && N.back; N.send({ t: 'join', sid: N.sid || (N.sid = Math.random().toString(36).slice(2) + Date.now().toString(36)), name, room, lvl: G.hero.level, cls: G.hero.cls, tier: tierPick(G.hero), dep: b && b.d ? b.d : (!/^dly/.test(room) && (G.hero.depth | 0) > 0 ? (G.hero.depth | 0) + 1 : 0) /* build 0112 (play test): a new party opens on the floor this hero last reached, not floor 1; an existing party keeps its own floor */, sd: b && b.seed, px: b ? Math.round(P.x * 10) / 10 : undefined, pz: b ? Math.round(P.z * 10) / 10 : undefined, clr: b && b.clr ? 1 : 0, fk: N.founderKey() || undefined, wb: (() => { try { const j = JSON.parse(localStorage.getItem('oathbyte-wb') || 'null'); return Array.isArray(j) ? [j[0] | 0, j[1] | 0] : undefined; } catch (e) { return undefined; } })() });
       setTimeout(() => { if (ws === me && !N.gotZone) kill(); }, 10000); /* opened but the server never sent the floor */ };
     me.onmessage = ev => { if (ws !== me) return; let m; try { m = JSON.parse(ev.data); } catch (e) { return; } handle(m); };
     me.onclose = () => { clearTimeout(t1); if (ws !== me) return; drop(me); };
