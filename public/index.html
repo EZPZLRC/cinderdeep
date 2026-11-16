@@ -519,6 +519,7 @@ body.tj #dock{z-index:25}@media (pointer:coarse){#dock{z-index:25}} /* phones: o
 </style>
 <link rel="stylesheet" href="css/oathbyte.css?v=0126">
 <link rel="stylesheet" href="css/keyart.css?v=0126">
+<link rel="stylesheet" href="css/advisor.css?v=0128">
 </head>
 <body>
 <canvas id="gl"></canvas><canvas id="ov"></canvas>
@@ -547,7 +548,7 @@ body.tj #dock{z-index:25}@media (pointer:coarse){#dock{z-index:25}} /* phones: o
     <div class="globe" id="gFury"><div class="fill"></div><div class="txt"></div></div>
   </div>
   <!-- build 0098 (playtest: the menu bar sat where you click to walk): the four buttons you use most sit in the bottom-right corner; the rest live under Menu -->
-  <div id="dock"><button id="bInv" class="giv-inv" title="Bag (I)">Bag</button><button id="bSkl" class="giv-skl" title="Skills (S)">Skills</button><button id="bTown" class="giv-town" title="Town (T)">Town</button><button id="bJoin" class="giv-party" title="Join a party, or see who is playing">Party</button><button id="bMore" title="Menu (Esc)">Menu</button></div>
+  <div id="dock"><button id="bInv" class="giv-inv" title="Bag (I)">Bag</button><button id="bSkl" class="giv-skl" title="Skills (S)">Skills</button><button id="bTown" class="giv-town" title="Town (T)">Town</button><button id="bJoin" class="giv-party" title="Join a party, or see who is playing">Party</button><button id="bAdv" class="giv-adv" title="Advisor: your next best move">Advice</button><button id="bMore" title="Menu (Esc)">Menu</button></div>
   <div id="more" class="hide"><button id="bSet" class="giv-set">Settings</button><button id="bPL" class="giv-loot">Pet and loot</button><button id="bParty" class="giv-party">Join a party</button><button id="bInvite" class="giv-invite">Invite a friend</button><button id="bLeave" class="hide giv-leave">Leave party</button><button id="bLb" class="giv-lb">Leaderboard</button><button id="bAch" class="giv-ach">Badges</button><button id="bAuto" class="giv-auto">Auto-play: off</button><button id="bSpd" class="giv-spd">Speed 1×</button><button id="bMenu" class="giv-exit">Exit to title</button></div>
   <div id="party" class="hide"></div><div id="onl" class="hide"></div><div id="chatlog" class="hide"></div>
   <div id="chatRow" class="hide"><button id="chatCh">Global</button><input id="chat" maxlength="140"><button id="chatX" class="xb" aria-label="Close chat">×</button></div>
@@ -557,6 +558,7 @@ body.tj #dock{z-index:25}@media (pointer:coarse){#dock{z-index:25}} /* phones: o
   <div id="pick" class="hide"></div>
   <div id="town" class="hide"></div>
   <div id="inv" class="hide"></div>
+  <div id="adv" class="hide" role="status" aria-live="polite"></div>
 </div>
 <div id="build"></div><button id="mute" type="button" aria-label="Mute sound" aria-pressed="false" title="Sound on (M to mute)"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="spk" d="M4 9h4l5-4v14l-5-4H4z"/><path class="wav" d="M16 8.5a5 5 0 0 1 0 7M18.6 6a8.5 8.5 0 0 1 0 12"/><path class="x" d="M16 9l6 6M22 9l-6 6"/></svg></button>
 <div id="set" class="hide"></div>
@@ -629,5 +631,6 @@ body.tj #dock{z-index:25}@media (pointer:coarse){#dock{z-index:25}} /* phones: o
 <script src="js/game.js?v=0126"></script>
 <script src="js/net.js?v=0126"></script>
 <script src="js/ui.js?v=0126"></script>
+<script src="js/advisor.js?v=0128"></script>
 <div id="mtags"></div></body>
 </html>

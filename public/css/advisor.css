@@ -1,0 +1,28 @@
+/* Advisor (Lee, Nov 16): a small card with the next best move, beside the dock on a computer and under the round buttons on a phone */
+#adv{position:fixed;right:140px;bottom:30px;z-index:29;width:300px;max-width:calc(100vw - 160px);padding:10px 12px 9px;font:13px/1.4 Inter,system-ui,sans-serif;color:#e8e0d0;background:linear-gradient(180deg,rgba(34,26,16,.97),rgba(12,10,8,.97));border:1px solid #8a6a3a;border-radius:6px;box-shadow:0 0 0 1px #000,0 8px 26px rgba(0,0,0,.75),inset 0 1px 0 rgba(255,210,140,.12);pointer-events:auto;transform-origin:100% 100%;animation:advIn .22s ease-out}
+#adv.hide{display:none}
+#adv.urg{border-color:#d0503a;box-shadow:0 0 0 1px #000,0 0 18px rgba(255,60,40,.35),0 8px 26px rgba(0,0,0,.75)}
+#adv.auto::after{content:"";position:absolute;left:10px;right:10px;bottom:3px;height:2px;border-radius:2px;background:linear-gradient(90deg,#ffb04a,#ff6a2a);transform-origin:0 50%;animation:advLife 9s linear forwards;opacity:.7}
+#adv:hover::after{animation-play-state:paused}
+.advH{display:flex;align-items:center;gap:7px;margin:-2px 0 6px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#ffd27a}
+.advH b{font-weight:600}.advN{margin-left:auto;color:#a8957a;letter-spacing:.06em;text-transform:none;font-size:11px}
+.advI{flex:none;width:16px;height:16px;background:linear-gradient(180deg,#fff2c8,#ffb04a 60%,#c0601a);-webkit-mask:var(--gi) center/contain no-repeat;mask:var(--gi) center/contain no-repeat}
+.advX{width:24px;height:24px;margin-left:auto;padding:0;font-size:17px;line-height:1;border-radius:50%;background:#1a1612;color:#cfc2a8;border:1px solid #5a4a32;cursor:pointer}
+.advN+.advX{margin-left:6px}
+.advT{font-size:15px;font-weight:700;color:#fff;line-height:1.3}
+.advD{margin-top:3px;color:#d8ccb4}
+.advB{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
+.advB button{padding:6px 12px;font:600 12px Inter,system-ui,sans-serif;letter-spacing:.04em;color:#e8e0d0;background:linear-gradient(180deg,#2e2a24,#16140f);border:1px solid #5a4a32;border-radius:4px;cursor:pointer}
+.advB .advGo{color:#1a0e04;background:linear-gradient(180deg,#ffd27a,#e8902a);border-color:#ffcc6a}
+.advB button:hover{filter:brightness(1.15)}
+.advO{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:#a8957a;cursor:pointer}.advO input{margin:0}
+#dock #bAdv.new{border-color:#ffb04a;box-shadow:0 0 0 1px #000,0 0 12px rgba(255,160,60,.55)}
+#dock #bAdv.new::after{content:"";width:7px;height:7px;margin-left:auto;border-radius:50%;background:#ffb04a;box-shadow:0 0 6px #ff9a2a;animation:advDot 1.4s ease-in-out infinite}
+@keyframes advIn{from{opacity:0;transform:translateY(6px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes advLife{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+@keyframes advDot{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){#adv,#adv.auto::after,#dock #bAdv.new::after{animation:none}}
+/* phones: a round button beside Party and Menu, and the card opens under them */
+@media (pointer:coarse){#dock #bAdv{min-width:0;width:40px;height:40px;padding:0;border-radius:50%;font-size:0;justify-content:center;position:relative}#dock #bAdv::before{width:18px;height:18px}#dock #bAdv.new::after{position:absolute;right:1px;top:1px;margin:0}#adv{right:auto;bottom:auto;left:calc(8px + env(safe-area-inset-left));top:calc(92px + env(safe-area-inset-top));width:min(300px,calc(100vw - 150px));max-width:none;transform-origin:0 0;font-size:12.5px}}
+body.tj #dock #bAdv{min-width:0;width:40px;height:40px;padding:0;border-radius:50%;font-size:0;justify-content:center;position:relative}body.tj #dock #bAdv::before{width:18px;height:18px}body.tj #dock #bAdv.new::after{position:absolute;right:1px;top:1px;margin:0}
+body.tj #adv{right:auto;bottom:auto;left:calc(8px + env(safe-area-inset-left));top:calc(92px + env(safe-area-inset-top));width:min(300px,calc(100vw - 150px));max-width:none;transform-origin:0 0;font-size:12.5px}
