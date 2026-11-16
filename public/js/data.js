@@ -1,5 +1,5 @@
 'use strict';
-const BUILD = '0141'; const BUILT_AT = 1794859747771; /* when this build was pushed, so the label stays right after a server restart */
+const BUILD = '0143'; const BUILT_AT = 1794860245777; /* when this build was pushed, so the label stays right after a server restart */
 // Fresh start: every hero and the stash are wiped whenever this number changes. It follows the build, so each new build is a new season.
 const SEASON = '0028'; /* Lee, Nov 14: heroes now carry over between builds. Only change this to start a brand-new season on purpose */
 const SLOTS = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring1'];
