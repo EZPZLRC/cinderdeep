@@ -186,6 +186,14 @@ void main(){if(uOut>0.){o=vec4(.016,.012,.009,1.);return;}float mat=vE.y;
     ex+=env*(.1+.7*fr)*mix(a*1.5,vec3(.8),.2)*(1.-.5*gm);
     if(uQ>1.5){float s2=abs(n3(vec3(vO.x*3.+vO.y*30.,vO.z*30.,vO.y*3.-vO.x*9.))-.5),scr=(1.-smoothstep(0.,.018,s2))*smoothstep(.62,.78,n3(vO*5.+9.));scr*=1.-smoothstep(.4,1.2,fwidth(vO.y*30.));a*=1.+scr*.7;ex+=scr*.2*(uSky+uSunC*.3);}
    }else{spec=.5;shin=56.;a*=.5+.25*n3(vW*9.);}}
+  else if(mat>14.5&&mat<15.5){ /* town build: Emberwatch cobbles. Rounded setts in warm honey, sand and grey, each its own shade, sunken mortar with a little moss. Not bent like bark, so the square lies flat */
+   ao=.88;wrap=.2;spec=.07;shin=26.;
+   if(abs(n.y)>.6){vec2 sp=vW.xz*1.55;if(uQ>.5)sp+=(vec2(n3(vec3(vW.xz*.7,1.)),n3(vec3(vW.xz*.7,2.)))-.5)*.35;
+    vec2 ip=floor(sp),fp=fract(sp),id=ip;float d1=8.,d2=8.;for(int jj=-1;jj<=1;jj++)for(int ii=-1;ii<=1;ii++){vec2 g=vec2(ii,jj),r=g+.2+.6*vec2(h(ip+g),h(ip+g+57.))-fp;float d=dot(r,r);if(d<d1){d2=d1;d1=d;id=ip+g;}else if(d<d2)d2=d;}
+    float mj=1.-smoothstep(.035,.12,sqrt(d2)-sqrt(d1)),tv=h(id+3.);vec3 tint=mix(vec3(1.07,.97,.85),vec3(.94,.92,.9),step(.55,tv));tint=mix(tint,vec3(1.14,.99,.8),step(.86,tv));
+    a*=tint*(.84+.3*h(id+7.));a*=1.-.5*mj;spec=.05+.09*(1.-mj);
+    if(uQ>.5){a*=.93+.14*n3(vec3(vW.xz*6.,4.));n=normalize(n+vec3(h(id+5.)-.5,0.,h(id+9.)-.5)*.22*(1.-mj)+vec3(fp.x-.5,0.,fp.y-.5)*.12*(1.-mj));a=mix(a,a*vec3(.72,.9,.62),smoothstep(.5,.85,n3(vec3(vW.xz*.9,8.)))*mj*.7);}}
+   else a*=.9+.2*n3(vW*4.);}
   else if(mat>5.5&&uRim>0.&&uQ>.5){vec3 Vv=normalize(uEye-vW);float nv=max(dot(n,Vv),0.);
    if(mat<6.5){ /* build 0036: cloth. A woven thread pattern that fades out before it can shimmer, soft folds, fuzz and a velvet sheen */
     float f=uQ>1.5?95.:60.,u=(vO.x+vO.z)*f,v=vO.y*f,wv=sin(u)*sin(v),fw=fwidth(u)+fwidth(v);wv*=1.-smoothstep(.6,2.,fw);float fo=n3(vO*vec3(5.,2.,5.)+7.),fz=n3(vO*30.);
@@ -245,7 +253,7 @@ precision highp float; void main(){}`;
   const VSQ = `#version 300 es
 out vec2 uv; void main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));uv=p;gl_Position=vec4(p*2.-1.,0.,1.);}`;
   const FSQ = `#version 300 es
-precision highp float; in vec2 uv; uniform sampler2D uA,uB,uC,uD; uniform int uMode; uniform vec2 uDir; uniform float uT; uniform vec4 uPI,uFx; out vec4 o;
+precision highp float; in vec2 uv; uniform sampler2D uA,uB,uC,uD; uniform int uMode; uniform vec2 uDir; uniform float uT; uniform vec4 uPI,uFx; uniform float uWarm; out vec4 o;
 vec3 vpos(vec2 p){float z=uPI.w/(texture(uD,p).r*2.-1.+uPI.z);return vec3((p*2.-1.)*z/uPI.xy,-z);}
 void main(){
  if(uMode==0){vec3 c=texture(uA,uv).rgb;float l=max(c.r,max(c.g,c.b));o=vec4(c*smoothstep(.68,1.,l),1.);}
@@ -264,8 +272,8 @@ void main(){
   c=max(c,0.)+texture(uB,uv).rgb*.85;
   float l=dot(c,vec3(.3,.59,.11));c=mix(vec3(l),c,1.14);c*=mix(vec3(.93,1.,1.1),vec3(1.07,1.01,.9),smoothstep(.12,.7,l));
   c=clamp(c,0.,1.);c=mix(c,c*c*(3.-2.*c),.4);
-  {float L=dot(c,vec3(.3,.59,.11));vec3 g=mix(vec3(L),c,.6);float warm=clamp((c.r-c.b)*2.2,0.,1.);g=mix(g,c,warm*.65);g=mix(g*vec3(.84,.92,1.08),g*vec3(1.12,1.,.8),smoothstep(.15,.65,L));c=clamp(pow(g,vec3(1.15))*1.04,0.,1.);c*=mix(1.,smoothstep(.9,.2,length(q*vec2(1.,1.08))),.35);} /* build 0025: the Ashen Gothic look, cold grey world, warm fire and magic */
-  c*=mix(1.,smoothstep(.98,.28,length(q*vec2(1.,1.08))),.6);
+  {float L=dot(c,vec3(.3,.59,.11));vec3 g=mix(vec3(L),c,.6+.28*uWarm);float warm=clamp((c.r-c.b)*2.2,0.,1.);g=mix(g,c,warm*.65);g=mix(g*mix(vec3(.84,.92,1.08),vec3(.97,.92,.9),uWarm),g*vec3(1.12,1.,.8),smoothstep(.15,.65,L));c=clamp(pow(g,vec3(1.15-.03*uWarm))*(1.04+.01*uWarm),0.,1.);c*=mix(1.,smoothstep(.9,.2,length(q*vec2(1.,1.08))),.35-.15*uWarm);} /* build 0025: the Ashen Gothic look, cold grey world, warm fire and magic */
+  c*=mix(1.,smoothstep(.98,.28,length(q*vec2(1.,1.08))),.6-.25*uWarm); /* town build: home is warmer, a little more colour and a lighter vignette */
   c+=(fract(sin(dot(uv+fract(uT),vec2(12.9898,78.233)))*43758.5453)-.5)*.016;o=vec4(c,1.);}}`;
   // build 0039: skinned variants of the hero shaders. Bone matrices live in a float texture (3 texels a bone, one row per drawn copy),
   // so a real model's mesh stays on the graphics card and only ~19 KB of bones are sent each frame for a full party
@@ -324,7 +332,7 @@ precision highp float; uniform mediump sampler2DArray uTex; in vec2 vU; flat in 
     addGeo('taper', gCyl(14, .6)); for (const k in BODY) addGeo(k, gLoft(BODY[k], 20, 4)); addGeo('blob', gSphere(10, 7)); addGeo('fol', gCyl(9, 0)); addGeo('trunk', gCyl(7, .6)); addGeo('disc', gDisc(28, 0)); addGeo('ring', gDisc(36, .86)); addGeo('sect', gSect(3, .0873));
     pMain = prog(VS, FS, ['uVP', 'uLVP', 'uSh', 'uSun', 'uSunC', 'uSky', 'uGnd', 'uFog', 'uEye', 'uPl', 'uFogR', 'uLR', 'uLP[0]', 'uLC[0]', 'uT', 'uQ', 'uWet', 'uMist', 'uRim', 'uOut', 'uGr', 'uGe', 'uTP', 'uTC', 'uTR', 'uScat']);
     pGlow = prog(VS, FSG, ['uVP', 'uLVP', 'uPl', 'uLR', 'uT']);
-    pDepth = prog(VSD, FSD, ['uLVP', 'uT']); try { pMainS = prog(VSS, FS, ['uVP', 'uLVP', 'uSh', 'uSun', 'uSunC', 'uSky', 'uGnd', 'uFog', 'uEye', 'uPl', 'uFogR', 'uLR', 'uLP[0]', 'uLC[0]', 'uT', 'uQ', 'uWet', 'uMist', 'uRim', 'uOut', 'uGr', 'uGe', 'uTP', 'uTC', 'uTR', 'uScat', 'uBones', 'uBR']); pDepthS = prog(VSDS, FSD, ['uLVP', 'uT', 'uBones', 'uBR']); } catch (e) { pMainS = pDepthS = null; MI.state = 'off'; MI.why = 'the graphics card would not build the model shader: ' + String(e && e.message || e).split('\n')[0].slice(0, 120); console.warn('skinned models off', e); } try { pMesh = prog(VSM, FSM, ['uVP', 'uLVP', 'uSh', 'uSun', 'uSunC', 'uSky', 'uGnd', 'uFog', 'uEye', 'uPl', 'uFogR', 'uLR', 'uLP[0]', 'uLC[0]', 'uT', 'uQ', 'uWet', 'uMist', 'uRim', 'uOut', 'uGr', 'uGe', 'uTP', 'uTC', 'uTR', 'uScat', 'uTex']); pDepthM = prog(VSDM, FSDM, ['uLVP', 'uTex']); } catch (e) { pMesh = pDepthM = null; ENVM.why = 'the graphics card would not build the scenery shader: ' + String(e && e.message || e).split('\n')[0].slice(0, 120); console.warn('scenery meshes off', e); } pPost = prog(VSQ, FSQ, ['uA', 'uB', 'uC', 'uD', 'uMode', 'uDir', 'uT', 'uPI', 'uFx']);
+    pDepth = prog(VSD, FSD, ['uLVP', 'uT']); try { pMainS = prog(VSS, FS, ['uVP', 'uLVP', 'uSh', 'uSun', 'uSunC', 'uSky', 'uGnd', 'uFog', 'uEye', 'uPl', 'uFogR', 'uLR', 'uLP[0]', 'uLC[0]', 'uT', 'uQ', 'uWet', 'uMist', 'uRim', 'uOut', 'uGr', 'uGe', 'uTP', 'uTC', 'uTR', 'uScat', 'uBones', 'uBR']); pDepthS = prog(VSDS, FSD, ['uLVP', 'uT', 'uBones', 'uBR']); } catch (e) { pMainS = pDepthS = null; MI.state = 'off'; MI.why = 'the graphics card would not build the model shader: ' + String(e && e.message || e).split('\n')[0].slice(0, 120); console.warn('skinned models off', e); } try { pMesh = prog(VSM, FSM, ['uVP', 'uLVP', 'uSh', 'uSun', 'uSunC', 'uSky', 'uGnd', 'uFog', 'uEye', 'uPl', 'uFogR', 'uLR', 'uLP[0]', 'uLC[0]', 'uT', 'uQ', 'uWet', 'uMist', 'uRim', 'uOut', 'uGr', 'uGe', 'uTP', 'uTC', 'uTR', 'uScat', 'uTex']); pDepthM = prog(VSDM, FSDM, ['uLVP', 'uTex']); } catch (e) { pMesh = pDepthM = null; ENVM.why = 'the graphics card would not build the scenery shader: ' + String(e && e.message || e).split('\n')[0].slice(0, 120); console.warn('scenery meshes off', e); } pPost = prog(VSQ, FSQ, ['uA', 'uB', 'uC', 'uD', 'uMode', 'uDir', 'uT', 'uPI', 'uFx', 'uWarm']);
     shTex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, shTex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24, SH, SH, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
@@ -469,7 +477,7 @@ precision highp float; uniform mediump sampler2DArray uTex; in vec2 vU; flat in 
     if (env.q > 0) { quad(post.b, 1, post.a.t, null, 2 / post.a.w, 0); quad(post.a, 1, post.b.t, null, 0, 2 / post.a.h); }
     if (mid) { quad(post.d, 1, post.sc.t, null, 1.4 / post.c.w, 0); quad(post.c, 1, post.d.t, null, 0, 1.4 / post.c.h); }
     if (hi) { gl.uniform4f(pPost.u.uPI, proj[0], proj[5], proj[10], proj[14]); quad(post.e, 3, post.sc.t, null, 0, 0, null, post.dt); quad(post.f, 1, post.e.t, null, 1 / post.e.w, 0); quad(post.e, 1, post.f.t, null, 0, 1 / post.e.h); }
-    gl.uniform4f(pPost.u.uFx, mid ? env.dof : 0, hi ? env.ao : 0, mid ? .012 : 0, mid ? .28 : 0);
+    gl.uniform4f(pPost.u.uFx, mid ? env.dof : 0, hi ? env.ao : 0, mid ? .012 : 0, mid ? .28 : 0); gl.uniform1f(pPost.u.uWarm, env.warm || 0);
     quad(null, 2, post.sc.t, post.a.t, 0, 0, mid ? post.c.t : null, hi ? post.e.t : null); gl.enable(gl.DEPTH_TEST);
   }
   // ---- build 0039: real character models (see models.js). The mesh sits on the graphics card once; each frame only the pose is sent ----
