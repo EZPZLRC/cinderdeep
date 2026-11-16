@@ -10,7 +10,7 @@ const CG = (() => {
     // chat is off on CrazyGames for now: its rules ask for a word filter on chat, and OathByte has none yet. Flip CHAT to true once it does.
     CHAT: false, playing: false,
     // where the game server lives: on CrazyGames the page is not served by it, so every call goes to its full address
-    server: onCG ? 'https://oathbyte.onrender.com/' : '', onSettings: null, onInvite: null };
+    server: onCG ? 'https://oathbyte.onrender.com/' : '', onSettings: null, onInvite: null, onInstant: null, onJoinRoom: null, instant: false };
   C.url = p => C.server + p;
   C.ws = () => C.server ? C.server.replace(/^http/, 'ws') + 'ws' : (L.protocol === 'https:' ? 'wss://' : 'ws://') + L.host + '/ws';
   // on CrazyGames the status check gives up after 6 s, so Play is never greyed out for the whole minute a sleeping server takes to wake
@@ -30,6 +30,11 @@ const CG = (() => {
     readSettings(s.game.settings); s.game.addSettingsChangeListener(readSettings);
     let rm = ''; try { rm = s.game.getInviteParam('room') || (s.game.inviteParams && s.game.inviteParams.room) || ''; } catch (e) { }
     rm = String(rm).replace(/[^\w-]/g, '').slice(0, 12); if (rm && C.onInvite) C.onInvite(rm);
+    // build 0117: a friend already in the game who joins from CrazyGames' friends list or an invite drops into that party without a reload
+    try { s.game.addJoinRoomListener(p => { const r = String(p && p.room || '').replace(/[^\w-]/g, '').slice(0, 12); if (r && C.onJoinRoom) C.onJoinRoom(r); }); } catch (e) { }
+    // build 0117: Instant Multiplayer. When CrazyGames starts the game from its multiplayer buttons, the player goes straight into a new
+    // private party that friends can join at once (no invite param means they are the party leader, not a guest)
+    if (!rm && s.game.isInstantMultiplayer) { C.instant = true; if (C.onInstant) C.onInstant(); }
     if (C.playing) s.game.gameplayStart(); } catch (e) { console.warn('CrazyGames SDK', e); } };
   document.head.appendChild(tag);
   // gameplay starts when a hero is in the world and stops on the title screen, so CrazyGames knows when not to show ads
