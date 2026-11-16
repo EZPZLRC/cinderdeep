@@ -229,3 +229,9 @@ body.tj .sk:active{box-shadow:inset 0 2px 1px rgba(255,255,255,.28),inset 0 -3px
 #banner.fight .b1{font-size:clamp(18px,2.4vw,26px)}#banner.fight .b2{font-size:12.5px;margin-top:3px}
 #bossIntro.fight .bi1{font-size:clamp(22px,3.4vw,38px)}#bossIntro.fight .bi2{margin:5px auto}#bossIntro.fight .bi3{font-size:11px;letter-spacing:.3em}
 #bossbar.intro #bossName{visibility:hidden}
+/* build 0115 (play test): talent cards get a small badge for what each one does; the forge button looks off when you can't afford it */
+.tl-ic{position:relative}
+.tl-bd{position:absolute;right:-8px;bottom:-7px;font-size:12px;line-height:0;padding:3px;border-radius:50%;background:#1c130b;border:1px solid #7a5a30;box-shadow:0 1px 3px #000}
+.tl-sock .tl-bd{display:none}
+.big:disabled{background:linear-gradient(180deg,#3a322c,#221c18);border-color:#5a4c40;color:#9a8e7c;box-shadow:none;opacity:1}
+.fshort{margin-top:6px;color:#e8c890}

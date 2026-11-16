@@ -42,6 +42,12 @@ const NET = (() => {
     if (m.t === 's' && m.o !== undefined) N.online = m.o;
     if (m.t === 's' && Array.isArray(m.w)) { N.wb = [m.w[0] | 0, Math.max(1, m.w[1] | 0), m.w[2] ? 1 : 0, m.w[3] | 0]; const now = Date.now(); if (now - (N.wbT || 0) > 5000) { N.wbT = now; try { localStorage.setItem('oathbyte-wb', JSON.stringify([N.wb[0], N.wb[3]])); } catch (e) { } } } /* build 0075: the server-wide world boss count; this device remembers it so a server update does not wipe it */
     if (m.t === 'wb') { wbEvent(m); return; }
+    /* build 0115 (play test: the guardian stood still with no health bar and took no hits after a death and a trip to town): while you're in town the floor you left still hears when
+       its monsters go back to rest or fall, so it matches the server when you take the portal back. Before this the old picture of the floor came back and the guardian could not be fought */
+    if (G.inTown && G.away && Array.isArray(G.away.ents) && (m.t === 'rest' || m.t === 'die')) { const ae = G.away.ents, fa = id => ae.find(e => e.id === id);
+      if (m.t === 'rest' && Array.isArray(m.e)) for (const a of m.e) { const e = fa(a[0]); if (!e || !e.alive) continue; e.awake = false; e.st = 'chase'; e.x = e.tx = a[1]; e.z = e.tz = a[2]; e.hp = Math.min(e.maxHp, a[3]); e.sT1 = 0; e.atk = 0; }
+      if (m.t === 'die') { const e = fa(m.id); if (e && e.alive && !e.boss) { e.alive = false; e.deadT = 0; } }
+      return; }
     if (G.inTown && (m.t === 's' || m.t === 'spawn' || m.t === 'die' || m.t === 'dmg' || m.t === 'area' || m.t === 'proj' || m.t === 'fx' || m.t === 'scale' || m.t === 'rest')) { if (m.t === 's' && Array.isArray(m.p)) peersUpd(m.p); return; }
     if (G.inTown && m.t === 'zone' && !m.sync && m.rift === undefined) { hint('Your party has moved deeper. Take the portal to rejoin them.'); return; }
     switch (m.t) {

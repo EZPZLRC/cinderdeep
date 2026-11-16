@@ -61,7 +61,7 @@ function srvHit(pid, m) {
 function srvTick(dt) {
   G.time += dt; const all = Object.values(SP), pl = all.filter(p => !p.dead);
   repop(dt, all.filter(p => p.x > -900)); // monsters slowly repopulate the floor, far from every player
-  if (all.length && !pl.length) { const rs = []; for (const e of G.ents) if (e.alive && e.awake) { e.awake = false; e.st = 'chase'; if (e.boss && !e.wb) { e.hp = e.maxHp; e.x = G.zone.bossAt[0]; e.z = G.zone.bossAt[1]; } rs.push([e.id, r2(e.x), r2(e.z), Math.round(e.hp)]); } if (rs.length) __emit(null, { t: 'rest', e: rs }); } /* build 0075: tell the players, so their screens match */
+  if (all.length && !pl.length) { const rs = []; for (const e of G.ents) if (e.alive && e.awake) { e.awake = false; e.st = 'chase'; if (e.boss && !e.wb) { /* build 0115 (play test): the guardian keeps her wounds when the party falls */ e.x = G.zone.bossAt[0]; e.z = G.zone.bossAt[1]; } rs.push([e.id, r2(e.x), r2(e.z), Math.round(e.hp)]); } if (rs.length) __emit(null, { t: 'rest', e: rs }); } /* build 0075: tell the players, so their screens match */
   const act = [];
   for (const e of G.ents) {
     if (!e.alive) { e.deadT -= dt; continue; }

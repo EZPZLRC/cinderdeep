@@ -11,6 +11,7 @@ const ICONS = (() => {
   return {
     skill(id) { const n = SK[id]; if (!n) return ''; const sk = typeof SKILLS !== 'undefined' && SKILLS[id]; return span(n, 'el-' + ((sk && EL[sk.el]) || 'util')); },
     ui(k, tone) { const n = UI[k]; return n ? span(n, 'el-' + (tone || 'util')) : ''; },
+    icon(n, tone) { return D[n] ? span(n, 'el-' + (tone || 'util')) : ''; },
     has: id => !!SK[id]
   };
 })();
