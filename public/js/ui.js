@@ -269,7 +269,7 @@ const UI = (() => {
       body += `<div class="tl-row${got < 0 ? ' open' : ' held'}" id="tlr${i}" data-row="${i}"><div class="tl-lv"><b>${lv}</b><span>${got < 0 ? 'pick one' : 'level'}</span></div><div class="tl-cards">` + r.map((c, k) => { const o = talOf(c); return `<button type="button" class="tl-card${got === k ? ' on' : got >= 0 ? ' off' : ''}" data-tal="${i},${k}"><span class="tl-ic">${o.ic}</span><span class="tl-tx"><b>${talEsc(c.n)}</b><em>${talEsc(o.tag)}</em><span class="tl-d">${talEsc(c.d)}</span></span><span class="tl-chk" aria-hidden="true">✓</span></button>`; }).join('') + '</div></div>'; });
     if (nLock > 1) body += `<div class="tl-more">${nLock - 1} more row${nLock - 1 > 1 ? 's' : ''} open later, up to level ${TAL_LV[TAL_LV.length - 1]}.</div>`;
     const used = rows.filter((r, i) => talGot(h, i) >= 0 && h.level >= TAL_LV[i]).length, unlocked = rows.length - nLock;
-    return `<div class="tl-pane"><div class="tl-top"><div class="tl-count"><b>${used}</b> of ${unlocked} equipped${open ? ` · <span class="tl-wait">${open} to pick</span>` : ''}</div><div class="tl-strip">${strip}</div><div class="tl-note">${unlocked ? 'Tap a card to equip it. Tap it again to take it off. Swaps are free when no enemies are near.' : 'Your first row of talent cards opens at level ' + TAL_LV[0] + '.'}</div><div class="tl-busy">Enemies are near. Finish the fight to swap a card.</div></div>${body}</div>`; }
+    return `<div class="tl-pane"><div class="tl-top"><div class="tl-count"><b>${used}</b> of ${unlocked} equipped${open ? ` · <span class="tl-wait">${open} to pick</span>` : ''}</div><div class="tl-strip">${strip}</div><div class="tl-note">${unlocked ? 'Tap a card to equip it. Tap it again to take it off. Swaps are free when no enemies are near.' : 'Your first row of talent cards opens at level ' + TAL_LV[0] + '.'}</div><div class="tl-busy">Enemies are near. Finish the fight to swap a card.</div></div><div class="tl-body">${body}</div></div>`; }
   U.talHtml = talHtml;
   function sklHtml(h) { // your four skills, what they do, and an autocast switch
     const RN = CLASSES[h.cls].res.n, kit = KIT[h.cls] || []; let html = '<div class="list">';
@@ -277,9 +277,9 @@ const UI = (() => {
     html += row(h.bar[0] || CLASSES[h.cls].skills[0], SLOT_KEY[0], 1, 0); kit.forEach((id, k) => { html += row(id, SLOT_KEY[k + 1], KIT_LV[k], k + 1); });
     return html + '</div><div class="sm" style="margin-top:8px">Your class gives you these four skills. New ones unlock at level 3 and level 6 and go on your bar by themselves. Switch Auto on and a skill fires by itself whenever enemies are near.</div>'; }
   function renderSkl() {
-    const h = G.hero, el = $('skl'), open = talOpen(h), tal = sklTab === 'talents', sy = el.dataset.tab === sklTab ? el.scrollTop : 0;
+    const h = G.hero, el = $('skl'), open = talOpen(h), tal = sklTab === 'talents', sc = () => (tal && el.querySelector('.tl-body')) || el, sy = el.dataset.tab === sklTab ? sc().scrollTop : 0;
     el.innerHTML = `<div class="ph"><div class="sk-tabs" role="tablist"><button type="button" role="tab" data-tab="skills" class="${tal ? '' : 'on'}" aria-selected="${!tal}">Skills</button><button type="button" role="tab" data-tab="talents" class="${tal ? 'on' : ''}" aria-selected="${tal}">Talents${open ? `<span class="tnew">${open}</span>` : ''}</button></div><button class="xb" data-x="skl" aria-label="Close">×</button></div>` + (tal ? talHtml(h) : sklHtml(h));
-    el.classList.toggle('tl-wide', tal); el.dataset.tab = sklTab; el.scrollTop = sy; talBusy();
+    el.classList.toggle('tl-wide', tal); el.dataset.tab = sklTab; sc().scrollTop = sy; talBusy();
     if (tal && open && !sy) { const f = el.querySelector('.tl-row.open'); if (f) setTimeout(() => { try { f.scrollIntoView({ block: 'nearest' }); } catch (_) { } }, 0); }
   }
   function sklSetTab(t) { if (t === sklTab) return; sklTab = t; try { localStorage.setItem('obSklTab', t); } catch (_) { } renderSkl(); sklIn(); }
