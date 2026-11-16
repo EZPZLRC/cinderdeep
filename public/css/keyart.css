@@ -322,4 +322,4 @@ body:has(#menu.ka:not(.hide)) #build{display:none}
 @media (prefers-reduced-motion:reduce){#menu.ka .ccard .crim,#menu.ka .ccard .crim::before,#menu.ka .ccard .crim::after{animation:none!important}#menu.ka .ccard .crim::after{opacity:0}}
 
 /* build 0117: privacy notice under Play */
-#kaPriv{margin-top:8px;max-width:360px;font-size:11px;line-height:1.5;color:#9aa0aa;text-align:center;letter-spacing:.02em}#kaPriv a{color:#e8c870;text-decoration:underline}
+#kaPriv{margin-top:8px;max-width:380px;font-size:12px;line-height:1.5;color:#a8aeb8;text-align:center;letter-spacing:.02em}#menu #kaPriv a{color:#e8c870;text-decoration:underline}
