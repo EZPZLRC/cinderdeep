@@ -4,6 +4,12 @@ const UI = (() => {
   const glc = $('gl'), ov = $('ov'), ctx = ov.getContext('2d'), mini = $('mini'), mctx = mini.getContext('2d'), tip = $('tip');
   let slow = .016, slowN = 0, banT = 0, invOpen = false, invTab = 'hero', salvArm = false, last = 0, skEls = [], frameN = 0;
   const U = { invDirty: true };
+  /* 3D items (Lee, Nov 15: "1 and 2"): the bag shows each item as a small 3D model and the tooltip shows it large and turning. items3d.js loads after the page,
+     draws each item's picture once in the background, and until a picture is ready (or on a device without WebGL) the flat icon shows */
+  let I3 = null, tipIt = null;
+  window.addEventListener('load', () => setTimeout(() => { import(new URL('js/items3d.js?v=0102', location.href).href).then(m => { if (m.default && m.default.ok) { I3 = m.default; U.invDirty = true; } }).catch(() => { }); }, 1200));
+  function iconHtml(it, tall) { const sv = iconSvg(it); if (!I3) return sv; let r = null; try { r = I3.icon(it, tall); } catch (e) { r = null; } return !r ? sv : r.url ? `<img class="m3" src="${r.url}" alt="" draggable="false">` : `<span class="m3w" data-m3="${r.key.replace(/"/g, '')}">${sv}</span>`; }
+  function show3() { const s = tip.querySelector('.show3'); if (!s) return; if (!I3 || !tipIt) { s.remove(); return; } try { I3.showcase(s, tipIt); } catch (e) { s.remove(); } }
   U.zoneBanner = (a, b) => { $('ban1').textContent = a; $('ban2').textContent = b || ''; $('banner').classList.add('on'); banT = 3.4; };
   const DTIPS = ['Health globes drop from slain monsters. Walk over them to heal.', 'You carry up to five potions and one refills every 15 seconds. Drink early, not at the last moment.', 'Red rings on the ground are about to explode. Step out of them.', 'Big monsters hit hard but slowly. Strike, then step back.', 'A shrine blesses you for 45 seconds. Fight the hard pack right after.', 'Town has a trader and an altar. Better gear makes every floor easier.'];
   U.showDeath = () => { $('deathBy').textContent = (P.killer ? 'Slain by ' + P.killer : 'You were overwhelmed') + ' on floor ' + (G.zone.def.depth || 1) + ' · level ' + G.hero.level + ' · ' + G.hero.kills + ' monsters felled so far'; $('deathTip').textContent = DTIPS[Math.random() * DTIPS.length | 0]; const hc = !!G.hero.hc; $('death').classList.toggle('hc', hc); $('death').querySelector('h1').textContent = hc ? 'Your hardcore hero has fallen' : 'You have fallen'; $('revive').classList.toggle('hide', hc); if (hc) { try { localStorage.removeItem(SAVE_KEY + '_' + G.hero.cls); } catch (e) { } G.hero.dead = 1; $('deathTip').textContent = 'Hardcore means one life. ' + G.hero.name + ' rests here on floor ' + (G.zone.def.depth || 1) + '. Their place on the leaderboard keeps a skull.'; } $('death').classList.remove('hide'); };
@@ -89,7 +95,7 @@ const UI = (() => {
     for (const sl of ['weapon', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots']) { let bi = -1, bs = sc((h.allyEq || {})[sl]); h.inv.forEach((it, i) => { if (it && it.slot === sl && !(verdict(it) > 0) && sc(it) > bs) { bs = sc(it); bi = i; } }); if (bi >= 0) { const nm = h.inv[bi].name; if (allyGive(bi)) { n++; names.push(nm); } } }
     hint(n ? 'The Sellsword put on ' + n + ' piece' + (n > 1 ? 's' : '') + '. Its hits are now worth ' + Math.round(allyPower() * 100) + '% of yours.' : 'Nothing in your bag beats what the Sellsword already wears.'); refresh(); }
   function verdict(it) { try { if (!G.hero || !canUse(it) || !P.stats) return 0; const v = itemCmp(it).v; return v > .004 ? 1 : v < -.004 ? -1 : 0; /* build 0062 (playtest): compare like with like and weigh gains and losses evenly. Build 0090: itemCmp counts every stat */ } catch (e) { return 0; } }
-  function itemEl(it, attr, cls, style, cmp) { const show = cmp || /data-[is]=/.test(attr || ''), v = show ? (canUse(it) ? verdict(it) : -1) : 0; /* build 0034: simple and always there: green = better overall, red = not better */ return `<div class="it r${it.rar}${it.up ? ' f' + Math.min(5, it.up) : ''} ${cls || ''}" ${attr} style="${style || ''}">${iconSvg(it)}<span class="lv">${it.ilvl}</span>${it.lock ? '<svg class="lk" viewBox="0 0 10 12"><path d="M2.5 5V3.5a2.5 2.5 0 0 1 5 0V5" fill="none" stroke="#e8e2d4" stroke-width="1.4"/><rect x="1" y="5" width="8" height="6.4" rx="1.2" fill="#e8e2d4"/></svg>' : ''}${show ? `<span class="ar ${v > 0 ? 'up' : 'dn'}" title="${v > 0 ? 'Better than what you wear' : 'Not better than what you wear'}">${v > 0 ? '▲' : '▼'}</span>` : ''}</div>`; }
+  function itemEl(it, attr, cls, style, cmp) { const show = cmp || /data-[is]=/.test(attr || ''), v = show ? (canUse(it) ? verdict(it) : -1) : 0; /* build 0034: simple and always there: green = better overall, red = not better */ return `<div class="it r${it.rar}${it.up ? ' f' + Math.min(5, it.up) : ''} ${cls || ''}" ${attr} style="${style || ''}">${iconHtml(it, itemH(it) === 2 && /\b(tall|ds)\b/.test(cls || ''))}<span class="lv">${it.ilvl}</span>${it.lock ? '<svg class="lk" viewBox="0 0 10 12"><path d="M2.5 5V3.5a2.5 2.5 0 0 1 5 0V5" fill="none" stroke="#e8e2d4" stroke-width="1.4"/><rect x="1" y="5" width="8" height="6.4" rx="1.2" fill="#e8e2d4"/></svg>' : ''}${show ? `<span class="ar ${v > 0 ? 'up' : 'dn'}" title="${v > 0 ? 'Better than what you wear' : 'Not better than what you wear'}">${v > 0 ? '▲' : '▼'}</span>` : ''}</div>`; }
   function gridHtml(inv, key, mark) {
     let h = ''; for (let i = 0; i < inv.length; i++) h += `<div class="bc" data-${key}c="${i}" style="grid-column:${i % 10 + 1};grid-row:${(i / 10 | 0) + 1}"></div>`;
     inv.forEach((it, i) => { if (it) h += itemEl(it, `data-${key}="${i}"`, (mark && mark(it, i) ? 'up ' : '') + (itemH(it) === 2 ? 'tall' : ''), `grid-column:${i % 10 + 1};grid-row:${(i / 10 | 0) + 1} / span ${itemH(it)}`); }); return h;
@@ -103,7 +109,7 @@ const UI = (() => {
   function eqFor(it) { return G.hero.eq[eqSlotFor(it)] || null; }
   function tipHtml(it, mode) {
     const pc = (a, b) => b ? Math.round((a / b - 1) * 100) : 0, sg = v => (v > 0 ? '+' : '') + v;
-    let h = `<div class="tn" style="color:${RAR[it.rar].c}">${it.name}</div><div class="ts">${RAR[it.rar].n} ${it.rar > 1 || it.slot === 'offhand' ? it.base : SLOT_NAME[it.slot]} · Item level ${it.ilvl}</div>${it.cls && CLASSES[it.cls] ? `<div class="ts" style="color:#${(CLASS_COL[it.cls] || 0xd8a040).toString(16).padStart(6, '0')}">${CLASSES[it.cls].n} item${G.hero && G.hero.cls !== it.cls ? ' · only a ' + CLASSES[it.cls].n + ' can pick this up in a party' : ''}</div>` : ''}`;
+    tipIt = it; let h = (I3 && I3.spec(it) ? '<div class="show3"></div>' : '') + `<div class="tn" style="color:${RAR[it.rar].c}">${it.name}</div><div class="ts">${RAR[it.rar].n} ${it.rar > 1 || it.slot === 'offhand' ? it.base : SLOT_NAME[it.slot]} · Item level ${it.ilvl}</div>${it.cls && CLASSES[it.cls] ? `<div class="ts" style="color:#${(CLASS_COL[it.cls] || 0xd8a040).toString(16).padStart(6, '0')}">${CLASSES[it.cls].n} item${G.hero && G.hero.cls !== it.cls ? ' · only a ' + CLASSES[it.cls].n + ' can pick this up in a party' : ''}</div>` : ''}`;
     const L = itemLook(it);
     if (it.dmg) h += `<div class="tb">${it.dmg[0]}–${it.dmg[1]} damage · ${Math.round(it.spd * 100)}% attack speed</div>`;
     if (it.armor) h += `<div class="tb">${it.armor} armor</div>`;
@@ -115,7 +121,7 @@ const UI = (() => {
     const tips = { eq: townMode === 'altar' ? 'Click to place on the altar' : 'Click to unequip', stash: 'Click to take', shop: 'Click to buy for ' + (mode === 'shop' ? buyPrice(it) : 0) + ' gold', bag: townMode === 'stash' ? 'Click to put in the stash' : townMode === 'vendor' ? 'Click to sell for ' + itemValue(it) + ' gold' : townMode === 'altar' ? 'Click to place on the altar' : 'Click to equip · Right-click for scrap, lock, drop' + (G.online ? ' and give' : '') };
     return h + `<div class="th">${tips[mode] || ''}</div>`;
   }
-  function showTip(html, x, y) { if (tip.classList.contains('pin')) return; tip.innerHTML = html; tip.classList.remove('hide'); const r = tip.getBoundingClientRect(); let tx = x - r.width - 14, ty = y + 12; if (tx < 6) tx = x + 16; if (ty + r.height > innerHeight - 6) ty = innerHeight - r.height - 6; tip.style.left = tx + 'px'; tip.style.top = Math.max(6, ty) + 'px'; }
+  function showTip(html, x, y) { if (tip.classList.contains('pin')) return; tip.innerHTML = html; tip.classList.remove('hide'); show3(); const r = tip.getBoundingClientRect(); let tx = x - r.width - 14, ty = y + 12; if (tx < 6) tx = x + 16; if (ty + r.height > innerHeight - 6) ty = innerHeight - r.height - 6; tip.style.left = tx + 'px'; tip.style.top = Math.max(6, ty) + 'px'; }
   function hideTip() { if (!tip.classList.contains('pin')) tip.classList.add('hide'); }
   function unpin() { tip.classList.remove('pin'); tip.classList.add('hide'); tip.style.transform = ''; }
   function sheet(it, key, mode) {
@@ -123,7 +129,7 @@ const UI = (() => {
     if (mode === 'eq') acts = (townMode === 'altar' ? b('al', 'Place on altar') : '') + b('un', 'Unequip') + b('lk', it.lock ? 'Unlock' : 'Lock'); else if (mode === 'stash') acts = b('tk', 'Take'); else if (mode === 'shop') acts = b('buy', 'Buy · ' + buyPrice(it) + 'g');
     else acts = (townMode === 'stash' ? b('st', 'Stash') : townMode === 'vendor' ? b('sell', 'Sell · ' + itemValue(it) + 'g') : townMode === 'altar' ? b('al', 'Place on altar') : '') + b('eq', 'Equip') + (it.lock ? '' : b('sc', 'Scrap · ' + itemShards(it))) + b('lk', it.lock ? 'Unlock' : 'Lock') + b('dr', 'Drop') + (G.online ? b('gv', 'Give to nearest') : '');
     tip.innerHTML = tipHtml(it, mode).replace(/<div class="th">.*?<\/div>/, '') + `<div class="acts">${acts}${b('x', 'Close')}</div>`;
-    tip.dataset.k = key; tip.classList.remove('hide'); tip.classList.add('pin'); tip.style.left = '50%'; tip.style.top = '50%'; tip.style.transform = 'translate(-50%,-50%)';
+    tip.dataset.k = key; tip.classList.remove('hide'); tip.classList.add('pin'); show3(); tip.style.left = '50%'; tip.style.top = '50%'; tip.style.transform = 'translate(-50%,-50%)';
   }
   tip.addEventListener('click', e => {
     const a = e.target.dataset && e.target.dataset.a; if (!a) return; const k = tip.dataset.k;
@@ -171,7 +177,7 @@ const UI = (() => {
   $('inv').addEventListener('mouseleave', hideTip);
   $('inv').addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse' || e.button !== 0) return; const el = e.target.closest('.it[data-i]'); if (el) drag = { i: +el.dataset.i, x: e.clientX, y: e.clientY, on: false, g: null }; });
   window.addEventListener('pointermove', e => {
-    if (!drag) return; if (!drag.on) { if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 7) return; const it = G.hero.inv[drag.i]; if (!it) { drag = null; return; } drag.on = true; hideTip(); const g = document.createElement('div'); g.className = 'ghost it r' + it.rar; g.innerHTML = iconSvg(it); document.body.appendChild(g); drag.g = g; }
+    if (!drag) return; if (!drag.on) { if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 7) return; const it = G.hero.inv[drag.i]; if (!it) { drag = null; return; } drag.on = true; hideTip(); const g = document.createElement('div'); g.className = 'ghost it r' + it.rar; g.innerHTML = iconHtml(it, false); document.body.appendChild(g); drag.g = g; }
     drag.g.style.left = e.clientX - 20 + 'px'; drag.g.style.top = e.clientY - 20 + 'px';
   });
   window.addEventListener('pointerup', e => {
