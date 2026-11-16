@@ -164,7 +164,7 @@ const UI = (() => {
   let noClick = false, drag = null;
   $('inv').addEventListener('click', e => {
     if (noClick) return; const x = e.target.closest('[data-x]'); if (x) { toggleInv(false); return; } const b = e.target.closest('[data-b]'); if (b) { if (b.dataset.b === 'plr') { togglePL(true); return; } if (b.dataset.b === 'smore') { statMore = !statMore; refresh(); return; } if (b.dataset.b === 'abest') { allyBest(); return; } if (b.dataset.b === 'psell') { petSell(); refresh(); return; } if (b.dataset.b === 'pauto') { const h = G.hero; h.petSell = h.petSell === false; saveGame(); refresh(); return; } /* build 0088: the pet's auto-sell switch, kept per hero */ if (b.dataset.b === 'ptake') { petTake(); refresh(); return; } if (b.dataset.b === 'sort') sortBag(G.hero.inv); else if (b.dataset.b === 'sall') { if (!salvArm) { salvArm = true; setTimeout(() => { salvArm = false; if (invOpen) refresh(); }, 3000); } else { salvArm = false; const n = G.hero.inv.filter(x => x && !x.lock).length; scrapAll(4); if (!n) hint('Nothing to salvage. Locked items are always kept.'); } } else scrapAll(b.dataset.b === 's1' ? 1 : 0); refresh(); return; }
-    const tb = e.target.closest('[data-tab]'); if (tb) { invTab = 'hero'; refresh(); return; }
+    const tb = e.target.closest('.sk-tabs [data-tab]'); if (tb) { invTab = 'hero'; refresh(); return; }
     const atb = e.target.closest('[data-at]'); if (atb) { allyTake(atb.dataset.at); refresh(); return; }
     const pgb = e.target.closest('[data-pg]'); if (pgb) { spendParagon(pgb.dataset.pg); refresh(); return; }
     const c = e.target.closest('[data-i]'); if (c) { bagClick(+c.dataset.i, e); return; }
@@ -277,9 +277,9 @@ const UI = (() => {
     html += row(h.bar[0] || CLASSES[h.cls].skills[0], SLOT_KEY[0], 1, 0); kit.forEach((id, k) => { html += row(id, SLOT_KEY[k + 1], KIT_LV[k], k + 1); });
     return html + '</div><div class="sm" style="margin-top:8px">Your class gives you these four skills. New ones unlock at level 3 and level 6 and go on your bar by themselves. Switch Auto on and a skill fires by itself whenever enemies are near.</div>'; }
   function renderSkl() {
-    const h = G.hero, el = $('skl'), open = talOpen(h), tal = sklTab === 'talents', sc = () => (tal && el.querySelector('.tl-body')) || el, sy = el.dataset.tab === sklTab ? sc().scrollTop : 0;
+    const h = G.hero, el = $('skl'), open = talOpen(h), tal = sklTab === 'talents', sc = () => (tal && el.querySelector('.tl-body')) || el, sy = el.dataset.shown === sklTab ? sc().scrollTop : 0;
     el.innerHTML = `<div class="ph"><div class="sk-tabs" role="tablist"><button type="button" role="tab" data-tab="skills" class="${tal ? '' : 'on'}" aria-selected="${!tal}">Skills</button><button type="button" role="tab" data-tab="talents" class="${tal ? 'on' : ''}" aria-selected="${tal}">Talents${open ? `<span class="tnew">${open}</span>` : ''}</button></div><button class="xb" data-x="skl" aria-label="Close">×</button></div>` + (tal ? talHtml(h) : sklHtml(h));
-    el.classList.toggle('tl-wide', tal); el.dataset.tab = sklTab; sc().scrollTop = sy; talBusy();
+    el.classList.toggle('tl-wide', tal); el.dataset.shown = sklTab; sc().scrollTop = sy; talBusy();
     if (tal && open && !sy) { const f = el.querySelector('.tl-row.open'); if (f) setTimeout(() => { try { f.scrollIntoView({ block: 'nearest' }); } catch (_) { } }, 0); }
   }
   function sklSetTab(t) { if (t === sklTab) return; sklTab = t; try { localStorage.setItem('obSklTab', t); } catch (_) { } renderSkl(); sklIn(); }
@@ -293,7 +293,7 @@ const UI = (() => {
     const tb = el.querySelector('[data-tab="talents"]'); if (tb) { const n = talOpen(h); tb.innerHTML = 'Talents' + (n ? `<span class="tnew">${n}</span>` : ''); }
     const s = el.querySelector(`.tl-sock[data-tj="${row}"]`); if (s && res === 1) s.classList.add('pop'); talBusy(); }
   function talBusy() { const el = $('skl'); if (!el || !G.hero) return; el.classList.toggle('tl-fight', sklOpen && sklTab === 'talents' && typeof talCalm === 'function' && !talCalm()); }
-  $('skl').addEventListener('click', e => { if (e.target.closest('[data-x]')) { toggleSkl(false); return; } const tb = e.target.closest('[data-tab]'); if (tb) { sklSetTab(tb.dataset.tab); return; }
+  $('skl').addEventListener('click', e => { if (e.target.closest('[data-x]')) { toggleSkl(false); return; } const tb = e.target.closest('.sk-tabs [data-tab]'); if (tb) { sklSetTab(tb.dataset.tab); return; }
     { const sj = e.target.closest('[data-tj]'); if (sj) { const r = $('skl').querySelector('#tlr' + sj.dataset.tj); if (r) { try { r.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (_) { r.scrollIntoView(); } r.classList.remove('flash'); void r.offsetWidth; r.classList.add('flash'); } return; } }
     { const tc = e.target.closest('[data-tal]'); if (tc) { const [r, k] = tc.dataset.tal.split(',').map(Number), c = talRows(G.hero.cls)[r][k], res = talPick(r, k); if (res < 0) { hint('Finish the fight first: you can swap talents any time no enemies are near.'); tc.classList.remove('nope'); void tc.offsetWidth; tc.classList.add('nope'); return; } else if (res === 2) { SFX.play('pickup'); hint(c.n + ' taken off.'); buildBar(); } else if (res > 0) { SFX.play('shrine'); hint(c.n + ': ' + c.d); buildBar(); } talSync(r, k, res); return; } }
     const ac = e.target.closest('[data-ac]'); if (ac) { const s = +ac.dataset.ac, h = G.hero; h.autoc = h.autoc || [0, 0, 0, 0]; h.autoc[s] = h.autoc[s] ? 0 : 1; buildBar(); renderSkl(); saveGame(); return; } const t = e.target.closest('[data-s]'); if (t) { sklSlot = +t.dataset.s; renderSkl(); return; } const tr = e.target.closest('.srow.tier'); if (tr) { const i = +tr.dataset.t; if (G.hero.level >= TIER_LV[i]) openPick(i); return; } const r = e.target.closest('.srow'); if (r && setSkill(sklSlot, r.dataset.k)) { buildBar(); renderSkl(); } });
