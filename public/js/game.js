@@ -918,6 +918,12 @@ function hitSpray(e, sk, crit, heavy) { if (typeof document === 'undefined' || !
 /* build 0065: monsters die by their region. As the body sinks it breaks apart: crypt dead crumble to bone dust and leave bones, forest things burst into rot spores,
    lava monsters fall to glowing ash, ice monsters shatter, void monsters fold inward. A soul wisp drifts up and the remains lie a few seconds before they sink away */
 function deathFx(e) { if (typeof document === 'undefined' || e.boss || e.dummy || e.escaped || !e.md || !G.zone) return; const th = G.zone.def.theme, lo = LOWQ ? .5 : 1, x = e.x, z = e.z, sc = e.sc || 1, big = e.elite ? 1.5 : 1, C = GLX.col, n = k => Math.max(1, Math.round(k * lo * big));
+  if (e.arch === 'goblin') { if (e.gobFx) return; e.gobFx = 1; /* build 0104: the Treasure Goblin bursts in a fountain of coins and the strongbox breaks apart (looks only, the loot is unchanged) */
+    G.fx.push({ flash: 1, x, y: .9, z, r: 2.4, life: .25, max: .25, c: C(0xffd860) }); ring(x, z, .2, 3.2, .5, 0xffc840); burst(x, 1, z, 0xfff0a0, n(16), 7);
+    for (let i = 0; i < n(26); i++) { const a = rnd(6.28), s = rnd(1, 4.5); G.fx.push({ chunk: 1, g: 'cyl', x: x + Math.cos(a) * .2, y: rnd(.7, 1.1), z: z + Math.sin(a) * .2, vx: Math.cos(a) * s, vy: rnd(5, 9), vz: Math.sin(a) * s, life: rnd(1.2, 1.8), max: 1.8, size: rnd(.09, .13), ar: .22, spin: rnd(6, 14), c: C(i % 4 ? 0xffc83a : 0xfff0a0), em: .9, mat: 4 }); }
+    for (let i = 0; i < n(7); i++) { const a = rnd(6.28), s = rnd(1.5, 4); G.fx.push({ chunk: 1, g: 'box', x, y: .7, z, vx: Math.cos(a) * s, vy: rnd(3, 6), vz: Math.sin(a) * s, life: rnd(1.1, 1.6), max: 1.6, size: rnd(.1, .16), ar: rnd(.25, .5), spin: rnd(4, 9), c: C(i % 3 ? 0x6a4422 : 0x5a5a62), em: 0, mat: i % 3 ? 3 : 4 }); }
+    for (let i = 0; i < n(10); i++) G.fx.push({ ember: 1, x: x + rnd(-.5, .5), y: rnd(.4, 1.2), z: z + rnd(-.5, .5), vx: rnd(-.8, .8), vy: rnd(1, 3), vz: rnd(-.8, .8), life: rnd(.8, 1.4), max: 1.4, size: rnd(.04, .08), c: C(0xffe070) });
+    if (G.fx.length > 900) G.fx.splice(0, G.fx.length - 900); return; }
   const smoke = (c, k, sp) => { for (let i = 0; i < n(k); i++) G.fx.push({ smoke: 1, x: x + rnd(-.4, .4) * sc, y: rnd(.2, .8) * sc, z: z + rnd(-.4, .4) * sc, vx: rnd(-sp, sp), vy: rnd(.6, 2), vz: rnd(-sp, sp), life: rnd(.7, 1.2), max: 1.2, size: rnd(.25, .45) * sc, c: C(c) }); };
   const wisp = (c, k) => { for (let i = 0; i < n(k); i++) G.fx.push({ wisp: 1, x: x + rnd(-.3, .3), y: .8 * sc, z: z + rnd(-.3, .3), ph: rnd(6.28), life: rnd(1, 1.5), max: 1.5, c: C(c), s: rnd(.12, .2) * sc }); };
   const rem = (c, k, kind) => { const pcs = []; for (let i = 0; i < n(k); i++) { const a = rnd(6.28), d = rnd(.1, .7) * sc; pcs.push([Math.cos(a) * d, Math.sin(a) * d, rnd(6.28), rnd(.1, .2) * sc, rnd(.06, .12) * sc, rnd(.25, .5) * sc]); } G.fx.push({ rem: 1, kind, x, z, pcs, c: C(c), life: 5, max: 5 }); { let m = 0; for (let i = G.fx.length - 1; i >= 0; i--) if (G.fx[i].rem && ++m > 20) G.fx[i].life = Math.min(G.fx[i].life, 1); } };
@@ -1124,10 +1130,44 @@ function questTarget() {
   const po = Z.objs.find(o => o.kind === 'portal' && !o.used); if (po) return { x: po.x, z: po.z, text: 'Take the portal deeper' };
   const b = G.boss; return { x: b ? b.x : Z.bossAt[0], z: b ? b.z : Z.bossAt[1], text: 'Find and slay ' + (b ? b.name : bossFor(Z.def.theme, Z.def.depth, Z.def.rift).n) };
 }
+/* build 0104 (Lee: make the arrow pathing on the floor nicer and more fluid): the route is pulled tight with room to spare from walls, its corners
+   are rounded into curves, and it is kept as points every GPS_ST from the goal back to the hero. What is drawn eases toward each new route, so
+   it bends smoothly instead of jumping, and a new goal fades the old path out and the new one in */
+const GPS_ST = .25;
+function gpsRoute(q) { const f = botField(), gc = cellOf(q.x, q.z); if (f.prev[gc] < 0) return null;
+  const raw = [[q.x, q.z]]; let k = gc; while (k !== f.s) { k = f.prev[k]; if (k !== f.s) raw.push([(k % GW + .5) * CS, ((k / GW | 0) + .5) * CS]); } raw.push([P.x, P.z]); /* goal first */
+  const clear = (a, b) => { const d = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.ceil(d / .5); for (let i = 1; i < n; i++) { const t = i / n; if (blocked(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, .75)) return false; } return true; };
+  const pl = [raw[0]]; for (let i = 0; i < raw.length - 1;) { let j = i + 1; while (j + 1 < raw.length && clear(raw[i], raw[j + 1])) j++; pl.push(raw[j]); i = j; }
+  const cv = [pl[0]]; for (let i = 1; i < pl.length - 1; i++) { const a = pl[i - 1], p = pl[i], b = pl[i + 1], la = Math.hypot(a[0] - p[0], a[1] - p[1]) || 1, lb = Math.hypot(b[0] - p[0], b[1] - p[1]) || 1, c = Math.min(2, la * .45, lb * .45),
+      p1 = [p[0] + (a[0] - p[0]) / la * c, p[1] + (a[1] - p[1]) / la * c], p2 = [p[0] + (b[0] - p[0]) / lb * c, p[1] + (b[1] - p[1]) / lb * c];
+    for (let s = 0; s <= 8; s++) { const t = s / 8, u = 1 - t; cv.push([u * u * p1[0] + 2 * u * t * p[0] + t * t * p2[0], u * u * p1[1] + 2 * u * t * p[1] + t * t * p2[1]]); } }
+  cv.push(pl[pl.length - 1]);
+  const out = [cv[0].slice()]; let need = GPS_ST; for (let i = 1; i < cv.length; i++) { const a = cv[i - 1], b = cv[i], L = Math.hypot(b[0] - a[0], b[1] - a[1]); let at = 0; while (L - at >= need) { at += need; const t = at / L; out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]); need = GPS_ST; } need -= L - at; }
+  out.push(cv[cv.length - 1].slice()); return out; }
 function updGps(dt) {
-  GPS.t -= dt; if (GPS.t > 0) return; GPS.t = .4; const q = questTarget(); GPS.goal = q; GPS.text = q ? q.text : ''; GPS.pts = []; if (!q || !G.set.gps) return;
-  const f = botField(), gc = cellOf(q.x, q.z); if (f.prev[gc] < 0) return; const out = [[q.x, q.z]]; let k = gc; while (k !== f.s) { k = f.prev[k]; if (k !== f.s) out.push([(k % GW + .5) * CS, ((k / GW | 0) + .5) * CS]); } out.push([P.x, P.z]); GPS.pts = out.reverse();
-}
+  GPS.t -= dt; if (GPS.t <= 0) { GPS.t = .2; const q = questTarget(); GPS.goal = q; GPS.text = q ? q.text : ''; GPS.pts = []; GPS.T = null;
+    if (q && G.set.gps) { const r = gpsRoute(q); if (r) { GPS.T = r; GPS.pts = r.slice().reverse(); } } }
+  const T = GPS.T; if (!GPS.D) { GPS.D = []; GPS.a = 0; }
+  if (!T) { GPS.a = Math.max(0, GPS.a - dt * 3); return; }
+  const fresh = !GPS.D.length || !GPS.gq || Math.hypot(T[0][0] - GPS.gq[0], T[0][1] - GPS.gq[1]) > 2.5;
+  if (fresh && GPS.a > .02 && GPS.D.length) { GPS.a = Math.max(0, GPS.a - dt * 5); return; } /* a new goal: the old path fades away first */
+  if (fresh) { GPS.D = T.map(p => p.slice()); GPS.gq = T[0].slice(); }
+  else { const D = GPS.D, k = 1 - Math.exp(-dt * 6), n = Math.min(D.length, T.length); for (let i = 0; i < n; i++) { D[i][0] += (T[i][0] - D[i][0]) * k; D[i][1] += (T[i][1] - D[i][1]) * k; } if (T.length < D.length) D.length = T.length; else for (let i = D.length; i < T.length; i++) D.push(T[i].slice()); GPS.gq[0] += (T[0][0] - GPS.gq[0]) * k; GPS.gq[1] += (T[0][1] - GPS.gq[1]) * k; }
+  GPS.a = Math.min(1, GPS.a + dt * 2.5); }
+// the path on the floor: a soft glowing line with chevrons that flow steadily toward the goal. They are fixed to the route, not to the hero,
+// so walking does not drag them along; they fade in a little ahead of the hero, fade out far away, and give way to the gold ring at the goal
+function drawGps() { const D = GPS.D, a0 = GPS.a || 0; if (!D || D.length < 4 || a0 < .01 || !G.set.gps) return;
+  const col = GLX.col, n = D.length, L = (n - 1) * GPS_ST, t = G.time, SP = 1.5, VIS = 34, cA = col(0xffd84a), cB = col(0xffa040), cS = col(0xffc060);
+  const at = d => { const f = clamp(d / GPS_ST, 0, n - 1.0001), i = f | 0, u = f - i; return [D[i][0] + (D[i + 1][0] - D[i][0]) * u, D[i][1] + (D[i + 1][1] - D[i][1]) * u]; };
+  const ss = (a, b, x) => { const u = clamp((x - a) / (b - a), 0, 1); return u * u * (3 - 2 * u); };
+  const vis = (d, p) => { const fromHero = L - d, hp = Math.hypot(p[0] - P.x, p[1] - P.z); if (fromHero > VIS) return 0; return a0 * ss(.9, 2.4, hp) * ss(VIS, VIS - 8, fromHero) * ss(.4, 2, d); };
+  for (let d = 0; d < L; d += .5) { const p = at(d), q = at(Math.min(L, d + .5)), al = vis(d, p); if (al < .01) continue; const dx = q[0] - p[0], dz = q[1] - p[1], ln = Math.hypot(dx, dz); if (ln < .01) continue;
+    GLX.obj('glow', 'box', (p[0] + q[0]) / 2, .025, (p[1] + q[1]) / 2, Math.atan2(dx, dz), .09, .01, ln + .04, cS, 1.2, al * .22); } /* the soft line under the arrows */
+  for (let d = SP - (t * 2.2) % SP; d < L; d += SP) { const p = at(d), al = vis(d, p); if (al < .01) continue; const a = at(d + .3), b = at(Math.max(0, d - .3)), gx = b[0] - a[0], gz = b[1] - a[1], gl = Math.hypot(gx, gz) || 1;
+    if ((p[0] - P.x) * gx + (p[1] - P.z) * gz < 0) continue; /* never behind the hero */
+    const ry = Math.atan2(gx, gz), fx = gx / gl, fz = gz / gl, sx = fz, sz = -fx, br = .8 + .2 * Math.sin(d * 1.3 - t * 5);
+    for (const sd of [1, -1]) GLX.obj('glow', 'box', p[0] - fx * .17 + sx * sd * .23, .04, p[1] - fz * .17 + sz * sd * .23, ry - sd * .64, .17, .012, .68, cB, 2 * br, al);
+    GLX.obj('glow', 'disc', p[0], .03, p[1], 0, .62, 1, .62, cA, 1, al * .12, -1); } }
 
 // ---------- autoplay ----------
 const BOT = { t: 0, path: null, rv: 0, dodge: 0, kite: 0 };
@@ -1234,6 +1274,8 @@ function navStep(tx, tz, dt) { if (!G.zone || !G.zone.cell) return [tx, tz]; nav
   const pts = NAV.pts; while (pts.length > 1 && (Math.hypot(pts[0][0] - P.x, pts[0][1] - P.z) < .25 || (!NAV.hold && navClear(P.x, P.z, pts[1][0], pts[1][1])))) pts.shift(); if (pts.length === 1 && navClear(P.x, P.z, tx, tz)) { pts[0][0] = tx; pts[0][1] = tz; } return pts[0]; }
 const cellOf = (x, z) => clamp(Math.floor(z / CS), 0, GW - 1) * GW + clamp(Math.floor(x / CS), 0, GW - 1);
 function los(x1, z1, x2, z2) { const d = Math.hypot(x2 - x1, z2 - z1), n = Math.ceil(d / .4); for (let i = 1; i < n; i++) { const t = i / n; if (cellAt(x1 + (x2 - x1) * t, z1 + (z2 - z1) * t)) return false; } return true; }
+/* build 0104 (Lee: the boss needs line of sight to hurt you, no cheap shots over walls): a blow from a floor boss or the world boss only lands if a wall is not between it and you. Its shots already stop at walls */
+function bossSees(src, x, z) { return !src || !src.boss || los(src.x, src.z, x, z); }
 function botGear() {
   const h = G.hero; let ch = false;
   h.inv.forEach((it, i) => { if (!it || !canUse(it)) return; let cur; cur = h.eq[it.slot === 'ring' ? 'ring1' : it.slot]; if (!cur || itemScore(it) > itemScore(cur) * 1.02) { if (equipFromInv(i)) ch = true; } });
@@ -1656,7 +1698,7 @@ function updEnemy(e, dt) {
   if (e.burnT > 0) { e.burnT -= dt; e.hp = Math.max(!e.boss && !e.elite && (e.nh || 0) < 2 ? 1 : -1e9, e.hp - e.burn * dt); if (e.hp <= 0) { killEnemy(e); return; } }
   if (e.tnt) { e.tnt.t -= dt; if (e.tnt.t <= 0 || !ALLIES.includes(e.tnt.a) || G.online) e.tnt = null; } // build 0054: a taunted monster turns on the tank
   const T = e.tnt ? e.tnt.a : P, dx = T.x - e.x, dz = T.z - e.z, d = Math.hypot(dx, dz) || .001;
-  const hitT = (v, el) => T === P ? dmgPlayer(v, el, e) : tankHit(T, e);
+  const hitT = (v, el) => T === P ? (bossSees(e, P.x, P.z) ? dmgPlayer(v, el, e) : 0) : tankHit(T, e);
   if (!e.awake) { if (Math.hypot(P.x - e.x, P.z - e.z) < (e.boss ? 17 : 14) && !P.dead && !(e.dozeT > G.time && !los(e.x, e.z, P.x, P.z))) wake(e); else return; }
   if (P.dead) return; if (e.frozen > 0) { e.frozen -= dt; return; }
   if (e.boss) { e.pt -= dt; e.tt = (e.tt === undefined ? 1.4 : e.tt) - dt; if (e.bd && e.bd.sig) e.sigT = (e.sigT === undefined ? 4.5 : e.sigT) - dt; } /* build 0089: a guardian's attack clocks keep running while it swings or recovers, so standing in its reach no longer stops its big moves */
@@ -1747,7 +1789,7 @@ function update(dt) {
   // areas
   for (let i = G.areas.length - 1; i >= 0; i--) {
     const a = G.areas[i]; a.t += dt; if (a.hvy && !a.done && !a.was && a.t < a.delay * .8 && !P.dead && inArea(a, P.x, P.z, 0)) a.was = 1;
-    if (!a.done && a.t >= a.delay) { a.done = true; if (a.owner === 'p') { for (const e of G.ents) if (e.alive && Math.hypot(e.x - a.x, e.z - a.z) <= a.r + e.r) hitEnemy(e, a.sk, a.mult, a.proc); } else { const inn = !P.dead && inArea(a, P.x, P.z, .3) && P.y < 1.5; if (!a.vis && inn) dmgPlayer(a.dmg, a.el, a.src, a.hvy); else if (a.hvy && a.was && !inn && !P.dead) { floatText(P.x, 2.8, P.z, 'Evaded', '#9fe', .8, 15); SFX.play('evade'); } } areaLand(a); if (a.owner === 'p' && !a.proc) impact(a.x, a.z, a.r * .8, a.c, a.r >= 2.5); if (a.owner === 'e') G.shake = Math.min(.5, G.shake + .08); }
+    if (!a.done && a.t >= a.delay) { a.done = true; if (a.owner === 'p') { for (const e of G.ents) if (e.alive && Math.hypot(e.x - a.x, e.z - a.z) <= a.r + e.r) hitEnemy(e, a.sk, a.mult, a.proc); } else { const inn = !P.dead && inArea(a, P.x, P.z, .3) && P.y < 1.5, seen = bossSees(a.src, P.x, P.z); if (!a.vis && inn && seen) dmgPlayer(a.dmg, a.el, a.src, a.hvy); else if (!a.vis && inn && !seen) floatText(P.x, 2.8, P.z, 'Blocked', '#cdb', .8, 15); else if (a.hvy && a.was && !inn && !P.dead) { floatText(P.x, 2.8, P.z, 'Evaded', '#9fe', .8, 15); SFX.play('evade'); } } areaLand(a); if (a.owner === 'p' && !a.proc) impact(a.x, a.z, a.r * .8, a.c, a.r >= 2.5); if (a.owner === 'e') G.shake = Math.min(.5, G.shake + .08); }
     if (a.t >= a.delay + .05) G.areas.splice(i, 1);
   }
   // drops
@@ -2108,6 +2150,64 @@ function monModel(e, sc, y, tilt, ox, oz, em, wind, at) {
   }
   return true;
 }
+// ---- build 0104 (Lee: the treasure goblin needs a graphic upgrade): the Treasure Goblin on a real animated body. A small, hunched
+// thief with long ears, a hooked nose and ember-gold eyes, scurrying under a stolen iron-banded strongbox strapped to its back. The lid
+// rattles open as it runs and coins spill out behind it, a little lantern swings from the box, and when it dies the box bursts in a
+// fountain of coins. Looks only: its life, speed, escape and loot are unchanged. Far away, or before the model loads, the code-built
+// goblin below is drawn ----
+const GOB_FAR = 46, GB = new Float32Array(16), GH = new Float32Array(16);
+function gobKit(B, t, run, open, alive, em, hop) { /* the strongbox, its straps, lid, coins and lantern, in a body frame B: +z forward, +y up, model units */
+  const col = GLX.col, iron = col(0x3a3634), wood = col(0x5a3a22), gold = col(0xe0b040), lth = col(0x3a261a), p = (g, ox, oy, oz, rx, ry, rz, sx, sy, sz, c, m, ee) => GLX.part('dyn', g, B, ox, oy + hop, oz, rx, ry, rz, 0, 0, 0, sx, sy, sz, c, ee === undefined ? em : ee, 1, m || 0);
+  const lean = .35 * run, bz = -.27, by = .02;
+  p('rbox', 0, by, bz, lean, 0, 0, .5, .36, .32, wood, 3); /* the box */
+  for (const x of [-.2, 0, .2]) p('rbox', x, by, bz, lean, 0, 0, .05, .38, .34, iron, 4); /* iron bands */
+  p('rbox', 0, by - .17, bz, lean, 0, 0, .52, .04, .34, iron, 4);
+  for (const sx of [1, -1]) for (const sy of [1, -1]) p('sphere', .24 * sx, by + .16 * sy, bz + .15, lean, 0, 0, .035, .035, .035, gold, 4, em + .2); /* corner studs */
+  p('rbox', 0, by - .02, bz - .17, lean, 0, 0, .1, .12, .03, gold, 4, em + .3); p('cyl', 0, by - .08, bz - .19, lean + 1.57, 0, 0, .06, .02, .06, gold, 4, em + .3); /* the padlock */
+  const lid = -(.18 + open * .55); p('rbox', 0, by + .21 + Math.sin(lean) * .02, bz + .15, lean + lid, 0, 0, .5, .05, .02, wood, 3); /* the lid hinges at the front edge, flapping open */
+  GLX.part('dyn', 'rbox', B, 0, by + .19 + hop, bz + .15, lean + lid, 0, 0, 0, 0, -.15, .5, .05, .3, wood, em, 1, 3);
+  for (let k = 0; k < 5; k++) p('cyl', -.16 + k * .08, by + .19 + (k % 2) * .03, bz - .02 + (k % 3) * .05, lean + .3 * (k % 2), k, 0, .07, .02, .07, gold, 4, em + .25); /* coins heaped inside */
+  GLX.part('glow', 'rbox', B, 0, by + .19 + hop, bz, lean, 0, 0, 0, 0, 0, .44, .04, .26, gold, 1.6, .5 + .3 * open);
+  for (const sd of [1, -1]) { p('rbox', .15 * sd, by + .14, bz + .2, lean - .5, 0, 0, .06, .04, .3, lth, 7); p('rbox', .15 * sd, by - .14, bz + .2, lean + .4, 0, 0, .06, .04, .26, lth, 7); } /* shoulder straps */
+  const sw = Math.sin(t * 9) * .5 * run + Math.sin(t * 2) * .12; /* the lantern swings from the box's corner */
+  GLX.part('dyn', 'rbox', B, -.27, by + .1 + hop, bz - .12, sw, 0, .2, 0, -.1, 0, .012, .2, .012, iron, em, 1, 4);
+  GLX.part('dyn', 'rbox', B, -.27, by + .1 + hop, bz - .12, sw, 0, .2, 0, -.25, 0, .09, .12, .09, iron, em, 1, 4);
+  if (alive) GLX.part('glow', 'sphere', B, -.27, by + .1 + hop, bz - .12, sw, 0, .2, 0, -.25, 0, .055, .08, .055, col(0xffb84a), 2.6, 1);
+}
+function gobAlert(e) { if (!e.alert || !e.alive) return; const gd = GLX.col(0xd8a838), t = G.time, pu = .6 + .4 * Math.sin(t * 6); GLX.obj('glow', 'ring', e.x, .07, e.z, t * 2, 2.6, 1, 2.6, gd, 1, .7 * pu, -1); GLX.obj('glow', 'box', e.x, 3.2, e.z, .78, .12, 6.4, .12, gd, 1, .3 * pu); GLX.halo(e.x, 1.4, e.z, 4.5, gd, .35 * pu); } /* the gold ring and beam once it has been spotted */
+function gobModel(e, sc, y, tilt, ox, oz, em) {
+  if (!MODELS_ON || !GLX.model || G.realModels === false || G.monModels === false || e.escaped) return false;
+  if (Math.hypot(e.x - P.x, e.z - P.z) > GOB_FAR) return false;
+  const M = GLX.model('risen', 'models/risen.cdm?v=' + BUILD); if (!M || !M.anims || !M.anims.idle) return false;
+  const A = M.anims, t = G.time, col = GLX.col, s = sc * MSC * .7, lay = [];
+  if (!e.alive) { sc = e.sc; tilt = 0; y = (e.fly ? e.fly.y : 0) - Math.max(0, 1 - e.deadT / .3) * .6; }
+  const moved = Math.abs((e.walk || 0) - (e._mw === undefined ? e.walk : e._mw)); e._mw = e.walk; e._mv = (e._mv || 0) + ((moved > .001 ? 1 : 0) - (e._mv || 0)) * .2; const mv = e.alive ? clamp(e._mv, 0, 1) : 0;
+  if (!e.alive) { if (e._dT0 === undefined) e._dT0 = t; lay.push(['die', Math.min(A.die.dur * .92, (t - e._dT0) * 2.6), false, 1]); }
+  else { e._dT0 = undefined; const ph = (e.walk || 0) / 6.2832 * .62; /* a fast, low scurry */
+    if (mv < 1) lay.push(['crouchi', t * 1.3 + e.id * .37, true, 1 - mv]); if (mv > 0) lay.push(['crouch', ph * A.crouch.dur, true, mv]);
+    if (e.hf > 0) lay.push(['hit', (.22 - e.hf) * 2.4, false, Math.min(1, e.hf * 6) * .7]); }
+  GLX.base(BMm, e.x + ox, y - M.head.minY * s, e.z + oz, e.rot, s); if (tilt) tiltBase(BMm, e.rot, s, tilt);
+  const skin = 0x4e6e5e, look = (gi, gr) => { const k = gr.kind;
+    if (k === 'plain') return [[3, 2.1, .6], 2.8, 0]; // ember-gold eyes
+    if (k === 'skin') return [mdye(gr, skin, .92, .8), em, 8];
+    if (k === 'cloth') return [mdye(gr, 0x4a2638, .9, .85), em, 6]; // patched plum breeches
+    return [MLIFT, em, gr.mat]; };
+  if (!GLX.drawModel(M, BMm, lay, look)) return false;
+  const sk = col(skin), skD = col(0x8a5a5a), hd = GLX.attach(M, 'Head', MAT), flap = e.alive ? Math.sin(t * 16) * .12 * mv + Math.sin(t * 2.3 + e.id) * .05 : .4;
+  if (hd) { m4mul(GH, BMm, hd); const q = (g, x, yy, z, rx, ry, rz, a, b, c, sx, sy, sz, cc, m, ee) => GLX.part('dyn', g, GH, x, yy, z, rx, ry, rz, a, b, c, sx, sy, sz, cc, ee === undefined ? em : ee, 1, m || 0);
+    for (const sd of [1, -1]) { q('cone', .085 * sd, .12, -.02, .25 + flap, 0, -sd * (1.25 - flap), 0, .13, 0, .055, .26, .03, sk, 8); q('cone', .085 * sd, .12, -.01, .25 + flap, 0, -sd * (1.25 - flap), 0, .115, .012, .03, .2, .012, skD, 8); } /* long ears that flap as it runs */
+    q('cone', 0, .06, .1, 1.35, 0, 0, 0, .06, 0, .03, .12, .03, sk, 8); /* a hooked nose */
+    q('sphere', 0, .15, -.01, -.2, 0, 0, 0, 0, 0, .15, .09, .16, col(0x5a2a3a), 6); q('cone', 0, .17, -.1, -2.3, 0, 0, 0, .12, 0, .06, .24, .045, col(0x5a2a3a), 6); /* a ragged cap with a drooping tail */ }
+  const sp = GLX.attach(M, 'spine_03', MAT); if (!sp) return true; m4mul(GH, BMm, sp); GB.set(BMm); GB[12] = GH[12]; GB[13] = GH[13]; GB[14] = GH[14];
+  const open = e.alive ? Math.max(0, Math.sin(t * 13)) * mv : 1, hop = 0; gobKit(GB, t, mv, open, e.alive, em, hop);
+  const gd = col(0xe0b040);
+  if (e.alive) { const fw = [Math.sin(e.rot), Math.cos(e.rot)]; /* coins spill out of the lid behind it as it runs, arc, and bounce away */
+    if (mv > .2) for (let k = 0; k < 6; k++) { const u = (t * 1.7 + k / 6 + e.id * .13) % 1, bx = GB[12] - fw[0] * .3 * s, bzz = GB[14] - fw[1] * .3 * s, d = u * 1.6, hgt = GB[13] + .25 * s + u * 1.2 - u * u * (2.2 + GB[13] * 1.1), side = Math.sin(k * 2.4) * .5 * u;
+      GLX.obj('dyn', 'cyl', bx - fw[0] * d + fw[1] * side, Math.max(.04, hgt), bzz - fw[1] * d - fw[0] * side, t * 9 + k, .09, .025, .09, gd, .6, 1, 4); if (k % 2 === 0) GLX.obj('glow', 'gem', bx - fw[0] * d + fw[1] * side, Math.max(.06, hgt) + .05, bzz - fw[1] * d - fw[0] * side, t * 6, .04, .07, .04, col(0xfff0b0), 2.4, (1 - u) * .9); }
+    for (let k = 0; k < 3; k++) { const ph = (t * 1.1 + k * .37) % 1, a = Math.sin(ph * Math.PI); GLX.obj('glow', 'gem', GB[12] + Math.sin(k * 2.1) * .25 * s, GB[13] + (.1 + k * .08) * s, GB[14] + Math.cos(k * 1.7) * .25 * s, t * 3, .05 * a, .1 * a, .05 * a, col(0xfff4c0), 2.6, a); } /* glints on the box */
+    GLX.halo(GB[12], GB[13], GB[14], 2.4, gd, .32); GLX.light(e.x, 1.6, e.z, 6, col(0xffb84a), .8, 3); }
+  gobAlert(e); return true;
+}
 // ---- build 0058: guardians on real models. The armoured champions (Warden of Bones, the Ashen Tyrant) wear the knight's plate, dyed
 // to their floor, with a horned helm and a greatsword; the shrouded ones (Hollow Choir, Pale Matriarch, Null) are hooded robes that
 // float above a tattered shroud. Other guardian shapes stay code-built ----
@@ -2162,12 +2262,12 @@ function drawEnemy(e) {
   if (e.alive && e.hf > 0) { e.hf -= fdt; const k = Math.max(0, e.hf / .22), q = Math.sin(k * Math.PI) * Math.min(1.4, e.hp0 || 1); tilt = -.32 * q; ox = (e.hdx || 0) * .28 * q; oz = (e.hdz || 0) * .28 * q; } // the flinch: a quick lean back and a small step away from the blow
   GLX.base(BM, e.x + ox, y, e.z + oz, e.rot, sc); if (tilt) tiltBase(BM, e.rot, sc, tilt); const p = (g, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, cc, mat, ee) => GLX.part('dyn', g, BM, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, cc, ee === undefined ? em : ee, 1, mat || 0);
   const eyes = (ex, ey, ez, r) => { p('sphere', ex, ey, ez, 0, 0, 0, 0, 0, 0, r, r, r, ec, 0, 3); p('sphere', -ex, ey, ez, 0, 0, 0, 0, 0, 0, r, r, r, ec, 0, 3); };
-  if (monModel(e, sc, y, tilt, ox, oz, em, wind, at) || (e.boss && bossModel(e, sc, y, tilt, ox, oz, em, wind, at))) { /* build 0055: drawn on a real model */ }
+  if (e.arch === 'goblin' && e.awake && e.alive && !e.ann && typeof UI !== 'undefined') { e.ann = 1; UI.zoneBanner('Treasure Goblin!', 'Catch it before it escapes: 30 seconds'); SFX.play('drop3'); }
+  if (monModel(e, sc, y, tilt, ox, oz, em, wind, at) || (e.boss && bossModel(e, sc, y, tilt, ox, oz, em, wind, at)) || (e.arch === 'goblin' && gobModel(e, sc, y, tilt, ox, oz, em))) { /* build 0055: drawn on a real model */ }
   else if (e.arch === 'goblin') { const gd = col(0xd8a838), sk2 = col(0x5a8a3a), t = G.time, hop = Math.abs(Math.sin(w * 1.4)) * .14;
-    if (e.awake && e.alive && !e.ann && typeof UI !== 'undefined') { e.ann = 1; UI.zoneBanner('Treasure Goblin!', 'Catch it before it escapes: 30 seconds'); SFX.play('drop3'); }
     for (const sd of [1, -1]) p('cap', .16 * sd, .4 + hop, 0, sd * sw * .9, 0, 0, 0, -.2, 0, .14, .36, .14, sk2);
     p('sphere', 0, .82 + hop, .05, .5, 0, 0, 0, 0, 0, .5, .5, .45, c, 0); p('sphere', 0, 1.18 + hop, .38, .2, 0, 0, 0, 0, 0, .34, .3, .32, sk2, 0); for (const sd of [1, -1]) p('cone', .3 * sd, 1.28 + hop, .34, 0, 0, sd * 1.2, 0, 0, 0, .08, .34, .08, sk2); eyes(.1, 1.24 + hop, .62, .05); p('sphere', 0, 1.12 + hop, .66, 0, 0, 0, 0, 0, 0, .1, .08, .12, sk2);
-    p('sphere', 0, 1.2 + hop, -.32, .1, 0, 0, 0, 0, 0, .62, .66, .58, c2, 0, .25); p('cap', 0, 1.62 + hop, -.32, 0, 0, 0, 0, 0, 0, .2, .14, .2, col(0x6a4a24)); for (let k = 0; k < 4; k++) { const an = k * 1.57 + t * 2; GLX.obj('glow', 'gem', e.x + Math.cos(an) * .7 * sc, (1.3 + Math.sin(t * 3 + k) * .3) * sc, e.z + Math.sin(an) * .7 * sc, t * 4, .07, .12, .07, gd, 2, .9); } GLX.halo(e.x, 1.1 * sc, e.z, 2.2, gd, .4); if (e.alert && e.alive) { const pu = .6 + .4 * Math.sin(t * 6); GLX.obj('glow', 'ring', e.x, .07, e.z, t * 2, 2.6, 1, 2.6, gd, 1, .7 * pu, -1); GLX.obj('glow', 'box', e.x, 3.2, e.z, .78, .12, 6.4, .12, gd, 1, .3 * pu); GLX.halo(e.x, 1.4, e.z, 4.5, gd, .35 * pu); } }
+    p('sphere', 0, 1.2 + hop, -.32, .1, 0, 0, 0, 0, 0, .62, .66, .58, c2, 0, .25); p('cap', 0, 1.62 + hop, -.32, 0, 0, 0, 0, 0, 0, .2, .14, .2, col(0x6a4a24)); for (let k = 0; k < 4; k++) { const an = k * 1.57 + t * 2; GLX.obj('glow', 'gem', e.x + Math.cos(an) * .7 * sc, (1.3 + Math.sin(t * 3 + k) * .3) * sc, e.z + Math.sin(an) * .7 * sc, t * 4, .07, .12, .07, gd, 2, .9); } GLX.halo(e.x, 1.1 * sc, e.z, 2.2, gd, .4); gobAlert(e); }
   else if (e.arch === 'grunt') {
     for (const sd of [1, -1]) { p('cap', .16 * sd, .82, 0, sd * sw * .7, 0, 0, 0, -.2, 0, .2, .42, .22, c2); p('cap', .16 * sd, .82, 0, sd * sw * .9, 0, 0, 0, -.6, .03, .16, .42, .17, c); }
     p('taper', 0, 1.18, .04, .35, 0, 0, 0, 0, 0, .56, -.72, .36, c, 3); p('sphere', 0, 1.0, 0, .3, 0, 0, 0, 0, 0, .5, .36, .36, c2); p('sphere', 0, 1.66, .2, .3, 0, 0, 0, 0, 0, .36, .4, .38, c, 3); p('rbox', 0, 1.52, .36, .5, 0, 0, 0, 0, 0, .2, .1, .12, c2);
@@ -2481,7 +2581,7 @@ function drawWorld() {
 else GLX.obj('glow', 'gem', f.x, f.y, f.z, f.life * 9, f.size, f.size, f.size, f.c, 1, k);
   }
   GLX.glowK && GLX.glowK(1);
-  if (GPS.pts.length > 1 && G.set.gps) { const c = col(0xffd84a), c2g = col(0xffa040); let acc = (G.time * 3) % 1.6, tot = 0; for (let i = 1; i < GPS.pts.length && tot < 34; i++) { const a = GPS.pts[i - 1], b = GPS.pts[i], L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, ry = Math.atan2(b[0] - a[0], b[1] - a[1]); while (acc < L && tot + acc < 34) { const t = acc / L, k = 1 - (tot + acc) / 34; if (tot + acc > 1.6) { const x = a[0] + (b[0] - a[0]) * t, z = a[1] + (b[1] - a[1]) * t, al = Math.min(1, .35 + .85 * k); for (const sd of [1, -1]) { const fx = Math.sin(ry), fz = Math.cos(ry), sx = fz, sz = -fx; GLX.obj('glow', 'box', x - fx * .16 + sx * sd * .21, .07, z - fz * .16 + sz * sd * .21, ry - sd * .62, .15, .03, .62, c2g, 1.6, al); } } acc += 1.3; } acc -= L; tot += L; } } /* build 0075 (Lee, Nov 15): the path arrows are bigger and brighter */
+  drawGps(); /* build 0104: the quest path, see drawGps */
   if (GPS.goal && G.set.gps) { const q = GPS.goal, onBoss = G.boss && G.boss.alive && G.boss.awake && Math.hypot(q.x - G.boss.x, q.z - G.boss.z) < 2; if (!onBoss && Math.hypot(q.x - P.x, q.z - P.z) > 2.5) { const c = col(0xffd84a), t = G.time, pu = .5 + .5 * Math.sin(t * 4), R = 2 + pu * .6; GLX.obj('glow', 'ring', q.x, .09, q.z, t * .6, R, 1, R, c, 1.6, .85, -1); GLX.obj('glow', 'cyl', q.x, 6, q.z, 0, .14 + pu * .05, 12, .14 + pu * .05, c, 2, .42); GLX.halo(q.x, 1.4, q.z, 3.4, c, .3 + pu * .15); } } /* a gold beam and ring mark where the quest leads: the townsfolk to report to, the captive, the gate */
   if (P.move && !P.atk) GLX.obj('glow', 'ring', P.move[0], .06, P.move[1], 0, .8, 1, .8, col(0xffffff), 1, .25, -1);
   if (G.tj && !G.auto && !P.dead) { const e = nearFoe(15); if (e && e !== G.hover) GLX.obj('glow', 'ring', e.x, .06, e.z, G.time * 1.5, e.r * 2.5, 1, e.r * 2.5, col(0xffb03a), 1, .55, -1); }
