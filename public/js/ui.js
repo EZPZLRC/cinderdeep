@@ -276,11 +276,11 @@ function forgeBox(it) { const F = G.lastForge; if (!F || F.it !== it) return '';
     const fk = ids.length ? Object.keys(c.fx[ids[0]]) : Object.keys(c.s || {}), bd = GI && GI.icon ? talBadge(fk) : '';
     return { tag: ids.length ? ids.map(id => SKILLS[id].n).join(' + ') : 'Hero bonus', ic: GI ? (ids.length ? GI.skill(ids[0]) : GI.ui('skl', 'gold')) + (bd ? '<span class="tl-bd">' + bd + '</span>' : '') : '' }; }
   /* build 0115 (play test: all three cards in a row showed the same Cleave icon): each card keeps its skill's icon and adds a small badge for what the card does */
-  function talBadge(keys) { const GI = ICONS, has = (...a) => a.find(k => keys.includes(k)); let n = null, t = 'gold';
-    if (has('heal', 'leech', 'lifeOnHit', 'life', 'lifePct', 'lifeRegen')) { n = 'fire-shield'; t = 'blood'; } else if (has('freeze', 'chill', 'vsCtl')) { n = 'snowing'; t = 'cold'; } else if (has('cd', 'cdr')) n = 'empty-hourglass';
-    else if (has('gen', 'ref', 'cost', 'mana')) { n = 'lightning-helix'; t = 'light'; } else if (has('m', 'exec', 'grp', 'dmg')) { n = 'punch-blast'; t = 'fire'; } else if (has('arc', 'range', 'r', 'w', 'len')) n = 'divert'; else if (has('as', 'aspd', 'ms', 'spd')) n = 'speedometer';
-    else if (has('cnt', 'n', 'proj', 'projExtra', 'echo')) n = 'star-formation'; else if (has('buff', 'dr', 'armor', 'armorPct', 'dodge')) n = 'magic-shield'; else if (keys.length) { n = 'punch-blast'; t = 'fire'; }
-    return n ? GI.icon(n, t) : ''; }
+  const TBADGE = { heal: ['fire-shield', 'blood'], leech: ['fire-shield', 'blood'], lifeOnHit: ['fire-shield', 'blood'], life: ['fire-shield', 'blood'], lifePct: ['fire-shield', 'blood'], lifeRegen: ['fire-shield', 'blood'],
+    freeze: ['snowing', 'cold'], chill: ['snowing', 'cold'], vsCtl: ['frozen-orb', 'cold'], cd: ['empty-hourglass'], cdr: ['empty-hourglass'], delay: ['empty-hourglass'], gen: ['lightning-helix', 'light'], ref: ['lightning-helix', 'light'], cost: ['lightning-helix', 'light'], mana: ['lightning-helix', 'light'],
+    m: ['punch-blast', 'fire'], dmg: ['punch-blast', 'fire'], lowLife: ['shouting', 'blood'], exec: ['targeted', 'blood'], grp: ['three-friends'], arc: ['divert'], range: ['divert'], r: ['divert'], spread: ['divert'], as: ['speedometer'], aspd: ['speedometer'], spd: ['speedometer'], ms: ['sprint'], dodge: ['sprint'],
+    cnt: ['missile-swarm'], projExtra: ['missile-swarm'], waves: ['magic-swirl', 'arc'], jumps: ['arcing-bolt', 'light'], pierce: ['broadhead-arrow'], echo: ['sonic-boom'], buff: ['magic-shield'], dr: ['magic-shield'], armor: ['magic-shield'], armorPct: ['magic-shield'], crit: ['star-formation', 'gold'], critDmg: ['star-formation', 'gold'], explode: ['meteor-impact', 'fire'] };
+  function talBadge(keys) { for (const k0 of keys) { const b = TBADGE[String(k0).replace(/^=/, '')]; if (b) return ICONS.icon(b[0], b[1] || 'gold'); } return keys.length ? ICONS.icon('punch-blast', 'fire') : ''; }
   function talGot(h, i) { const t = Array.isArray(h.tal) ? h.tal : [], k = t[i]; return k === 0 || k === 1 || k === 2 ? k : -1; }
   function talHtml(h) { const rows = talRows(h.cls), open = talOpen(h), GI = typeof ICONS !== 'undefined' ? ICONS : null; let strip = '', body = '', shownLocked = 0, nLock = 0;
     rows.forEach((r, i) => { const lv = TAL_LV[i], got = talGot(h, i), unl = h.level >= lv;
