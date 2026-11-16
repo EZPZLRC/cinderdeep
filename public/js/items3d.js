@@ -183,18 +183,18 @@ function drawIcon(job) {
   env(); const w = job.tall ? ICON : ICON, h = job.tall ? ICON * 2 : ICON; R.setSize(w, h, false);
   const { sz } = stage(job.sp, job.tall, -.5, .25); frame(sz, w / h, 1.06); R.render(scene, cam);
   out2d.width = w; out2d.height = h; o2.clearRect(0, 0, w, h); o2.drawImage(cv, 0, 0);
-  return new Promise(res => out2d.toBlob(b => res(b ? URL.createObjectURL(b) : null), 'image/png'));
+  return new Promise(res => out2d.toBlob(b => { if (b && store) { try { store.put(keyReq(job.key), new Response(b, { headers: { 'Content-Type': 'image/png' } })).catch(() => { }); } catch (e) { } } res(b ? URL.createObjectURL(b) : null); }, 'image/png'));
 }
 let pumping = false;
 function pump() {
   if (pumping || !queue.length) return; pumping = true;
   const step = async () => { const t0 = performance.now();
     while (queue.length && performance.now() - t0 < 8) { const job = queue.shift(); queued.delete(job.key); if (cache.has(job.key)) continue; let url = null; try { url = await drawIcon(job); } catch (e) { url = null; }
-      cache.set(job.key, url); if (url) for (const el of document.querySelectorAll('[data-m3="' + CSS.escape(job.key) + '"]')) { const im = new Image(); im.className = 'm3'; im.alt = ''; im.draggable = false; im.src = url; el.replaceWith(im); } }
+      cache.set(job.key, url); for (const el of document.querySelectorAll('[data-m3="' + CSS.escape(job.key) + '"]')) { if (!url) { el.classList.add('m3f'); continue; } const im = new Image(); im.className = 'm3 in'; im.alt = ''; im.draggable = false; im.src = url; el.replaceWith(im); } }
     if (queue.length) setTimeout(step, 4); else pumping = false; };
   setTimeout(step, 0);
 }
-// what ui.js asks for: the picture if it is ready, or null and it gets drawn soon (the flat icon shows meanwhile, wrapped so it can be swapped)
+// what ui.js asks for: the picture if it is ready, or { key } and it gets drawn soon (the slot stays empty meanwhile, and the picture fades in; if it can't be drawn, the flat icon shows)
 function icon(it, tall) {
   const key = iconKey(it, tall); if (!key) return null; if (cache.has(key)) { const u = cache.get(key); return u ? { url: u } : null; }
   if (!queued.has(key)) { const sp = spec(it); queue.push({ key, sp, tall }); queued.add(key); pump(); } return { key };
@@ -223,7 +223,18 @@ function loop(t) {
   const dt = Math.min(.1, (t - sc.last) / 1000); if (dt >= 1 / 31) { sc.last = t; try { draw(dt); } catch (e) { sc.raf = 0; return; } } sc.raf = requestAnimationFrame(loop);
 }
 
-// a quick check that this device can draw at all; if not, ui.js keeps the flat icons
+// a quick check that this device can draw at all; if not, ui.js shows the flat icons
 let ok = true; try { R.setSize(4, 4, false); R.render(scene, cam); ok = !!R.getContext() && !R.getContext().isContextLost(); } catch (e) { ok = false; }
+// build 0114: software drawing (no graphics card) takes seconds per picture, so keep the flat icons there rather than leave slots empty or switch looks late
+try { const gl = R.getContext(), x = gl.getExtension('WEBGL_debug_renderer_info'), name = String(gl.getParameter(x ? x.UNMASKED_RENDERER_WEBGL : gl.RENDERER) || ''); if (/swiftshader|llvmpipe|softpipe|software|basic render/i.test(name)) ok = false; } catch (e) { }
 cv.addEventListener('webglcontextlost', e => { e.preventDefault(); ok = false; });
-export default { get ok() { return ok; }, icon, showcase, spec };
+// build 0130: finished pictures are kept on the device for this build (Cache Storage), so after a reload every item shows its 3D picture straight away.
+// ui.js waits for `ready` (1.5 s at most) before it draws the bag. A new build gets a fresh store and the old one is cleared, so a picture is never out of date.
+let store = null;
+const CN = 'ob-items3d-' + (new URL(import.meta.url).searchParams.get('v') || '0') + '-' + ICON, keyReq = k => new Request(new URL('__items3d/' + encodeURIComponent(k), location.href).href);
+const ready = Promise.race([new Promise(r => setTimeout(r, 1500)), (async () => { try { if (!ok || !self.caches || !window.isSecureContext) return;
+  for (const k of await caches.keys()) if (k.startsWith('ob-items3d-') && k !== CN) caches.delete(k).catch(() => { });
+  const st = await caches.open(CN), reqs = await st.keys();
+  await Promise.all(reqs.map(async r => { try { const res = await st.match(r); if (!res) return; const b = await res.blob(), k = decodeURIComponent(new URL(r.url).pathname.split('/').pop()); if (!cache.has(k)) cache.set(k, URL.createObjectURL(b)); } catch (e) { } }));
+  store = st; } catch (e) { } })()]);
+export default { get ok() { return ok; }, ready, icon, showcase, spec };

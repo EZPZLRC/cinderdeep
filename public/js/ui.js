@@ -5,11 +5,19 @@ const UI = (() => {
   const glc = $('gl'), ov = $('ov'), ctx = ov.getContext('2d'), mini = $('mini'), mctx = mini.getContext('2d'), tip = $('tip');
   let slow = .016, slowN = 0, banT = 0, invOpen = false, invTab = 'hero', salvArm = false, last = 0, skEls = [], frameN = 0;
   const U = { invDirty: true };
-  /* 3D items (Lee, Nov 15: "1 and 2"): the bag shows each item as a small 3D model and the tooltip shows it large and turning. items3d.js loads after the page,
-     draws each item's picture once in the background, and until a picture is ready (or on a device without WebGL) the flat icon shows */
-  let I3 = null, tipIt = null;
-  window.addEventListener('load', () => setTimeout(() => { import(new URL('js/items3d.js?v=0129', location.href).href).then(m => { if (m.default && m.default.ok) { I3 = m.default; U.invDirty = true; } }).catch(() => { }); }, 1200));
-  function iconHtml(it, tall) { const sv = iconSvg(it); if (!I3) return sv; let r = null; try { r = I3.icon(it, tall); } catch (e) { r = null; } return !r ? sv : r.url ? `<img class="m3" src="${r.url}" alt="" draggable="false">` : `<span class="m3w" data-m3="${r.key.replace(/"/g, '')}">${sv}</span>`; }
+  /* 3D items (Lee, Nov 15: "1 and 2"): the bag shows each item as a small 3D model and the tooltip shows it large and turning.
+     Build 0114 (Lee: "it initial loads a previous version then changes the items to the new version"): an item never shows one look and then another.
+     items3d.js starts loading at once. Until it is ready, and while an item's picture is being drawn, the slot stays empty and the picture fades in.
+     Flat icons show only where 3D can't run (no WebGL, software drawing, or not ready within 8 s), and then for the whole visit, so they never switch later. */
+  let I3 = null, i3s = 'wait', tipIt = null;
+  const i3off = () => { if (i3s !== 'wait') return; i3s = 'off'; U.invDirty = true; };
+  setTimeout(i3off, 8000);
+  (window.__i3load || (() => import(new URL('js/items3d.js?v=0129', location.href).href)))().then(m => { const d = m.default; if (!d || !d.ok) return i3off(); return Promise.resolve(d.ready).then(() => { if (i3s !== 'wait' || !d.ok) return i3off(); I3 = d; i3s = 'on'; U.invDirty = true; i3warm(); }); }).catch(i3off);
+  /* build 0130: every item the hero owns (bag, worn, stash) and the shop's goods get their picture drawn in the background as soon as 3D is ready and again when play starts,
+     so it is usually done before a panel opens. Pictures are also kept on the device, so the next visit shows them straight away */
+  function i3warm() { if (!I3) return; try { const h = G.hero, all = [].concat(h ? h.inv : [], h ? Object.values(h.eq || {}) : [], G.stash || [], h && h.stock || []); for (const it of all) if (it && it.slot) { I3.icon(it, false); if (itemH(it) === 2) I3.icon(it, true); } } catch (e) { } }
+  U.i3warm = i3warm; setInterval(() => { if (I3 && G.state === 'play') i3warm(); }, 1000);
+  function iconHtml(it, tall) { const sv = iconSvg(it); if (i3s === 'off') return sv; if (i3s === 'wait') return `<span class="m3w">${sv}</span>`; let r = null; try { r = I3.icon(it, tall); } catch (e) { r = null; } return !r ? sv : r.url ? `<img class="m3" src="${r.url}" alt="" draggable="false">` : `<span class="m3w" data-m3="${r.key.replace(/"/g, '')}">${sv}</span>`; }
   function show3() { const s = tip.querySelector('.show3'); if (!s) return; if (!I3 || !tipIt) { s.remove(); return; } try { I3.showcase(s, tipIt); } catch (e) { s.remove(); } }
   U.zoneBanner = (a, b) => { $('ban1').textContent = a; $('ban2').textContent = b || ''; $('banner').classList.add('on'); banT = 3.4; fitBan($('banner')); setTimeout(() => fitBan($('banner')), 0); };
   /* build 0112 (play test: the boss name came twice and "is enraged" sat over the fight): while a boss bar shows, banners sit just under it, smaller, so the fight stays clear */
@@ -813,7 +821,7 @@ function forgeBox(it) { const F = G.lastForge; if (!F || F.it !== it) return '';
     if (artWait) return; artLoad(hero.cls);
     if (!artGo && !artReady(hero.cls)) { const t0 = Date.now(), b = $('btnNew'), msg = $('menuMsg'), was = msg.textContent; b.disabled = true; msg.textContent = 'Loading the world\u2026';
       artWait = setInterval(() => { if (!artReady(hero.cls) && Date.now() - t0 < 12000) return; clearInterval(artWait); artWait = 0; b.disabled = false; if (msg.textContent === 'Loading the world\u2026') msg.textContent = was; start(hero, net, true); }, 100); return; }
-    G.hero = hero; SFX.unlock(); P.hp = 1e9; U.invDirty = true; menuBuilt = false;
+    G.hero = hero; SFX.unlock(); P.hp = 1e9; U.invDirty = true; menuBuilt = false; i3warm();
     if (net) { $('menuMsg').textContent = 'Connecting to the server…'; NET.connect(net.name, net.room); return; }
     $('menu').classList.add('hide'); $('game').classList.remove('hide'); buildBar(); enterZone();
     setTimeout(() => { if (G.state !== 'menu' && G.hero && pendingPick(G.hero) >= 0) openPick(); }, 700);
