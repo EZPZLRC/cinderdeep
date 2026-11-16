@@ -452,8 +452,17 @@ void main(){float mat=vE.y;${DITHM}if(vAl>.5&&texture(uTex,vec3(vU,vLy)).a<.5)di
   let aoOK = 1;
   const UM = () => ({ uVP: vp, uLVP: lvp, uT: [env.t], uQ: [env.q], uWet: [env.wet], uMist: [env.mist], uGr: env.gr, uGe: env.ge, uSun: env.sun, uSunC: env.sunC, uSky: env.sky, uGnd: env.gnd, uFog: env.fog, uEye: cam.eye, uPl: env.player, uFogR: [env.fogN, env.fogF], uLR: [env.lightR], 'uLP[0]': LP, 'uLC[0]': LC, uTP: TPv(), uTC: env.ptc, uTR: [env.ptr], uScat: [env.scat] });
   const TP4 = new Float32Array(4), TPv = () => { const t = env.pt; if (t && env.shadows !== false) { TP4[0] = t[0]; TP4[1] = t[1]; TP4[2] = t[2]; TP4[3] = 1; } else TP4.fill(0); return TP4; };
+  // build 0139: how long the graphics card itself takes for a frame (where the browser can tell), so Automatic graphics knows when there is room to look better
+  let TQ = null; const tqs = [];
+  function gpuTime(start) {
+    if (TQ === null) { try { TQ = gl.getExtension('EXT_disjoint_timer_query_webgl2') || false; } catch (_) { TQ = false; } }
+    if (!TQ) return;
+    if (start) { if (tqs.length < 4) { const q = gl.createQuery(); gl.beginQuery(TQ.TIME_ELAPSED_EXT, q); tqs.push(q); tqs.cur = q; } return; }
+    if (tqs.cur) { gl.endQuery(TQ.TIME_ELAPSED_EXT); tqs.cur = null; }
+    const q = tqs[0]; if (q && q !== tqs.cur && gl.getQueryParameter(q, gl.QUERY_RESULT_AVAILABLE)) { tqs.shift(); const bad = gl.getParameter(TQ.GPU_DISJOINT_EXT), ms = gl.getQueryParameter(q, gl.QUERY_RESULT) / 1e6; gl.deleteQuery(q); if (!bad && ms > 0 && ms < 1000) env.gpuMs = env.gpuMs ? env.gpuMs * .9 + ms * .1 : ms; }
+  }
   function render() {
-    resize(); ensurePost(); upload('dyn', gl.DYNAMIC_DRAW); upload('glow', gl.DYNAMIC_DRAW); upload('xr', gl.DYNAMIC_DRAW); upload('xr2', gl.DYNAMIC_DRAW);
+    gpuTime(true); resize(); ensurePost(); upload('dyn', gl.DYNAMIC_DRAW); upload('glow', gl.DYNAMIC_DRAW); upload('xr', gl.DYNAMIC_DRAW); upload('xr2', gl.DYNAMIC_DRAW);
     const p = env.player, s = env.sun;
     if (env.pt) { const t = env.pt; lookAt(t1, [t[0], t[1], t[2]], [p[0], 0, p[2] - .01], [0, 0, -1]); persp(t2, t[3], 1, 1.5, 60); } /* build 0052: a torch's shadows spread out from the hero */ else { lookAt(t1, [p[0] + s[0] * 60, s[1] * 60, p[2] + s[2] * 60], [p[0], 0, p[2]], [0, 1, 0]); ortho(t2, -38, 38, -38, 38, 1, 140); } mul(lvp, t2, t1);
     gl.enable(gl.DEPTH_TEST);
@@ -500,7 +509,7 @@ void main(){float mat=vE.y;${DITHM}if(vAl>.5&&texture(uTex,vec3(vU,vLy)).a<.5)di
     if (mid) { quad(post.d, 1, post.sc.t, null, 1.4 / post.c.w, 0); quad(post.c, 1, post.d.t, null, 0, 1.4 / post.c.h); }
     if (hi) { gl.uniform4f(pPost.u.uPI, proj[0], proj[5], proj[10], proj[14]); quad(post.e, 3, post.sc.t, null, 0, 0, null, post.dt); quad(post.f, 1, post.e.t, null, 1 / post.e.w, 0); quad(post.e, 1, post.f.t, null, 0, 1 / post.e.h); }
     gl.uniform4f(pPost.u.uFx, mid ? env.dof : 0, hi ? env.ao : 0, mid ? .012 : 0, mid ? .28 : 0); gl.uniform1f(pPost.u.uWarm, env.warm || 0);
-    quad(null, 2, post.sc.t, post.a.t, 0, 0, mid ? post.c.t : null, hi ? post.e.t : null); gl.enable(gl.DEPTH_TEST);
+    quad(null, 2, post.sc.t, post.a.t, 0, 0, mid ? post.c.t : null, hi ? post.e.t : null); gl.enable(gl.DEPTH_TEST); gpuTime(false);
   }
   // ---- build 0039: real character models (see models.js). The mesh sits on the graphics card once; each frame only the pose is sent ----
   let libP = null; const models = {}, SKD = [], BR = 64, MI = { state: 'waiting', why: 'starts when a Ranger is on screen' }; let boneTex = null, boneW = 0, boneData = null, boneRows = 0;
