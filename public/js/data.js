@@ -1,5 +1,5 @@
 'use strict';
-const BUILD = '0149'; const BUILT_AT = 1794861519195; /* when this build was pushed, so the label stays right after a server restart */
+const BUILD = '0151'; const BUILT_AT = 1794861519195; /* when this build was pushed, so the label stays right after a server restart */
 // Fresh start: every hero and the stash are wiped whenever this number changes. It follows the build, so each new build is a new season.
 const SEASON = '0028'; /* Lee, Nov 14: heroes now carry over between builds. Only change this to start a brand-new season on purpose */
 const SLOTS = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring1'];
@@ -369,6 +369,24 @@ const VAELOTH = { n: 'Vaeloth, the Cinder Prophet', shape: 'wraith', c: 0x2a1410
   phases: [['barrage', 'spiral', 'nova', 'ring'], ['summon', 'charge', 'barrage', 'slam', 'summon', 'ring'], ['spiral', 'nova', 'barrage', 'charge', 'ring', 'spiral', 'slam']],
   phaseLines: [null, ['The Ember Host', 'Vaeloth calls his faithful out of the fire'], ['The Heart Wakes', 'The Heart beats under the floor. Vaeloth burns brighter and faster']] };
 const HEART = { name: 'The Heart of Cinders', theme: 'void', lvl: 30, d: 'Under the Voidscar, where a dead god sleeps and Vaeloth waits.' };
+// build 0151 (Lee's picks from the backgrounds picker 0001, Nov 16): a new look for the town and every region. Each look only changes light, colours,
+// ground, mist and weather numbers; walls, plants and props stay where they are. null takes a setting away (no ash on Obsidian Night).
+// The Heart of Cinders (floor 10) gets its own look, HEART.th, built from the Voidscar's old numbers, so it can differ from floor 9 while still counting as a void floor everywhere else.
+{ const put = (th, s) => { for (const k in s) { if (s[k] === null) delete th[k]; else th[k] = s[k]; } return th; };
+  HEART.th = put(Object.assign({}, THEMES.void), /* Golden Shrine: a dead god's temple, dark gold stone and candlelight */
+    { wc: [0x1e1810, 0x3a2e1a, 0xffc040], ground: 0x221c12, sunC: [.62, .46, .3], sky: [.16, .12, .08], gnd: [.06, .05, .03], fog: 0x080502, lamp: 0xffc040, torch: 0xffd080, amb: 'ember' });
+  put(THEMES.town, /* Bright Morning: clear daylight, soft blue haze, dust in the sun */
+    { sunC: [1.38, 1.3, 1.14], sky: [.38, .42, .5], gnd: [.16, .15, .13], fog: 0x55606e, mist: .04, wet: .04, amb: 'dust', lamp: 0xffc070, lightR: 40 });
+  put(THEMES.forest, /* Poison Bog: sickly yellow-green air, soaked ground, thick mist, rain */
+    { wc: [0x2e2a20, 0x3c4a18, 0x5e6a1c], ground: 0x3c4822, gr: [.5, .14, .1, 0], sunC: [.82, .98, .42], sky: [.12, .16, .07], gnd: [.05, .07, .03], fog: 0x0a1006, wet: 1, mist: .85, lamp: 0xb8ff3a });
+  put(THEMES.crypt, /* Candlelit Ossuary: warm bone-yellow stone, orange candles, dry dusty air */
+    { wc: [0x8a7e64, 0x6e6450, 0x9a8e72], ground: 0x5a5244, sunC: [.54, .42, .27], sky: [.15, .115, .07], gnd: [.07, .05, .03], fog: 0x0c0703, wet: .25, mist: .4, lamp: 0xffa040, torch: 0xffa050 });
+  put(THEMES.lava, /* Obsidian Night: black glassy rock with bright magma veins, no ash fall */
+    { wc: [0x141214, 0x221c1e, 0xff4a10], ground: 0x1e1818, gr: [.1, .6, .5, 1.5], sunC: [.45, .24, .16], sky: [.12, .05, .04], gnd: [.06, .02, .015], fog: 0x060202, wet: .3, lamp: 0xff4a10, wx: null });
+  put(THEMES.ice, /* Aurora Night: deep night, green-teal glow in the crystals and candles */
+    { wc: [0x3a8a86, 0x5aa8a0, 0x2a6a70], ground: 0x2a3e48, sunC: [.2, .52, .48], sky: [.03, .16, .14], gnd: [.01, .06, .05], fog: 0x02100e, lamp: 0x6affc0, mist: .2 });
+  put(THEMES.void, /* Blood Rift: red-violet sky, magenta fire, the ground cracked and glowing */
+    { wc: [0x24101c, 0x4a1a36, 0xff4aa0], ground: 0x2a1420, gr: [.2, .45, .45, .9], sunC: [.62, .2, .4], sky: [.2, .05, .12], gnd: [.08, .02, .05], fog: 0x0c0208, lamp: 0xff3a8a, torch: 0xff80c0 }); }
 // build 0075 (Lee, Nov 15): the world boss. Every kill by every player on the server fills one shared count.
 // When it reaches WB_NEED the boss rises on every party's floor, with one life the whole server wears down together.
 // Everyone who lands a hit on it gets a guaranteed Mythic when it falls. No other drop rate or XP number moves.
