@@ -13,6 +13,9 @@ const CG = (() => {
     server: onCG ? 'https://oathbyte.onrender.com/' : '', onSettings: null, onInvite: null };
   C.url = p => C.server + p;
   C.ws = () => C.server ? C.server.replace(/^http/, 'ws') + 'ws' : (L.protocol === 'https:' ? 'wss://' : 'ws://') + L.host + '/ws';
+  // on CrazyGames the status check gives up after 6 s, so Play is never greyed out for the whole minute a sleeping server takes to wake
+  // (CrazyGames wants players in the game within 20 s). The title screen keeps checking and switches to online play when it answers.
+  C.opt = () => { const o = { cache: 'no-store' }; if (C.on && typeof AbortController !== 'undefined') { const ac = new AbortController(); setTimeout(() => ac.abort(), 6000); o.signal = ac.signal; } return o; };
   if (!C.on) return C;
   C.noChat = !C.CHAT;
   if (typeof document !== 'undefined' && document.documentElement) document.documentElement.classList.add('cg');
