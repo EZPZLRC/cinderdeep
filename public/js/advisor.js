@@ -80,14 +80,15 @@ const ADV = (() => {
     }
   }
 
+  const set = (el, h) => { if (el._h !== h) { el._h = h; el.innerHTML = h; } }; /* only touch the card when what it says changes */
   function render() {
     const el = $('adv'); if (!el) return; const tp = tips[idx] || null;
-    if (!tp) { el.innerHTML = '<div class="advH"><span class="advI giv-adv"></span><b>Advisor</b><button class="advX" data-ad="x" aria-label="Close">×</button></div><div class="advT">Nothing to change right now.</div><div class="advD">Your gear, talents and potions all look good. Keep going.</div>'; return; }
+    if (!tp) { shownKey = ''; set(el, '<div class="advH"><span class="advI giv-adv"></span><b>Advisor</b><button class="advX" data-ad="x" aria-label="Close">×</button></div><div class="advT">Nothing to change right now.</div><div class="advD">Your gear, talents and potions all look good. Keep going.</div>'); return; }
     shownKey = tp.k; seen.add(tp.k);
-    el.innerHTML = `<div class="advH"><span class="advI giv-adv"></span><b>Next best move</b>${tips.length > 1 ? `<span class="advN">${idx + 1} of ${tips.length}</span>` : ''}<button class="advX" data-ad="x" aria-label="Close">×</button></div>
+    set(el, `<div class="advH"><span class="advI giv-adv"></span><b>Next best move</b>${tips.length > 1 ? `<span class="advN">${idx + 1} of ${tips.length}</span>` : ''}<button class="advX" data-ad="x" aria-label="Close">×</button></div>
       <div class="advT">${esc(tp.t)}</div><div class="advD">${tp.html ? tp.d : esc(tp.d)}</div>
       <div class="advB">${tp.a ? `<button class="advGo" data-ad="go">${esc(tp.a[0])}</button>` : ''}${tips.length > 1 ? '<button data-ad="nx">Next tip</button>' : ''}</div>
-      <label class="advO"><input type="checkbox" data-ad="auto"${opt.auto ? ' checked' : ''}> Pop up on its own</label>`;
+      <label class="advO"><input type="checkbox" data-ad="auto"${opt.auto ? ' checked' : ''}> Pop up on its own</label>`);
     el.classList.toggle('urg', !!tp.urgent);
   }
   function show(v, auto) { const el = $('adv'), b = $('bAdv'); if (!el) return; open = v; el.classList.toggle('hide', !v); el.classList.toggle('auto', !!(v && auto)); if (b) b.classList.toggle('open', v); autoT = v && auto ? 9 : 0; if (v) render(); }
@@ -98,7 +99,7 @@ const ADV = (() => {
     const now = performance.now(), dt = Math.min(1, (now - last) / 1000 || 0); last = now;
     if (typeof G === 'undefined' || G.state !== 'play' || !G.hero || !P.stats) { if (open) show(false); return; }
     watch(dt); const prev = tips[idx] && tips[idx].k; tips = think();
-    if (open) { const j = tips.findIndex(t => t.k === prev); idx = j >= 0 ? j : 0; if (!$('adv').matches(':hover') && !(document.activeElement && $('adv').contains(document.activeElement)) && (tips[idx] || {}).k !== shownKey) render(); else if (!tips[idx]) render(); if (autoT > 0 && !$('adv').matches(':hover')) { autoT -= dt; if (autoT <= 0) show(false); } }
+    if (open) { const j = tips.findIndex(t => t.k === prev); idx = j >= 0 ? j : 0; if (!$('adv').matches(':hover') || !tips[idx]) render(); if (autoT > 0 && !$('adv').matches(':hover')) { autoT -= dt; if (autoT <= 0) show(false); } }
     else { idx = 0; const top = tips[0], panel = UI.panelOpen && UI.panelOpen(), gap = G.time - lastAuto;
       if (opt.auto && top && !seen.has(top.k) && !panel && ((top.urgent && gap > 40) || (top.pri >= 60 && gap > 45 && calm()))) { lastAuto = G.time; show(true, true); } }
     refreshBadge();
