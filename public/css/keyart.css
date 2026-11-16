@@ -298,5 +298,7 @@ body:has(#menu.ka:not(.hide)) #build{display:none}
   #kaRail h4{margin:0 0 18px}
   #kaRail h4 em{display:block;font-size:13px;padding:6px 12px;border-radius:10px}
   #menu.ka .ccard::after{background:linear-gradient(180deg,transparent 55%,rgba(6,5,8,.9) 72%,rgba(6,5,8,.97) 100%)}
-  #menu.ka .ccard .cn{bottom:8px}
+  #menu.ka .ccard .cn{bottom:8px;font-size:clamp(8px,2.1vw,10.5px);letter-spacing:-.02em}
+  #kaRail{padding-left:6px;padding-right:6px}
+  #kaRail h4{margin-bottom:22px}
 }
