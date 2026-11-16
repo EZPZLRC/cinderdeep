@@ -294,8 +294,57 @@ const STORY = [
       done: [["Vaeloth", "Ten years I listened to it beat. Ten years. It was going to make the world clean."], ["Vaeloth", "Tell Hesta... tell her I was only ever trying to light the dark."], ["", "The Prophet falls, and the Heart under the floor slows, and stops. The fire in the stone goes grey."], ["", "Emberwatch is safe. Captain Roek is waiting for you."]],
       recap: "You stopped Vaeloth at the Heart of Cinders, and the dead god's heart went still." },
     { id: "a3s5", k: "talk", by: "roek", goal: "Bring the news to Captain Roek",
-      lines: [["Captain Roek", "It is over, then. The fire under the world is out, and the dead lie still in the Hollow."], ["Captain Roek", "But the Voidscar is still open. The Rift Stone in the square has been humming all night, and it is showing us places that should not exist."], ["Captain Roek", "Go and see how deep it goes, hero. Emberwatch will be here when you come back. It always will be, now."]],
-      recap: "Captain Roek thanked you and pointed you to the Rift Stone in the square." }
+      lines: [["Captain Roek", "It is over, then. The fire under the world is out, and the dead lie still in the Hollow."], ["Captain Roek", "But the Voidscar is still open, and the stair under the Heart keeps going down. Maren sat up all night with Vaeloth's book, and he has gone very quiet."], ["Captain Roek", "Rest while you can, hero. Emberwatch will be here when you come back. It always will be, now."]], /* build 0109: the Rift Stone was removed in 0098, so Roek now points down the stair, where Act IV begins */
+      recap: "Captain Roek thanked you. The Voidscar was still open, and the stair under the Heart kept going down." }
+  ] },
+  // build 0109 (Lee, Nov 16: write Act IV, carry the story past floor 10): The Sworn Flame, floors 11 to 20. Below the Heart the deep folds back on itself:
+  // the Gaping Star, a hungry star looking in through the Voidscar, remakes the regions and guardians you already beat in its own cold light.
+  // Only steps are added at the end (nothing moved), so STORY_V stays 2: heroes who finished Act III simply open Act IV on their next floor.
+  // vil is the line under a story guardian's name on this act's floors, bc the brand colours, and bl overrides vil for one guardian.
+  { n: "Act IV", t: "The Sworn Flame", sub: "A hungry star is looking in through the Voidscar", vil: "Risen in the light of the Gaping Star", bc: [0xffd84a, 0xfff0c0], steps: [
+    { id: "a4h1", k: "hunt", d: 11, n: 40, goal: "Cut down 40 of the starlit dead in the Hollow below the Heart",
+      open: [["Maren", "Hero, wait. I have read Vaeloth's book to the last page. The end of it is not prayers. It is warnings."], ["Maren", "For ten years he heard something through the Voidscar. Not the dead god. Something on the far side of the tear, looking in. He called it the Gaping Star, and it drinks fire."], ["Maren", "He wanted the god awake so its fire would hold the Star back. Now the Heart is still, and the stair below it opens onto the Blighted Hollow again. The same trees, under a white light. Go and see what it has made."]],
+      recap: "Below the Heart you found the Blighted Hollow again, lit by a cold white star." },
+    { id: "a4s1", k: "boss", d: 11, goal: "Slay the Rootmother, risen again in the Star's light",
+      done: [["", "The Rootmother falls a second time. There is no burning sigil in her heartwood now, only a cold white light, like a star seen in deep water."], ["", "The Star did not wake her. It made her again, out of her own ashes. Old Hesta knows the old tales of the sky."]],
+      recap: "The Rootmother rose again in the Star's light, and fell again." },
+    { id: "a4t1", k: "talk", by: "hesta", goal: "Tell Old Hesta about the starlight in the heartwood",
+      lines: [["Old Hesta", "Starlight in the heartwood. My grandmother sang about that, dear. A star that fell asleep in the dark under the world, and woke up hungry."], ["Old Hesta", "Vaeloth knew the song too. He was my little brother. I never told a soul. For ten years I was too ashamed to say his name."], ["Old Hesta", "The song ends with an oath. The first folk of Emberwatch swore to keep a flame burning against that star. The captain of the guard still learns the old words. Ask Roek."]],
+      recap: "Old Hesta told you Vaeloth was her brother, and that the town's founders swore an oath against the Star." },
+    { id: "a4t2", k: "talk", by: "roek", goal: "Ask Captain Roek about the old oath",
+      lines: [["Captain Roek", "The oath? Every captain learns it. Nobody has meant it as more than words for a hundred years."], ["Captain Roek", "'I will carry the flame down where the dark is deepest, and I will not set it down.' The old wardens carried a sworn flame on a blade into the deep. Doran's forge was built to make those blades."], ["Captain Roek", "A sworn flame takes three fires from the deep: one from the dead, one from the mountain, one from the ice. Bring them home, hero. The road to the dead starts behind Old Thornhide."]],
+      recap: "Captain Roek taught you the old oath: a sworn flame takes three fires, from the dead, the mountain and the ice." },
+    { id: "a4s2", k: "boss", d: 12, goal: "Bring down Old Thornhide, who guards the stair to the tombs",
+      done: [["", "Old Thornhide crashes down, and its hide is cold as frost. Behind its lair the old stone steps lead down, exactly as they did before."], ["", "The Star is building the whole road again, floor by floor. Below are the tombs, and the dead."]],
+      recap: "Old Thornhide fell again, and the stair down to the tombs opened." },
+    { id: "a4h2", k: "hunt", d: 13, n: 45, goal: "Lay 45 of the starlit dead to rest in the tombs below",
+      recap: "You laid the starlit dead of the tombs to rest." },
+    { id: "a4s3", k: "boss", d: 14, goal: "Free the Hollow Choir from the Star's light: the fire of the dead",
+      done: [["The Hollow Choir", "We sang for him once. The light took our voices. Carry us down with you."], ["", "As the last voice fades, a small blue flame is left burning on the tomb floor. It does not go out when you pick it up."], ["", "The first fire, from the dead. Two more: the mountain, and the ice."]],
+      recap: "The Hollow Choir was freed, and left you the first fire, from the dead." },
+    { id: "a4r1", k: "rescue", d: 15, who: "Wren", c: [0xffd84a, 0xfff0c0], goal: "Find Wren, Roek's scout, lost in the starlit Wastes",
+      lines: [["Wren", "Captain sent me after you. I got as far as the Wastes and the light found me. It does not burn. It takes. I could feel it taking my name."], ["Wren", "Listen. Magmaw is back in the deep Wastes, and the ember in its chest is beating warm. The Star has not touched that one yet."], ["Wren", "That is your fire from the mountain. Go and take it before the Star does. I can find my own way home."]],
+      recap: "You freed Wren, Roek's scout, who said Magmaw's ember was still beating warm." },
+    { id: "a4s4", k: "boss", d: 16, goal: "Take the mountain's fire from Magmaw",
+      done: [["", "Magmaw breaks open. In the rubble its ember still beats, warm and steady, the only warm thing on the whole floor."], ["", "The second fire, from the mountain. The last one waits in the ice."]],
+      recap: "Magmaw fell, and gave up the second fire, from the mountain." },
+    { id: "a4h3", k: "hunt", d: 17, n: 4, el: 1, goal: "Slay 4 champions of the starlit ice in Frostveil",
+      recap: "You broke the Star's champions in Frostveil." },
+    { id: "a4s5", k: "boss", d: 17, goal: "Slay the Pale Matriarch for the fire in the ice",
+      done: [["The Pale Matriarch", "Take it, then. My cold was the only thing that kept his light out of my head."], ["", "Where she falls, the ice holds a flame of blue-white fire that burns without heat."], ["", "The third fire. Doran the Smith has waited his whole life for this."]],
+      recap: "The Pale Matriarch fell, and the ice gave up the third fire." },
+    { id: "a4t3", k: "talk", by: "doran", goal: "Bring the three fires to Doran the Smith",
+      lines: [["Doran the Smith", "Three fires. My grandfather told me about this, and I never believed a word of it. Put them on the anvil. All three."], ["Doran the Smith", "Hear that? They are singing to each other. Hold your weapon in the flame. Steady. Steady."], ["Doran the Smith", "There. The sworn flame lives in your steel now, where the Star cannot drink it. Null is back at the tear, and the Star waits past it. Keep the oath, hero."]],
+      recap: "Doran bound the three fires into a sworn flame in your weapon." },
+    { id: "a4s6", k: "boss", d: 19, goal: "Cut past Null, the Unmade, risen at the tear",
+      done: [["Null, the Unmade", "It sees you. It has always seen you. Go down, little flame."], ["", "Null folds into nothing. Past the tear there is no sky at all. Only the Star, very close now, and very hungry."]],
+      recap: "Null, the Unmade, fell again at the tear, and the way to the Star opened." },
+    { id: "a4s7", k: "boss", d: 20, bl: "The Star itself, falling through the Voidscar", goal: "Slay the Gaping Star with the sworn flame",
+      done: [["", "The sworn flame bites into the Star's light, and for the first time, the light flinches."], ["", "The Gaping Star collapses into one white spark, and the spark goes out. Far above, the torn sky of the Voidscar starts to knit shut, slowly, like a healing wound."], ["", "You carried the flame down, and you did not set it down. Captain Roek should hear it from you."]],
+      recap: "You slew the Gaping Star with the sworn flame, and the Voidscar began to close." },
+    { id: "a4t4", k: "talk", by: "roek", goal: "Tell Captain Roek the oath is kept",
+      lines: [["Captain Roek", "Hesta lit a lamp in the old chapel tonight, for her brother. First time in ten years."], ["Captain Roek", "The tear is closing, the Star is gone, and you kept an oath this town forgot it ever made. That makes you the first sworn warden of Emberwatch in a hundred years."], ["Captain Roek", "The deep is still down there, and it is still hungry. But it is only the deep now. Go as far as you like, warden. We will keep a light in the window."]],
+      recap: "Captain Roek named you the first sworn warden of Emberwatch in a hundred years." }
   ] }
 ];
 const STORY_VILLAIN = "Vaeloth, the Cinder Prophet";
