@@ -14,7 +14,25 @@ const CDM = (() => {
     for (const a of head.anims) md.anims[a.name] = { F: a.frames, fps: a.fps, dur: (a.frames - 1) / a.fps, skin: take(Float32Array, a.frames * B * 12), att: take(Float32Array, a.frames * A * 12) };
     md.S = new Float32Array(B * 12); md.T = new Float32Array(A * 12);
     if (head.lib) { md.ibm = Float32Array.from(head.ibm.flat()); md.W = new Float32Array(B * 12); md.Q = new Float32Array(B * 4); md.tw = new Float32Array(B); md.dT = new Float32Array(B * 3); }
+    if (head.lib) md.caps = fitCaps(md);
     return md;
+  }
+  // build 0115: the body as rounded tubes fitted to the real mesh, one per main bone, in that bone's own frame, so worn gear can keep
+  // clear of each hero's own shape (an armoured Warden is broader than a slim Arcanist). Worked out once when the model loads.
+  const CAPB = ['pelvis', 'spine_01', 'spine_02', 'spine_03', 'neck_01', 'Head', 'clavicle_l', 'upperarm_l', 'lowerarm_l', 'clavicle_r', 'upperarm_r', 'lowerarm_r', 'thigh_l', 'calf_l', 'foot_l', 'thigh_r', 'calf_r', 'foot_r'];
+  function fitCaps(md) {
+    const H = md.head, V = H.v, ib = md.ibm, out = [], pct = (a, f) => { const b = Float32Array.from(a).sort(); return b[Math.min(b.length - 1, Math.max(0, Math.floor(b.length * f)))]; };
+    for (const name of CAPB) { const b = H.boneNames.indexOf(name); if (b < 0) continue; const L = [], o = b * 12;
+      for (let v = 0; v < V; v++) { let bw = 0, bi = -1; for (let q = 0; q < 4; q++) { const w = md.wt[v * 4 + q]; if (w > bw) { bw = w; bi = md.jn[v * 4 + q]; } } if (bi !== b || bw < 128) continue;
+        const x = md.pos[v * 3], y = md.pos[v * 3 + 1], z = md.pos[v * 3 + 2]; L.push([ib[o] * x + ib[o + 3] * y + ib[o + 6] * z + ib[o + 9], ib[o + 1] * x + ib[o + 4] * y + ib[o + 7] * z + ib[o + 10], ib[o + 2] * x + ib[o + 5] * y + ib[o + 8] * z + ib[o + 11]]); }
+      if (L.length < 12) continue; const c = [0, 0, 0]; for (const p of L) for (let k = 0; k < 3; k++) c[k] += p[k] / L.length;
+      const C = [0, 0, 0, 0, 0, 0, 0, 0, 0]; for (const p of L) for (let r = 0; r < 3; r++) for (let k = 0; k < 3; k++) C[r * 3 + k] += (p[r] - c[r]) * (p[k] - c[k]);
+      let e = [1, .7, .4]; for (let it = 0; it < 24; it++) { const n = [C[0] * e[0] + C[1] * e[1] + C[2] * e[2], C[3] * e[0] + C[4] * e[1] + C[5] * e[2], C[6] * e[0] + C[7] * e[1] + C[8] * e[2]], l = Math.hypot(n[0], n[1], n[2]) || 1; e = [n[0] / l, n[1] / l, n[2] / l]; }
+      if (name === 'Head') { const ds = L.map(p => Math.hypot(p[0] - c[0], p[1] - c[1], p[2] - c[2])); out.push({ b, n: name, a: c.slice(), c: c.slice(), r: Math.max(.01, pct(ds, .96)) }); continue; } /* the head (and helmet or hood) as one ball */
+      const t = L.map(p => (p[0] - c[0]) * e[0] + (p[1] - c[1]) * e[1] + (p[2] - c[2]) * e[2]), d = L.map((p, i) => Math.hypot(p[0] - c[0] - e[0] * t[i], p[1] - c[1] - e[1] * t[i], p[2] - c[2] - e[2] * t[i]));
+      const r = Math.max(.01, pct(d, /spine_0[23]|clavicle/.test(name) ? .985 : .95)), t0 = pct(t, .03), t1 = pct(t, .97), sh = /clavicle/.test(name) ? 0 : Math.min(r, (t1 - t0) / 2) * .6; /* a tube's rounded ends already reach past its ends */
+      out.push({ b, n: name, a: [c[0] + e[0] * (t0 + sh), c[1] + e[1] * (t0 + sh), c[2] + e[2] * (t0 + sh)], c: [c[0] + e[0] * (t1 - sh), c[1] + e[1] * (t1 - sh), c[2] + e[2] * (t1 - sh)], r }); }
+    return out;
   }
   // the shared animation file: per frame, each bone's local rotation (16-bit quaternion) plus the root and pelvis moves
   function lib(ab) {
@@ -82,10 +100,20 @@ const CDM = (() => {
     for (const k of L) { const C = md._ikc[k.s], w = Math.max(0, Math.min(1, k.w)); if (!C || !(w > .001)) continue;
       const Sp = [W[C.ua * 12 + 9], W[C.ua * 12 + 10], W[C.ua * 12 + 11]], Ep = [W[C.la * 12 + 9], W[C.la * 12 + 10], W[C.la * 12 + 11]], Hp = [W[C.ha * 12 + 9], W[C.ha * 12 + 10], W[C.ha * 12 + 11]];
       const a = Math.hypot(Ep[0] - Sp[0], Ep[1] - Sp[1], Ep[2] - Sp[2]), b = Math.hypot(Hp[0] - Ep[0], Hp[1] - Ep[1], Hp[2] - Ep[2]);
-      const P = [Hp[0] + (k.p[0] - Hp[0]) * w, Hp[1] + (k.p[1] - Hp[1]) * w, Hp[2] + (k.p[2] - Hp[2]) * w]; let dv = [P[0] - Sp[0], P[1] - Sp[1], P[2] - Sp[2]], d = Math.hypot(dv[0], dv[1], dv[2]);
+      let kp = k.p; if (k.follow !== undefined && md._ikc.r && H.grip) { /* build 0115: the second hand closes on the haft where it really is, after the first arm has moved */
+        const ri = md._ikc.r.ha * 12, li = C.ha * 12, gR = H.grip[0], gL = H.grip[1], gp = (o2, g) => [S[o2 + 9] + S[o2] * g[0] + S[o2 + 3] * g[1] + S[o2 + 6] * g[2], S[o2 + 10] + S[o2 + 1] * g[0] + S[o2 + 4] * g[1] + S[o2 + 7] * g[2], S[o2 + 11] + S[o2 + 2] * g[0] + S[o2 + 5] * g[1] + S[o2 + 8] * g[2]];
+        const R = [], ib = md.ibm; for (let r = 0; r < 3; r++) R.push(W[ri + r] * ib[ri + 6] + W[ri + 3 + r] * ib[ri + 7] + W[ri + 6 + r] * ib[ri + 8]); const zR = nrm(R), GR = gp(ri, gR), GL = gp(li, gL);
+        kp = [GR[0] + zR[0] * k.follow - (GL[0] - Hp[0]), GR[1] + zR[1] * k.follow - (GL[1] - Hp[1]), GR[2] + zR[2] * k.follow - (GL[2] - Hp[2])]; k.d = zR; }
+      const P = [Hp[0] + (kp[0] - Hp[0]) * w, Hp[1] + (kp[1] - Hp[1]) * w, Hp[2] + (kp[2] - Hp[2]) * w]; let dv = [P[0] - Sp[0], P[1] - Sp[1], P[2] - Sp[2]], d = Math.hypot(dv[0], dv[1], dv[2]);
       const dc = Math.max(Math.abs(a - b) + 1e-3, Math.min(a + b - 1e-3, d)); const n = d > 1e-6 ? [dv[0] / d, dv[1] / d, dv[2] / d] : [0, -1, 0];
       let h = k.pole || [Ep[0] - Sp[0], Ep[1] - Sp[1], Ep[2] - Sp[2]]; h = [h[0] - n[0] * dot(h, n), h[1] - n[1] * dot(h, n), h[2] - n[2] * dot(h, n)]; if (Math.hypot(h[0], h[1], h[2]) < 1e-4) h = [0, -1, 0]; h = nrm(h);
-      const cA = Math.max(-1, Math.min(1, (a * a + dc * dc - b * b) / (2 * a * dc))), sA = Math.sqrt(1 - cA * cA), E2 = [Sp[0] + (n[0] * cA + h[0] * sA) * a, Sp[1] + (n[1] * cA + h[1] * sA) * a, Sp[2] + (n[2] * cA + h[2] * sA) * a];
+      const cA = Math.max(-1, Math.min(1, (a * a + dc * dc - b * b) / (2 * a * dc))), sA = Math.sqrt(1 - cA * cA);
+      if (k.d && k.perp) { /* build 0115: a hand grips a haft across the palm, so swing the elbow round until the forearm stands roughly square to the weapon, staying as near the natural elbow as it can */
+        const dd = nrm(k.d), h2 = crs(n, h), C0 = [Sp[0] + n[0] * a * cA, Sp[1] + n[1] * a * cA, Sp[2] + n[2] * a * cA], Pd = [Sp[0] + n[0] * dc, Sp[1] + n[1] * dc, Sp[2] + n[2] * dc];
+        let bt = 0, bc = 1e9; for (let i = -24; i <= 24; i++) { const th = i * .1309, ct = Math.cos(th), st = Math.sin(th), E = [C0[0] + (h[0] * ct + h2[0] * st) * a * sA, C0[1] + (h[1] * ct + h2[1] * st) * a * sA, C0[2] + (h[2] * ct + h2[2] * st) * a * sA];
+          const f = nrm([Pd[0] - E[0], Pd[1] - E[1], Pd[2] - E[2]]), g = Math.abs(dot(f, dd)), cost = Math.max(0, g - k.perp) * 6 + Math.abs(th) * .25; if (cost < bc) { bc = cost; bt = th; } }
+        if (bt) { const ct = Math.cos(bt), st = Math.sin(bt); h = nrm([h[0] * ct + h2[0] * st, h[1] * ct + h2[1] * st, h[2] * ct + h2[2] * st]); } }
+      const E2 = [Sp[0] + (n[0] * cA + h[0] * sA) * a, Sp[1] + (n[1] * cA + h[1] * sA) * a, Sp[2] + (n[2] * cA + h[2] * sA) * a];
       spin(md, C.su, qft([Ep[0] - Sp[0], Ep[1] - Sp[1], Ep[2] - Sp[2]], [E2[0] - Sp[0], E2[1] - Sp[1], E2[2] - Sp[2]]), Sp);
       const H1 = [W[C.ha * 12 + 9], W[C.ha * 12 + 10], W[C.ha * 12 + 11]], Pc = [Sp[0] + n[0] * dc, Sp[1] + n[1] * dc, Sp[2] + n[2] * dc];
       spin(md, C.sl, qft([H1[0] - E2[0], H1[1] - E2[1], H1[2] - E2[2]], [Pc[0] - E2[0], Pc[1] - E2[1], Pc[2] - E2[2]]), E2);
