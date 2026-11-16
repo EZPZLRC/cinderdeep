@@ -282,7 +282,7 @@ function makeItem(ilvl, slot, rar, baseName, plain) { /* plain: never named loot
   const n = rar === 0 ? 0 : rar === 1 ? rint(1, 2) : rar === 2 ? rint(3, 5) : rar === 3 ? rint(4, 5) : 6;
   for (let i = 0; i < n; i++) rollAffix(it);
   if (rar === 4) for (const a of it.aff) a.v = Math.round(a.v * 1.25);
-  if (rar >= 3) { { const al = AFF_ALIAS[slot] || slot, ps = Object.keys(POWERS).filter(p => !POWERS[p].nm && (POWERS[p].slots.includes(slot) || POWERS[p].slots.includes(al))); it.power = pick(ps.length ? ps : Object.keys(POWERS).filter(p => !POWERS[p].nm)); } it.name = POWERS[it.power].n; }
+  if (rar >= 3) { { const c = G.hero && G.hero.cls, ps = Object.keys(POWERS).filter(p => POWERS[p].lp && POWERS[p].cls === c); it.power = pick(ps.length ? ps : Object.keys(POWERS).filter(p => POWERS[p].lp)); } it.name = POWERS[it.power].n; } /* Lee, Nov 16 ("Replace them"): new Legendaries and Mythics roll a power that changes one of your class's skills; the old stat powers no longer roll */
   it.sd = (Math.random() * 2147483646 | 0) + 1; const L = itemLook(it), r = L.r;
   if (rar >= 3) it.name = it.name + ', ' + I_EPI[r() * I_EPI.length | 0];
   else if (rar === 2) it.name = RN1[r() * RN1.length | 0] + RN2[r() * RN2.length | 0].toLowerCase() + ', ' + L.mat[0] + ' ' + it.base;
@@ -397,7 +397,7 @@ function calcStats(eq, noBuff) { /* build 0090: noBuff leaves out skill buffs, s
   if (!noBuff) for (const b of P.buffs) for (const k in b.s) s[k] = (s[k] || 0) + b.s[k];
   const pg = h.pg || {}; s.dmg += pg.dmg || 0; s.lifePct += pg.life || 0; s.armorPct += (pg.armor || 0) * 2; s.critDmg += (pg.crit || 0) * 2; s.mf += pg.mf || 0; s.ms += Math.min(25, pg.ms || 0);
   { const ts = talBuild().s; for (const k in ts) s[k] = (s[k] || 0) + ts[k]; } /* build 0074: talent cards */
-  s.wmin = wmin; s.wmax = wmax; s.wspd = wspd;
+  s.wmin = wmin; s.wmax = wmax; s.wspd = wspd; s.lps = legPowers(eq);
   s.maxLife = Math.round((c.life + h.level * c.lifeLv + s.life) * (1 + s.lifePct / 100)); s.maxMana = c.res.max;
   s.armorT = Math.round((arm + s.armor + c.armor * h.level) * (1 + s.armorPct / 100));
   s.rfire = Math.min(75, s.resFire + s.resAll); s.rcold = Math.min(75, s.resCold + s.resAll); s.rlight = Math.min(75, s.resLight + s.resAll);
@@ -416,6 +416,8 @@ function effectWorth(s) { const h = G.hero, bar = ((h && h.bar) || []).map((id, 
   d += g('projExtra') * .25 * pj; d += g('echo') / 100 * .8; d += g('procLight') / 100 * .75; d += g('lowLife') / 100 * .3; d += (g('boomFire') ? .12 : 0) + (g('boomCold') ? .12 : 0);
   d += g('area') / 100 * .45 * ar; d += 1 / (1 - Math.min(50, g('cull')) / 100) - 1; d += (s.cdrT || 0) / 100 * .5 * cd; d += Math.min(80, g('ms')) / 100 * .15;
   t += g('leech') * .03 + (g('cheat') ? .35 : 0);
+  /* Legendary powers that change a skill: worth their share of that skill's damage, and nothing while the skill is not on your bar */
+  if (s.lps && h) for (const p of s.lps) { const L = POWERS[p], i = (h.bar || []).indexOf(L.sk); if (L.cls === h.cls && i >= 0) d += L.w * (i === 0 ? 2 : 1) / W; }
   /* build 0090 (Lee: every stat counts): elemental damage for the other skills on the bar, not only the first one */
   { const inc = k => 1 + (g('dmg') + g(k.el || 'phys') + (k.el && k.el !== 'phys' ? g('ele') : 0)) / 100, b0 = bar.find(x => x[1] === 0); if (b0) { const i0 = inc(b0[0]); for (const [k, i] of bar) if (i > 0 && k.el && k.m) d += (1 / W) * (inc(k) / i0 - 1); } }
   /* life regen, life on hit and thorns keep you alive; cooldown helps any bar a little; movement also helps you get out of the way */
@@ -1050,6 +1052,7 @@ function hitEnemy(e, sk, mult, noProc) { if (e && e.alive && e.arch === 'goblin'
   { const heavy = sk.type === 'melee' || !!sk.land || sk.type === 'nova', dx = e.x - P.x, dz = e.z - P.z, l = Math.hypot(dx, dz) || 1, wt = e.boss ? .15 : e.arch === 'brute' || e.elite ? .45 : e.arch === 'swarm' ? 1.3 : 1, pw = (heavy ? 1 : .45) * (d.crit ? 1.5 : 1) * wt; // build 0048: hits have weight. Every hit makes the monster flinch and lean back, heavy hits and crits shove it, and a heavy blow breaks a wind-up
     e.hdx = dx / l; e.hdz = dz / l; e.hf = .22; e.hp0 = pw; e.lheavy = heavy || d.crit;
     if (!G.online && !e.dummy && !e.boss) { const kb = 7 * pw; e.kvx = (e.kvx || 0) + e.hdx * kb; e.kvz = (e.kvz || 0) + e.hdz * kb; }
+    if (sk.pull && !G.online && !e.dummy && !e.boss && l > 1.8) { e.kvx = -e.hdx * 6 * sk.pull; e.kvz = -e.hdz * 6 * sk.pull; } /* Cinderwheel pulls enemies in; online the server does the pulling */
     if (!G.online && !e.boss && !e.dummy && (heavy || d.crit) && (!e.elite || d.crit) && (e.st === 'wind' || e.st === 'hwind' || e.st === 'cwind') && e.arch !== 'bomber') { e.st = 'rec'; e.t = .45; e.atk = 0; for (const a of G.areas) if (a.src === e && !a.done && a.owner === 'e') { a.done = true; a.t = a.delay; } floatText(e.x, 2.2 * e.sc + .4, e.z, 'Staggered', '#ffd27a', .7, 13); } }
   burst(e.x, 1.1 * e.sc, e.z, d.crit ? 0xffe14a : EL_COL[sk.el], d.crit ? 12 : 6, d.crit ? 7 : 5); hitSpray(e, sk, d.crit, sk.type === 'melee' || !!sk.land || sk.type === 'nova');
   { const heavy = sk.type === 'melee' || !!sk.land || sk.type === 'nova'; G.fx.push({ flash: 1, x: e.x, y: 1.1 * e.sc, z: e.z, r: d.crit ? 3.2 : heavy ? 2.2 : 1.4, life: .12, max: .12, c: GLX.col(d.crit ? 0xfff2b0 : EL_COL[sk.el]) }); if (d.crit) G.shake = Math.min(.5, G.shake + .12); }
@@ -1057,7 +1060,7 @@ function hitEnemy(e, sk, mult, noProc) { if (e && e.alive && e.arch === 'goblin'
   if (G.time - G.hitSfx > .05) { G.hitSfx = G.time; SFX.play(d.crit ? 'crit' : 'hit'); }
   if (!noProc && s.procLight && Math.random() * 100 < s.procLight) addArea({ x: e.x, z: e.z, r: 2.6, delay: .15, owner: 'p', sk: { el: 'light', m: 1.5 }, c: 0xfff07a, proc: 1 });
   if (e.dummy) return;
-  if (G.online) { const cl = !e.boss && s.cull && e.hp < e.maxHp * s.cull / 100; NET.send({ t: 'hit', id: e.id, v: cl ? e.maxHp * 2 : v, el: sk.el, fz: sk.freeze || 0 }); if (e.hp < 0) e.hp = 0; return; }
+  if (G.online) { const cl = !e.boss && s.cull && e.hp < e.maxHp * s.cull / 100; NET.send({ t: 'hit', id: e.id, v: cl ? e.maxHp * 2 : v, el: sk.el, fz: sk.freeze || 0, pl: sk.pull ? 1 : 0 }); if (e.hp < 0) e.hp = 0; return; }
   if (e.hp <= 0 || (!e.boss && s.cull && e.hp < e.maxHp * s.cull / 100)) killEnemy(e);
 }
 function flingCorpse(e) { /* build 0048: kills go flying, away from the hero; heavy hits and crits throw them further. Bosses fall where they stand */ if (e.boss || e.dummy || typeof document === 'undefined') return; let dx = e.hdx, dz = e.hdz; if (dx === undefined) { const x = e.x - P.x, z = e.z - P.z, l = Math.hypot(x, z) || 1; dx = x / l; dz = z / l; }
@@ -1109,15 +1112,34 @@ function tryCast(slot, tx, tz) {
   if (sk.buff && sk.buff.s) { P.buffs = P.buffs.filter(b => b.n !== sk.buff.n); P.buffs.push({ s: sk.buff.s, t: sk.buff.t, n: sk.buff.n }); computeStats(); } /* build 0074: a talent card's short boost */
   const sp = (1 + s.aspd / 100) * aspdK();
   if (sk.type === 'spin') { P.spin = { t: sk.dur, tk: 0, sk }; return true; }
-  if (sk.type === 'buff') { P.buffs = P.buffs.filter(b => b.n !== sk.n); P.buffs.push({ s: sk.s, t: sk.dur, n: sk.n }); computeStats(); ring(P.x, P.z, 0, 7, .5, 0xffb03a); SFX.play('shrine'); P.mana = Math.min(s.maxMana, P.mana + 20); return true; }
+  if (sk.type === 'buff') { P.buffs = P.buffs.filter(b => b.n !== sk.n); P.buffs.push({ s: sk.s, t: sk.dur, n: sk.n }); computeStats(); ring(P.x, P.z, 0, 7, .5, 0xffb03a); SFX.play('shrine'); P.mana = Math.min(s.maxMana, P.mana + 20);
+    if (sk.blast) { legBlast(P.x, P.z, sk.blast.r, { n: sk.n, el: 'phys' }, sk.blast.m, { fz: sk.blast.fz, c: 0xffb03a }); G.shake = .55; SFX.play('slam'); } /* Stonevoice */
+    return true; }
   P.rot = Math.atan2(tx - P.x, tz - P.z); const dur = sk.basic ? 1 / (s.wspd * sp * (sk.as || 1)) : (sk.ct || .35) / sp;
   P.act = { sk, id, t: 0, dur, fireAt: dur * .42, fired: false, tx, tz }; P.swing = 0; SFX.play('swing', sk); return true;
 }
-function shoot(ang, sk) {
-  const sx = Math.sin(ang), cz = Math.cos(ang), c = sk.c || EL_COL[sk.el];
-  G.pp.push({ x: P.x + sx * .8, z: P.z + cz * .8, vx: sx * sk.spd, vz: cz * sk.spd, rot: ang, life: (sk.range || 15) / sk.spd, r: sk.pr || .45, sk, pierce: sk.pierce || 0, hit: new Set(), c: GLX.col(c), arrow: !!sk.arrow });
-  if (G.online) NET.send({ t: 'fx', k: 'p', x: P.x + sx * .8, z: P.z + cz * .8, rot: ang, r: sk.spd, arc: (sk.range || 15) / sk.spd, c });
+function shoot(ang, sk, ox, oz, hit) { /* ox, oz, hit: a shot that starts somewhere else, like an arrow splitting off another (Brokenfletch) */
+  const sx = Math.sin(ang), cz = Math.cos(ang), c = sk.c || EL_COL[sk.el], x0 = ox === undefined ? P.x + sx * .8 : ox, z0 = oz === undefined ? P.z + cz * .8 : oz;
+  G.pp.push({ x: x0, z: z0, vx: sx * sk.spd, vz: cz * sk.spd, rot: ang, life: (sk.range || 15) / sk.spd, r: sk.pr || .45, sk, pierce: sk.pierce || 0, hit: hit || new Set(), c: GLX.col(c), arrow: !!sk.arrow });
+  if (G.online) NET.send({ t: 'fx', k: 'p', x: x0, z: z0, rot: ang, r: sk.spd, arc: (sk.range || 15) / sk.spd, c });
 }
+/* Legendary powers that change a skill (Lee, Nov 16). Every extra hit they make goes through hitEnemy like any other, so it also counts online */
+function legSk(base, m, el, fz) { return { n: base.n, type: 'lp', el: el || base.el || 'phys', m, freeze: fz || 0, crit: base.crit || 0 }; }
+function legBlast(x, z, r, base, m, o) { o = o || {}; const sk = legSk(base, m, o.el, o.fz), rr = r * (1 + P.stats.area / 100), c = o.c || EL_COL[sk.el];
+  if (o.delay) { addArea({ x, z, r: rr, delay: o.delay, owner: 'p', sk, c, nf: 1 }); return; }
+  areaHit(x, z, rr, sk); ring(x, z, .4, rr, .35, c); impact(x, z, rr * .6, c, rr > 3); if (G.online) NET.send({ t: 'fx', k: 'r', x, z, r: rr, c }); }
+function legGround(x, z, base, m, el, n) { const c = EL_COL[el || 'fire'], sk = legSk(base, m, el || 'fire'); for (let i = 0; i < n; i++) addArea({ x, z, r: 1.7 * (1 + P.stats.area / 100), delay: .25 + i * .5, owner: 'p', sk, c, gr: 1, proc: 1 }); } /* burning ground: a patch that hits every half second */
+function legDashEnd(d) { const ds = d.sk; if (!ds) return; const lr = ds.land || 3;
+  if (ds.aft) for (let j = 1; j <= ds.aft; j++) legBlast(P.x, P.z, lr * (1 + .3 * j), ds, ds.m * (ds.aftm || .5), { delay: .4 * j, c: 0xffc890 }); /* Tremorborn */
+  if (ds.shade) { burst(P.x, 1.2, P.z, 0x9a8cff, 16, 4); legBlast(P.x, P.z, lr, ds, ds.m * ds.shade, { delay: 1, c: 0x9a8cff }); } /* Afterimage */
+  if (ds.trail) { const n = Math.max(1, Math.round(Math.hypot(d.x1 - d.x0, d.z1 - d.z0) / 1.6)); for (let j = 0; j <= n; j++) legGround(d.x0 + (d.x1 - d.x0) * j / n, d.z0 + (d.z1 - d.z0) * j / n, ds, ds.trail, 'fire', 4); } /* Cindertrack */
+  if (ds.ends && ds.ends.b) legBlast(P.x, P.z, ds.ends.r, ds, ds.ends.b, { el: ds.ends.el, fz: ds.ends.fz }); }
+function legSpinTick(sp) { const k = sp.sk; sp.lt = (sp.lt || 0) + 1;
+  if (k.trail && sp.lt % 2 === 0) legGround(P.x, P.z, k, k.trail, 'fire', 4); /* Cinderwheel */
+  if (k.swave && sp.lt % 2 === 0) for (let j = 0; j < 3; j++) legWave(sp.lt * .7 + j * 2.0944, k, k.swave); } /* Gale Dancer */
+function legSeek(p, dt) { let best = null, bd = 10; const hd = Math.atan2(p.vx, p.vz); for (const e of G.ents) { if (!e.alive || p.hit.has(e)) continue; const dx = e.x - p.x, dz = e.z - p.z, d = Math.hypot(dx, dz); if (d >= bd) continue; let da = Math.atan2(dx, dz) - hd; while (da > Math.PI) da -= 6.2832; while (da < -Math.PI) da += 6.2832; if (Math.abs(da) < 1.6) { bd = d; best = da; } }
+  if (best === null) return; const t = Math.max(-p.sk.seek * dt, Math.min(p.sk.seek * dt, best)), a = hd + t, v = Math.hypot(p.vx, p.vz); p.vx = Math.sin(a) * v; p.vz = Math.cos(a) * v; p.rot = a; }
+function legWave(ang, base, m) { shoot(ang, { n: base.n, type: 'proj', el: 'phys', m, spd: 21, pr: 1.2, pierce: 99, range: 9, c: 0xe8f4ff }); }
 function areaHit(x, z, r, sk, mult) { let n = 0; for (const e of G.ents) if (e.alive && Math.hypot(e.x - x, e.z - z) <= r + e.r) { hitEnemy(e, sk, mult); n++; } return n; }
 function fireSkill(a) {
   const sk = a.sk, s = P.stats, ar = 1 + s.area / 100;
@@ -1127,16 +1149,23 @@ function fireSkill(a) {
     const range = sk.range * Math.sqrt(ar); let n = 0;
     for (const e of G.ents) { if (!e.alive) continue; const dx = e.x - P.x, dz = e.z - P.z, d = Math.hypot(dx, dz); if (d > range + e.r) continue; let da = Math.atan2(dx, dz) - P.rot; while (da > Math.PI) da -= 6.2832; while (da < -Math.PI) da += 6.2832; if (Math.abs(da) <= sk.arc / 2 || d < 1.2) { hitEnemy(e, sk); n++; } }
     G.fx.push({ slash: 1, x: P.x, z: P.z, rot: P.rot, r: range, arc: sk.arc, life: .16, max: .16, c: GLX.col(0xfff0d0) }); if (G.online) NET.send({ t: 'fx', k: 's', x: P.x, z: P.z, rot: P.rot, r: range, arc: sk.arc }); if (n) G.shake = Math.min(.5, G.shake + .06);
+    if (sk.wave && !a.echoed && (!sk.every || (P.legN = (P.legN || 0) + 1) % sk.every === 0)) legWave(P.rot, sk, sk.wave); /* Edgewake, Fivefold Rhythm */
+    if (sk.burn && !a.echoed) for (let j = 1; j <= 3; j++) legGround(P.x + Math.sin(P.rot) * j * 1.6, P.z + Math.cos(P.rot) * j * 1.6, sk, sk.burn, 'fire', 4); /* Hearthpalm */
   } else if (sk.type === 'nova') {
-    const r = sk.r * ar; areaHit(P.x, P.z, r, sk); ring(P.x, P.z, .5, r, .35, EL_COL[sk.el]); if (G.online) NET.send({ t: 'fx', k: 'r', x: P.x, z: P.z, r, c: EL_COL[sk.el] }); burst(P.x, .4, P.z, 0xc8b89a, 26, 9); impact(P.x, P.z, r * .6, EL_COL[sk.el], true); G.shake = .45; SFX.play('slam');
+    const r = sk.r * ar; areaHit(P.x, P.z, r, sk); ring(P.x, P.z, .5, r, .35, EL_COL[sk.el]);
+    if (sk.pulse && !a.echoed) for (let j = 1; j <= sk.pulse; j++) G.timers.push({ t: j * .7, fn: () => { if (!P.dead) fireSkill({ sk: Object.assign({}, sk, { m: sk.m * .5, pulse: 0, echo: 0 }), echoed: 1, tx: P.x, tz: P.z }); } }); /* Wintering Heart */ if (G.online) NET.send({ t: 'fx', k: 'r', x: P.x, z: P.z, r, c: EL_COL[sk.el] }); burst(P.x, .4, P.z, 0xc8b89a, 26, 9); impact(P.x, P.z, r * .6, EL_COL[sk.el], true); G.shake = .45; SFX.play('slam');
   } else if (sk.type === 'dash') {
     let dx = a.tx - P.x, dz = a.tz - P.z; const d = Math.hypot(dx, dz) || 1, L = Math.min(d, sk.range); dx /= d; dz /= d; let ex = P.x, ez = P.z;
     for (let t = .5; t <= L; t += .5) { const nx = P.x + dx * t, nz = P.z + dz * t; if (!blocked(nx, nz, .55)) { ex = nx; ez = nz; } }
-    if (sk.blink) { ring(P.x, P.z, 0, 2.5, .3, EL_COL.arc); burst(P.x, 1.2, P.z, EL_COL.arc, 14, 5); P.x = ex; P.z = ez; ring(ex, ez, 0, 3, .35, EL_COL.arc); P.iframes = .35; SFX.play('leap'); return; }
+    if (sk.ends && sk.ends.a && !a.echoed) legBlast(P.x, P.z, sk.ends.r, sk, sk.ends.a, { el: sk.ends.el, fz: sk.ends.fz }); /* Doubled Step, Frostfall Step: where you leave */
+    if (sk.blink) { ring(P.x, P.z, 0, 2.5, .3, EL_COL.arc); burst(P.x, 1.2, P.z, EL_COL.arc, 14, 5); P.x = ex; P.z = ez; ring(ex, ez, 0, 3, .35, EL_COL.arc); P.iframes = .35; SFX.play('leap'); if (sk.ends && sk.ends.b && !a.echoed) legBlast(ex, ez, sk.ends.r, sk, sk.ends.b, { el: sk.ends.el, fz: sk.ends.fz }); return; }
     P.dash = { x0: P.x, z0: P.z, x1: ex, z1: ez, t: 0, dur: sk.flat ? .24 : .34, sk }; P.iframes = .45; SFX.play('leap');
   } else if (sk.type === 'rain') {
     let dx = a.tx - P.x, dz = a.tz - P.z; const d = Math.hypot(dx, dz) || 1, L = Math.min(d, 13); const cx = P.x + dx / d * L, cz = P.z + dz / d * L;
-    for (let i = 0; i < sk.cnt; i++) { const an = rnd(6.28), rr = Math.sqrt(Math.random()) * sk.spread; addArea({ x: cx + Math.cos(an) * rr, z: cz + Math.sin(an) * rr, r: sk.r * ar, delay: sk.delay + i * (sk.stagger || 0), owner: 'p', sk, c: EL_COL[sk.el] }); }
+    const place = (x, z, k2) => { for (let i = 0; i < k2.cnt; i++) { const an = rnd(6.28), rr = Math.sqrt(Math.random()) * k2.spread; addArea({ x: x + Math.cos(an) * rr, z: z + Math.sin(an) * rr, r: k2.r * ar, delay: k2.delay + i * (k2.stagger || 0), owner: 'p', sk: k2, c: EL_COL[k2.el] }); } };
+    place(cx, cz, sk);
+    if (sk.march && !a.echoed) { const k2 = Object.assign({}, sk, { m: sk.m * .75, march: 0, echo: 0 }); for (let j = 1; j <= sk.march; j++) G.timers.push({ t: j * .45, fn: () => { if (!P.dead) { place(cx + dx / d * sk.mstep * j, cz + dz / d * sk.mstep * j, k2); SFX.play('slam'); } } }); } /* Skyfall, Marching Sky */
+    if (sk.kids && !a.echoed) for (let j = 0; j < sk.kids; j++) { const an = j / sk.kids * 6.2832 + rnd(.6); legBlast(cx + Math.cos(an) * 4.2, cz + Math.sin(an) * 4.2, 3, sk, sk.m * .5, { delay: sk.delay + .7, fz: 1 }); } /* Nested Night */
     G.shake = .4; SFX.play('slam');
   } else if (sk.type === 'proj') {
     const n = (sk.cnt || 1) + (s.projExtra || 0), base = Math.atan2(a.tx - P.x, a.tz - P.z), sp = n > 1 ? Math.max(sk.spread || 0, .12 * (n - 1)) : 0;
@@ -1149,6 +1178,7 @@ function fireSkill(a) {
     const hit = new Set(); let px = P.x, pz = P.z;
     for (let j = 0; j <= sk.jumps && cur; j++) {
       G.fx.push({ bolt: 1, x1: px, z1: pz, x2: cur.x, z2: cur.z, life: .2, max: .2, c: GLX.col(EL_COL[sk.el]) }); hit.add(cur); px = cur.x; pz = cur.z; hitEnemy(cur, sk, 1 - j * .07);
+      if (sk.recall && !a.echoed) { const e2 = cur; G.timers.push({ t: .6 + j * .08, fn: () => { if (e2.alive && !P.dead) legBlast(e2.x, e2.z, 1.8, sk, sk.recall, { el: 'light', c: 0xfff07a }); } }); } /* Second Thunder */
       let nx = null, nd = 7.5; for (const e of G.ents) { if (!e.alive || hit.has(e)) continue; const d = Math.hypot(e.x - px, e.z - pz); if (d < nd) { nd = d; nx = e; } } cur = nx;
     }
     if (G.online) NET.send({ t: 'fx', k: 'r', x: px, z: pz, r: 2.5, c: EL_COL[sk.el] });
@@ -1375,10 +1405,10 @@ function updPlayer(dt) {
   P.moving = false;
   if (P.dash) {
     const d = P.dash; d.t += dt; const k = Math.min(1, d.t / d.dur); P.x = d.x0 + (d.x1 - d.x0) * k; P.z = d.z0 + (d.z1 - d.z0) * k; P.y = d.sk.flat ? 0 : Math.sin(k * Math.PI) * 3.2;
-    if (k >= 1) { P.y = 0; P.dash = null; if (d.sk.land) { const r = d.sk.land * (1 + s.area / 100); areaHit(P.x, P.z, r, d.sk); ring(P.x, P.z, .5, r, .35, 0xffc890); if (G.online) NET.send({ t: 'fx', k: 'r', x: P.x, z: P.z, r, c: 0xffc890 }); burst(P.x, .4, P.z, 0xc8b89a, 22, 9); G.shake = .5; SFX.play('slam'); } }
+    if (k >= 1) { P.y = 0; P.dash = null; legDashEnd(d); if (d.sk.land) { const r = d.sk.land * (1 + s.area / 100); areaHit(P.x, P.z, r, d.sk); ring(P.x, P.z, .5, r, .35, 0xffc890); if (G.online) NET.send({ t: 'fx', k: 'r', x: P.x, z: P.z, r, c: 0xffc890 }); burst(P.x, .4, P.z, 0xc8b89a, 22, 9); G.shake = .5; SFX.play('slam'); } }
     return;
   }
-  if (P.spin) { const sp = P.spin; sp.t -= dt; sp.tk -= dt; if (sp.tk <= 0) { sp.tk = sp.sk.tick / ((1 + s.aspd / 100) * aspdK()); areaHit(P.x, P.z, sp.sk.r * (1 + s.area / 100), sp.sk); SFX.play('whirl'); } if (sp.t <= 0) P.spin = null; }
+  if (P.spin) { const sp = P.spin; sp.t -= dt; sp.tk -= dt; if (sp.tk <= 0) { sp.tk = sp.sk.tick / ((1 + s.aspd / 100) * aspdK()); areaHit(P.x, P.z, sp.sk.r * (1 + s.area / 100), sp.sk); SFX.play('whirl'); legSpinTick(sp); } if (sp.t <= 0) P.spin = null; }
   if (P.act) { const a = P.act; a.t += dt; P.swing = a.t / a.dur; if (!a.fired && a.t >= a.fireAt) { a.fired = true; fireSkill(a); } if (a.t >= a.dur) P.act = null; } /* build 0093 (Lee): heroes keep walking while an attack or skill plays; the legs run and the arms swing */
   if (G.auto && botStep(dt)) return;
   if ((IN.rmb && h.bar[1]) || (IN.keys.q && h.bar[2]) || (IN.keys.w && h.bar[3])) goalDone('skill'); /* build 0097 (Lee): pressing a skill counts for First Steps even mid-swing */
@@ -1426,10 +1456,12 @@ function updPlayer(dt) {
 const TAL_MUL = { m: 1, r: 1, range: 1, spread: 1, ct: 1, as: 1, arc: 1, spd: 1, delay: 1, explode: 1 }, TAL_SET = { cost: 1, cd: 1, el: 1, buff: 1 }, TALC = { key: null, sk: {}, s: {} };
 function talPicks(h) { if (!h) return []; const rows = talRows(h.cls), t = Array.isArray(h.tal) ? h.tal : [], out = []; for (let i = 0; i < rows.length; i++) { const k = t[i]; if ((k === 0 || k === 1 || k === 2) && h.level >= TAL_LV[i] && rows[i][k]) out.push(rows[i][k]); } return out; }
 function talOpen(h) { if (!h) return 0; const t = Array.isArray(h.tal) ? h.tal : []; let n = 0; for (let i = 0; i < TAL_LV.length; i++) if (h.level >= TAL_LV[i] && !(t[i] === 0 || t[i] === 1 || t[i] === 2)) n++; return n; }
-function talBuild() { const h = G.hero, key = h ? h.cls + ':' + h.level + ':' + (Array.isArray(h.tal) ? h.tal.join(',') : '') : ''; if (TALC.key === key) return TALC; TALC.key = key; TALC.sk = {}; TALC.s = {};
-  for (const c of talPicks(h)) { if (c.s) for (const k in c.s) TALC.s[k] = (TALC.s[k] || 0) + c.s[k];
-    if (c.fx) for (const id in c.fx) { const base = SKILLS[id]; if (!base) continue; const o = TALC.sk[id] || (TALC.sk[id] = Object.assign({}, base, { id })), f = c.fx[id];
-      for (const k in f) { const v = f[k]; if (k[0] === '=') o[k.slice(1)] = v; else if (TAL_SET[k]) o[k] = v; else if (TAL_MUL[k]) { if (o[k] !== undefined) o[k] *= v; else if (k === 'as') o.as = v; } else o[k] = (o[k] || (k === 'cnt' ? 1 : 0)) + v; } } }
+function legPowers(eq) { const out = []; if (eq) for (const sl of SLOTS) { const it = eq[sl], P0 = it && it.power && POWERS[it.power]; if (P0 && P0.lp && !out.includes(it.power)) out.push(it.power); } return out; } /* the skill-changing Legendary powers you wear, each once */
+function talBuild() { const h = G.hero, lp = legPowers(h && h.eq), key = h ? h.cls + ':' + h.level + ':' + (Array.isArray(h.tal) ? h.tal.join(',') : '') + ':' + lp.join(',') : ''; if (TALC.key === key) return TALC; TALC.key = key; TALC.sk = {}; TALC.s = {};
+  const add = fx => { for (const id in fx) { const base = SKILLS[id]; if (!base) continue; const o = TALC.sk[id] || (TALC.sk[id] = Object.assign({}, base, { id })), f = fx[id];
+      for (const k in f) { const v = f[k]; if (k[0] === '=') o[k.slice(1)] = v; else if (TAL_SET[k] || typeof v === 'object') o[k] = v; else if (TAL_MUL[k]) { if (o[k] !== undefined) o[k] *= v; else if (k === 'as') o.as = v; } else o[k] = (o[k] || (k === 'cnt' ? 1 : 0)) + v; } } };
+  for (const c of talPicks(h)) { if (c.s) for (const k in c.s) TALC.s[k] = (TALC.s[k] || 0) + c.s[k]; if (c.fx) add(c.fx); }
+  for (const p of lp) if (POWERS[p].cls === h.cls) add(POWERS[p].fx); /* Legendary powers that change a skill (Lee, Nov 16) */
   return TALC; }
 function talSk(id) { return id && G.hero ? talBuild().sk[id] || SKILLS[id] : SKILLS[id]; }
 /* build 0084 (Lee, Nov 15: "switch in and out of talents", free for now): any card you have unlocked can be switched on, swapped or switched off whenever you are out of combat.
@@ -1848,18 +1880,23 @@ function update(dt) {
   for (let i = G.projs.length - 1; i >= 0; i--) { const p = G.projs[i]; p.x += p.vx * dt; p.z += p.vz * dt; p.life -= dt; trailFx(p, p.el, dt, .6); let dead = p.life <= 0 || cellAt(p.x, p.z); if (!dead && !p.peer && !P.dead && Math.hypot(p.x - P.x, p.z - P.z) < p.r + .6 && P.y < 1.5) { if (!p.vis) dmgPlayer(p.dmg, p.el, null); dead = true; } if (dead) { burst(p.x, 1.2, p.z, 0xffffff, 3, 3); elemHit(p.x, p.z, p.el, false); G.projs.splice(i, 1); } }
   for (let i = G.timers.length - 1; i >= 0; i--) { const t = G.timers[i]; t.t -= dt; if (t.t <= 0) { G.timers.splice(i, 1); t.fn(); } }
   for (let i = G.pp.length - 1; i >= 0; i--) {
-    const p = G.pp[i], n = Math.max(1, Math.ceil(Math.hypot(p.vx, p.vz) * dt / .45)), h = dt / n; let dead = false; p.life -= dt; if (!p.arrow) trailFx(p, p.sk.el, dt);
+    const p = G.pp[i], n = Math.max(1, Math.ceil(Math.hypot(p.vx, p.vz) * dt / .45)), h = dt / n; let dead = false, wall = false; p.life -= dt; if (!p.arrow) trailFx(p, p.sk.el, dt);
+    if (p.sk.seek) legSeek(p, dt); /* Kestrel's Due */
     for (let k = 0; k <= n && !dead; k++) {   // sub-steps so fast shots cannot skip past a close enemy or a wall corner
-      if (k) { p.x += p.vx * h; p.z += p.vz * h; } if (cellAt(p.x, p.z)) { dead = true; break; }
-      for (const e of G.ents) { if (!e.alive || p.hit.has(e) || Math.hypot(e.x - p.x, e.z - p.z) > p.r + e.r) continue; if (p.sk.explode) { dead = true; break; } p.hit.add(e); hitEnemy(e, p.sk); if (p.pierce-- <= 0) { dead = true; break; } }
+      if (k) { p.x += p.vx * h; p.z += p.vz * h; } if (cellAt(p.x, p.z)) { if (k && p.sk.ret && !p.back) { p.x -= p.vx * h; p.z -= p.vz * h; p.life = 0; } dead = true; wall = !(p.sk.ret && !p.back); break; }
+      for (const e of G.ents) { if (!e.alive || p.hit.has(e) || Math.hypot(e.x - p.x, e.z - p.z) > p.r + e.r) continue; if (p.sk.explode && !p.sk.roll) { dead = true; break; } p.hit.add(e);
+        if (p.sk.roll) { if ((p.rb = (p.rb || 0) + 1) <= 4) { const rr = 3 * (1 + P.stats.area / 100), ks = Object.assign({}, p.sk, { type: 'lp' }); for (const o of G.ents) if (o.alive && Math.hypot(o.x - p.x, o.z - p.z) <= rr + o.r) { p.hit.add(o); hitEnemy(o, ks, p.sk.roll); } ring(p.x, p.z, .3, rr, .3, EL_COL[p.sk.el]); if (G.online) NET.send({ t: 'fx', k: 'r', x: p.x, z: p.z, r: rr, c: EL_COL[p.sk.el] }); } continue; } /* Wandering Star rolls on through, bursting as it goes */
+        hitEnemy(e, p.sk); if (p.sk.split && !p.kid) { p.kid = 1; for (let j = 0; j < p.sk.split; j++) shoot(p.rot + (j / (p.sk.split - 1) - .5) * .9, Object.assign({}, p.sk, { split: 0, m: p.sk.m * .5, pierce: 1, range: 11 }), e.x, e.z, new Set([e])); } /* Brokenfletch */
+        if (p.pierce-- <= 0) { dead = true; break; } }
     }
     if (p.life <= 0) dead = true;
+    if (dead && !wall && p.life <= 0 && p.sk.ret && !p.back) { p.back = 1; dead = false; p.vx = -p.vx; p.vz = -p.vz; p.rot += Math.PI; p.life = (p.sk.range || 15) / p.sk.spd; p.hit = new Set(); p.pierce = p.sk.pierce || 0; if (G.online) NET.send({ t: 'fx', k: 'p', x: p.x, z: p.z, rot: p.rot, r: p.sk.spd, arc: p.life, c: p.sk.c || EL_COL[p.sk.el] }); } /* Mirror Lance */
     if (dead) { if (p.sk.explode) { const r = p.sk.explode * (1 + P.stats.area / 100); areaHit(p.x, p.z, r, p.sk); ring(p.x, p.z, .4, r, .35, EL_COL[p.sk.el]); impact(p.x, p.z, r * .7, EL_COL[p.sk.el], true); SFX.play('slam'); } else if (!p.arrow) impact(p.x, p.z, .7, EL_COL[p.sk.el], false); if (!p.arrow) elemHit(p.x, p.z, p.sk.el, !!p.sk.explode); burst(p.x, 1.2, p.z, EL_COL[p.sk.el], 5, 4); G.pp.splice(i, 1); }
   }
   // areas
   for (let i = G.areas.length - 1; i >= 0; i--) {
     const a = G.areas[i]; a.t += dt; if (a.hvy && !a.done && !a.was && a.t < a.delay * .8 && !P.dead && inArea(a, P.x, P.z, 0)) a.was = 1;
-    if (!a.done && a.t >= a.delay) { a.done = true; if (a.owner === 'p') { for (const e of G.ents) if (e.alive && Math.hypot(e.x - a.x, e.z - a.z) <= a.r + e.r) hitEnemy(e, a.sk, a.mult, a.proc); } else { const inn = !P.dead && inArea(a, P.x, P.z, .3) && P.y < 1.5, seen = bossSees(a.src, P.x, P.z); if (!a.vis && inn && seen) dmgPlayer(a.dmg, a.el, a.src, a.hvy); else if (!a.vis && inn && !seen) floatText(P.x, 2.8, P.z, 'Blocked', '#cdb', .8, 15); else if (a.hvy && a.was && !inn && !P.dead) { floatText(P.x, 2.8, P.z, 'Evaded', '#9fe', .8, 15); SFX.play('evade'); } } areaLand(a); if (a.owner === 'p' && !a.proc) impact(a.x, a.z, a.r * .8, a.c, a.r >= 2.5); if (a.owner === 'e') G.shake = Math.min(.5, G.shake + .08); }
+    if (!a.done && a.t >= a.delay) { a.done = true; if (a.owner === 'p') { for (const e of G.ents) if (e.alive && Math.hypot(e.x - a.x, e.z - a.z) <= a.r + e.r) hitEnemy(e, a.sk, a.mult, a.proc); } else { const inn = !P.dead && inArea(a, P.x, P.z, .3) && P.y < 1.5, seen = bossSees(a.src, P.x, P.z); if (!a.vis && inn && seen) dmgPlayer(a.dmg, a.el, a.src, a.hvy); else if (!a.vis && inn && !seen) floatText(P.x, 2.8, P.z, 'Blocked', '#cdb', .8, 15); else if (a.hvy && a.was && !inn && !P.dead) { floatText(P.x, 2.8, P.z, 'Evaded', '#9fe', .8, 15); SFX.play('evade'); } } if (a.gr) burst(a.x, .3, a.z, a.c, 4, 3); else { areaLand(a); if (a.nf && G.online) NET.send({ t: 'fx', k: 'r', x: a.x, z: a.z, r: a.r, c: a.c }); } if (a.owner === 'p' && !a.proc) impact(a.x, a.z, a.r * .8, a.c, a.r >= 2.5); if (a.owner === 'e') G.shake = Math.min(.5, G.shake + .08); }
     if (a.t >= a.delay + .05) G.areas.splice(i, 1);
   }
   // drops
@@ -2594,7 +2631,7 @@ function drawWorld() {
     if (a.sh) { drawTele(a, c, k, fl); continue; }
     GLX.obj('glow', 'ring', a.x, .09, a.z, 0, d, 1, d, c, 1 + fl, a.owner === 'e' ? .9 : .5, -1); GLX.obj('glow', 'disc', a.x, .08, a.z, 0, d * k, 1, d * k, c, 1, a.owner === 'e' ? .35 : .2, 0);
     if (a.hvy && !a.done) { GLX.obj('glow', 'disc', a.x, .07, a.z, 0, d, 1, d, c, 1, .12 + fl * .2, 0); GLX.obj('glow', 'ring', a.x, .1, a.z, 0, d * k * 1.02, 1, d * k * 1.02, col(0xffd0a0), 1.4, .7, -1); }
-    if (a.owner === 'p' && !a.done) { const fy = (1 - k) * 10 + .3, wb = (1 - k) * 1.6; GLX.obj('glow', 'ring', a.x, .12, a.z, G.time * 2, d * .7, 1, d * .7, c, 1, .3 + k * .4, -1); // something falls from the sky onto the marked spot
+    if (a.owner === 'p' && !a.done && !a.gr && !a.nf) { const fy = (1 - k) * 10 + .3, wb = (1 - k) * 1.6; GLX.obj('glow', 'ring', a.x, .12, a.z, G.time * 2, d * .7, 1, d * .7, c, 1, .3 + k * .4, -1); // something falls from the sky onto the marked spot
       GLX.obj('glow', 'sphere', a.x + wb, fy, a.z - wb, 0, .3 + a.r * .12, .3 + a.r * .12, .3 + a.r * .12, c, 2.2, .95); GLX.obj('glow', 'sphere', a.x + wb, fy, a.z - wb, 0, .14, .14, .14, col(0xffffff), 2, .9); GLX.part('glow', 'box', IDM, a.x + wb * 1.6, fy + 1.2, a.z - wb * 1.6, -.15, -.785, 0, 0, 0, 0, .12, .12, 2.6, c, 1.2, .45); GLX.halo(a.x + wb, fy, a.z - wb, 1.2 + a.r * .3, c, .5); }
   }
   // the air itself: fireflies, embers, snow or dust, anchored to the world so they do not swim with the camera

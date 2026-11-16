@@ -137,6 +137,44 @@ const NAMED = {
 // each signature is also a power, so stats, ratings, trading checks and the tooltip read it like any unique effect. nm keeps it off random Legendaries
 for (const k in NAMED) { const N = NAMED[k]; POWERS['n_' + k] = { n: N.n, d: Object.keys(N.s).map(s => statText(s, N.s[s])).join('. ') + '.', s: N.s, slots: [], nm: k }; }
 
+/* Legendary powers that change a skill (Lee, Nov 16: "make them more unique and game defining", "Replace them"). New Legendary and Mythic items roll
+   one of these for the finder's class instead of the twelve stat powers above. Those twelve stay here so items people already own keep working.
+   Each power reshapes one skill through the same merge the talent cards use (talBuild), so it only does something while that skill is on your bar.
+   w is what the power is worth to item rating, as a share of that skill's damage. Two items with the same power count once. */
+const LEGP = {
+  warden: {
+    cinderwheel: { n: 'Cinderwheel', sk: 'whirl', w: .5, d: 'Whirlwind pulls nearby enemies in toward you and leaves a trail of burning ground.', fx: { whirl: { pull: .6, trail: .08 } } },
+    tremorborn: { n: 'Tremorborn', sk: 'leap', w: .5, d: 'Leap\'s landing shakes the ground twice more, each tremor wider than the last.', fx: { leap: { aft: 2, aftm: .3 } } },
+    stonevoice: { n: 'Stonevoice', sk: 'warcry', w: .35, d: 'War Cry also blasts enemies around you for 250% weapon damage and stuns them for 1.5 seconds.', fx: { warcry: { blast: { r: 6.5, m: 2.5, fz: 1.5 } } } },
+    edgewake: { n: 'Edgewake', sk: 'cleave', w: .5, d: 'Cleave sends a wave of force rolling out ahead of you with every swing.', fx: { cleave: { wave: .35 } } }
+  },
+  ranger: {
+    brokenfletch: { n: 'Brokenfletch', sk: 'power', w: .5, d: 'Power Shot splits into three arrows when it hits.', fx: { power: { split: 3 } } },
+    kestrel: { n: 'Kestrel\'s Due', sk: 'multi', w: .5, d: 'Multishot arrows curve toward enemies.', fx: { multi: { seek: 5 } } },
+    marchingsky: { n: 'Marching Sky', sk: 'arrows', w: .5, d: 'Rain of Arrows falls three times, each wave landing further along your aim.', fx: { arrows: { march: 2, mstep: 3 } } },
+    frostfall: { n: 'Frostfall Step', sk: 'roll', w: .25, d: 'Vault leaves a frost trap where you started, freezing enemies for 2.5 seconds.', fx: { roll: { ends: { r: 4.5, a: 1, el: 'cold', fz: 2.5 } } } }
+  },
+  arcanist: {
+    doubledstep: { n: 'Doubled Step', sk: 'tele', w: .35, d: 'Teleport sets off an Arcane Nova where you leave and where you land.', fx: { tele: { ends: { r: 5.5, a: 1.4, b: 1.4, el: 'arc' } } } },
+    wanderingstar: { n: 'Wandering Star', sk: 'orb', w: .5, d: 'Arcane Orb rolls through enemies, bursting on up to four of them, and bursts again at the end of its path.', fx: { orb: { roll: .8 } } },
+    mirrorlance: { n: 'Mirror Lance', sk: 'ray', w: .5, d: 'Disintegrate turns back at the end of its path, or off a wall, and passes through everything again.', fx: { ray: { ret: 1 } } },
+    nestednight: { n: 'Nested Night', sk: 'hole', w: .5, d: 'Singularity leaves three smaller holes behind that collapse a moment later.', fx: { hole: { kids: 3 } } }
+  },
+  brawler: {
+    afterimage: { n: 'Afterimage', sk: 'dstrike', w: .5, d: 'Dashing Strike leaves a shadow of you that repeats the strike a second later.', fx: { dstrike: { shade: .7 } } },
+    galedancer: { n: 'Gale Dancer', sk: 'cyclone', w: .5, d: 'Cyclone Kick throws waves of force outward as you spin.', fx: { cyclone: { swave: .2 } } },
+    fivefold: { n: 'Fivefold Rhythm', sk: 'jab', w: .5, d: 'Every fifth Jab releases a shockwave that rolls through enemies in front of you.', fx: { jab: { wave: 1.2, every: 5 } } },
+    hearthpalm: { n: 'Hearthpalm', sk: 'palm', w: .5, d: 'Burning Palm sets the ground ahead of you on fire for 2 seconds.', fx: { palm: { burn: .45 } } }
+  },
+  elementalist: {
+    skyfall: { n: 'Skyfall', sk: 'meteor', w: .5, d: 'Meteor falls three times in a row, each one landing a little further on.', fx: { meteor: { march: 2, mstep: 3 } } },
+    winteringheart: { n: 'Wintering Heart', sk: 'frost', w: .5, d: 'Frost Nova pulses twice more around you as you move.', fx: { frost: { pulse: 2 } } },
+    secondthunder: { n: 'Second Thunder', sk: 'chain', w: .5, d: 'Every enemy Chain Lightning hits is struck by lightning from the sky a moment later.', fx: { chain: { recall: .45 } } },
+    cindertrack: { n: 'Cindertrack', sk: 'fdash', w: .5, d: 'Flame Dash leaves a trail of burning ground behind you.', fx: { fdash: { trail: .25 } } }
+  }
+};
+for (const c in LEGP) for (const k in LEGP[c]) { const L = LEGP[c][k]; POWERS['l_' + k] = { n: L.n, d: L.d, s: {}, slots: [], lp: 1, cls: c, sk: L.sk, fx: L.fx, w: L.w }; }
+
 const SLOT_LV = [1, 1, 2, 4, 7, 12], SLOT_KEY = ['LMB', 'RMB', 'Q', 'W', 'E', 'R'];
 const SKILLS = {
   cleave: { n: 'Cleave', lv: 1, i: '⚔', type: 'melee', el: 'phys', m: 1.0, range: 3.4, arc: 2.0, basic: 1, gen: 5, d: 'Sweep your weapon in a wide arc, striking every enemy in front of you.' },

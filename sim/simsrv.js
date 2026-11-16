@@ -55,7 +55,8 @@ function srvHit(pid, m) {
   e.hp -= v; wake(e);
   if (m.el === 'fire') { e.burn = Math.max(e.burn, v * .15); e.burnT = 3; } else if (m.el === 'cold') e.chill = 2.5; else if (m.el === 'light') e.shock = 3;
   if (m.fz && !e.boss) e.frozen = Math.min(3, +m.fz || 0);
-  if (p && !e.boss && e.arch !== 'brute') { const dx = e.x - p.x, dz = e.z - p.z, l = Math.hypot(dx, dz) || 1; moveEnt(e, dx / l * .4, dz / l * .4, e.r); }
+  if (p && !e.boss && m.pl) { const dx = e.x - p.x, dz = e.z - p.z, l = Math.hypot(dx, dz) || 1, k = Math.min(.6, l - 1.8); if (k > 0) moveEnt(e, -dx / l * k, -dz / l * k, e.r); } /* Cinderwheel (a Legendary power) pulls enemies in toward the hero who hit them */
+  else if (p && !e.boss && e.arch !== 'brute') { const dx = e.x - p.x, dz = e.z - p.z, l = Math.hypot(dx, dz) || 1; moveEnt(e, dx / l * .4, dz / l * .4, e.r); }
   if (e.hp <= 0) killEnemy(e);
 }
 function srvTick(dt) {
