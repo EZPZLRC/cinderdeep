@@ -136,6 +136,7 @@ vec4 wpos(mat4 m,vec3 p,vec3 n,float mat){vec4 w=m*vec4(p,1.);
  if(mat>4.5&&mat<5.5){float hg=(p.y+.5);hg*=hg*length(m[1].xyz);w.x+=sin(uT*1.6+w.x*.5+w.z*.4)*.12*hg;w.z+=cos(uT*1.3+w.x*.45)*.08*hg;}
  return w;}`;
   const VS = `#version 300 es
+invariant gl_Position;
 layout(location=0) in vec3 aP; layout(location=1) in vec3 aN; layout(location=2) in mat4 iM; layout(location=6) in vec4 iC; layout(location=7) in vec2 iE;
 uniform mat4 uVP,uLVP; uniform float uOut; uniform vec3 uEye; out vec3 vW,vN,vL,vO; out vec4 vC; out vec2 vE; out vec4 vS;
 ${N3}
@@ -294,6 +295,17 @@ layout(location=0) in vec3 aP; layout(location=2) in mat4 iM; layout(location=11
 void main(){vU=aU;vLy=aM.x;vAl=(aM.y>1.5&&aM.y<2.5)?1.:0.;gl_Position=uLVP*(iM*vec4(aP,1.));}`;
   const FSDM = `#version 300 es
 precision highp float; uniform mediump sampler2DArray uTex; in vec2 vU; flat in float vLy,vAl; void main(){if(vAl>.5&&texture(uTex,vec3(vU,vLy)).a<.5)discard;}`;
+  // build 0139: a depth-only pass for the scenery. It draws the world's depth first with a one-line shader, so the full lighting shader then runs once
+  // per pixel instead of once for every layer of ground, grass and stone under it. Same vertex shader, same see-through and cut-out rules, so the picture is unchanged
+  const DITH = FS.slice(FS.indexOf('if(uRim==0.&&'), FS.indexOf('discard;}}', FS.indexOf('if(uRim==0.&&')) + 10);
+  const DITHM = FSM.slice(FSM.indexOf('if(uRim==0.&&'), FSM.indexOf('discard;}}', FSM.indexOf('if(uRim==0.&&')) + 10);
+  const FSP = `#version 300 es
+precision highp float; in vec3 vW,vN,vL,vO; in vec4 vC; in vec2 vE; in vec4 vS; uniform vec3 uPl; uniform float uRim; out vec4 o;
+void main(){float mat=vE.y;${DITH}o=vec4(0.);}`;
+  const FSMP = `#version 300 es
+precision highp float; uniform mediump sampler2DArray uTex; in vec3 vW,vN,vL,vO; in vec4 vC; in vec2 vE; in vec4 vS; in vec2 vU; flat in float vLy,vAl; uniform vec3 uPl; uniform float uRim; out vec4 o;
+void main(){float mat=vE.y;${DITHM}if(vAl>.5&&texture(uTex,vec3(vU,vLy)).a<.5)discard;o=vec4(0.);}`;
+  let pPre = null, pPreM = null;
   let pMesh = null, pDepthM = null, envTex = null; const ENVM = { state: 'off', why: 'not asked for yet', meshes: {} };
   const envOn = () => ENVM.state === 'on';
   function addMesh(name, d) { const mk = (t, a) => { const b = gl.createBuffer(); gl.bindBuffer(t, b); gl.bufferData(t, a, gl.STATIC_DRAW); return b; }; gl.bindVertexArray(null);
@@ -326,13 +338,13 @@ precision highp float; uniform mediump sampler2DArray uTex; in vec2 vU; flat in 
   }
 
   function init(canvas) {
-    cv = canvas; gl = cv.getContext('webgl2', { antialias: true, alpha: false, powerPreference: 'high-performance' }); try { const di = gl.getExtension('WEBGL_debug_renderer_info'), rn = di ? gl.getParameter(di.UNMASKED_RENDERER_WEBGL) : ''; env.gpu = String(rn || ''); env.weak = /intel|uhd|iris|mali|adreno|powervr|swiftshader|llvmpipe|basic render/i.test(env.gpu); } catch (_) { } /* build 0115 (play test: about 15 fps on a laptop's Intel graphics): built-in graphics start Automatic one step lower */
+    cv = canvas; gl = cv.getContext('webgl2', { antialias: false, alpha: false, powerPreference: 'high-performance' }); try { const di = gl.getExtension('WEBGL_debug_renderer_info'), rn = di ? gl.getParameter(di.UNMASKED_RENDERER_WEBGL) : ''; env.gpu = String(rn || ''); env.weak = /intel|uhd|iris|mali|adreno|powervr|swiftshader|llvmpipe|basic render/i.test(env.gpu); } catch (_) { } /* build 0115 (play test: about 15 fps on a laptop's Intel graphics): built-in graphics start Automatic one step lower */
     if (!gl) return false;
     addGeo('box', gBox()); addGeo('cap', gCap(14, 10)); addGeo('rbox', gRBox(16, 12, .32)); addGeo('sphere', gSphere(20, 13)); addGeo('gem', gSphere(4, 2)); addGeo('cyl', gCyl(16, 1)); addGeo('cone', gCyl(14, 0)); addGeo('blade', gCyl(3, 0)); addGeo('tuft', gTuft(7));
     addGeo('taper', gCyl(14, .6)); for (const k in BODY) addGeo(k, gLoft(BODY[k], 20, 4)); addGeo('blob', gSphere(10, 7)); addGeo('fol', gCyl(9, 0)); addGeo('trunk', gCyl(7, .6)); addGeo('disc', gDisc(28, 0)); addGeo('ring', gDisc(36, .86)); addGeo('sect', gSect(3, .0873));
     pMain = prog(VS, FS, ['uVP', 'uLVP', 'uSh', 'uSun', 'uSunC', 'uSky', 'uGnd', 'uFog', 'uEye', 'uPl', 'uFogR', 'uLR', 'uLP[0]', 'uLC[0]', 'uT', 'uQ', 'uWet', 'uMist', 'uRim', 'uOut', 'uGr', 'uGe', 'uTP', 'uTC', 'uTR', 'uScat']);
     pGlow = prog(VS, FSG, ['uVP', 'uLVP', 'uPl', 'uLR', 'uT']);
-    pDepth = prog(VSD, FSD, ['uLVP', 'uT']); try { pMainS = prog(VSS, FS, ['uVP', 'uLVP', 'uSh', 'uSun', 'uSunC', 'uSky', 'uGnd', 'uFog', 'uEye', 'uPl', 'uFogR', 'uLR', 'uLP[0]', 'uLC[0]', 'uT', 'uQ', 'uWet', 'uMist', 'uRim', 'uOut', 'uGr', 'uGe', 'uTP', 'uTC', 'uTR', 'uScat', 'uBones', 'uBR']); pDepthS = prog(VSDS, FSD, ['uLVP', 'uT', 'uBones', 'uBR']); } catch (e) { pMainS = pDepthS = null; MI.state = 'off'; MI.why = 'the graphics card would not build the model shader: ' + String(e && e.message || e).split('\n')[0].slice(0, 120); console.warn('skinned models off', e); } try { pMesh = prog(VSM, FSM, ['uVP', 'uLVP', 'uSh', 'uSun', 'uSunC', 'uSky', 'uGnd', 'uFog', 'uEye', 'uPl', 'uFogR', 'uLR', 'uLP[0]', 'uLC[0]', 'uT', 'uQ', 'uWet', 'uMist', 'uRim', 'uOut', 'uGr', 'uGe', 'uTP', 'uTC', 'uTR', 'uScat', 'uTex']); pDepthM = prog(VSDM, FSDM, ['uLVP', 'uTex']); } catch (e) { pMesh = pDepthM = null; ENVM.why = 'the graphics card would not build the scenery shader: ' + String(e && e.message || e).split('\n')[0].slice(0, 120); console.warn('scenery meshes off', e); } pPost = prog(VSQ, FSQ, ['uA', 'uB', 'uC', 'uD', 'uMode', 'uDir', 'uT', 'uPI', 'uFx', 'uWarm']);
+    pDepth = prog(VSD, FSD, ['uLVP', 'uT']); try { pMainS = prog(VSS, FS, ['uVP', 'uLVP', 'uSh', 'uSun', 'uSunC', 'uSky', 'uGnd', 'uFog', 'uEye', 'uPl', 'uFogR', 'uLR', 'uLP[0]', 'uLC[0]', 'uT', 'uQ', 'uWet', 'uMist', 'uRim', 'uOut', 'uGr', 'uGe', 'uTP', 'uTC', 'uTR', 'uScat', 'uBones', 'uBR']); pDepthS = prog(VSDS, FSD, ['uLVP', 'uT', 'uBones', 'uBR']); } catch (e) { pMainS = pDepthS = null; MI.state = 'off'; MI.why = 'the graphics card would not build the model shader: ' + String(e && e.message || e).split('\n')[0].slice(0, 120); console.warn('skinned models off', e); } try { pMesh = prog(VSM, FSM, ['uVP', 'uLVP', 'uSh', 'uSun', 'uSunC', 'uSky', 'uGnd', 'uFog', 'uEye', 'uPl', 'uFogR', 'uLR', 'uLP[0]', 'uLC[0]', 'uT', 'uQ', 'uWet', 'uMist', 'uRim', 'uOut', 'uGr', 'uGe', 'uTP', 'uTC', 'uTR', 'uScat', 'uTex']); pDepthM = prog(VSDM, FSDM, ['uLVP', 'uTex']); } catch (e) { pMesh = pDepthM = null; ENVM.why = 'the graphics card would not build the scenery shader: ' + String(e && e.message || e).split('\n')[0].slice(0, 120); console.warn('scenery meshes off', e); } try { pPre = prog(VS, FSP, ['uVP', 'uLVP', 'uT', 'uPl', 'uRim']); if (pMesh) pPreM = prog(VSM, FSMP, ['uVP', 'uLVP', 'uT', 'uPl', 'uRim', 'uTex']); } catch (e) { pPre = pPreM = null; console.warn('depth pass off', e); } pPost = prog(VSQ, FSQ, ['uA', 'uB', 'uC', 'uD', 'uMode', 'uDir', 'uT', 'uPI', 'uFx', 'uWarm']);
     shTex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, shTex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24, SH, SH, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
@@ -456,8 +468,14 @@ precision highp float; uniform mediump sampler2DArray uTex; in vec2 vU; flat in 
     gl.uniform3fv(u.uSun, env.sun); gl.uniform3fv(u.uSunC, env.sunC); gl.uniform3fv(u.uSky, env.sky); gl.uniform3fv(u.uGnd, env.gnd); gl.uniform3fv(u.uFog, env.fog);
     gl.uniform3fv(u.uEye, cam.eye); gl.uniform3fv(u.uPl, env.player); gl.uniform2f(u.uFogR, env.fogN, env.fogF); gl.uniform1f(u.uLR, env.lightR); gl.uniform4fv(u.uTP, TPv()); gl.uniform3fv(u.uTC, env.ptc); gl.uniform1f(u.uTR, env.ptr); gl.uniform1f(u.uScat, env.scat);
     gl.uniform4fv(u['uLP[0]'], LP); gl.uniform3fv(u['uLC[0]'], LC);
+    const pre = pPre && !env.solo && env.pre !== false; /* build 0139: scenery depth first (see FSP), then the lit pass only fills what is actually seen */
+    if (pre) { gl.colorMask(false, false, false, false); const po = env.preOff; if (po) { gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(po[0], po[1]); }
+      gl.useProgram(pPre.p); gl.uniformMatrix4fv(pPre.u.uVP, false, vp); gl.uniformMatrix4fv(pPre.u.uLVP, false, lvp); gl.uniform1f(pPre.u.uT, env.t); gl.uniform3fv(pPre.u.uPl, env.player); gl.uniform1f(pPre.u.uRim, 0); drawSet('stat');
+      if (envOn() && pPreM) { gl.useProgram(pPreM.p); gl.uniformMatrix4fv(pPreM.u.uVP, false, vp); gl.uniformMatrix4fv(pPreM.u.uLVP, false, lvp); gl.uniform1f(pPreM.u.uT, env.t); gl.uniform3fv(pPreM.u.uPl, env.player); gl.uniform1f(pPreM.u.uRim, 0); gl.uniform1i(pPreM.u.uTex, 5); drawSet('stat', 1); }
+      if (po) gl.disable(gl.POLYGON_OFFSET_FILL); gl.colorMask(true, true, true, true); gl.depthMask(false); gl.useProgram(pMain.p); }
     gl.uniform1f(pMain.u.uRim, 0); env.solo || drawSet('stat');
     if (envOn()) { syncS(pMesh, 0, UM()); gl.uniform1f(pMesh.u.uRim, 0); gl.uniform1f(pMesh.u.uOut, 0); gl.uniform1i(pMesh.u.uTex, 5); env.solo || drawSet('stat', 1); gl.useProgram(pMain.p); }
+    if (pre) gl.depthMask(true);
     // hero ghost: drawn against the world only, before the hero, so it shows only where walls or trees hide them
     { let n = 0; for (const g in sets.xr) n += sets.xr[g].n; if (n && !env.solo) { const gu = pGlow.u; gl.useProgram(pGlow.p); gl.uniformMatrix4fv(gu.uVP, false, vp); gl.uniformMatrix4fv(gu.uLVP, false, lvp); gl.uniform3fv(gu.uPl, env.player); gl.uniform1f(gu.uLR, env.lightR); gl.uniform1f(gu.uT, env.t); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.depthMask(false); gl.depthFunc(gl.GREATER); drawSet('xr'); gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.disable(gl.BLEND); gl.useProgram(pMain.p); } }
     if (env.q > 0 && env.outline !== false) { gl.uniform1f(pMain.u.uOut, .026); drawSet('dyn'); gl.uniform1f(pMain.u.uOut, 0); } // a thin ink outline so heroes and monsters stand out from the ground
