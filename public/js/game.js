@@ -617,7 +617,18 @@ function buildStatic(Z) { Z.torches = [];
   if (Z.def.type === 'town') {
     GLX.statChunk('all', 0, 0, true); const wood = col(0x5a4028), cloth = col(0x7a2a22), canvas2 = col(0xb8a888), stn = col(0x6a6a6e); townDecor(Z);
     for (const o of Z.objs) {
-      if (o.kind === 'vendor') { for (const sx of [-1.6, 1.6]) for (const sz of [-1.2, 1.2]) GLX.obj('stat', 'cyl', o.x + sx, 1.4, o.z + sz - 1.6, 0, .16, 2.8, .16, wood, 0, 1, 3); /* build 0098: the roof is drawn each frame so it can turn see-through over the hero */ GLX.obj('stat', 'box', o.x, .5, o.z - .2, 0, 3.4, 1, .9, wood, 0, 1, 3); GLX.obj('stat', 'box', o.x - 1, 1.15, o.z - .2, .3, .5, .3, .5, canvas2); GLX.obj('stat', 'sphere', o.x + .9, 1.2, o.z - .2, 0, .4, .4, .4, col(0xc9a030), 0, 1, 4); GLX.obj('stat', 'box', o.x - 2.6, .5, o.z - 2, .4, 1, 1, 1, wood, 0, 1, 3); }
+      if (o.kind === 'vendor') { /* merchant build (Lee: upgrade the stall, make him a rich businessman): dark polished wood with gold caps, a velvet counter cloth with gold trim, coins, gems, a strongbox, scales and a ledger on the counter, bolts of fine cloth behind, a rug out front. Same footprint as before. The striped awning is drawn each frame so it can still turn see-through over the hero (build 0098) */
+        const dw = col(0x3a2416), gd = col(0xe0b040), vel = col(0x3e0814), O = (g, x, y, z, ry, sx, sy, sz, c, em, m) => GLX.obj('stat', g, o.x + x, y, o.z + z, ry, sx, sy, sz, c, em || 0, 1, m || 0);
+        for (const sx of [-1.6, 1.6]) for (const sz of [-1.2, 1.2]) { O('cyl', sx, 1.4, sz - 1.6, 0, .18, 2.8, .18, dw, 0, 0); O('cyl', sx, .08, sz - 1.6, 0, .3, .16, .3, gd, .05, 4); O('sphere', sx, 2.84, sz - 1.6, 0, .24, .24, .24, gd, .12, 4); }
+        O('box', 0, .5, -.2, 0, 3.4, 1, .9, dw, 0, 0); O('box', 0, 1.03, -.2, 0, 3.56, .08, 1.02, vel, 0, 6); O('box', 0, .72, .28, 0, 3.56, .52, .04, vel, 0, 6); O('box', 0, .99, .31, 0, 3.6, .05, .04, gd, .15, 4); O('box', 0, .47, .31, 0, 3.6, .05, .04, gd, .15, 4);
+        O('box', 0, .78, .32, 0, .7, .3, .02, gd, .1, 4); O('sphere', 0, .78, .34, 0, .16, .16, .04, col(0xc8203a), .4, 0);
+        for (let k = 0; k < 5; k++) O('cyl', .55 + (k % 3) * .2, 1.1 + Math.floor(k / 3) * .09 + (k % 3) * .03, -.05 - (k > 2 ? .18 : 0), 0, .16, .06 + (k % 3) * .06, .16, gd, .1, 4);
+        O('box', 1.3, 1.22, -.3, -.3, .5, .32, .34, col(0x4a2a16), 0, 0); O('box', 1.3, 1.39, -.3, -.3, .52, .05, .36, gd, .1, 4); O('box', 1.3, 1.42, -.3, -.3, .4, .03, .26, gd, .35, 4); for (const [gx, gc] of [[-.12, 0xd03050], [.04, 0x3a8aff], [.15, 0x3ad080]]) O('gem', 1.3 + gx, 1.5, -.3, gx * 9, .08, .12, .08, col(gc), .9, 0);
+        O('cyl', -.6, 1.3, -.25, 0, .03, .5, .03, gd, .05, 4); O('box', -.6, 1.55, -.25, 0, .6, .025, .025, gd, .05, 4); for (const sd of [-1, 1]) { O('cyl', -.6 + sd * .28, 1.33, -.25, 0, .16, .02, .16, gd, .1, 4); O('box', -.6 + sd * .28, 1.44, -.25, 0, .01, .2, .01, gd, 0, 4); } O('cyl', -.6, 1.08, -.25, 0, .2, .04, .2, gd, .05, 4);
+        O('box', -1.25, 1.1, -.15, .25, .55, .07, .4, col(0x5a0e20), 0, 7); O('box', -1.25, 1.145, -.15, .25, .5, .02, .36, col(0xf0e4c4), 0, 0); O('box', -1.25, 1.16, -.15, .25, .02, .005, .36, gd, .2, 4);
+        O('box', 0, .9, -2.85, 0, 3.2, .1, .5, dw, 0, 0); O('box', 0, 1.8, -2.85, 0, 3.2, .1, .5, dw, 0, 0); for (let k = 0; k < 6; k++) { const bx = -1.25 + k * .5; O('cyl', bx, 1.15 + (k & 1) * .02, -2.85, 0, .4, .4, .4, col([0x6a1428, 0x2a4a8a, 0xd8a838, 0x2a6a4a, 0x7a3aa0, 0xe8dcc8][k]), 0, 6); O('cyl', bx, 2.05, -2.85, 0, .22, .4, .22, col([0x3a8a5a, 0xc8203a, 0x3a6ad0, 0xe0b040, 0x8a3ab0, 0xd06a2a][k]), .25, 0); }
+        O('box', 0, .04, 1.2, 0, 3.2, .02, 1.5, col(0x1e050a), 0, 6); O('box', 0, .045, 1.2, 0, 2.9, .02, 1.2, col(0x30070f), 0, 6); for (const [rx, rz] of [[0, 0], [-.9, 0], [.9, 0]]) O('gem', rx, .06, 1.2 + rz, .785, .34, .02, .34, col(0xb08a3a), .05, 4); for (const sd of [-1, 1]) { O('box', 0, .05, 1.2 + sd * .7, 0, 3.2, .02, .07, gd, .05, 4); O('box', sd * 1.57, .05, 1.2, 0, .07, .02, 1.5, gd, .05, 4); }
+        O('box', -2.6, .5, -2, .4, 1, 1, 1, col(0x4a2e1a), 0, 0); O('box', -2.6, .5, -2, .4, 1.04, .1, 1.04, gd, .05, 4); O('box', -2.6, 1.02, -2, .4, .9, .04, .9, gd, .1, 4); }
       else if (o.kind === 'stash') { GLX.obj('stat', 'box', o.x, .7, o.z, 0, 2.6, 1.4, 1.5, wood, 0, 1, 3); GLX.obj('stat', 'cyl', o.x, 1.4, o.z, 0, 2.6, .5, 1.5, wood, 0, 1, 3); for (const sx of [-1, 0, 1]) GLX.obj('stat', 'box', o.x + sx * 1.1, .9, o.z, 0, .18, 1.9, 1.56, col(0x8a6a2a), 0, 1, 4); GLX.obj('stat', 'box', o.x, .9, o.z + .78, 0, .4, .5, .08, col(0xc9a030), .1, 1, 4); }
       else if (o.kind === 'altar') { GLX.obj('stat', 'cyl', o.x, .15, o.z, 0, 3.4, .3, 3.4, stn, 0, 1, 15); GLX.obj('stat', 'taper', o.x, .9, o.z, 0, 1.6, 1.2, 1.6, stn, 0, 1, 3); GLX.obj('stat', 'cyl', o.x, 1.56, o.z, 0, 1.9, .14, 1.9, col(0x4a4a50), 0, 1, 4); GLX.obj('stat', 'cyl', o.x, 1.7, o.z, 0, 1.2, .2, 1.2, col(0xc9a030), .2, 1, 4); }
     }
@@ -795,7 +806,7 @@ function genTown() {
   for (let y = 0; y < GW; y++) for (let x = 0; x < GW; x++) if (Math.hypot(x + .5 - c0, y + .5 - c0) < 7.2) Z.cell[y * GW + x] = 0;
   const cx = c0 * CS, cz = c0 * CS; Z.start = [cx, cz + 9]; Z.bossAt = [cx, cz]; Z.dist = new Int16Array(GW * GW);
   Z.lamps.push({ x: cx, z: cz, big: 1, hearth: 1 }); for (const [x, z] of [[-11, -8], [11, -8], [-8, 10], [8, 10], [-16, 1], [16, 1], [-4, -15], [4, -15], [-7.7, 7.7], [7.7, 7.7], [-7.7, -7.7], [7.7, -7.7]]) Z.lamps.push({ x: cx + x, z: cz + z, post: 1 }); /* town build: the hearth and iron lantern posts instead of loose candles */
-  Z.objs.push({ kind: 'stash', x: cx, z: cz - 13, name: 'Stash', used: false }, { kind: 'vendor', x: cx - 13, z: cz - 2, name: 'Mirel the Trader', used: false }, { kind: 'altar', x: cx + 13, z: cz - 2, name: 'Altar of Embers', used: false }, { kind: 'tportal', x: cx, z: cz + 14, name: 'Return to the floor', used: false }, { kind: 'planner', x: cx + 6.5, z: cz + 10.5, name: 'Town Planner', used: false });
+  Z.objs.push({ kind: 'stash', x: cx, z: cz - 13, name: 'Stash', used: false }, { kind: 'vendor', x: cx - 13, z: cz - 2, name: 'Mirel the Merchant', used: false }, { kind: 'altar', x: cx + 13, z: cz - 2, name: 'Altar of Embers', used: false }, { kind: 'tportal', x: cx, z: cz + 14, name: 'Return to the floor', used: false }, { kind: 'planner', x: cx + 6.5, z: cz + 10.5, name: 'Town Planner', used: false });
   for (const id in FOLK) { if (!townFolk(id)) continue; /* build 0096: Bram, Doran and Lysa come home when their windmill, smithy and inn are rebuilt */ const f = FOLK[id]; Z.objs.push({ kind: 'npc', id, x: cx + f.at[0], z: cz + f.at[1], name: f.n, used: false }); }
   /* build 0098 (Lee: get rid of the rift stone): the Rift Stone is gone from Emberwatch. The timed rift code stays, unused, in case rifts come back another way */
   return Z;
@@ -807,7 +818,7 @@ function enterTown() {
   G.away = { zone: G.zone, ents: G.ents, drops: G.drops, boss: G.boss, x: P.x, z: P.z, seed: G.zone.def.seed }; G.ents = []; G.drops = []; G.projs = []; G.pp = []; G.areas = []; G.fx = []; G.texts = []; G.timers = []; G.boss = null; G.wboss = null; G.streak = 0;
   G.zone = genTown(); G.inTown = true; buildStatic(G.zone); setEnv(G.zone); P.x = G.zone.start[0]; P.z = G.zone.start[1]; P.y = 0; P.rot = Math.PI; P.act = P.spin = P.dash = P.move = P.atk = P.inter = P.pick = null; BOT.path = null; P.hp = P.stats.maxLife; addDummy();
   const h = G.hero; if (!h.stock || Math.abs(h.kills - (h.stockK || 0)) >= 25 || h.stockL !== h.level) { h.stock = []; for (let i = 0; i < 10; i++) h.stock.push(makeItem(h.level, null, Math.random() < .12 ? 3 : Math.random() < .5 ? 2 : 1)); h.stockK = h.kills; h.stockL = h.level; }
-  SFX.play('shrine'); UI.zoneBanner('Emberwatch', 'Stash · Trader · Altar'); townNews(h); saveGame();
+  SFX.play('shrine'); UI.zoneBanner('Emberwatch', 'Stash · Merchant · Altar'); townNews(h); saveGame();
 }
 // jump straight to a party member; from town it walks you out through the portal first
 function peerHere(q) { return G.inTown ? !!q.town : !q.dead && !q.town; } // a party member you can see: in town with you, or alive on your floor (build 0075)
@@ -1152,7 +1163,7 @@ function fireSkill(a) {
 // ---------- quest + GPS path ----------
 const GPS = { t: 0, pts: [], goal: null, text: '' };
 // build 0072 (Lee's playtest): a first walk round Emberwatch, so nobody misses the Trader, the Stash or the Altar
-const TOUR = { vendor: 'Trader', stash: 'Stash', altar: 'Altar' }, TOUR_ORDER = ['vendor', 'stash', 'altar'];
+const TOUR = { vendor: 'Merchant', stash: 'Stash', altar: 'Altar' }, TOUR_ORDER = ['vendor', 'stash', 'altar'];
 function tourNext() { const h = G.hero; if (!h) return null; return TOUR_ORDER.find(k => !(h.tour || {})[k]) || null; }
 function questTarget() {
   const Z = G.zone; if (!Z) return null; const h = G.hero, cq = tqCur ? tqCur() : null;
@@ -1282,7 +1293,16 @@ function updAlly(dt) {
 function aiNet() { return ALLIES.map(a => [Math.max(0, AI_ORDER.indexOf(a.cls)), Math.round(a.x * 100) / 100, Math.round(a.z * 100) / 100, Math.round(a.rot * 100) / 100, a.mv ? 1 : 0, aiTier(), a.act ? 1 : 0]); }
 function aiAll() { if (!ALLIES.length) return []; /* build 0087: no AI teammates, and none drawn for players on an older build */ const out = ALLIES.slice(); if (G.online && !G.inTown) for (const id in NET.peers) { const q = NET.peers[id]; if (q.aiH && (G.inTown ? q.town : !q.town)) out.push(...q.aiH); } return out; } // every AI teammate you can see
 const ROOF_C = GLX.col(0x7a2a22);
-const NPCV = { x: 0, y: 0, z: 0, rot: 0, walk: 0, mv: 0, hurt: 0, act: null, swing: 0, spin: null, dash: false, buffs: null, flaskT: 0, cls: 'vendor', hair: 0x5a4030, beard: 1, gear: { chest: [2, 0], pants: [1, 0], boots: [1, 0], belt: [1, 0] } }; // build 0042: the merchant is a townsman, not a Ranger
+/* merchant build: the stall's awning in burgundy and gold stripes with a scalloped gold-trimmed edge and a hanging gold coin sign. a > 0 draws it see-through (when the hero is under it) */
+const AWN_C = [GLX.col(0x5a1020), GLX.col(0xc89a3a)], AWN_G = GLX.col(0xe0b040);
+function vendorRoof(o, a) { const L = a ? 'glow' : 'dyn', B = (g, x, y, z, rx, sx, sy, sz, c, e, m) => a ? GLX.obj('glow', g, o.x + x, y, o.z + z, 0, sx, sy, sz, c, 1, a) : GLX.obj('dyn', g, o.x + x, y, o.z + z, 0, sx, sy, sz, c, e || 0, 1, m || 0);
+  for (let k = 0; k < 8; k++) B('box', -1.75 + k * .5, 2.9 + (k % 2) * .01, -1.6, 0, .5, .12, 3.2, AWN_C[k % 2], 0, 6);
+  B('box', 0, 2.98, -1.6, 0, .14, .08, 3.24, AWN_G, .1, 4); B('box', 0, 2.82, .02, 0, 4.06, .06, .08, AWN_G, .15, 4);
+  for (let k = 0; k < 8; k++) B('sphere', -1.75 + k * .5, 2.72, .02, 0, .5, .28, .06, AWN_C[k % 2], 0, 6);
+  if (!a) { for (let k = 0; k < 9; k++) GLX.obj('dyn', 'sphere', o.x - 2 + k * .5, 2.62, o.z + .03, 0, .07, .07, .07, AWN_G, .2, 1, 4);
+    const sw = Math.sin(G.time * 1.3 + o.x) * .05; GLX.obj('dyn', 'box', o.x, 3.5, o.z + .02, 0, 1.3, .62, .08, GLX.col(0x3a2416), 0, 1, 0); GLX.obj('dyn', 'box', o.x, 3.5, o.z + .05, 0, 1.38, .7, .04, AWN_G, .12, 1, 4); GLX.obj('dyn', 'box', o.x, 3.5, o.z + .08, 0, 1.2, .54, .03, GLX.col(0x4a0e1c), 0, 1, 6);
+    GLX.obj('dyn', 'sphere', o.x, 3.5, o.z + .12, sw, .42, .42, .06, AWN_G, .35, 1, 4); GLX.obj('dyn', 'sphere', o.x, 3.5, o.z + .15, sw, .26, .26, .03, GLX.col(0xf0d070), .5, 1, 4); for (const sd of [-1, 1]) GLX.obj('dyn', 'cyl', o.x + sd * .5, 3.05, o.z + .03, 0, .025, .3, .025, AWN_G, 0, 1, 4); } }
+const NPCV = { x: 0, y: 0, z: 0, rot: 0, walk: 0, mv: 0, hurt: 0, act: null, swing: 0, spin: null, dash: false, buffs: null, flaskT: 0, cls: 'vendor', hair: 0x8a847c, beard: 1, gear: { chest: [2, 0], pants: [1, 0], boots: [1, 0], belt: [1, 0] } }; // build 0042: the merchant is a townsman, not a Ranger
 function itemScore(it) { return it.dmg ? (it.dmg[0] + it.dmg[1]) / 2 * it.spd * (1 + it.aff.length * .06) : (it.armor || 0) + it.ilvl * (2 + it.aff.length * 2) + (it.power ? it.ilvl * 4 : 0); }
 function botField() {
   const c = G.zone.cell, N = GW * GW, s = clamp(Math.floor(P.z / CS), 0, GW - 1) * GW + clamp(Math.floor(P.x / CS), 0, GW - 1), prev = new Int32Array(N).fill(-1), dist = new Int16Array(N).fill(-1), q = [s]; prev[s] = s; dist[s] = 0;
@@ -1877,10 +1897,10 @@ function update(dt) {
   const Z = G.zone, pcx = Math.floor(P.x / CS), pcz = Math.floor(P.z / CS); for (let j = -7; j <= 7; j++) for (let i = -7; i <= 7; i++) { const x = pcx + i, y = pcz + j; if (x >= 0 && y >= 0 && x < GW && y < GW && i * i + j * j <= 49) Z.seen[y * GW + x] = 1; }
   computeHover();
 }
-const TOWN_USE = { vendor: 1, stash: 1, altar: 1, tportal: 1 };
+const TOWN_USE = { vendor: 1, stash: 1, altar: 1, tportal: 1, planner: 1 }; /* merchant build: the Town Planner's floating name can be clicked too */
 /* build 0098 (Lee's playtest): the whole Trader stall, roof included, and every service's floating name can be clicked */
 function hitTownObj(o, k) {
-  const lb = GLX.toScreen(o.x, 3.6, o.z); if (lb && Math.abs(lb[0] - IN.sx) < 70 * k && IN.sy > lb[1] - 16 * k && IN.sy < lb[1] + 28 * k) return true;
+  const lb = GLX.toScreen(o.x, o.kind === 'vendor' ? 4.3 : 3.6, o.z); if (lb && Math.abs(lb[0] - IN.sx) < 70 * k && IN.sy > lb[1] - 16 * k && IN.sy < lb[1] + 28 * k) return true;
   if (o.kind !== 'vendor') return false; const q = [[-2.1, -3.3], [2.1, -3.3], [2.1, .1], [-2.1, .1]].map(c => GLX.toScreen(o.x + c[0], 2.9, o.z + c[1])); if (q.some(v => !v)) return false;
   let inside = false; for (let i = 0, j = 3; i < 4; j = i++) { const a = q[i], b = q[j]; if ((a[1] > IN.sy) !== (b[1] > IN.sy) && IN.sx < (b[0] - a[0]) * (IN.sy - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside; } return inside;
 }
@@ -2268,6 +2288,13 @@ function drawHero(o, self) {
         if (MDL.back()) { p('cap', 0, 1.0, .02, 0, 0, 0, 0, 0, 0, .56, .08, .4, CC, 0, .05); p('rbox', .2, .96, .16, .1 + sway, 0, -.2, 0, -.26, 0, .1, .42, .03, CC); MDL.done(); } }
       else if (cls === 'elementalist') { for (let k = 0; k < 5; k++) { const a = t * .9 + k * 1.2566, x = o.x + Math.cos(a) * .42, z = o.z + Math.sin(a) * .42, y = o.y + 2.45 + Math.sin(t * 2 + k) * .06; GLX.obj('glow', 'gem', x, y, z, a, .08, .14, .08, k % 2 ? CC : col(0xffd06a), 1.6, .95); }
         for (const sd of [1, -1]) { const h = hand(sd); GLX.obj('glow', 'sphere', h[0], h[1], h[2], 0, .12, .12, .12, CC, 1.6, .7); GLX.halo(h[0], h[1], h[2], .5, CC, .28); } }
+      else if (cls === 'vendor') { /* merchant build (Lee: "Make him look like a professional rich business man"): Mirel the Merchant gets a tall hat with a gold band, a velvet mantle with gold trim, a gold chain and medallion, a coin purse and a gold-topped cane. Looks only */
+        const blk = col(0x1c1418), vel = col(0x4a0e1c), gd = col(0xe0b040), fur = col(0xe8dcc8);
+        if (MDL.head()) { p('cyl', 0, 2.2, -.01, -.06, 0, 0, 0, 0, 0, .62, .035, .64, blk, 6); p('cyl', 0, 2.42, -.02, -.06, 0, 0, 0, 0, 0, .4, .44, .4, blk, 6); p('cyl', 0, 2.27, -.015, -.06, 0, 0, 0, 0, 0, .415, .085, .415, gd, 4, .12); p('cyl', 0, 2.645, -.03, -.06, 0, 0, 0, 0, 0, .405, .02, .405, shade(blk, 1.4), 6); MDL.done(); }
+        if (MDL.back()) { p('cap', 0, 1.8, -.02, 0, 0, 0, 0, 0, 0, .78, .13, .56, fur, 6); p('rbox', 0, 1.42, -.24, .06, 0, 0, 0, 0, 0, .74, .86, .05, vel, 6); for (const sd of [1, -1]) p('rbox', .37 * sd, 1.42, -.24, .06, 0, 0, 0, 0, 0, .03, .86, .06, gd, 4, .1); p('rbox', 0, 1.0, -.24, .06, 0, 0, 0, 0, 0, .76, .05, .06, gd, 4, .1);
+          for (const sd of [1, -1]) p('rbox', .1 * sd, 1.6, .21, 0, 0, -sd * .5, 0, 0, 0, .025, .32, .025, gd, 4, .2); p('sphere', 0, 1.46, .245, 0, 0, 0, 0, 0, 0, .13, .13, .04, gd, 4, .25); p('gem', 0, 1.46, .27, 0, 0, 0, 0, 0, 0, .05, .07, .03, col(0xc8203a), 0, .9);
+          p('sphere', .27, .9, .15, 0, 0, 0, 0, 0, 0, .16, .19, .12, col(0x5a3a1e), 7); p('cyl', .27, 1.0, .15, 0, 0, 0, 0, 0, 0, .1, .04, .1, gd, 4, .15); MDL.done(); }
+        { const h = hand(1), y = Math.max(.3, h[1] - o.y); GLX.obj('dyn', 'cyl', h[0], o.y + y / 2, h[2], 0, .05, y, .05, col(0x2a1a12), 0, 1, 0); GLX.obj('dyn', 'sphere', h[0], o.y + y + .04, h[2], 0, .11, .11, .11, gd, .15, 1, 4); GLX.obj('dyn', 'cyl', h[0], o.y + .03, h[2], 0, .06, .06, .06, gd, 0, 1, 4); } }
     } else if (cls === 'warden') {
       for (const sd of [1, -1]) { p('sphere', .5 * sd, 1.76, 0, 0, 0, -sd * .25, 0, 0, 0, .42, .24, .42, shade(steelC, .7), 4); p('cap', .5 * sd, 1.7, 0, 0, 0, -sd * .25, 0, 0, 0, .45, .04, .45, shade(CC, .7), 4); hp('cone', .2 * sd, 2.28, -.02, lean, 0, -sd * 1.1, 0, .14, 0, .07, .34, .07, col(0xe8dcc0), 3); }
       if (!g.offhand) { p('rbox', 0, 1.35, -.34, lean * .5, 0, 0, 0, 0, 0, .78, 1.0, .07, steelC, 4); p('rbox', 0, 1.35, -.38, lean * .5, 0, 0, 0, 0, 0, .58, .8, .03, CC, 0, .1); }
@@ -2639,8 +2666,11 @@ function drawWorld() {
   for (const L of Z.lamps) { const d = Math.hypot(L.x - P.x, L.z - P.z); if (d > 32) continue; if (L.hearth || L.post) { townLamp(L, d); continue; } const c = col(L.big ? 0xff9a3a : Z.th.lamp), fl = fireFl(G.time, L.x + L.z); GLX.light(L.x, L.big ? 2.2 : 1.2, L.z, L.big ? 13 : 7, c, (L.big ? 1.3 : .8) * fl); GLX.halo(L.x, L.big ? 1.6 : .5, L.z, L.big ? 3.2 : 1.8, c, .4 * fl); }
   for (const o of Z.objs) {
     if (Math.hypot(o.x - P.x, o.z - P.z) > (o.kind === 'vendor' ? 70 : 34)) continue; const hov = G.hoverObj === o ? .5 : 0;
-    if (o.kind === 'vendor') { const und = Math.abs(P.x - o.x) < 2.5 && P.z > o.z - 3.7 && P.z < o.z + .9; o.roofK = (o.roofK || 0) + ((und ? 1 : 0) - (o.roofK || 0)) * .2; if (o.roofK < .5) GLX.obj('dyn', 'box', o.x, 2.9, o.z - 1.6, 0, 4, .12, 3.2, ROOF_C); else GLX.obj('glow', 'box', o.x, 2.9, o.z - 1.6, 0, 4, .12, 3.2, ROOF_C, 1, .22 * o.roofK); NPCV.x = o.x; NPCV.z = o.z - 1.1; NPCV.rot = Math.atan2(P.x - NPCV.x, P.z - NPCV.z); drawHero(NPCV, false); if (hov) GLX.obj('glow', 'ring', o.x, .07, o.z, G.time, 4.6, 1, 4.6, col(0xffd84a), 1, .5, -1); continue; }
+    if (o.kind === 'vendor') { const und = Math.abs(P.x - o.x) < 2.5 && P.z > o.z - 3.7 && P.z < o.z + .9; o.roofK = (o.roofK || 0) + ((und ? 1 : 0) - (o.roofK || 0)) * .2; vendorRoof(o, o.roofK < .5 ? 0 : .22 * o.roofK); NPCV.x = o.x + 2.35; NPCV.z = o.z + .75; /* merchant build: Mirel greets customers in front of the stall, where his hat and cane can be seen, instead of standing hidden under the awning */ NPCV.rot = Math.atan2(P.x - NPCV.x, P.z - NPCV.z); drawHero(NPCV, false); if (hov) GLX.obj('glow', 'ring', o.x, .07, o.z, G.time, 4.6, 1, 4.6, col(0xffd84a), 1, .5, -1); continue; }
     if (o.kind === 'stash') { GLX.halo(o.x, 1.4, o.z + .8, 2 + hov * 2, col(0xffd84a), .3 + hov * .4); continue; }
+    if (o.kind === 'planner') { /* merchant build (Lee: "The town planner should be called out more in town"): a soft green glow on the board, a turning gold-green crest above it and a ring when hovered, so it reads as a service like the Stash and Altar */
+      const c = col(0x7affa0), c2 = col(0xffd84a), t = G.time, by = 2.75 + Math.sin(t * 1.8) * .12; GLX.halo(o.x, 1.5, o.z + .3, 2.6 + hov * 2, c, .32 + hov * .4); GLX.obj('dyn', 'gem', o.x, by, o.z, t * .9, .5, .78, .5, c, 1.6); GLX.obj('dyn', 'gem', o.x, by, o.z, -t * .9 + .4, .28, 1.0, .28, c2, 1.2); GLX.halo(o.x, by, o.z, 1.6, c, .45); GLX.light(o.x, 2.2, o.z + .6, 7, c, .8, 3);
+      GLX.obj('glow', 'ring', o.x, .08, o.z + .9, t * .5, 3.2, 1, 3.2, c, 1, .28 + hov * .3, -1); continue; }
     if (o.kind === 'altar') { const c = col(0xff7a2a), c2 = col(0xffd84a), t = G.time; GLX.obj('dyn', 'gem', o.x, 3 + Math.sin(t * 2) * .2, o.z, t, .8, 1.3, .8, c, 2.6); GLX.obj('glow', 'cyl', o.x, 9, o.z, t, .7, 16, .7, c, 1, .2); GLX.obj('glow', 'cyl', o.x, 9, o.z, -t, 1.8, 16, 1.8, c2, .6, .06);
       for (let k = 0; k < 6; k++) { const a = k * 1.0472 + .5, px = o.x + Math.cos(a) * 3.6, pz = o.z + Math.sin(a) * 3.6; GLX.obj('dyn', 'gem', px, 3.5 + Math.sin(t * 2 + k) * .12, pz, t + k, .26, .4, .26, k % 2 ? c2 : c, 2.2); GLX.halo(px, 3.5, pz, 1.4, c, .5); }
       for (let k = 0; k < 3; k++) GLX.obj('glow', 'ring', o.x, .4 + k * .05, o.z, t * (k % 2 ? -.6 : .6), 5 + k * 2.2, 1, 5 + k * 2.2, k % 2 ? c2 : c, 1, .5 - k * .12, -1);
