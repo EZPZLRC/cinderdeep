@@ -1,10 +1,11 @@
 OathByte sound effects and fight music: credits and licences
 =============================================================
 
-Every sound in this folder comes from a free pack released under CC0 1.0
+Most sounds in this folder come from free packs released under CC0 1.0
 (public domain dedication, https://creativecommons.org/publicdomain/zero/1.0/).
 CC0 allows use in any game, free or paid, with no credit required. We credit
-the creators anyway. The files were trimmed, made mono, levelled and saved as
+the creators anyway. The recorded set at the end (r_*.mp3) also uses the
+Oculus Audio Pack 01, which is CC BY 4.0 and does need the credit given there. The files were trimmed, made mono, levelled and saved as
 MP3, and many were brightened with EQ (tools/sfx/build_sfx.py lists which
 source file each sound comes from and how it was processed).
 
@@ -49,3 +50,28 @@ rubberduck's and artisticdude's packs from game repositories that keep the
 original files. For the two OpenGameArt packs, ten of the files were checked
 byte for byte (SHA-256) against hashes of the original archives recorded by
 an independent project, and all ten matched.
+
+Recorded set picked by Lee (oathbyte-sfx-recorded, Nov 16, 2026)
+-----------------------------------------------------------------
+The r_*.mp3 files are layered mixes made by tools/sfx/build_recorded.py
+(trimmed, levelled, layered, a little room reverb added, saved as MP3).
+They use these sources:
+
+"Oculus Audio Pack 01" by Oculus VR, LLC
+  (https://developers.meta.com/vr/downloads/package/oculus-audio-pack-1/),
+  licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
+  Files renamed to the UCS naming convention; OGG previews transcoded from
+  the original WAVs. Taken from github.com/facebookincubator/Meta-open-sound
+  (corpora/oculus-audio-pack). We changed them: trimmed, layered with other
+  sounds, levelled, reverb added. Used in every r_ file except r_maul_sw,
+  r_fire_sw, r_fire_hit and r_light_sw.
+
+CC0 1.0 sounds, taken from github.com/EternityForest/Free-SFX:
+- qubodup (Iwan Gabovitch), swooshes: r_maul_sw, r_bow_sw, r_fire_sw
+- Fireplace loop (PagDev folder, OpenGameArt): r_fire_sw
+- Thimras, cannon_fire (OpenGameArt): r_fire_hit, r_bossdie
+- "Electricity game sound pack" (OpenGameArt): r_light_sw, r_bigkill
+- Sparklin Labs / Pixel-boy, Superpowers asset packs, victory jingle: r_bossdie
+
+Kenney, Impact Sounds (CC0 1.0, see above), bell and wood impacts:
+  r_bow_hit, r_drop3, r_drop4

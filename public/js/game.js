@@ -45,14 +45,27 @@ const SFX = (() => {
     st_grass: ['st_grass1', 'st_grass2', 'st_grass3'], st_dirt: ['st_dirt1', 'st_dirt2', 'st_dirt3'], st_stone: ['st_stone1', 'st_stone2', 'st_stone3'], st_snow: ['st_snow1', 'st_snow2'],
     cloth: ['cloth1', 'cloth2', 'cloth3', 'leather'], coin: ['coin', 'coins1', 'coins2', 'coins3'], gem: ['gem1', 'gem3'], roar: ['roar1', 'roar2'] };
   const GROUND = { forest: 'st_grass', town: 'st_dirt', crypt: 'st_stone', lava: 'st_stone', void: 'st_stone', ice: 'st_snow' };
+  /* oathbyte-sfx-recorded (Lee, Nov 16, picked from the recorded set on the sound picker page): weapons, spells, crits, deaths, getting hit, loot, gold,
+     level ups, menu buttons and footsteps play the recordings Lee picked. A weapon or spell plays its swing or cast as the attack goes off and its impact when it lands.
+     Sources: Oculus Audio Pack 01 (CC BY 4.0, credited in public/sfx/CREDITS.txt and the in-game credits) and CC0 packs; tools/sfx/build_recorded.py makes the files.
+     SV is each file's volume, set so it plays as loud as it did on the picker page. Fists, the frozen floors and the sounds that were not on the picker keep the older sounds. */
+  const SV = { r_sword_sw: 0.389, r_sword_hit: 0.343, r_axe_sw: 0.325, r_axe_hit: 0.279, r_maul_sw: 0.248, r_maul_hit: 0.311, r_bow_sw: 0.402, r_bow_hit: 0.243, r_bolt_sw: 0.213, r_bolt_hit: 0.17, r_fire_sw: 0.383, r_fire_hit: 0.259, r_cold_sw: 0.217, r_cold_hit: 0.318, r_arc_sw: 0.31, r_light_sw: 0.537, r_light_hit: 0.19, r_crit: 0.401, r_kill: 0.593, r_bigkill: 0.325, r_bossdie: 0.449, r_hurt: 0.245, r_drop1: 0.294, r_drop2: 0.375, r_drop3: 0.414, r_drop4: 0.46, r_pickup: 0.876, r_gold: 0.208, r_level: 0.482, r_ui: 0.376, r_st_grass1: 0.13, r_st_wood1: 0.135, r_st_grass2: 0.117, r_st_wood2: 0.178, r_st_grass3: 0.143, r_st_wood3: 0.135, r_st_grass4: 0.144, r_st_wood4: 0.111 };
+  const RFILES = Object.keys(SV);
+  SG.r_st_grass = ['r_st_grass1', 'r_st_grass2', 'r_st_grass3', 'r_st_grass4']; SG.r_st_wood = ['r_st_wood1', 'r_st_wood2', 'r_st_wood3', 'r_st_wood4'];
+  const RGROUND = { forest: 'r_st_grass', town: 'r_st_grass', crypt: 'r_st_wood', lava: 'r_st_wood', void: 'r_st_wood' };
+  const RHIT = { sword: 'r_sword_hit', axe: 'r_axe_hit', maul: 'r_maul_hit', bow: 'r_bow_hit', bolt: 'r_bolt_hit', arc: 'r_bolt_hit', fire: 'r_fire_hit', cold: 'r_cold_hit', light: 'r_light_hit' };
+  function rKind(sk) { // which of Lee's picks a skill uses: spells by element (the basic arcane bolt is the staff, wand or orb bolt), arrows the bow, other attacks the weapon in hand
+    const el = sk && sk.el; if (el === 'fire' || el === 'cold' || el === 'light') return el; if (el === 'arc') return sk.basic ? 'bolt' : 'arc'; if (sk && sk.arrow) return 'bow';
+    const w = typeof G !== 'undefined' && G.hero && G.hero.eq && G.hero.eq.weapon, wt = w && w.wt; return wt === 'sword' || wt === 'axe' || wt === 'maul' || wt === 'bow' ? wt : wt === 'staff' || wt === 'orb' ? 'bolt' : null;
+  }
   let smpGo = false, sBus = null;
   function getBuf(f, done) { if (typeof fetch === 'undefined') return; fetch(f + SQ).then(r => r.ok ? r.arrayBuffer() : null).then(b => { if (b) ac.decodeAudioData(b, done, () => { }); }).catch(() => { }); }
-  function loadSmp() { if (smpGo || !ac) return; smpGo = true; SFILES.forEach((k, i) => setTimeout(() => getBuf('sfx/' + k + '.mp3', buf => { SMP[k] = buf; }), i < 10 ? 0 : 300 + i * 25)); } // the first ten (the old set) at once, the rest spread over about two and a half seconds
+  function loadSmp() { if (smpGo || !ac) return; smpGo = true; RFILES.forEach(k => getBuf('sfx/' + k + '.mp3', buf => { SMP[k] = buf; })); SFILES.forEach((k, i) => setTimeout(() => getBuf('sfx/' + k + '.mp3', buf => { SMP[k] = buf; }), i < 10 ? 0 : 300 + i * 25)); } // Lee's picks first, then the first ten of the old set at once and the rest spread over about two and a half seconds
   function pickS(k) { const g = SG[k]; if (!g) return SMP[k] ? k : null; const have = g.filter(x => SMP[x]); if (!have.length) return null; let x = have[Math.floor(Math.random() * have.length)]; if (have.length > 1 && x === SPREV[k]) x = have[(have.indexOf(x) + 1) % have.length]; SPREV[k] = x; return x; }
   function smp(k, vol, rate, delay, gap) {
     const a = ac; if (!a) return false; const x = pickS(k); if (!x) return false; if (mute) return true; const now = a.currentTime; if (!delay && now - (k in SLAST ? SLAST[k] : -99) < (gap || .045)) return true; SLAST[k] = now;
     if (!sBus) { sBus = a.createDynamicsCompressor(); sBus.threshold.value = -10; sBus.ratio.value = 6; sBus.connect(a.destination); }
-    const s = a.createBufferSource(), g = a.createGain(); s.buffer = SMP[x]; s.playbackRate.value = (rate || 1) * (.93 + Math.random() * .14); g.gain.value = (vol || .5) * master * (.86 + Math.random() * .28); s.connect(g); g.connect(sBus); s.start(now + (delay || 0)); return true;
+    const s = a.createBufferSource(), g = a.createGain(); s.buffer = SMP[x]; s.playbackRate.value = (rate || 1) * (.93 + Math.random() * .14); g.gain.value = (vol || .5) * (SV[x] || 1) * master * (.86 + Math.random() * .28); s.connect(g); g.connect(sBus); s.start(now + (delay || 0)); return true;
   }
   // oathbyte-sfx-bright: a bell-like chime (a sine with two quieter overtones) and a sparkle (a quick shower of high chimes)
   function chime(f, d, vol, delay) { tone(f, d, 'sine', vol, 1, delay); tone(f * 2.76, d * .5, 'sine', vol * .3, 1, delay); tone(f * 5.4, d * .25, 'sine', vol * .12, 1, delay); }
@@ -61,7 +74,8 @@ const SFX = (() => {
     if (!ac || mute) return; const now = ac.currentTime; if (!delay && n < 6 && now - spLast < .09) return; spLast = now; // small sparkles don't pile up when many things die at once
     lo = lo || 2200; hi = hi || 5200; for (let i = 0; i < n; i++) chime(lo + Math.random() * (hi - lo), .1 + Math.random() * .14, vol * (1 - i / (n * 1.6)), (delay || 0) + i * (.022 + Math.random() * .02));
   }
-  function cast(sk) { // the sound a skill makes as it goes off, by its element
+  function cast(sk) { // the sound a skill makes as it goes off: Lee's pick for it, else the older sound by element
+    { const rk = rKind(sk); if (rk && smp('r_' + rk + '_sw', sk.basic && (rk === 'fire' || rk === 'cold' || rk === 'light') ? .8 : 1 /* a basic firebolt fires often, so it sits a little lower */, 1)) return true; }
     const el = sk && sk.el, b = sk && sk.basic ? .7 : 1;
     if (!sk || sk.arrow) { if (!smp('swish', .28 * b, 1.5)) return false; tone(1300, .1, 'sine', .018 * b, 1.9); return true; }
     if (el === 'fire') { if (!smp('fire', .38 * b, 1.12)) return false; smp('swish', .15 * b, 1); sparkle(.012 * b, 3, .05, 1800, 3600); return true; }
@@ -75,30 +89,31 @@ const SFX = (() => {
     try {
       switch (n) {
         case 'swing': if (!cast(sk)) noise(.12, .07, 2600); break;
-        case 'hit': if (smp('hit', .42, 1.06)) smp('tick', .16, 1.15); else { noise(.09, .16, 900); tone(140, .1, 'triangle', .12, .5); } break;
-        case 'crit': if (smp('impact', .5, 1.25)) { smp('blade', .4, 1.12); smp('glass', .32, 1.15); smp('tick', .22, 1.3); sparkle(.022, 5, .02, 2600, 6000); } else { noise(.14, .22, 1800); tone(220, .16, 'square', .07, .4); } chime(2093, .3, .025, .02); break;
+        case 'hit': { const rf = RHIT[rKind(sk)]; if (rf && smp(rf, 1, 1)) break; } if (smp('hit', .42, 1.06)) smp('tick', .16, 1.15); else { noise(.09, .16, 900); tone(140, .1, 'triangle', .12, .5); } break;
+        case 'crit': if (smp('r_crit', 1, 1)) break; if (smp('impact', .5, 1.25)) { smp('blade', .4, 1.12); smp('glass', .32, 1.15); smp('tick', .22, 1.3); sparkle(.022, 5, .02, 2600, 6000); } else { noise(.14, .22, 1800); tone(220, .16, 'square', .07, .4); } chime(2093, .3, .025, .02); break;
         case 'taunt': if (!smp('roar', .24, 1.35)) tone(140, .25, 'square', .08, .6); smp('block', .26, 1.2, .05); chime(880, .4, .03, .05); break;
         case 'block': if (!smp('block', .3, 1.15)) tone(240, .08, 'square', .05, .6); chime(1760, .18, .022); break;
         case 'mend': smp('phase', .16, 1.2); smp('shimmer', .22, 1.3); arp([784, 988, 1175, 1568], .45, 'sine', .04, .07); sparkle(.014, 5, .15, 2800, 5600); break;
-        case 'hurt': if (!smp('hurt', .45, 1.05)) tone(110, .2, 'sawtooth', .12, .5); break;
-        case 'kill': if (smp('kill', .42, 1.1)) { smp('pluck', .2, 1.1); smp('thud', .14, 1.05); sparkle(.016, 3, .03); } else { tone(90, .22, 'triangle', .14, .4); noise(.16, .1, 500); } break;
-        case 'bigkill': if (smp('big_kill', .45, 1.05)) { smp('kill', .4, .95); smp('shatter', .32, 1.1); } else { tone(70, .5, 'triangle', .16, .4); noise(.3, .14, 400); } arp([1047, 1319, 1568], .25, 'sine', .035, .05, .04); sparkle(.022, 8, .08); break;
-        case 'step': { const gk = GROUND[ambKind]; if (!(gk && smp(gk, .11, 1.05))) smp('step', .1, 1 + Math.random() * .25); } break;
+        case 'hurt': if (smp('r_hurt', 1, 1)) break; if (!smp('hurt', .45, 1.05)) tone(110, .2, 'sawtooth', .12, .5); break;
+        case 'kill': if (smp('r_kill', 1, 1)) break; if (smp('kill', .42, 1.1)) { smp('pluck', .2, 1.1); smp('thud', .14, 1.05); sparkle(.016, 3, .03); } else { tone(90, .22, 'triangle', .14, .4); noise(.16, .1, 500); } break;
+        case 'bigkill': if (smp('r_bigkill', 1, 1)) break; if (smp('big_kill', .45, 1.05)) { smp('kill', .4, .95); smp('shatter', .32, 1.1); } else { tone(70, .5, 'triangle', .16, .4); noise(.3, .14, 400); } arp([1047, 1319, 1568], .25, 'sine', .035, .05, .04); sparkle(.022, 8, .08); break;
+        case 'step': { const rk = RGROUND[ambKind]; if (rk && smp(rk, 1, 1)) break; } { const gk = GROUND[ambKind]; if (!(gk && smp(gk, .11, 1.05))) smp('step', .1, 1 + Math.random() * .25); } break;
         case 'slam': if (smp('impact', .65, .85)) { smp('land', .5, .9); smp('stone', .32, 1); smp('shatter', .22, .9, .02); tone(70, .3, 'sine', .14, .5); } else { noise(.4, .3, 320); tone(60, .4, 'sine', .3, .5); } break;
         case 'leap': if (smp('dash', .45, 1.1)) smp('swish', .22, .9); else noise(.25, .08, 3000); tone(600, .3, 'sine', .025, 3); break;
         case 'whirl': if (!smp('swish', .3, .9)) { if (!smp('dash', .38, .9)) noise(.3, .08, 2200); } smp('tick', .1, 1.2, .1); break;
-        case 'gold': if (!smp('coin', .28, 1.12)) { tone(1568, .06, 'square', .035); tone(2093, .08, 'square', .035, 1, .05); } chime(2637, .14, .02, .03); break;
+        case 'gold': if (smp('r_gold', 1, 1)) break; if (!smp('coin', .28, 1.12)) { tone(1568, .06, 'square', .035); tone(2093, .08, 'square', .035, 1, .05); } chime(2637, .14, .02, .03); break;
         case 'goblin': smp('coins_big', .35, 1.08); arp([1319, 1568, 2093, 1568, 2093, 2637], .14, 'triangle', .07, .075); chime(3136, .5, .04, .46); break; /* build 0034: a coin jingle when a Treasure Goblin is near */
-        case 'pickup': if (!smp('cloth', .24, 1.1)) tone(520, .08, 'triangle', .1, 1.5); smp('pluck', .16, 1.2); break;
-        case 'drop1': if (smp('chime1', .32)) chime(1568, .35, .03, .05); else tone(660, .25, 'sine', .1); break;
-        case 'drop2': if (smp('chime2', .36)) { smp('gem', .26, 1.1, .05); arp([1175, 1568], .3, 'sine', .04, .1); sparkle(.016, 4, .12); } else { tone(784, .22, 'triangle', .12); tone(1047, .4, 'triangle', .12, 1, .12); } break;
-        case 'drop3': smp('chime3', .36); smp('bell_hi', .3, 1.4); smp('shimmer', .28, 1.15, .1); arp([784, 1047, 1319, 1568, 2093], .6, 'triangle', .07, .08); chime(3136, 1, .035, .42); sparkle(.022, 8, .2, 2600, 6200); break;
-        case 'drop4': smp('fanfare2', .42); smp('swell', .26, 1.1); smp('bell_hi', .32, 1.1, .05); smp('chime3', .3, .9, .3); arp([784, 1047, 1319, 1568, 2093, 2637], .8, 'triangle', .07, .07); chime(3520, 1.4, .04, .48); tone(262, 1.2, 'sine', .05); sparkle(.026, 14, .25, 2400, 6600); break;
-        case 'level': smp('fanfare1', .4); smp('shimmer', .26, 1.2); arp([523, 659, 784, 1047, 1319], .5, 'triangle', .05, .08); sparkle(.022, 10, .3, 2600, 6200); break;
+        case 'pickup': if (smp('r_pickup', 1, 1)) break; if (!smp('cloth', .24, 1.1)) tone(520, .08, 'triangle', .1, 1.5); smp('pluck', .16, 1.2); break;
+        case 'drop1': if (smp('r_drop1', 1, 1)) break; if (smp('chime1', .32)) chime(1568, .35, .03, .05); else tone(660, .25, 'sine', .1); break;
+        case 'drop2': if (smp('r_drop2', 1, 1)) break; if (smp('chime2', .36)) { smp('gem', .26, 1.1, .05); arp([1175, 1568], .3, 'sine', .04, .1); sparkle(.016, 4, .12); } else { tone(784, .22, 'triangle', .12); tone(1047, .4, 'triangle', .12, 1, .12); } break;
+        case 'drop3': if (smp('r_drop3', 1, 1)) break; smp('chime3', .36); smp('bell_hi', .3, 1.4); smp('shimmer', .28, 1.15, .1); arp([784, 1047, 1319, 1568, 2093], .6, 'triangle', .07, .08); chime(3136, 1, .035, .42); sparkle(.022, 8, .2, 2600, 6200); break;
+        case 'drop4': if (smp('r_drop4', 1, 1)) break; smp('fanfare2', .42); smp('swell', .26, 1.1); smp('bell_hi', .32, 1.1, .05); smp('chime3', .3, .9, .3); arp([784, 1047, 1319, 1568, 2093, 2637], .8, 'triangle', .07, .07); chime(3520, 1.4, .04, .48); tone(262, 1.2, 'sine', .05); sparkle(.026, 14, .25, 2400, 6600); break;
+        case 'level': if (smp('r_level', 1, 1)) break; smp('fanfare1', .4); smp('shimmer', .26, 1.2); arp([523, 659, 784, 1047, 1319], .5, 'triangle', .05, .08); sparkle(.022, 10, .3, 2600, 6200); break;
+        case 'ui': smp('r_ui', 1, 1); break; // a menu button
         case 'flask': if (smp('bottle', .34, 1.1)) { smp('bubble', .2, 1.15, .12); smp('phase', .12, 1.3, .1); } else tone(300, .3, 'sine', .12, 2); chime(1319, .3, .025, .22); break;
         case 'boss': if (smp('boss', .65)) { smp('roar', .45, .9, .05); smp('big_kill', .35, .85, .15); tone(55, 1.2, 'sawtooth', .05, .7); } else { tone(55, 1.4, 'sawtooth', .16, .7); noise(1.2, .12, 240); } smp('shatter', .25, .8, .1); break;
         case 'shrine': smp('chime4', .3); smp('shimmer', .28, 1.15); arp([659, 880, 1109, 1319], .7, 'sine', .05, .06); sparkle(.016, 6, .15); break;
-        case 'bossdie': if (smp('big_kill', .7, .7)) { smp('boss', .45, .85, .1); smp('impact', .6, .7); smp('boom', .4, 1.1); smp('shatter', .4, .9, .05); } else { tone(45, 2, 'sawtooth', .2, .5); noise(1.6, .2, 300); } smp('fanfare2', .45, 1, .7); arp([523, 784, 1047, 1319, 1568, 2093], .9, 'triangle', .06, .08, .75); sparkle(.028, 16, .8, 2400, 6600); break;
+        case 'bossdie': if (smp('r_bossdie', 1, 1)) break; if (smp('big_kill', .7, .7)) { smp('boss', .45, .85, .1); smp('impact', .6, .7); smp('boom', .4, 1.1); smp('shatter', .4, .9, .05); } else { tone(45, 2, 'sawtooth', .2, .5); noise(1.6, .2, 300); } smp('fanfare2', .45, 1, .7); arp([523, 784, 1047, 1319, 1568, 2093], .9, 'triangle', .06, .08, .75); sparkle(.028, 16, .8, 2400, 6600); break;
         case 'die': smp('big_kill', .45, .7); smp('toll', .35, .8, .2); tone(200, 1, 'sawtooth', .07, .25); break;
         case 'warn': smp('wind_up', .3, .95, 0, 1.2); tone(70, .5, 'sawtooth', .05, 1.9); noise(.4, .05, 900); chime(1760, .3, .04, .05); chime(1760, .3, .035, .25); break; // build 0048: a heavy blow is being marked
         case 'evade': smp('swish', .28, 1.5); chime(1760, .15, .03); chime(2637, .12, .02, .05); break;
@@ -1051,7 +1066,7 @@ function hitEnemy(e, sk, mult, noProc) { if (e && e.alive && e.arch === 'goblin'
   burst(e.x, 1.1 * e.sc, e.z, d.crit ? 0xffe14a : EL_COL[sk.el], d.crit ? 12 : 6, d.crit ? 7 : 5); hitSpray(e, sk, d.crit, sk.type === 'melee' || !!sk.land || sk.type === 'nova');
   { const heavy = sk.type === 'melee' || !!sk.land || sk.type === 'nova'; G.fx.push({ flash: 1, x: e.x, y: 1.1 * e.sc, z: e.z, r: d.crit ? 3.2 : heavy ? 2.2 : 1.4, life: .12, max: .12, c: GLX.col(d.crit ? 0xfff2b0 : EL_COL[sk.el]) }); if (d.crit) G.shake = Math.min(.5, G.shake + .12); }
   if (over) { burst(e.x, 1.1 * e.sc, e.z, e.md.c2, 30, 10); burst(e.x, .4, e.z, 0x7a1010, 18, 6); ring(e.x, e.z, 0, 3.4 * e.sc, .35, 0xffd0a0); G.fx.push({ scorch: 1, x: e.x, z: e.z, r: 1.6 * e.sc, life: 2, max: 2, c: GLX.col(0x5a0c0c) }); G.shake = Math.min(.6, G.shake + .2); }
-  if (G.time - G.hitSfx > .05) { G.hitSfx = G.time; SFX.play(d.crit ? 'crit' : 'hit'); }
+  if (G.time - G.hitSfx > .05) { G.hitSfx = G.time; SFX.play(d.crit ? 'crit' : 'hit', sk); }
   if (!noProc && s.procLight && Math.random() * 100 < s.procLight) addArea({ x: e.x, z: e.z, r: 2.6, delay: .15, owner: 'p', sk: { el: 'light', m: 1.5 }, c: 0xfff07a, proc: 1 });
   if (e.dummy) return;
   if (G.online) { const cl = !e.boss && s.cull && e.hp < e.maxHp * s.cull / 100; NET.send({ t: 'hit', id: e.id, v: cl ? e.maxHp * 2 : v, el: sk.el, fz: sk.freeze || 0 }); if (e.hp < 0) e.hp = 0; return; }
