@@ -7,7 +7,7 @@ const UI = (() => {
   /* 3D items (Lee, Nov 15: "1 and 2"): the bag shows each item as a small 3D model and the tooltip shows it large and turning. items3d.js loads after the page,
      draws each item's picture once in the background, and until a picture is ready (or on a device without WebGL) the flat icon shows */
   let I3 = null, tipIt = null;
-  window.addEventListener('load', () => setTimeout(() => { import(new URL('js/items3d.js?v=0108', location.href).href).then(m => { if (m.default && m.default.ok) { I3 = m.default; U.invDirty = true; } }).catch(() => { }); }, 1200));
+  window.addEventListener('load', () => setTimeout(() => { import(new URL('js/items3d.js?v=0109', location.href).href).then(m => { if (m.default && m.default.ok) { I3 = m.default; U.invDirty = true; } }).catch(() => { }); }, 1200));
   function iconHtml(it, tall) { const sv = iconSvg(it); if (!I3) return sv; let r = null; try { r = I3.icon(it, tall); } catch (e) { r = null; } return !r ? sv : r.url ? `<img class="m3" src="${r.url}" alt="" draggable="false">` : `<span class="m3w" data-m3="${r.key.replace(/"/g, '')}">${sv}</span>`; }
   function show3() { const s = tip.querySelector('.show3'); if (!s) return; if (!I3 || !tipIt) { s.remove(); return; } try { I3.showcase(s, tipIt); } catch (e) { s.remove(); } }
   U.zoneBanner = (a, b) => { $('ban1').textContent = a; $('ban2').textContent = b || ''; $('banner').classList.add('on'); banT = 3.4; };
