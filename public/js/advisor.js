@@ -108,7 +108,7 @@ const ADV = (() => {
   }
 
   function think() {
-    const h = G.hero, s = P.stats, out = []; if (!h || !s || !s.maxLife) return out; const town = !!G.inTown, fl = P.fl === undefined ? FLASK_MAX : P.fl, hp = P.hp / s.maxLife;
+    const h = G.hero, s = P.stats, out = []; if (!h || !s || !s.maxLife) return out; const town = !!G.inTown, fl = P.fl === undefined ? flaskMax() : P.fl, hp = P.hp / s.maxLife;
     /* life first: it is the only thing that can't wait */
     if (!town && !P.dead && hp < .35) {
       if (fl > 0 && !(P.flaskT > 0)) out.push({ k: 'pot', pri: 100, urgent: 1, t: 'Drink a potion now', d: 'You are at ' + Math.round(hp * 100) + '% life with ' + fl + ' potion' + (fl > 1 ? 's' : '') + ' left. Press 1' + (IN && IN.touch ? ' or tap the potion' : '') + '.', a: ['Drink', () => useFlask()] });
@@ -141,7 +141,7 @@ const ADV = (() => {
   function watch(dt) {
     const h = G.hero; if (W.hero !== h) { W.hero = h; W.deaths = {}; W.lowMiss = 0; seen = new Set(); }
     const fk = floorKey(); if (P.dead && !W.wasDead && fk) W.deaths[fk] = (W.deaths[fk] || 0) + 1; W.wasDead = !!P.dead;
-    const s = P.stats, fl = P.fl === undefined ? FLASK_MAX : P.fl; if (s && s.maxLife && !G.inTown && !P.dead) {
+    const s = P.stats, fl = P.fl === undefined ? flaskMax() : P.fl; if (s && s.maxLife && !G.inTown && !P.dead) {
       if (P.hp / s.maxLife < .25 && fl > 0) { W.lowT += dt; if (W.lowT > 1.5 && W.lowT - dt <= 1.5) W.lowMiss++; } else W.lowT = 0;
     }
   }
