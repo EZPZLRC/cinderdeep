@@ -1229,14 +1229,14 @@ const TOUR = { vendor: 'Trader', stash: 'Stash', altar: 'Altar' }, TOUR_ORDER = 
 function tourNext() { const h = G.hero; if (!h) return null; return TOUR_ORDER.find(k => !(h.tour || {})[k]) || null; }
 function questTarget() {
   const Z = G.zone; if (!Z) return null; const h = G.hero, cq = tqCur ? tqCur() : null;
-  if (G.inTown) { const sc = stCur(), sn = sc && sc.k === 'talk' && Z.objs.find(o => o.kind === 'npc' && o.id === sc.by); if (sn) { const at = sn.st || sn; return { x: at.x, z: at.z, text: sc.goal }; } const tn = tourNext(), to = tn && Z.objs.find(o => o.kind === tn); if (to) return { x: to.x, z: to.z, text: 'Visit the ' + TOUR[tn] }; } /* build 0068: the story path; 0072: then the town walk */
+  if (G.inTown) { const sc = stCur(), sn = sc && sc.k === 'talk' && Z.objs.find(o => o.kind === 'npc' && o.id === sc.by); if (sn) { const at = sn.st || sn; return { x: at.x, z: at.z, hy: 3.1, text: sc.goal }; } const tn = tourNext(), to = tn && Z.objs.find(o => o.kind === tn); if (to) return { x: to.x, z: to.z, hy: 5.4, text: 'Visit the ' + TOUR[tn] }; } /* build 0068: the story path; 0072: then the town walk */
   if (G.inTown) { /* build 0025: the path leads to whoever is waiting for you first */ const who = cq ? (h.tq.n >= cq.goal.n ? cq.by : null) : (tqNext() ? tqNext().by : null), npc = who && Z.objs.find(o => o.kind === 'npc' && o.id === who);
-    if (npc) { const at = npc.st || npc; return { x: at.x, z: at.z, text: (cq ? 'Collect your reward from ' : 'Talk to ') + FOLK[who].n + (cq ? '' : ': they have a job for you') }; }
-    const o = Z.objs.find(o => o.kind === 'tportal'); return { x: o.x, z: o.z, text: cq ? 'Take the portal back out to work on ' + cq.t : 'Take the portal back to ' + (G.away && G.away.zone ? G.away.zone.def.name : 'the floor') }; }
-  if (cq && cq.goal.k === 'rescue' && h.tq.n < cq.goal.n) { const pip = Z.objs.find(o => o.kind === 'lost' && !o.used); if (pip) return { x: pip.x, z: pip.z, text: 'Find Pip: follow the path, he is hiding on this floor' }; }
-  { const sc = stCur(), cap = sc && sc.k === 'rescue' && Z.objs.find(o => o.kind === 'captive' && !o.used); if (cap) return { x: cap.x, z: cap.z, text: 'Find ' + cap.name + ': follow the path' }; }
-  const po = Z.objs.find(o => o.kind === 'portal' && !o.used); if (po) return { x: po.x, z: po.z, text: 'Take the portal deeper' };
-  const b = G.boss; return { x: b ? b.x : Z.bossAt[0], z: b ? b.z : Z.bossAt[1], text: 'Find and slay ' + (b ? b.name : zoneBoss(Z).n) };
+    if (npc) { const at = npc.st || npc; return { x: at.x, z: at.z, hy: 3.1, text: (cq ? 'Collect your reward from ' : 'Talk to ') + FOLK[who].n + (cq ? '' : ': they have a job for you') }; }
+    const o = Z.objs.find(o => o.kind === 'tportal'); return { x: o.x, z: o.z, hy: 6.2, text: cq ? 'Take the portal back out to work on ' + cq.t : 'Take the portal back to ' + (G.away && G.away.zone ? G.away.zone.def.name : 'the floor') }; }
+  if (cq && cq.goal.k === 'rescue' && h.tq.n < cq.goal.n) { const pip = Z.objs.find(o => o.kind === 'lost' && !o.used); if (pip) return { x: pip.x, z: pip.z, hy: 2.6, text: 'Find Pip: follow the path, he is hiding on this floor' }; }
+  { const sc = stCur(), cap = sc && sc.k === 'rescue' && Z.objs.find(o => o.kind === 'captive' && !o.used); if (cap) return { x: cap.x, z: cap.z, hy: 3, text: 'Find ' + cap.name + ': follow the path' }; }
+  const po = Z.objs.find(o => o.kind === 'portal' && !o.used); if (po) return { x: po.x, z: po.z, hy: 6.2, text: 'Take the portal deeper' };
+  const b = G.boss; return { x: b ? b.x : Z.bossAt[0], z: b ? b.z : Z.bossAt[1], hy: b ? b.sc * 2.1 + 1.2 : 4.5, text: 'Find and slay ' + (b ? b.name : zoneBoss(Z).n) };
 }
 /* build 0104 (Lee: make the arrow pathing on the floor nicer and more fluid): the route is pulled tight with room to spare from walls, its corners
    are rounded into curves, and it is kept as points every GPS_ST from the goal back to the hero. What is drawn eases toward each new route, so
@@ -2870,7 +2870,7 @@ else GLX.obj('glow', 'gem', f.x, f.y, f.z, f.life * 9, f.size, f.size, f.size, f
   }
   GLX.glowK && GLX.glowK(1);
   drawGps(); /* build 0104: the quest path, see drawGps */
-  if (GPS.goal && G.set.gps) { const q = GPS.goal, onBoss = G.boss && G.boss.alive && G.boss.awake && Math.hypot(q.x - G.boss.x, q.z - G.boss.z) < 2; if (!onBoss && Math.hypot(q.x - P.x, q.z - P.z) > 2.5) { const c = col(0xffd84a), t = G.time, pu = .5 + .5 * Math.sin(t * 4), R = 2 + pu * .6; GLX.obj('glow', 'ring', q.x, .09, q.z, t * .6, R, 1, R, c, 1.6, .85, -1); GLX.obj('glow', 'cyl', q.x, 6, q.z, 0, .14 + pu * .05, 12, .14 + pu * .05, c, 2, .42); GLX.halo(q.x, 1.4, q.z, 3.4, c, .3 + pu * .15); } } /* a gold beam and ring mark where the quest leads: the townsfolk to report to, the captive, the gate */
+  if (GPS.goal && G.set.gps) { const q = GPS.goal, onBoss = G.boss && G.boss.alive && G.boss.awake && Math.hypot(q.x - G.boss.x, q.z - G.boss.z) < 2; if (!onBoss && Math.hypot(q.x - P.x, q.z - P.z) > 2.5) { const c = col(0xffd84a), t = G.time, pu = .5 + .5 * Math.sin(t * 4), R = 2 + pu * .6; GLX.obj('glow', 'ring', q.x, .09, q.z, t * .6, R, 1, R, c, 1.6, .85, -1); GLX.halo(q.x, 1.4, q.z, 3.4, c, .3 + pu * .15); GPS.mark = q; } else GPS.mark = null; } else GPS.mark = null; /* a gold ring marks where the quest leads; build 0127 (Lee): a yellow ? floats over it instead of the old beam (drawn in ui.js) */
   if (P.move && !P.atk) GLX.obj('glow', 'ring', P.move[0], .06, P.move[1], 0, .8, 1, .8, col(0xffffff), 1, .25, -1);
   if (G.tj && !G.auto && !P.dead) { const e = nearFoe(15); if (e && e !== G.hover) GLX.obj('glow', 'ring', e.x, .06, e.z, G.time * 1.5, e.r * 2.5, 1, e.r * 2.5, col(0xffb03a), 1, .55, -1); }
   if (G.hover && G.hover.alive) GLX.obj('glow', 'ring', G.hover.x, .06, G.hover.z, 0, G.hover.r * 2.6, 1, G.hover.r * 2.6, col(0xff5a4a), 1, .7, -1);
