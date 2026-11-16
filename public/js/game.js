@@ -272,7 +272,7 @@ const SFX = (() => {
 // ---------- items ----------
 function affixVal(a, ilvl) { let v = a[1] + Math.random() * (a[2] - a[1]); if (a[3] === 'f') v *= Math.pow(1.085, ilvl); else if (a[3] === 'p') v *= 1 + Math.min(ilvl, 60) * .02; return Math.max(1, Math.round(v)); }
 function rollAffix(it) { const have = new Set(it.aff.map(a => a.k)), as = AFF_ALIAS[it.slot] || it.slot; const pool = AFFIX.filter(a => a[4].split(' ').includes(as) && !have.has(a[0])); if (!pool.length) return false; const a = pick(pool); it.aff.push({ k: a[0], v: affixVal(a, it.ilvl) }); return true; }
-function makeItem(ilvl, slot, rar, baseName) {
+function makeItem(ilvl, slot, rar, baseName, plain) { /* plain: never named loot (the Trader's stock) */
   slot = slot || pick(DROP_SLOTS);
   const it = { id: itemId++, slot, rar, ilvl, aff: [] };
   if (slot === 'weapon') { const b = (baseName && WEAPONS.find(w => w.n === baseName)) || pick(G.hero ? WEAPONS.filter(w => CLASSES[G.hero.cls].wts.includes(w.t)) : WEAPONS); const k = Math.pow(1.11, ilvl) * (1 + rar * .1); it.base = b.n; it.dmg = [Math.max(1, Math.round(b.d[0] * k)), Math.max(2, Math.round(b.d[1] * k))]; it.spd = b.s; it.wt = b.t; if (G.hero) it.cls = G.hero.cls; }
@@ -282,14 +282,27 @@ function makeItem(ilvl, slot, rar, baseName) {
   const n = rar === 0 ? 0 : rar === 1 ? rint(1, 2) : rar === 2 ? rint(3, 5) : rar === 3 ? rint(4, 5) : 6;
   for (let i = 0; i < n; i++) rollAffix(it);
   if (rar === 4) for (const a of it.aff) a.v = Math.round(a.v * 1.25);
-  if (rar >= 3) { { const al = AFF_ALIAS[slot] || slot, ps = Object.keys(POWERS).filter(p => POWERS[p].slots.includes(slot) || POWERS[p].slots.includes(al)); it.power = pick(ps.length ? ps : Object.keys(POWERS)); } it.name = POWERS[it.power].n; }
+  if (rar >= 3) { { const al = AFF_ALIAS[slot] || slot, ps = Object.keys(POWERS).filter(p => !POWERS[p].nm && (POWERS[p].slots.includes(slot) || POWERS[p].slots.includes(al))); it.power = pick(ps.length ? ps : Object.keys(POWERS).filter(p => !POWERS[p].nm)); } it.name = POWERS[it.power].n; }
   it.sd = (Math.random() * 2147483646 | 0) + 1; const L = itemLook(it), r = L.r;
   if (rar >= 3) it.name = it.name + ', ' + I_EPI[r() * I_EPI.length | 0];
   else if (rar === 2) it.name = RN1[r() * RN1.length | 0] + RN2[r() * RN2.length | 0].toLowerCase() + ', ' + L.mat[0] + ' ' + it.base;
   else if (rar === 1) it.name = MAGPRE[r() * MAGPRE.length | 0] + ' ' + it.base + ' of ' + I_OF[r() * I_OF.length | 0];
   else it.name = I_WEAR[r() * I_WEAR.length | 0] + ' ' + L.mat[0] + ' ' + it.base;
+  if (rar >= 3 && !plain && Math.random() < NAMED_SHARE) toNamed(it);
   return it;
 }
+/* Named loot (Lee, Nov 16: "Inside Legendaries"): about 1 in 5 Legendary or Mythic items becomes one of the hand-made NAMED items (data.js) for the
+   same slot. It keeps its rarity, item level and rolled lines; it takes the named item's base (damage or armor worked out exactly as makeItem does),
+   its signature effect in place of a random unique effect, its name, look and story. How often Legendaries and Mythics drop does not change. */
+const NAMED_SHARE = .2;
+function namedFits(it) { return Object.keys(NAMED).filter(k => { const N = NAMED[k]; if (N.slot !== it.slot) return false;
+  if (it.slot === 'weapon') { const w = WEAPONS.find(x => x.n === N.b); return !!w && (it.cls && CLASSES[it.cls] ? CLASSES[it.cls].wts.includes(w.t) : w.t === it.wt); }
+  if (it.slot === 'offhand') return N.oc === it.oc; return true; }); }
+function toNamed(it, id) { const ks = id ? (NAMED[id] && NAMED[id].slot === it.slot ? [id] : []) : namedFits(it); if (!ks.length) return false; const k = pick(ks), N = NAMED[k];
+  if (it.slot === 'weapon') { const b = WEAPONS.find(w => w.n === N.b), q = Math.pow(1.11, it.ilvl) * (1 + it.rar * .1); it.base = b.n; it.dmg = [Math.max(1, Math.round(b.d[0] * q)), Math.max(2, Math.round(b.d[1] * q))]; it.spd = b.s; it.wt = b.t; }
+  else if (ARMOR[it.slot]) { const b = ARMOR[it.slot].find(a => a.n === N.b); it.base = b.n; it.armor = Math.round(b.a * Math.pow(1.085, it.ilvl) * (1 + it.rar * .08)); }
+  else if (it.slot !== 'offhand') it.base = N.b;
+  it.nm = k; it.power = 'n_' + k; it.name = N.n; return true; }
 // build 0074 (security): could this item have come out of the game? The highest roll at its item level, rarity and upgrades,
 // with a little room for rounding. Used on items passed between players; it never touches a hero's own saved gear.
 function itemLegit(it, maxIlvl) {
@@ -302,6 +315,7 @@ function itemLegit(it, maxIlvl) {
   if (it.slot === 'weapon') { if (!Array.isArray(it.dmg) || it.dmg.length !== 2 || !it.dmg.every(v => isFinite(v) && v >= 1)) return false; const k = Math.pow(1.11, il) * (1 + rar * .1) * uk, hi = Math.max(...WEAPONS.map(w => w.d[1])) * k, lo = Math.max(...WEAPONS.map(w => w.d[0])) * k; if (it.dmg[1] > tol(hi) + 1 || it.dmg[0] > tol(lo) + 1 || it.dmg[0] > it.dmg[1]) return false; if (!(it.spd >= .5 && it.spd <= 2.5)) return false; }
   if (it.armor !== undefined) { const bases = it.slot === 'offhand' ? Object.values(OFFHAND).map(b => b.a || 0) : (ARMOR[it.slot] || []).map(b => b.a), mx = Math.max(0, ...bases) * Math.pow(1.085, il) * (1 + rar * .08) * uk; if (!(it.armor >= 0) || it.armor > tol(mx) + 1) return false; }
   if (it.power !== undefined && (rar < 3 || !POWERS[it.power])) return false;
+  { const pn = it.power !== undefined && POWERS[it.power].nm, N = pn && NAMED[pn]; if ((it.nm !== undefined || pn) && (!N || it.nm !== pn || N.slot !== it.slot || it.base !== N.b)) return false; } /* named loot: the item has to be that named item, in its own slot and base */
   return true;
 }
 // what an item is made of and where it came from, all from its seed, so no two are alike
@@ -311,6 +325,7 @@ function itemLook(it) {
   let s = it.sd; const r = () => (s = (s * 48271) % 2147483647) / 2147483647; r(); r();
   const kind = itemKind(it), mat = I_MAT[kind][r() * I_MAT[kind].length | 0], acc = I_ACC[r() * I_ACC.length | 0], gem = I_GEM[r() * I_GEM.length | 0];
   const v = [r(), r(), r(), r()], lore = I_VERB[kind][r() * 4 | 0] + ' in ' + I_PLACE[r() * I_PLACE.length | 0] + ' by ' + I_MAKER[r() * I_MAKER.length | 0] + '.', note = I_NOTE[r() * I_NOTE.length | 0];
+  const N = it.nm && NAMED[it.nm]; if (N) return { kind, mat: N.mat, acc: N.acc, gem: N.gem, v: N.v.slice(), lore: '', note: '', story: N.st, named: N, r }; /* named loot always looks the same */
   return { kind, mat, acc, gem, v, lore, note, r };
 }
 function itemValue(it) { return Math.round((5 + it.ilvl * 3) * [1, 2.5, 6, 25, 80][it.rar]); }
@@ -377,7 +392,7 @@ function calcStats(eq, noBuff) { /* build 0090: noBuff leaves out skill buffs, s
   const uk = Math.pow(1.11, h.level) * .7; let wmin = Math.max(1, Math.round(3 * uk)), wmax = Math.max(2, Math.round(5 * uk)), wspd = 1.3, arm = 0; // bare fists until a weapon says otherwise
   for (const sl of SLOTS) {
     const it = eq[sl]; if (!it) continue; if (it.dmg) { wmin = it.dmg[0]; wmax = it.dmg[1]; wspd = it.spd; } if (it.armor) arm += it.armor;
-    for (const a of it.aff) s[a.k] = (s[a.k] || 0) + a.v; if (it.power) { const p = POWERS[it.power].s; for (const k in p) s[k] = (s[k] || 0) + p[k]; }
+    for (const a of it.aff) s[a.k] = (s[a.k] || 0) + a.v; if (it.power && POWERS[it.power]) { const p = POWERS[it.power].s; for (const k in p) s[k] = (s[k] || 0) + p[k]; }
   }
   if (!noBuff) for (const b of P.buffs) for (const k in b.s) s[k] = (s[k] || 0) + b.s[k];
   const pg = h.pg || {}; s.dmg += pg.dmg || 0; s.lifePct += pg.life || 0; s.armorPct += (pg.armor || 0) * 2; s.critDmg += (pg.crit || 0) * 2; s.mf += pg.mf || 0; s.ms += Math.min(25, pg.ms || 0);
@@ -792,7 +807,7 @@ function enterTown() {
   goalDone('town'); P.fl = FLASK_MAX; P.flaskCd = 0; /* build 0026: only a real trip to town counts (and refills potions) */ if (P.meter) P.meter.peak = 0; /* Sprint 1: peak hit resets in town */
   G.away = { zone: G.zone, ents: G.ents, drops: G.drops, boss: G.boss, x: P.x, z: P.z, seed: G.zone.def.seed }; G.ents = []; G.drops = []; G.projs = []; G.pp = []; G.areas = []; G.fx = []; G.texts = []; G.timers = []; G.boss = null; G.wboss = null; G.streak = 0;
   G.zone = genTown(); G.inTown = true; buildStatic(G.zone); setEnv(G.zone); P.x = G.zone.start[0]; P.z = G.zone.start[1]; P.y = 0; P.rot = Math.PI; P.act = P.spin = P.dash = P.move = P.atk = P.inter = P.pick = null; BOT.path = null; P.hp = P.stats.maxLife; addDummy();
-  const h = G.hero; if (!h.stock || Math.abs(h.kills - (h.stockK || 0)) >= 25 || h.stockL !== h.level) { h.stock = []; for (let i = 0; i < 10; i++) h.stock.push(makeItem(h.level, null, Math.random() < .12 ? 3 : Math.random() < .5 ? 2 : 1)); h.stockK = h.kills; h.stockL = h.level; }
+  const h = G.hero; if (!h.stock || Math.abs(h.kills - (h.stockK || 0)) >= 25 || h.stockL !== h.level) { h.stock = []; for (let i = 0; i < 10; i++) h.stock.push(makeItem(h.level, null, Math.random() < .12 ? 3 : Math.random() < .5 ? 2 : 1, undefined, 1)); /* named loot is found, never bought */ h.stockK = h.kills; h.stockL = h.level; }
   SFX.play('shrine'); UI.zoneBanner('Emberwatch', 'Stash · Trader · Altar'); townNews(h); saveGame();
 }
 // jump straight to a party member; from town it walks you out through the portal first

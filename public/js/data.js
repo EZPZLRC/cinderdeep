@@ -80,6 +80,63 @@ const POWERS = {
   phoenix: { n: 'Emberheart', d: 'Cheat death once every 60 seconds, restoring full life.', s: { cheat: 1, lifePct: 12 }, slots: ['chest', 'amulet', 'helm'] }
 };
 
+/* Named loot (Lee, Nov 16: "Inside Legendaries"): hand-made one-of-a-kind items. About 1 in 5 Legendary or Mythic items comes out as one of these
+   instead of a random one, for the same slot, so how often Legendaries and Mythics drop does not change. Each keeps its own rolled lines and adds
+   one fixed signature effect, a fixed look and its own story. b = base (the weapon, armour piece, off-hand or jewel it always is), mat/acc/gem = its
+   colours, v = its shape variants, s = the signature effect, all made of stats the game already uses, so ratings, forging and the 3D models just work. */
+const NAMED = {
+  vowkeeper: { n: 'Vowkeeper', slot: 'weapon', b: 'Sword', mat: ['Oathsilver', '#dfe6ee'], acc: '#e2bc50', gem: ['bloodstone', '#9a2238'], v: [.82, .9, .35, .7], s: { lowLife: 35, dr: 10 },
+    st: 'A knight swore to hold the Emberwatch gate for one night. Nobody came to relieve him, and he held it for nine.' },
+  grudgebiter: { n: 'Grudgebiter', slot: 'weapon', b: 'War Axe', mat: ['Bloodiron', '#a85248'], acc: '#5a4636', gem: ['garnet', '#e0483e'], v: [.3, .8, .6, .2], s: { cull: 10, aspd: 12 },
+    st: 'A woodcutter\'s axe that a widow carried to war. The notches on its haft were not made by trees.' },
+  quietanvil: { n: 'The Quiet Anvil', slot: 'weapon', b: 'Maul', mat: ['Blacksteel', '#59606e'], acc: '#cf7a50', gem: ['amber', '#f09a2a'], v: [.65, .75, .15, .9], s: { area: 30, boomFire: 1 },
+    st: 'The Cinder Wardens strike it once a year to call their dead smiths home. Wherever it lands, the monsters go quiet.' },
+  lanternreach: { n: 'Lanternreach', slot: 'weapon', b: 'Staff', mat: ['Pale birch', '#d2c4a2'], acc: '#e2bc50', gem: ['moonstone', '#dfe8ff'], v: [.5, .95, .8, .4], s: { echo: 20, cdr: 10 },
+    st: 'The Lantern Monks carried it down into the Bell Tombs, so the lost would have a light to follow out.' },
+  sparkofostrel: { n: 'Spark of Ostrel', slot: 'weapon', b: 'Wand', mat: ['Driftwood', '#a39a8a'], acc: '#d2d8e2', gem: ['sapphire', '#4a8cf0'], v: [.2, .85, .5, .6], s: { procLight: 25, light: 20 },
+    st: 'A schoolboy\'s practice wand. The storm it called drowned half of Ostrel, and he never cast another spell.' },
+  hollowsong: { n: 'Hollowsong', slot: 'weapon', b: 'Longbow', mat: ['Ebony', '#463c44'], acc: '#d2d8e2', gem: ['pearl', '#f4efe2'], v: [.7, .9, .3, .55], s: { projExtra: 1, critDmg: 35 },
+    st: 'Its string was spun from a singer\'s hair. On still nights it hums the last song she ever sang.' },
+  magpie: { n: 'Magpie', slot: 'weapon', b: 'Shortbow', mat: ['Blackthorn', '#5a4636'], acc: '#dfe6ee', gem: ['onyx', '#3c3a48'], v: [.4, .7, .9, .25], s: { mf: 40, gf: 60, ms: 10 },
+    st: 'A thief\'s bow from the Salt Road. Whatever it brings down tends to leave a little more behind.' },
+  ninthknuckles: { n: 'Knuckles of the Ninth', slot: 'weapon', b: 'Cestus', mat: ['Scarred bronze', '#c08a4a'], acc: '#7c4f30', gem: ['bloodstone', '#9a2238'], v: [.55, .8, .45, .3], s: { leech: 3, aspd: 12 },
+    st: 'A deserter of the Ninth fought his way home with these. He never told anyone what he was running from.' },
+  thornfist: { n: 'Thornfist', slot: 'weapon', b: 'Spiked Knuckles', mat: ['Briarwood', '#4f5a44'], acc: '#6fa58e', gem: ['emerald', '#3ecf7a'], v: [.85, .75, .6, .8], s: { crit: 7, critDmg: 35 },
+    st: 'Grown, not forged: a briar from the Black Orchard wound round a fighter\'s fist until it would not let go.' },
+  lastdoor: { n: 'The Last Door', slot: 'offhand', b: 'Shield', oc: 'warden', mat: ['Abbey oak', '#77685a'], acc: '#9aa0a8', gem: ['opal', '#bfeee6'], v: [.6, .9, .2, .7], s: { armorPct: 40, resAll: 12 },
+    st: 'Cut from the door of the Sunken Abbey, the only part that never rotted. Arrows are still stuck in it, point first.' },
+  wrenfeather: { n: 'Wrenfeather Quiver', slot: 'offhand', b: 'Quiver', oc: 'ranger', mat: ['Doeskin', '#cba878'], acc: '#c08a4a', gem: ['topaz', '#f2c63a'], v: [.35, .85, .7, .45], s: { projExtra: 1, aspd: 10 },
+    st: 'The fletcher of Thornwick trimmed every arrow with feathers his daughter found. She never found two alike.' },
+  eyeofcaelruun: { n: 'Eye of Cael Ruun', slot: 'offhand', b: 'Orb', oc: 'arcanist', mat: ['Moonsilver', '#c9d6f2'], acc: '#4a4458', gem: ['amethyst', '#b06af0'], v: [.75, .95, .5, .9], s: { cdr: 15, arc: 20 },
+    st: 'A glass eye taken from the old statue at Cael Ruun. It still looks wherever you are about to go.' },
+  luckytooth: { n: 'The Lucky Tooth', slot: 'offhand', b: 'Charm', oc: 'brawler', mat: ['Copper', '#cf7a50'], acc: '#ddd4bc', gem: ['pearl', '#f4efe2'], v: [.25, .8, .35, .6], s: { dodge: 10, lowLife: 25 },
+    st: 'A fighter\'s own knocked-out tooth, bound in copper wire. He won every bout after he lost it.' },
+  almanac: { n: 'The Unfinished Almanac', slot: 'offhand', b: 'Tome', oc: 'elementalist', mat: ['Saffron silk', '#dca83c'], acc: '#5a4636', gem: ['sapphire', '#4a8cf0'], v: [.5, .85, .65, .35], s: { ele: 20, echo: 15 },
+    st: 'A weather diary that has foretold every storm in Wintermarch. The last page is dated tomorrow.' },
+  crownofcoals: { n: 'Crown of Coals', slot: 'helm', b: 'Iron Helm', mat: ['Hearth iron', '#857f78'], acc: '#cf7a50', gem: ['amber', '#f09a2a'], v: [.7, .9, .4, .8], s: { fire: 25, boomFire: 1, armorPct: 20 },
+    st: 'Hammered from the grate of a hearth that burned for a hundred winters. It is never cold.' },
+  stagmantle: { n: 'Mantle of the Stag Lord', slot: 'shoulders', b: 'Pauldrons', mat: ['Gilded steel', '#dcc070'], acc: '#8a3a56', gem: ['garnet', '#e0483e'], v: [.8, .9, .7, .5], s: { armorPct: 35, lifePct: 14 },
+    st: 'The last of the Stag Lords wore it to his crowning and to his funeral, a week apart.' },
+  ninefold: { n: 'Ninefold Mail', slot: 'chest', b: 'Chainmail', mat: ['Patchwork steel', '#c3cad6'], acc: '#c08a4a', gem: ['onyx', '#3c3a48'], v: [.45, .85, .55, .65], s: { dr: 12, lifePct: 12 },
+    st: 'Mended nine times by nine owners, each in a different metal. It has outlived every one of them.' },
+  gravegrip: { n: 'Gravedigger\'s Grip', slot: 'gloves', b: 'Leather Gloves', mat: ['Ashen hide', '#aaa294'], acc: '#727684', gem: ['moonstone', '#dfe8ff'], v: [.3, .7, .25, .4], s: { cull: 8, critDmg: 30 },
+    st: 'They dug the Bell Tombs and then buried the diggers. The palms are worn as smooth as river stone.' },
+  tidewrists: { n: 'Tidewrists', slot: 'bracers', b: 'Vambraces', mat: ['Verdigris bronze', '#6fa58e'], acc: '#d2d8e2', gem: ['pearl', '#f4efe2'], v: [.6, .85, .8, .3], s: { cold: 25, boomCold: 1 },
+    st: 'Salvaged from a ship that sank in the Drowned Quarter. When you swing, you can hear the sea.' },
+  droversknot: { n: 'Drover\'s Knot', slot: 'belt', b: 'War Belt', mat: ['Oiled leather', '#5f4028'], acc: '#cdb055', gem: ['jade', '#74c08a'], v: [.4, .75, .5, .7], s: { ms: 15, cdr: 15, dr: 8 },
+    st: 'A cattle drover\'s belt from Greywater, knotted once for every mile of the long drive south.' },
+  mirewalkers: { n: 'Mirewalkers', slot: 'pants', b: 'Leather Leggings', mat: ['Bog-oiled leather', '#4f5a44'], acc: '#8f887c', gem: ['jade', '#74c08a'], v: [.5, .8, .3, .6], s: { resAll: 15, dodge: 8 },
+    st: 'Oiled with something from the Mirelands that nobody has been able to name. Nothing that bites gets through.' },
+  ashstride: { n: 'Ashstride', slot: 'boots', b: 'Greaves', mat: ['Ashen iron', '#857f78'], acc: '#cf7a50', gem: ['garnet', '#e0483e'], v: [.75, .85, .6, .2], s: { ms: 20, boomFire: 1 },
+    st: 'Every step leaves a footprint that smolders for an hour. The cobbler would never say what he soaked them in.' },
+  keptpromise: { n: 'The Kept Promise', slot: 'amulet', b: 'Pendant', mat: ['Rose gold', '#e2a084'], acc: '#e2bc50', gem: ['opal', '#bfeee6'], v: [.6, .9, .45, .75], s: { echo: 15, resAll: 8 },
+    st: 'Opened, it holds a lock of hair and a date. Closed, it holds the wearer to the last thing they swore.' },
+  hollowsignet: { n: 'Signet of the Hollow Court', slot: 'ring', b: 'Signet', mat: ['Blackened silver', '#727684'], acc: '#e2bc50', gem: ['amethyst', '#b06af0'], v: [.85, .9, .7, .4], s: { mf: 35, crit: 6, critDmg: 20 },
+    st: 'Pressed into wax, it leaves a seal the Hollow Court still honors, though the court has been dust for an age.' }
+};
+// each signature is also a power, so stats, ratings, trading checks and the tooltip read it like any unique effect. nm keeps it off random Legendaries
+for (const k in NAMED) { const N = NAMED[k]; POWERS['n_' + k] = { n: N.n, d: Object.keys(N.s).map(s => statText(s, N.s[s])).join('. ') + '.', s: N.s, slots: [], nm: k }; }
+
 const SLOT_LV = [1, 1, 2, 4, 7, 12], SLOT_KEY = ['LMB', 'RMB', 'Q', 'W', 'E', 'R'];
 const SKILLS = {
   cleave: { n: 'Cleave', lv: 1, i: '⚔', type: 'melee', el: 'phys', m: 1.0, range: 3.4, arc: 2.0, basic: 1, gen: 5, d: 'Sweep your weapon in a wide arc, striking every enemy in front of you.' },
