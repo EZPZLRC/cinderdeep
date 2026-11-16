@@ -21,21 +21,87 @@ const ADV = (() => {
   /* the best piece in the bag, judged on every stat together (the same comparison the bag arrows use) */
   function bestGear(h) { let best = null; h.inv.forEach((it, i) => { if (!it || !it.slot || !canUse(it)) return; let c; try { c = itemCmp(it); } catch (_) { return; } if (c.v > .02 && (!best || c.v > best.c.v)) best = { it, i, c }; }); return best; }
 
+  /* ---- talent recommendations (Lee, Nov 16: "recommend which talent to pick based on which would be the best overall for this person build/character").
+     Every card in a row is tried on this hero, together with the cards already taken in the other rows, and scored as overall strength:
+     - damage: the stat math the bag uses (gear, crit, speed, elements), plus, for a card that changes a skill, how much better that skill gets
+       weighted by how much of this hero's damage that skill does (so a card for your main attack beats one for a skill you barely use)
+     - toughness: the same stat math, plus healing, freezing and damage-reduction effects
+     - staying alive counts a little more once the hero has been dying.
+     It only reads the game and recommends; the player still picks any card. Nothing about balance changes. */
+  const REC = { key: '', rows: [] };
+  const known = (h, id) => { try { return knows(h, id); } catch (_) { return true; } };
+  function skRate(o) { /* how often a skill goes off, roughly, per second */
+    if (o.cd) return 1 / Math.max(.6, o.cd); if (o.basic) return 1.2 * (o.as || 1);
+    return 1 / ((o.cost || 15) / 14 + (o.ct || .35) * 1.5); }
+  function skHit(o, s) { /* damage from one use, roughly: more hits, bigger area, chains, echoes, finishing blows */
+    if (!o || !o.m) return 0; const cnt = o.cnt || 1;
+    let v = o.m * Math.pow(cnt, .75) * (o.waves ? 1 + (o.waves - 1) * .7 : 1) * (o.jumps ? Math.pow(1 + o.jumps, .6) : 1) * (1 + Math.min(4, o.pierce || 0) * .2);
+    v *= Math.pow(o.r || 1, .9) * Math.pow(o.range || 1, o.type === 'melee' ? .6 : .15) * Math.pow(o.arc || 1, .6) * Math.pow(Math.max(1, o.spread || 1), .15) * Math.pow(o.explode || 1, .6) * Math.pow(o.spd || 1, .1);
+    v *= (1 + (o.exec || 0) / 100 * .25) * (1 + (o.grp || 0) / 100 * 1.8) * (1 + (o.echo || 0) / 100) * (1 + (o.crit || 0) / 100 * (((s && s.critM) || 1.5) - 1));
+    return v; }
+  const skDps = (o, s) => skHit(o, s) * skRate(o);
+  function talScore(h, t, row) { /* the hero's strength with talents t: [damage, toughness, other], all as logs so they add up */
+    h.tal = t; const tb = talBuild(), s = calcStats(h.eq, 1), v = gearValue(s), bar = (h.bar || []).filter(Boolean), out = { d: Math.log(Math.max(1, v.dps)), t: Math.log(Math.max(1, v.tough)), u: Math.log(v.util), sk: {}, ctl: 0 };
+    let tot = 0; const per = {};
+    bar.forEach((id, i) => { if (!known(h, id)) return; const o = tb.sk[id] || SKILLS[id]; if (!o || !o.m) return; const el = 1 + ((s[o.el] || 0) + (o.el && o.el !== 'phys' ? s.ele || 0 : 0)) / 100; let x = skDps(o, s) * el * (i > 0 && h.autoc && !h.autoc[i] ? .7 : 1); per[id] = x; tot += x; });
+    if (tot > 0) { out.d += Math.log(tot); for (const id in per) out.sk[id] = per[id] / tot; }
+    /* effects that are not damage: healing, freezing, damage taken down for a while, resource back */
+    for (const c of talPicks(h)) { if (!c.fx) continue; for (const id in c.fx) { const f = c.fx[id], o = tb.sk[id] || SKILLS[id]; if (!o || !known(h, id) || !bar.includes(id)) continue; const share = out.sk[id] || 0, rate = skRate(o);
+      const tg = /nova|rain|spin|barrage/.test(o.type) ? 4 : o.type === 'chain' ? 3 : o.type === 'melee' ? ((o.arc || 1) > 1.5 ? 3 : 1.5) : (o.cnt || 1) > 1 || o.explode ? 2.5 : 1.5;
+      if (f.heal) out.t += Math.log(1 + f.heal * rate * tg * .03); /* % of life back per second */
+      if (f.freeze) out.t += Math.log(1 + .5 * Math.min(.5, f.freeze * rate)); /* share of the time monsters stand frozen */
+      if (f.cost && o.cd && SKILLS[id] && SKILLS[id].cost > f.cost) out.d += Math.log(1 + (SKILLS[id].cost - f.cost) / SKILLS[id].cost * .12);
+      if (f.buff && f.buff.s) { const up = Math.min(.6, (f.buff.t || 3) * Math.min(1, rate)); if (f.buff.s.dr) out.t += -Math.log(1 - f.buff.s.dr / 100 * up); if (f.buff.s.ms) out.u += f.buff.s.ms / 100 * .15 * up; }
+      if (f.gen) out.d += Math.log(1 + Math.min(.6, f.gen / Math.max(3, (SKILLS[id] || {}).gen || 5)) * .25 * (1 - share));
+      if (f.ref) out.d += Math.log(1 + Math.min(.6, f.ref * 2.5 / Math.max(10, o.cost || 20)) * .6 * share); } }
+    /* how much of the time monsters are frozen or chilled, for cards like Shatter */
+    for (const id in out.sk) { const o = tb.sk[id] || SKILLS[id]; if (o && (o.freeze || o.el === 'cold')) out.ctl += out.sk[id] * (o.freeze ? .9 : .6); }
+    out.ctl = Math.min(.6, .04 + out.ctl); const vc = tb.s.vsCtl || 0; if (vc) out.d += Math.log(1 + vc / 100 * out.ctl);
+    return out; }
+  function talRecs(h) {
+    if (!h) return []; const deaths = Object.values(W.deaths).reduce((a, b) => a + b, 0);
+    const key = [h.cls, h.level, (h.tal || []).join(','), (typeof P !== 'undefined' && P.gc) || '', (h.bar || []).join(','), (h.autoc || []).join(''), Math.min(4, deaths), JSON.stringify(h.pg || {})].join('|');
+    if (REC.key === key) return REC.rows;
+    const rows = talRows(h.cls), orig = h.tal, base = Array.isArray(h.tal) ? h.tal.slice(0, TAL_LV.length) : []; while (base.length < TAL_LV.length) base.push(null);
+    const tw = 1 + Math.min(.5, deaths * .15), out = [];
+    try {
+      for (let r = 0; r < rows.length; r++) {
+        if (h.level < TAL_LV[r] || !rows[r].length) { out.push(null); continue; }
+        const t0 = base.slice(); t0[r] = null; const b = talScore(h, t0, r), sc = [];
+        rows[r].forEach((c, j) => { const t1 = base.slice(); t1[r] = j; const a = talScore(h, t1, r), d = a.d - b.d, t = a.t - b.t, u = a.u - b.u; sc.push({ j, d, t, u, v: d + t * tw + u, a, b }); });
+        const ord = sc.slice().sort((x, y) => y.v - x.v), top = ord[0];
+        if (!top || top.v < .004) { out.push(null); continue; }
+        out.push({ k: top.j, v: top.v, sc: sc.map(x => x.v), why: recWhy(h, rows[r][top.j], top, ord[1], deaths) });
+      }
+    } finally { h.tal = orig; try { talBuild(); } catch (_) { } }
+    REC.key = key; REC.rows = out; return out; }
+  /* one plain line on why */
+  function recWhy(h, c, x, next, deaths) {
+    const P0 = pct(x.v), lead = P0 >= 1 ? 'About ' + P0 + '% stronger overall' : 'A small edge overall';
+    const ids = c.fx ? Object.keys(c.fx).filter(id => SKILLS[id]) : [], main = ids.sort((a, b) => (x.b.sk[b] || 0) - (x.b.sk[a] || 0))[0], share = main ? Math.round((x.b.sk[main] || 0) * 100) : 0;
+    let tail = '';
+    if (x.t * 1.0 > x.d && x.t > x.u) tail = deaths >= 2 ? 'you have been dying, and this keeps you alive best' : 'it keeps you alive best of the three';
+    else if (c.s && c.s.vsCtl) tail = 'your freezing and chilling skills set it up';
+    else if (main && ids.some(id => c.fx[id].gen || c.fx[id].ref)) tail = 'more ' + ((CLASSES[h.cls].res || {}).n || 'power') + ' for your other skills';
+    else if (main && share >= 45) tail = (SKILLS[main].n) + ' does most of your damage';
+    else if (main && share > 0) tail = 'it boosts ' + SKILLS[main].n + ', about ' + share + '% of your damage';
+    else if (c.s && (c.s.crit || c.s.critDmg)) tail = 'it fits the crit on your gear and talents';
+    else if (c.s) tail = 'it fits your gear best';
+    if (next && x.v - next.v < .01) tail = (tail ? tail + '; ' : '') + 'a close call';
+    return lead + (tail ? ': ' + tail + '.' : '.'); }
+
   /* talents: an empty row first; then a stat-only row where another card adds more for this hero's gear, or a card that changes a skill you have taken off your bar */
   function talentTip(h) {
     let open0 = 0; try { open0 = talOpen(h); } catch (_) { }
-    if (open0 > 0) return { k: 'tal-open:' + h.level, pri: 80, t: open0 > 1 ? 'Pick your ' + open0 + ' talent cards' : 'Pick your new talent card', d: 'You unlocked ' + (open0 > 1 ? open0 + ' talent rows' : 'a talent row') + ' and have not chosen yet. A card is free power.', a: ['Open talents', () => UI.toggleSkl(true)] };
+    if (open0 > 0) { let rec = null; try { const R = talRecs(h), rows = talRows(h.cls), t = Array.isArray(h.tal) ? h.tal : []; for (let r = 0; r < rows.length; r++) if (h.level >= TAL_LV[r] && !(t[r] === 0 || t[r] === 1 || t[r] === 2) && R[r]) { rec = rows[r][R[r].k]; break; } } catch (_) { }
+      return { k: 'tal-open:' + h.level, pri: 80, t: open0 > 1 ? 'Pick your ' + open0 + ' talent cards' : 'Pick your new talent card', d: 'You unlocked ' + (open0 > 1 ? open0 + ' talent rows' : 'a talent row') + ' and have not chosen yet.' + (rec ? ' ' + rec.n + ' is the best fit for your hero; it is marked Recommended.' : ' A card is free power.'), a: ['Open talents', () => UI.toggleSkl(true)] }; }
+    try { const R = talRecs(h), rows = talRows(h.cls), t = Array.isArray(h.tal) ? h.tal : []; for (let r = 0; r < rows.length; r++) { const k = t[r], x = R[r]; if (!x || !(k === 0 || k === 1 || k === 2) || k === x.k) continue; const gain = x.v - x.sc[k]; if (gain > .03) return { k: 'tal-rec:' + r + ':' + x.k, pri: 55, t: 'Swap ' + rows[r][k].n + ' for ' + rows[r][x.k].n, d: 'For your hero right now, ' + rows[r][x.k].n + ' makes you about ' + pct(gain) + '% stronger overall. Swaps are free when no enemy is near.', a: ['Open talents', () => UI.toggleSkl(true)] }; } } catch (_) { }
     const rows = talRows(h.cls), orig = h.tal, t = Array.isArray(h.tal) ? h.tal.slice() : [], bar = new Set((h.bar || []).filter(Boolean));
-    const val = () => { const v = gearValue(calcStats(h.eq, 1)); return Math.log(Math.max(1, v.dps)) + Math.log(Math.max(1, v.tough)) + Math.log(v.util); };
     let out = null;
     try {
       for (let r = 0; r < rows.length; r++) {
         const k = t[r]; if (!(k === 0 || k === 1 || k === 2) || h.level < TAL_LV[r] || !rows[r][k]) continue; const cur = rows[r][k];
         if (cur.fx && !Object.keys(cur.fx).some(id => bar.has(id))) { const alt = rows[r].findIndex((c, j) => j !== k && (!c.fx || Object.keys(c.fx).some(id => bar.has(id)))); if (alt >= 0) { out = { k: 'tal-bar:' + r + ':' + k, pri: 55, t: 'Swap ' + cur.n + ' for ' + rows[r][alt].n, d: cur.n + ' only changes ' + Object.keys(cur.fx).map(id => (SKILLS[id] || {}).n || id).join(', ') + ', which is not on your skill bar. ' + rows[r][alt].n + ': ' + rows[r][alt].d, a: ['Open talents', () => UI.toggleSkl(true)] }; break; } }
-        if (rows[r].every(c => c.s && !c.fx)) { /* stat cards: try each one on this hero, then put the talents back exactly as they were */
-          h.tal = t.slice(); const base = val(); let bk = k, bv = base; for (let j = 0; j < rows[r].length; j++) { if (j === k) continue; h.tal = t.slice(); h.tal[r] = j; const v = val(); if (v > bv) { bv = v; bk = j; } } h.tal = t.slice();
-          if (bk !== k && bv - base > .03) { out = { k: 'tal-stat:' + r + ':' + bk + ':' + Math.round((bv - base) * 100), pri: 50, t: 'Swap ' + cur.n + ' for ' + rows[r][bk].n, d: 'With the gear you wear now, ' + rows[r][bk].n + ' makes you about ' + pct(bv - base) + '% stronger overall. Swaps are free when no enemy is near.', a: ['Open talents', () => UI.toggleSkl(true)] }; break; }
-        }
       }
     } finally { h.tal = orig; try { talBuild(); } catch (_) { } }
     return out;
@@ -117,5 +183,5 @@ const ADV = (() => {
     setInterval(() => { try { tick(); } catch (e) { if (!ADV.err) { ADV.err = 1; console.warn('advisor', e); } } }, 500);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
-  return { think, show: v => { tips = think(); idx = 0; show(v !== false); }, W, opt };
+  return { think, talRecs, show: v => { tips = think(); idx = 0; show(v !== false); }, W, opt };
 })();
