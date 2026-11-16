@@ -1,0 +1,12 @@
+{"m_title":{"src":"land_of_fearless.ogg","whole":1},
+ "m_town":{"src":"night_town.mp3","L":120},
+ "m_forest":{"src":"mystery_forest.mp3","L":120},
+ "m_crypt":{"src":"caves_of_sorrow.ogg","L":120},
+ "m_lava":{"src":"five_armies.ogg","L":120},
+ "m_ice":{"src":"ice_cave.ogg","whole":1},
+ "m_void":{"src":"darkling.ogg","L":120},
+ "m_fight":{"src":"battle_b.mp3","whole":1},
+ "m_boss":{"src":"epic_boss.mp3","whole":1,"win":20},
+ "m_atlas":{"src":"dark_amulet.ogg","L":120},
+ "m_victory":{"src":"victory_short.mp3","sting":1,"fo":1.2},
+ "m_death":{"src":"sad_moment.ogg","sting":1,"len":16,"fo":3}}

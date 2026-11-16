@@ -1,0 +1,71 @@
+OathByte music: credits and licences
+====================================
+
+Picked by Lee on the Music Picker page, November 2026. Each track was trimmed,
+made into a seamless loop (or cut short for the level up and fall pieces),
+levelled and saved as MP3 (tools/music/build_loops.py makes the files from the
+original tracks). Changes were made to every track.
+
+CC BY tracks (credit required)
+------------------------------
+m_title.mp3   Title screen
+  "Land of Fearless" by Alexandr Zhelanov
+  https://opengameart.org/node/79931
+  Licence: CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
+
+m_town.mp3    Emberwatch
+  "Fantasy Music: Night Town" by Angus Macnaughton
+  https://opengameart.org/content/fantasy-music-night-town
+  Licence: CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
+
+m_forest.mp3  Blighted Hollow
+  "Mystery Forest" by Alexandr Zhelanov
+  https://opengameart.org/content/mystery-forest
+  Licence: CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
+
+m_crypt.mp3   Sunken Catacombs
+  "Caves of Sorrow" by Alexandr Zhelanov
+  https://opengameart.org/content/caves-of-sorrow
+  Licence: CC BY 3.0, https://creativecommons.org/licenses/by/3.0/
+
+m_lava.mp3    Cinder Wastes
+  "Five Armies" by Kevin MacLeod (incompetech.com)
+  https://incompetech.com/music/royalty-free/
+  Licence: CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
+
+m_ice.mp3     Frostveil Pass
+  "Ice Cave" by Tad Miller
+  https://opengameart.org/node/109496
+  Licence: CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
+
+m_void.mp3    The Voidscar
+  "Darkling" by Kevin MacLeod (incompetech.com)
+  https://incompetech.com/music/royalty-free/
+  Licence: CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
+
+m_atlas.mp3   Atlas maps
+  "The Dark Amulet" by Matthew Pablo (www.matthewpablo.com)
+  https://opengameart.org/content/the-dark-amulet-dark-mage-theme
+  Licence: CC BY 3.0, https://creativecommons.org/licenses/by/3.0/
+
+m_death.mp3   When you fall
+  "Sad Moment (Space Orchestral)" by lasercheese
+  https://opengameart.org/content/space-orchestral
+  Licence: CC BY 3.0, https://creativecommons.org/licenses/by/3.0/
+
+CC0 tracks (no credit required, credited anyway)
+------------------------------------------------
+m_fight.mp3   Fights
+  "Battle Theme B" by cynicmusic (Alex Smith)
+  https://opengameart.org/content/battle-theme-b-for-rpg
+  Licence: CC0 1.0, https://creativecommons.org/publicdomain/zero/1.0/
+
+m_boss.mp3    Boss fights
+  "Epic Boss Battle" by Juhani Junkala (SubspaceAudio)
+  https://opengameart.org/content/boss-battle-music
+  Licence: CC0 1.0, https://creativecommons.org/publicdomain/zero/1.0/
+
+m_victory.mp3 Level up and floor cleared
+  "Victory Fanfare Short" by cynicmusic (Alex Smith)
+  https://opengameart.org/content/victory-fanfare-short
+  Licence: CC0 1.0, https://creativecommons.org/publicdomain/zero/1.0/
