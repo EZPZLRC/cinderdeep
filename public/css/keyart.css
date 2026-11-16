@@ -303,20 +303,20 @@ body:has(#menu.ka:not(.hide)) #build{display:none}
   #kaRail h4{margin-bottom:22px}
 }
 /* hero tiles, round 3: more life. A roll call hop runs along the row every 6s, idle tiles twinkle, the chosen hero gets
-   a light that runs round its border and a colour flash when picked. All of it stops with reduced motion. */
+   two lights that run round its border and a colour flash when picked. All of it stops with reduced motion. */
 @property --kaA{syntax:'<angle>';inherits:false;initial-value:0deg}
 #menu.ka .ccard{animation:kaIn .8s cubic-bezier(.2,.9,.3,1.25) calc(var(--i,0)*110ms) backwards,kaBob 3.2s ease-in-out var(--bd,0s) infinite alternate,kaHop 6s ease-in-out calc(var(--i,0)*.16s - 3.4s) infinite}
 #menu.ka .ccard.on{animation:kaIn .8s cubic-bezier(.2,.9,.3,1.25) calc(var(--i,0)*110ms) backwards,kaBob 3.2s ease-in-out var(--bd,0s) infinite alternate,kaPulse 1.8s ease-in-out infinite,kaRing 1.6s ease-out .2s infinite,kaHop 6s ease-in-out calc(var(--i,0)*.16s - 3.4s) infinite}
 #menu.ka .ccard .crim{position:absolute;inset:0;z-index:1;pointer-events:none;border-radius:inherit}
-#menu.ka .ccard .crim::before{content:"";position:absolute;inset:0;padding:2px;border-radius:inherit;background:conic-gradient(from var(--kaA),transparent 0 58%,color-mix(in srgb,var(--cc) 55%,transparent) 76%,var(--cc) 84%,#fff 88%,var(--cc) 91%,transparent 97%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);opacity:0;transition:opacity .4s}
-#menu.ka .ccard.on .crim::before{opacity:1;animation:kaSpin 2.4s linear infinite}
+#menu.ka .ccard .crim::before{content:"";position:absolute;inset:0;padding:3px;border-radius:inherit;background:repeating-conic-gradient(from var(--kaA),transparent 0 22%,color-mix(in srgb,var(--cc) 60%,transparent) 34%,var(--cc) 41%,#fff 44% 47.5%,transparent 49.5% 50%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);opacity:0;transition:opacity .4s}
+#menu.ka .ccard.on .crim::before{opacity:1;animation:kaSpin 3.2s linear infinite}
 #menu.ka .ccard .crim::after{content:"";position:absolute;inset:0 0 40%;opacity:0;mix-blend-mode:screen;background:radial-gradient(circle at 22% 30%,#fff 0 .8px,var(--cc) 1.4px,transparent 3.4px),radial-gradient(circle at 74% 18%,#fff 0 1px,var(--cc) 1.8px,transparent 4px),radial-gradient(circle at 58% 52%,#fff 0 .7px,var(--cc) 1.2px,transparent 3px),radial-gradient(circle at 86% 46%,#fff 0 .8px,var(--cc) 1.4px,transparent 3.2px);animation:kaTwinkle 3.6s ease-in-out calc(var(--gd,1s) * -1) infinite}
 #menu.ka .ccard.on .crim::after{animation-duration:2.2s}
 #menu.ka .ccard.on .crim{animation:kaFlash .6s ease-out 1}
 @media (hover:hover){#menu.ka .ccard:not(.on):hover .crim::before{opacity:.55;animation:kaSpin 3s linear infinite}}
-@media (max-width:760px){#menu.ka .ccard .crim::before{padding:1.5px}}
+@media (max-width:760px){#menu.ka .ccard .crim::before{padding:2px}}
 @keyframes kaHop{0%,84%,100%{scale:1}88%{scale:1.07}92%{scale:.985}96%{scale:1.015}}
 @keyframes kaSpin{to{--kaA:360deg}}
 @keyframes kaTwinkle{0%,100%{opacity:0;transform:scale(.8)}20%{opacity:.9;transform:scale(1)}40%{opacity:.2}60%{opacity:.75;transform:scale(1.05) translateY(-3%)}80%{opacity:0}}
-@keyframes kaFlash{0%{box-shadow:inset 0 0 40px 60px color-mix(in srgb,var(--cc) 45%,rgba(255,255,255,.35))}100%{box-shadow:inset 0 0 0 0 transparent}}
+@keyframes kaFlash{0%{box-shadow:inset 0 0 40px 60px color-mix(in srgb,var(--cc) 38%,rgba(255,255,255,.25))}100%{box-shadow:inset 0 0 0 0 transparent}}
 @media (prefers-reduced-motion:reduce){#menu.ka .ccard .crim,#menu.ka .ccard .crim::before,#menu.ka .ccard .crim::after{animation:none!important}#menu.ka .ccard .crim::after{opacity:0}}
