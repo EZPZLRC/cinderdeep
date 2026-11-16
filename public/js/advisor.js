@@ -16,7 +16,7 @@ const ADV = (() => {
   const floorKey = () => { const d = G.zone && G.zone.def; return d ? (d.rift ? 'rift' : (d.depth || 1) + ':' + (d.tier || 0)) : ''; };
 
   /* a gain line from a gear comparison: only the parts that move by at least 1% */
-  function gainTxt(c) { const p = []; const d = pct(c.d), t = pct(c.t), u = pct(c.u); if (d) p.push((d > 0 ? '+' : '') + d + '% damage'); if (t) p.push((t > 0 ? '+' : '') + t + '% toughness'); if (u) p.push((u > 0 ? '+' : '') + u + '% loot finding'); return p.join(', ') || 'a small gain overall'; }
+  function gainTxt(c) { const p = []; const d = pct(c.d), t = pct(c.t), u = pct(c.u); if (d >= 200) p.push(Math.round(Math.exp(c.d)) + ' times the damage'); else if (d) p.push((d > 0 ? '+' : '') + d + '% damage'); if (t) p.push((t > 0 ? '+' : '') + t + '% toughness'); if (u) p.push((u > 0 ? '+' : '') + u + '% loot finding'); return p.join(', ') || 'a small gain overall'; }
 
   /* the best piece in the bag, judged on every stat together (the same comparison the bag arrows use) */
   function bestGear(h) { let best = null; h.inv.forEach((it, i) => { if (!it || !it.slot || !canUse(it)) return; let c; try { c = itemCmp(it); } catch (_) { return; } if (c.v > .02 && (!best || c.v > best.c.v)) best = { it, i, c }; }); return best; }
@@ -93,8 +93,8 @@ const ADV = (() => {
   /* talents: an empty row first; then a stat-only row where another card adds more for this hero's gear, or a card that changes a skill you have taken off your bar */
   function talentTip(h) {
     let open0 = 0; try { open0 = talOpen(h); } catch (_) { }
-    if (open0 > 0) { let rec = null; try { const R = talRecs(h), rows = talRows(h.cls), t = Array.isArray(h.tal) ? h.tal : []; for (let r = 0; r < rows.length; r++) if (h.level >= TAL_LV[r] && !(t[r] === 0 || t[r] === 1 || t[r] === 2) && R[r]) { rec = rows[r][R[r].k]; break; } } catch (_) { }
-      return { k: 'tal-open:' + h.level, pri: 80, t: open0 > 1 ? 'Pick your ' + open0 + ' talent cards' : 'Pick your new talent card', d: 'You unlocked ' + (open0 > 1 ? open0 + ' talent rows' : 'a talent row') + ' and have not chosen yet.' + (rec ? ' ' + rec.n + ' is the best fit for your hero; it is marked Recommended.' : ' A card is free power.'), a: ['Open talents', () => UI.toggleSkl(true)] }; }
+    if (open0 > 0) { let rec = null; try { const R = talRecs(h), rows = talRows(h.cls), t = Array.isArray(h.tal) ? h.tal : []; for (let r = 0; r < rows.length; r++) if (h.level >= TAL_LV[r] && !(t[r] === 0 || t[r] === 1 || t[r] === 2) && R[r]) { rec = { n: rows[r][R[r].k].n, lv: TAL_LV[r] }; break; } } catch (_) { }
+      return { k: 'tal-open:' + h.level, pri: 80, t: open0 > 1 ? 'Pick your ' + open0 + ' talent cards' : 'Pick your new talent card', d: 'You unlocked ' + (open0 > 1 ? open0 + ' talent rows' : 'a talent row') + ' and have not chosen yet.' + (rec ? ' Look for the Recommended mark, the best fit for your hero: at level ' + rec.lv + ' it is ' + rec.n + '.' : ' A card is free power.'), a: ['Open talents', () => UI.toggleSkl(true)] }; }
     try { const R = talRecs(h), rows = talRows(h.cls), t = Array.isArray(h.tal) ? h.tal : []; for (let r = 0; r < rows.length; r++) { const k = t[r], x = R[r]; if (!x || !(k === 0 || k === 1 || k === 2) || k === x.k) continue; const gain = x.v - x.sc[k]; if (gain > .03) return { k: 'tal-rec:' + r + ':' + x.k, pri: 55, t: 'Swap ' + rows[r][k].n + ' for ' + rows[r][x.k].n, d: 'For your hero right now, ' + rows[r][x.k].n + ' makes you about ' + pct(gain) + '% stronger overall. Swaps are free when no enemy is near.', a: ['Open talents', () => UI.toggleSkl(true)] }; } } catch (_) { }
     const rows = talRows(h.cls), orig = h.tal, t = Array.isArray(h.tal) ? h.tal.slice() : [], bar = new Set((h.bar || []).filter(Boolean));
     let out = null;
