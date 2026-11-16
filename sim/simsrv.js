@@ -23,9 +23,12 @@ function srvNewZone(lvl, nPlayers, next) {
 var forceSeed = 0;
 // build 0070 (Lee's playtest): after a dropped connection or a server restart the floor comes back with the same layout, so the hero keeps their exact spot.
 // Monsters right around that spot are not put back, and a guardian already slain stays slain.
-function srvResume(lvl, nPlayers, d, seed, x, z, clr) { rift = null; mapRun = null; depth = Math.max(0, Math.min(500, (d | 0) - 1)); forceSeed = seed > 0 && seed < 1e9 ? seed | 0 : 0; let m; try { m = srvNewZone(lvl, nPlayers, false); } finally { forceSeed = 0; }
+// build 0120 (play test: after a server update the Rootmother came back at full life and a level higher): the hero also hands back the floor's own
+// level (zl) and how much life its guardian had left (bh), so the rebuilt floor is no stronger than before and the guardian keeps her wounds
+function srvResume(lvl, nPlayers, d, seed, x, z, clr, zl, bh) { rift = null; mapRun = null; depth = Math.max(0, Math.min(500, (d | 0) - 1)); forceSeed = seed > 0 && seed < 1e9 ? seed | 0 : 0; const L = Math.max(1, lvl | 0), fl = zl > 0 && isFinite(zl) ? Math.max(Math.max(1, L - 4), Math.min(L, zl | 0)) : L; let m; try { m = srvNewZone(fl, nPlayers, false); } finally { forceSeed = 0; }
   if (m.seed !== (seed | 0)) return m; const near = e => isFinite(x) && isFinite(z) && Math.hypot(e.x - x, e.z - z) < 12;
   for (let i = G.ents.length - 1; i >= 0; i--) { const e = G.ents[i]; if ((!e.boss && near(e)) || (e.boss && clr)) G.ents.splice(i, 1); } if (clr) { G.zone.cleared = true; G.boss = null; }
+  else if (G.boss && G.boss.alive && bh > 0 && bh < 1) G.boss.hp = Math.max(1, Math.round(G.boss.maxHp * Math.max(.01, bh)));
   return srvState(); }
 // TODO (Sprint 1, server side): switch to partyHpK(n) from data.js, about 1.7x monster life for a full group. Not changed in build 0028.
 function partyK(n) { return 1 + .5 * Math.max(0, n - 1); }

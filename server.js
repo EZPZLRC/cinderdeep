@@ -84,7 +84,7 @@ function onMessage(p, m) {
     p.room = room; room.players.set(p.id, p); room.emptyAt = 0; p.st = null;
     p.conn.send({ t: 'hello', id: p.id, room: code, fd: m.fk ? (p.fd ? 1 : 0) : undefined });
     if (fresh) room.ctx.srvTier(m.tier | 0); /* build 0074: a new party plays at the difficulty its first hero picked */
-    if (fresh) p.conn.send(((m.dep | 0) > 1 || (m.sd > 0 && (m.dep | 0) >= 1)) && typeof room.ctx.srvResume === 'function' ? room.ctx.srvResume(p.lvl, 1, m.dep | 0, +m.sd || 0, +m.px, +m.pz, !!m.clr) : room.ctx.srvNewZone(p.lvl, 1)); else { rescale(room, p.id); p.conn.send(room.ctx.srvState()); }
+    if (fresh) p.conn.send(((m.dep | 0) > 1 || (m.sd > 0 && (m.dep | 0) >= 1)) && typeof room.ctx.srvResume === 'function' ? room.ctx.srvResume(p.lvl, 1, m.dep | 0, +m.sd || 0, +m.px, +m.pz, !!m.clr, +m.zl || 0, +m.bh || 0) : room.ctx.srvNewZone(p.lvl, 1)); else { rescale(room, p.id); p.conn.send(room.ctx.srvState()); }
     room.ctx.SP[p.id] = { id: p.id, x: -999, z: -999, dead: true, lvl: p.lvl };
     cast(room, { t: 'join', id: p.id, name: p.name }, p.id); cast(room, roster(room)); if (!WB.on && WB.k >= WB_NEED) wbStart(); return;
   }
