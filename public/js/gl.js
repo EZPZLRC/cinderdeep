@@ -490,7 +490,7 @@ void main(){float mat=vE.y;${DITHM}if(vAl>.5&&texture(uTex,vec3(vU,vLy)).a<.5)di
     gl.uniform3fv(u.uSun, env.sun); gl.uniform3fv(u.uSunC, env.sunC); gl.uniform3fv(u.uSky, env.sky); gl.uniform3fv(u.uGnd, env.gnd); gl.uniform3fv(u.uFog, env.fog);
     gl.uniform3fv(u.uEye, cam.eye); gl.uniform3fv(u.uPl, env.player); gl.uniform2f(u.uFogR, env.fogN, env.fogF); gl.uniform1f(u.uLR, env.lightR); gl.uniform4fv(u.uTP, TPv()); gl.uniform3fv(u.uTC, env.ptc); gl.uniform1f(u.uTR, env.ptr); gl.uniform1f(u.uScat, env.scat);
     gl.uniform4fv(u['uLP[0]'], LP); gl.uniform3fv(u['uLC[0]'], LC);
-    const pre = pPre && !env.solo && env.pre !== false; /* build 0139: scenery depth first (see FSP), then the lit pass only fills what is actually seen */
+    const pre = pPre && !env.solo && (env.pre === undefined ? env.q > 0 : env.pre); /* at the lowest setting the picture is small and the extra trip over every corner costs more than it saves */ /* build 0139: scenery depth first (see FSP), then the lit pass only fills what is actually seen */
     if (pre) { gl.colorMask(false, false, false, false); const po = env.preOff; if (po) { gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(po[0], po[1]); }
       gl.useProgram(pPre.p); gl.uniformMatrix4fv(pPre.u.uVP, false, vp); gl.uniformMatrix4fv(pPre.u.uLVP, false, lvp); gl.uniform1f(pPre.u.uT, env.t); gl.uniform3fv(pPre.u.uPl, env.player); gl.uniform1f(pPre.u.uRim, 0); drawSet('stat');
       if (envOn() && pPreM) { gl.useProgram(pPreM.p); gl.uniformMatrix4fv(pPreM.u.uVP, false, vp); gl.uniformMatrix4fv(pPreM.u.uLVP, false, lvp); gl.uniform1f(pPreM.u.uT, env.t); gl.uniform3fv(pPreM.u.uPl, env.player); gl.uniform1f(pPreM.u.uRim, 0); gl.uniform1i(pPreM.u.uTex, 5); drawSet('stat', 1); }
