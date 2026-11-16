@@ -16,7 +16,7 @@ const UI = (() => {
   /* build 0130: every item the hero owns (bag, worn, stash) and the shop's goods get their picture drawn in the background as soon as 3D is ready and again when play starts,
      so it is usually done before a panel opens. Pictures are also kept on the device, so the next visit shows them straight away */
   function i3warm() { if (!I3) return; try { const h = G.hero, all = [].concat(h ? h.inv : [], h ? Object.values(h.eq || {}) : [], G.stash || [], h && h.stock || []); for (const it of all) if (it && it.slot) { I3.icon(it, false); if (itemH(it) === 2) I3.icon(it, true); } } catch (e) { } }
-  U.i3warm = i3warm; setInterval(() => { if (I3 && G.state === 'play') i3warm(); }, 2500);
+  U.i3warm = i3warm; setInterval(() => { if (I3 && G.state === 'play') i3warm(); }, 1000);
   function iconHtml(it, tall) { const sv = iconSvg(it); if (i3s === 'off') return sv; if (i3s === 'wait') return `<span class="m3w">${sv}</span>`; let r = null; try { r = I3.icon(it, tall); } catch (e) { r = null; } return !r ? sv : r.url ? `<img class="m3" src="${r.url}" alt="" draggable="false">` : `<span class="m3w" data-m3="${r.key.replace(/"/g, '')}">${sv}</span>`; }
   function show3() { const s = tip.querySelector('.show3'); if (!s) return; if (!I3 || !tipIt) { s.remove(); return; } try { I3.showcase(s, tipIt); } catch (e) { s.remove(); } }
   U.zoneBanner = (a, b) => { $('ban1').textContent = a; $('ban2').textContent = b || ''; $('banner').classList.add('on'); banT = 3.4; fitBan($('banner')); setTimeout(() => fitBan($('banner')), 0); };
