@@ -24,7 +24,7 @@ button.big{font-size:18px;padding:12px 34px;letter-spacing:.06em}
 #mini{position:fixed;right:12px;top:12px;width:170px;height:170px;border:2px solid #c9a45a;border-radius:4px;background:rgba(5,8,6,.72);pointer-events:none;box-shadow:0 0 0 1px #000,0 2px 10px #000}
 #bossbar{position:fixed;left:50%;top:16px;transform:translateX(-50%);width:min(520px,60vw);text-align:center;pointer-events:none}
 #bossbar .bn{font-size:17px;font-weight:600;letter-spacing:.08em;text-shadow:0 1px 4px #000;margin-bottom:4px}
-#bossbar .bb{position:relative;height:16px;background:linear-gradient(#0c0605,#1e0e0b);border:1px solid #8a5a3a;border-radius:2px;overflow:hidden;box-shadow:0 0 0 2px #120806,0 0 0 3px #6a4a30,0 3px 12px #000c}#bossbar .bf{position:absolute;left:0;top:0;height:100%;background:linear-gradient(#ff6a3a,#c8281a 45%,#6a0e08);width:100%;box-shadow:inset 0 1px 0 #ffb08a88}#bossbar .bt{position:absolute;left:0;top:0;height:100%;background:#f0d8b8;opacity:.75;width:100%}#bossbar .bb i{position:absolute;top:0;bottom:0;width:1px;background:#000a;box-shadow:1px 0 0 #ffffff22}#bossbar #bossPct{position:absolute;right:6px;top:0;line-height:16px;font-size:11px;color:#fff;text-shadow:0 1px 2px #000}
+#bossbar .bb{position:relative;height:16px;background:linear-gradient(#0c0605,#1e0e0b);border:1px solid #8a5a3a;border-radius:2px;overflow:hidden;box-shadow:0 0 0 2px #120806,0 0 0 3px #6a4a30,0 3px 12px #000c}#bossbar .bf{position:absolute;left:0;top:0;height:100%;background:linear-gradient(#ff6a3a,#c8281a 45%,#6a0e08);width:100%;box-shadow:inset 0 1px 0 #ffb08a88}#bossbar .bt{position:absolute;left:0;top:0;height:100%;background:#f0d8b8;opacity:.75;width:100%}#bossbar .bb i{position:absolute;top:0;bottom:0;width:1px;background:#000a;box-shadow:1px 0 0 #ffffff22}#bossbar #bossNum{position:absolute;left:0;right:0;top:0;line-height:16px;font-size:11px;font-weight:700;color:#fff;text-shadow:0 1px 2px #000,0 0 3px #000;text-align:center;font-variant-numeric:tabular-nums}#bossbar #bossPct{position:absolute;right:6px;top:0;line-height:16px;font-size:11px;color:#fff;text-shadow:0 1px 2px #000}
 .cineBar{position:fixed;left:0;right:0;height:11vh;background:#000;z-index:24;pointer-events:none;transition:transform .5s cubic-bezier(.3,.8,.3,1)}#cineT{top:0;transform:translateY(-100%)}#cineB{bottom:0;transform:translateY(100%)}body.cine #cineT,body.cine #cineB{transform:none}
 #banner{position:fixed;left:0;right:0;top:22%;text-align:center;pointer-events:none;opacity:0;transition:opacity .6s;text-shadow:0 2px 10px #000}
 #banner.on{opacity:1}#banner .b1{font-size:38px;font-weight:300;letter-spacing:.16em;text-transform:uppercase}#banner .b2{font-size:15px;color:#c9bfa6;margin-top:6px;letter-spacing:.08em}
@@ -82,6 +82,8 @@ input{font:inherit;color:#f3ead6;background:#14110c;border:1px solid #8a6a3a;bor
 .it{position:relative;border:1px solid;border-radius:3px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:1;min-width:var(--c);min-height:var(--c)}.it svg{width:72%;max-height:78%;filter:drop-shadow(0 2px 2px rgba(0,0,0,.85)) drop-shadow(0 4px 6px rgba(0,0,0,.5))}#doll .it{min-width:0;min-height:0}
 .it.r0{background:radial-gradient(circle at 50% 38%,#3a3733 0,#1c1a18 62%,#0c0b0a 100%);border-color:#5a5650;color:#cfcbc2;box-shadow:inset 0 0 0 1px #0008,inset 0 1px 0 #ffffff12}.it.r1{background:radial-gradient(circle at 50% 38%,#2a3448 0,#151a24 62%,#0a0c10 100%);border-color:#5878d8;color:#a8c0ff;box-shadow:inset 0 0 10px #4a6ad855,inset 0 1px 0 #ffffff12}.it.r2{background:radial-gradient(circle at 50% 38%,#3e3626 0,#1e1a12 62%,#0e0c08 100%);border-color:#d8b030;color:#ffe890;box-shadow:inset 0 0 10px #d8b03050,inset 0 1px 0 #ffffff12}.it.r3{background:radial-gradient(circle at 50% 38%,#43301f 0,#21160e 62%,#0f0a06 100%);border-color:#ff8a2a;color:#ffc890;box-shadow:inset 0 0 12px #ff8a2a55,inset 0 1px 0 #ffffff12}
 .it .lk{position:absolute;left:3px;bottom:2px;width:9px;height:11px;filter:drop-shadow(0 1px 1px #000)}.it .lv{position:absolute;right:2px;bottom:0;font-size:9px;color:#e8e2d4;text-shadow:0 1px 2px #000}.it.up::after{content:"▲";position:absolute;left:2px;top:0;font-size:9px;color:#5aff7a}.it:hover{filter:brightness(1.25)}
+/* build 0105: forged items carry an ember glow that builds from +1 to +5 */.it.f1::before,.it.f2::before,.it.f3::before,.it.f4::before,.it.f5::before{content:"";position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;z-index:0}.it.f1::before{box-shadow:inset 0 -6px 8px -4px #ff7a2a66}.it.f2::before{box-shadow:inset 0 -8px 10px -4px #ff7a2a88,0 0 3px #ff8a3a55}.it.f3::before{box-shadow:inset 0 -10px 12px -4px #ff7a2aaa,0 0 5px #ff8a3a77;border:1px solid #ff9a4a55}.it.f4::before{box-shadow:inset 0 -12px 14px -4px #ff7a2acc,0 0 7px #ff8a3a99;border:1px solid #ffa85a88;animation:fgl 2.4s ease-in-out infinite}.it.f5::before{box-shadow:inset 0 -14px 16px -3px #ff7a2aee,inset 0 0 8px #ffb04a66,0 0 10px #ff8a3acc;border:1px solid #ffc070;animation:fgl 1.8s ease-in-out infinite}@keyframes fgl{50%{opacity:.6}}.it.f1 svg,.it.f2 svg,.it.f3 svg,.it.f4 svg,.it.f5 svg{position:relative;z-index:1}@media (prefers-reduced-motion:reduce){.it.f4::before,.it.f5::before{animation:none}}.odds .lucky{color:#ffb060;font-size:.92em;margin-top:2px}
+
 .ghost{position:fixed;width:40px;height:40px;pointer-events:none;z-index:60;opacity:.9}
 .ifoot{display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap;font-size:13px}.gold{color:#ffd84a}.shards{color:#9ad0ff}#scrapBox{margin-left:auto;border:1px dashed #8a6a3a;border-radius:4px;padding:6px 10px;color:#b9b09a;font-size:12px}.ifoot button{padding:6px 10px;font-size:12px}
 #shop{display:grid;gap:6px;margin-top:8px}.srow2{display:flex;gap:10px;align-items:center;border:1px solid #3a3226;border-radius:4px;padding:6px;cursor:pointer}.srow2:hover{border-color:#8a6a3a}.srow2 .it{width:var(--c);height:var(--c);flex:none}.srow2 .it.tall{height:calc(var(--c)*1.5)}
@@ -347,6 +349,9 @@ body.tj #xp{height:16px!important}body.tj #xp #xpT{line-height:14px;font-size:10
 #parties h2{margin:0 0 2px;font-size:18px;letter-spacing:.12em;color:#f0d890;text-align:center}#parties .sub{text-align:center;font-size:12px;color:#a89a80;margin-bottom:10px}
 #parties .pr{display:flex;align-items:center;gap:10px;padding:8px;border:1px solid #2a2218;border-radius:4px;margin-bottom:6px;background:rgba(255,255,255,.02)}#parties .pr.me{border-color:#8a6a3a;background:rgba(240,216,144,.06)}
 #parties .pm{flex:1;min-width:0}#parties .pm b{color:#ffe8b0;font-size:14px}#parties .pm .who{font-size:12px;color:#c8bca0;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#parties .pm .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 3px 0 6px;vertical-align:middle}
+#parties .code{display:flex;gap:8px;justify-content:center;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid #2a2218}#parties .code span{font-size:13px;color:#c8bca0}#parties .code input{width:9em;text-transform:lowercase}
+@media (pointer:coarse){#dock{flex-direction:row}#dock #bJoin{min-width:0;width:40px;height:40px;padding:0;border-radius:50%;font-size:0;justify-content:center}#dock #bJoin::before{width:18px;height:18px}}body.tj #dock{flex-direction:row}body.tj #dock #bJoin{min-width:0;width:40px;height:40px;padding:0;border-radius:50%;font-size:0;justify-content:center}body.tj #dock #bJoin::before{width:18px;height:18px}
+#parties{background:linear-gradient(180deg,#1e2026,#0d0d11)!important}
 #parties .pf{font-size:12px;color:#9affc8;white-space:nowrap}#parties .row{display:flex;gap:8px;justify-content:center;margin-top:10px}
 #ctl #bParty::before{content:"⚑";font-size:16px}
 #riftT{display:block;margin:0 0 6px;text-align:center;padding:3px 8px;border-radius:12px;background:rgba(40,16,60,.85);border:1px solid #b070ff;color:#f0e0ff;font-weight:700;font-size:14px;letter-spacing:.08em;box-shadow:0 0 14px rgba(176,112,255,.5)}
@@ -424,9 +429,37 @@ body.isz1 .it .ar{width:18px;height:18px;font-size:11px}body.isz2 .it .ar{width:
 #tbtns button:active::before{background:linear-gradient(180deg,#fff,#ffcf70 50%,#e0782a)}
 @media (max-width:760px),(max-height:480px){#tbtns button::before{width:20px;height:20px}#ctl button::before{width:13px;height:13px;margin-right:4px}}
 #folk .tier .tierb{display:flex;flex-direction:column;align-items:flex-start;width:100%;text-align:left;margin:4px 0;padding:8px 10px;gap:2px}#folk .tier .tierb span{font-size:12px;opacity:.8}#folk .tier .tierb.on{outline:2px solid #e0a040}
+/* build 0098: the dock (bottom-right) and its Menu */
+#dock{position:fixed;right:14px;bottom:30px;z-index:30;display:flex;flex-direction:column;gap:5px}
+#dock button,#more button{display:flex;align-items:center;gap:8px;min-width:112px;padding:7px 12px;font:600 12px Inter,system-ui,sans-serif;text-transform:uppercase;letter-spacing:.08em;color:#dfe2e8;text-align:left;background:linear-gradient(180deg,#2a2c33 0,#16171b 60%,#0d0d10 100%);border:1px solid #4a4f5b;border-radius:4px;box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 2px 8px #000;cursor:pointer}
+#dock button:hover,#more button:hover,#dock button.open{border-color:#8a909c;background:linear-gradient(180deg,rgba(255,90,42,.22),rgba(140,20,10,.18)),#16171b;color:#fff}
+#dock button::before,#more button::before{content:"";flex:none;width:15px;height:15px;background:linear-gradient(180deg,#fff,#b9bec8 60%,#5a5e68);-webkit-mask:var(--gi) center/contain no-repeat;mask:var(--gi) center/contain no-repeat}
+#dock #bMore::before{content:"\2630";-webkit-mask:none;mask:none;background:none;color:#dfe2e8;font-size:15px;line-height:15px;text-align:center}
+#more{position:fixed;right:136px;bottom:30px;z-index:31;display:flex;flex-direction:column;gap:4px;padding:6px;background:rgba(10,10,13,.94);border:1px solid #4a4f5b;border-radius:5px;box-shadow:0 6px 22px #000}
+#more button{min-width:170px;box-shadow:none}#more #bInvite{color:#9effa8}#more #bLeave{color:#ff9a8a}#more #bMenu{margin-top:4px;border-color:#5a3a34}
+#more #bAuto,#more #bSpd{display:none!important}
+@media (pointer:coarse){#dock #bInv,#dock #bSkl,#dock #bTown{display:none}}
+body.tj #dock #bInv,body.tj #dock #bSkl,body.tj #dock #bTown{display:none}
+@media (pointer:coarse){#dock{right:auto;bottom:auto;left:calc(8px + env(safe-area-inset-left));top:calc(46px + env(safe-area-inset-top))}#dock #bMore{min-width:0;width:40px;height:40px;padding:0;border-radius:50%;font-size:0;justify-content:center}#dock #bMore::before{font-size:18px;width:auto;height:auto}#more{right:auto;bottom:auto;left:calc(8px + env(safe-area-inset-left));top:calc(92px + env(safe-area-inset-top));max-height:calc(100vh - 110px);overflow:auto}#more button{padding:10px 12px;font-size:13px}}
+body.tj #dock{right:auto;bottom:auto;left:calc(8px + env(safe-area-inset-left));top:calc(46px + env(safe-area-inset-top))}body.tj #dock #bMore{min-width:0;width:40px;height:40px;padding:0;border-radius:50%;font-size:0;justify-content:center}body.tj #dock #bMore::before{font-size:18px;width:auto;height:auto}body.tj #more{right:auto;bottom:auto;left:calc(8px + env(safe-area-inset-left));top:calc(92px + env(safe-area-inset-top));max-height:calc(100vh - 110px);overflow:auto}
+#qfs{margin:0 0 6px;padding:0 0 5px;border-bottom:1px solid #6a5636}#qfs b{display:block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#ffd84a;font-weight:400}#qfs .now{color:#fff;font-weight:600}#qfs .how{color:#ffe9b0;font-size:.95em;margin-top:1px}
+@media (min-width:761px) and (min-height:481px){#questBox{width:200px}}
+@media (orientation:portrait) and (max-width:760px){#questBox{max-height:134px!important}#questBox:has(#qfs:not(.hide)) #tq .tqH{display:none}} /* build 0098: the guide plus the act fit above the touch buttons */
+body.tj #dock{z-index:25}@media (pointer:coarse){#dock{z-index:25}} /* phones: open panels cover the round menu button */
+#stats .smore{display:block;margin:4px 0 2px;padding:2px 8px;font-size:11px;letter-spacing:.06em;background:transparent;border:1px solid #5a4a2e;color:#d8c38a;border-radius:3px;cursor:pointer}#stats .smore:hover{border-color:#a8834a;color:#fff}
+#petl{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:45;width:min(380px,92vw);max-height:90vh;overflow:auto;background:rgba(14,12,9,.97);border:1px solid #8a6a3a;border-radius:6px;padding:14px;text-align:left}
+#petl label{display:flex;align-items:center;gap:10px;justify-content:space-between;margin:10px 0;font-size:14px;flex-wrap:wrap}
+#petl input[type=range]{width:100%}
+#petl input[type=checkbox]{width:20px;height:20px;order:-1}
+#petl label:has(input[type=checkbox]){justify-content:flex-start}
+#petl .box{background:var(--panel);border:1px solid #6b5533;box-shadow:0 0 0 1px #000,inset 0 1px 0 rgba(255,230,180,.08),0 10px 40px rgba(0,0,0,.85);border-radius:4px}
+#petl{z-index:46}
+/* build 0098 (Lee's playtest): the landing page shows name and Play; party code, Solo, Hardcore, Daily, Parties, Leaderboard and Settings wait behind More options */
+#kaLeft:not(.kaOpen) #oRoom,#kaLeft:not(.kaOpen) #soloWrap,#kaLeft:not(.kaOpen) #kaOpts>:not(#kaMore){display:none!important}
+#kaMore{background:none;border:0;box-shadow:none;color:#d8c38a;font-size:13px;letter-spacing:.06em;cursor:pointer;padding:4px 10px}#kaMore:hover{color:#fff}
 </style>
-<link rel="stylesheet" href="css/oathbyte.css?v=0091">
-<link rel="stylesheet" href="css/keyart.css?v=0091">
+<link rel="stylesheet" href="css/oathbyte.css?v=0108">
+<link rel="stylesheet" href="css/keyart.css?v=0108">
 </head>
 <body>
 <canvas id="gl"></canvas><canvas id="ov"></canvas>
@@ -435,7 +468,7 @@ body.isz1 .it .ar{width:18px;height:18px;font-size:11px}body.isz2 .it .ar{width:
   <div id="top"><canvas id="port" width="112" height="112"></canvas><div class="n" id="tName"></div><div class="g" id="tGold"></div><div class="z" id="tZone"></div><div id="pbonus" style="font-size:12px;color:#9fd8ff"></div></div>
   <canvas id="mini" width="170" height="170"></canvas>
   <div id="tutTip" class="hide"></div>
-<div id="questBox" class="hide"><div id="riftT" class="hide"></div><span>Quest</span><div id="quest"></div><div id="tq" class="hide"></div><div id="wbar" class="hide"><div id="wbT"></div><div class="wbB"><i id="wbF"></i></div></div></div>
+<div id="questBox" class="hide"><div id="qfs" class="hide"></div><div id="riftT" class="hide"></div><span>Quest</span><div id="quest"></div><div id="tq" class="hide"></div><div id="wbar" class="hide"><div id="wbT"></div><div class="wbB"><i id="wbF"></i></div></div></div>
 <div id="folk" class="hide"></div>
   <div id="goals" class="hide"></div>
   <div id="recon" class="hide"></div>
@@ -443,7 +476,7 @@ body.isz1 .it .ar{width:18px;height:18px;font-size:11px}body.isz2 .it .ar{width:
   <div id="fps" class="hide"></div>
   <div id="spop" class="hide"><div class="sp1" id="sp1"></div><div class="sp2" id="sp2"></div></div>
   <div id="bossIntro" class="hide"><div class="bi1" id="biName"></div><div class="bi2"></div><div class="bi3" id="biSub"></div></div>
-  <div id="bossbar" class="hide"><div class="bn" id="bossName"></div><div class="bb"><div class="bt" id="bossTrail"></div><div class="bf" id="bossFill"></div><i style="left:25%"></i><i style="left:50%"></i><i style="left:75%"></i><span id="bossPct"></span></div></div><div id="cineT" class="cineBar"></div><div id="cineB" class="cineBar"></div>
+  <div id="bossbar" class="hide"><div class="bn" id="bossName"></div><div class="bb"><div class="bt" id="bossTrail"></div><div class="bf" id="bossFill"></div><i style="left:25%"></i><i style="left:50%"></i><i style="left:75%"></i><span id="bossNum"></span><span id="bossPct"></span></div></div><div id="cineT" class="cineBar"></div><div id="cineB" class="cineBar"></div>
   <div id="banner"><div class="b1" id="ban1"></div><div class="b2" id="ban2"></div></div>
   <div id="streak" class="hide"><div class="s1" id="st1"></div><div class="s2">KILL STREAK</div><div class="s3" id="st3"></div></div>
   <div id="hints"></div>
@@ -453,7 +486,9 @@ body.isz1 .it .ar{width:18px;height:18px;font-size:11px}body.isz2 .it .ar{width:
     <div id="mid"><div id="bar"></div><div id="xpT"></div><div id="xp"><div></div></div></div>
     <div class="globe" id="gFury"><div class="fill"></div><div class="txt"></div></div>
   </div>
-  <div id="ctl"><button id="bMenu" class="giv-exit">Exit</button><button id="bSet" class="giv-set">Settings</button><button id="bLb" class="giv-lb">Leaders</button><button id="bAch" class="giv-ach">Badges</button><button id="bParty" class="giv-party">Parties</button><button id="bInvite" class="giv-invite">Invite</button><button id="bLeave" class="hide giv-leave">Leave party</button><button id="bInv" class="giv-inv">Inventory</button><button id="bSkl" class="giv-skl">Skills</button><button id="bTown" class="giv-town">Town</button><button id="bAuto" class="giv-auto">Auto-play: off</button><button id="bSpd" class="giv-spd">Speed 1×</button></div>
+  <!-- build 0098 (playtest: the menu bar sat where you click to walk): the four buttons you use most sit in the bottom-right corner; the rest live under Menu -->
+  <div id="dock"><button id="bInv" class="giv-inv" title="Bag (I)">Bag</button><button id="bSkl" class="giv-skl" title="Skills (S)">Skills</button><button id="bTown" class="giv-town" title="Town (T)">Town</button><button id="bJoin" class="giv-party" title="Join a party, or see who is playing">Party</button><button id="bMore" title="Menu (Esc)">Menu</button></div>
+  <div id="more" class="hide"><button id="bSet" class="giv-set">Settings</button><button id="bPL" class="giv-loot">Pet and loot</button><button id="bParty" class="giv-party">Join a party</button><button id="bInvite" class="giv-invite">Invite a friend</button><button id="bLeave" class="hide giv-leave">Leave party</button><button id="bLb" class="giv-lb">Leaderboard</button><button id="bAch" class="giv-ach">Badges</button><button id="bAuto" class="giv-auto">Auto-play: off</button><button id="bSpd" class="giv-spd">Speed 1×</button><button id="bMenu" class="giv-exit">Exit to title</button></div>
   <div id="party" class="hide"></div><div id="onl" class="hide"></div><div id="chatlog" class="hide"></div>
   <div id="chatRow" class="hide"><button id="chatCh">Global</button><input id="chat" maxlength="140"><button id="chatX" class="xb" aria-label="Close chat">×</button></div>
   <div id="tbtns"><button id="tChat" class="hide giv-chat">Chat</button><button id="tTown" class="giv-town">Town</button><button id="tLoot" class="giv-loot">Loot</button><button id="tSkl" class="giv-skl">Skills</button><button id="tBag" class="giv-inv">Bag</button></div>
@@ -465,6 +500,7 @@ body.isz1 .it .ar{width:18px;height:18px;font-size:11px}body.isz2 .it .ar{width:
 </div>
 <div id="build"></div><button id="mute" type="button" aria-label="Mute sound" aria-pressed="false" title="Sound on (M to mute)"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="spk" d="M4 9h4l5-4v14l-5-4H4z"/><path class="wav" d="M16 8.5a5 5 0 0 1 0 7M18.6 6a8.5 8.5 0 0 1 0 12"/><path class="x" d="M16 9l6 6M22 9l-6 6"/></svg></button>
 <div id="set" class="hide"></div>
+<div id="petl" class="hide"></div>
 <div id="lb" class="hide"></div>
 <div id="parties" class="hide"></div>
 <div id="tip" class="hide"></div>
@@ -478,8 +514,8 @@ body.isz1 .it .ar{width:18px;height:18px;font-size:11px}body.isz2 .it .ar{width:
     <div id="logo"><h1 class="obSr">OathByte</h1><div class="obLogo" aria-hidden="true"><img class="obL" src="brand/logo-letters.webp" alt="" width="1600" height="573" decoding="async"><i class="obSheen"></i><img class="obS" src="brand/logo-sword.webp" alt="" width="1600" height="573" decoding="async"><i class="obGem"></i><img class="obF" src="brand/logo-flame.webp" alt="" width="1600" height="573" decoding="async"><i class="obFlash"></i><i class="obHeat"></i><span class="obSpks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="obEmb"><i></i><i></i><i></i><i></i><i></i><i></i></span><i class="obGlint"></i></div><div class="tag"><i></i>An online action RPG<i></i></div></div>
     <p id="menuMsg">Descend the Blighted Hollow, face the Ashen Tyrant, and keep your oath. Free in your browser, alone or with friends.</p>
     <div id="online" class="hide"><input id="oName" maxlength="16" placeholder="Your name"><input id="oRoom" maxlength="12" placeholder="Party code (optional)" title="Leave blank to join other players"><label id="soloWrap" title="Play by yourself. Strangers can't join you; only friends you send an invite link to."><input type="checkbox" id="soloChk"> Solo</label><div id="onlineN"></div></div>
-    <div id="kaGo"><button class="big" id="btnNew">Play</button><div id="kaMeta"><b></b><span>Free · No download</span></div></div>
-    <div id="kaOpts"><button id="mDaily" title="Same floors for every player today. Type a party code to run it with friends."><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="1.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Daily challenge</button><button id="mParty" title="See every party that is playing right now and join one"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2 20a6 6 0 0 1 12 0M10 20a6 6 0 0 1 12 0"/></svg>Parties</button><button id="mLb"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8M9 17h6"/></svg>Leaderboard</button><button id="mSet"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>Settings</button><label id="hcWrap" class="hide" title="One life only. If this hero dies it is gone for good, and its leaderboard entry gets a skull."><input type="checkbox" id="hcChk"> ☠ Hardcore</label><button id="btnReset" class="hide">Reset this hero</button></div>
+    <div id="kaGo"><button class="big" id="btnNew">Play</button><button id="kaJoin" type="button" title="See who is playing and join them, or type a party code">Join a party</button><div id="kaMeta"><b></b><span>Free · No download</span></div></div>
+    <div id="kaOpts"><button id="kaMore" aria-expanded="false">More options ▾</button><button id="mDaily" title="Same floors for every player today. Type a party code to run it with friends."><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="1.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Daily challenge</button><button id="mParty" title="See every party that is playing right now and join one"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2 20a6 6 0 0 1 12 0M10 20a6 6 0 0 1 12 0"/></svg>Parties</button><button id="mLb"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8M9 17h6"/></svg>Leaderboard</button><button id="mSet"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>Settings</button><label id="hcWrap" class="hide" title="One life only. If this hero dies it is gone for good, and its leaderboard entry gets a skull."><input type="checkbox" id="hcChk"> ☠ Hardcore</label><button id="btnReset" class="hide">Reset this hero</button></div>
   </div>
   <div id="kaRail"><h4>Choose your hero <em id="kaDesc"></em></h4><div id="classes"></div></div></div>
   </section>
@@ -518,13 +554,19 @@ body.isz1 .it .ar{width:18px;height:18px;font-size:11px}body.isz2 .it .ar{width:
   <footer id="kaFoot"><div class="kaWrap"><a class="kaBrand" href="#" data-go="top"><img src="brand/ka/mark.png" alt="" width="30" height="30">OATHBYTE</a><nav><a href="#" data-go="top">Play</a><a href="#" data-go="lb">Leaderboard</a><a href="#" data-go="parties">Parties</a><a href="#" data-go="set">Settings</a><a href="#" data-go="ctrls">Controls</a></nav><div class="kaSmall"><span id="kaBuild"></span><span>Made for the browser. Plays with a mouse and keyboard or by touch.</span></div></div></footer>
 </div>
 <dialog id="kaLb" aria-label="Screenshot"><figure><img alt="" decoding="async" draggable="false"><figcaption class="kaLbCap"></figcaption></figure><button type="button" class="kaLbX" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button><button type="button" class="kaLbNav kaLbPrev" aria-label="Previous screenshot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><button type="button" class="kaLbNav kaLbNext" aria-label="Next screenshot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button></dialog>
-<script src="js/move.js?v=0091"></script>
-<script src="js/models.js?v=0091"></script>
-<script src="js/gl.js?v=0091"></script>
-<script src="js/data.js?v=0091"></script>
-<script src="js/icons.js?v=0091"></script>
-<script src="js/game.js?v=0091"></script>
-<script src="js/net.js?v=0091"></script>
-<script src="js/ui.js?v=0091"></script>
+<style>/* 3D items (Lee, Nov 15): bag pictures are small 3D models; the tooltip shows the item large and turning */
+.it img.m3{position:relative;z-index:1;width:94%;height:94%;object-fit:contain;pointer-events:none;-webkit-user-drag:none;filter:drop-shadow(0 3px 3px rgba(0,0,0,.65))}.it .m3w{display:contents}.it .lv,.it .ar,.it .lk{z-index:2}
+#tip .show3{margin:-10px -12px 8px;height:210px;border-bottom:1px solid #6b5533;border-radius:4px 4px 0 0;background:radial-gradient(ellipse at 50% 55%,rgba(255,140,40,.28),rgba(255,120,30,.07) 45%,rgba(0,0,0,0) 70%),linear-gradient(#1b1510,#0b0907);overflow:hidden}#tip .show3 canvas{display:block;width:100%;height:100%}
+@media (max-height:700px){#tip .show3{height:150px}}@media (max-height:480px){#tip .show3{height:110px}}
+#tip.pin .show3{height:min(150px,22vh)}#tip.pin{max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px);overflow-y:auto;overscroll-behavior:contain}
+</style>
+<script src="js/move.js?v=0108"></script>
+<script src="js/models.js?v=0108"></script>
+<script src="js/gl.js?v=0108"></script>
+<script src="js/data.js?v=0108"></script>
+<script src="js/icons.js?v=0108"></script>
+<script src="js/game.js?v=0108"></script>
+<script src="js/net.js?v=0108"></script>
+<script src="js/ui.js?v=0108"></script>
 <div id="mtags"></div></body>
 </html>

@@ -1,7 +1,7 @@
 'use strict';
 // Online play: talks to the OathByte dedicated server when the game is served by it.
 const NET = (() => {
-  let ws = null, acc = 0; const N = { on: false, id: 0, peers: {}, names: {}, cls: {}, room: '' }, r2 = v => Math.round(v * 100) / 100;
+  let ws = null, acc = 0; const N = { on: false, id: 0, peers: {}, names: {}, cls: {}, fd: {}, room: '' }, r2 = v => Math.round(v * 100) / 100;
   const STN = ['chase', 'wind', 'rec', 'charge'], WT = ['sword', 'axe', 'maul', 'staff', 'bow', 'fist'], ISL = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet', 'ring'];
   const txt = (v, n) => String(v == null ? '' : v).replace(/[<>&"'`]/g, '').slice(0, n);
   function cleanItem(i) {
@@ -12,6 +12,15 @@ const NET = (() => {
     else if (isFinite(+i.armor) && i.armor > 0) o.armor = +i.armor;
     if (i.fd) o.fd = 1; if (i.up > 0 && i.up <= 5) o.up = i.up | 0; if (i.sd > 0 && i.sd < 2147483647) o.sd = i.sd | 0; if (i.slot === 'offhand' && CLASSES[i.oc]) o.oc = i.oc; if (i.power && POWERS[i.power]) o.power = i.power; return o;
   }
+  // Founder Pack (Lee, Nov 15): the code from the Ko-fi shop is kept in this browser and shown to the server on every join. The server
+  // checks it, so other players only see a gold name, badge, cape and ember glow when the code is real. Looks only: no loot, drops or XP.
+  const FKEY = 'oathbyte_founder'; /* the oathbyte_ prefix rides along with hero backups */
+  N.founderKey = () => { try { return localStorage.getItem(FKEY) || ''; } catch (e) { return ''; } };
+  G.founder = !!N.founderKey();
+  N.founderSet = k => { try { if (k) localStorage.setItem(FKEY, k); else localStorage.removeItem(FKEY); } catch (e) { } G.founder = !!k; };
+  N.founderTry = async k => { k = String(k || '').trim().slice(0, 40); if (!k) return false; let ok = false;
+    try { const r = await fetch('founder', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ k }) }); const j = r.ok ? await r.json() : null; ok = !!(j && j.ok); } catch (e) { return null; } /* null: no server to ask */
+    if (ok) { N.founderSet(k); if (N.on) N.send({ t: 'founder', k }); } return ok; };
   const find = id => G.ents.find(e => e.id === id);
   // everyone else in the party. In town the monsters' part of an update is skipped but this still runs, so party members in town see each other (build 0075)
   function peersUpd(list) {
@@ -19,7 +28,7 @@ const NET = (() => {
     for (const a of list) {
       if (!a || a[0] === N.id) continue; seen[a[0]] = 1; let p = N.peers[a[0]];
       if (!p) p = N.peers[a[0]] = { id: a[0], x: a[1], z: a[2], y: 0, rot: a[3], walk: 0, mv: 0, hurt: 0, act: null, swing: 0, spin: null, dash: false, buffs: null, flaskT: 0, a: 0, name: N.names[a[0]] || 'Hero', cls: N.cls[a[0]] || 'warden' };
-      { const nt = performance.now() / 1000; if (p.sT1 && nt - p.sT1 < .5) { p.sx0 = p.sx1; p.sz0 = p.sz1; p.sT0 = p.sT1; } else { p.sx0 = p.x; p.sz0 = p.z; p.sT0 = nt - .1; } p.sx1 = a[1]; p.sz1 = a[2]; p.sT1 = nt; } p.tx = a[1]; p.tz = a[2]; p.trot = a[3]; p.tmv = a[4]; if (Math.hypot(p.tx - p.x, p.tz - p.z) > 18) { p.x = p.tx; p.z = p.tz; } if (Math.hypot(p.tx - p.x, p.tz - p.z) > 18) p.sx0 = p.sx1, p.sz0 = p.sz1; p.hp = a[6]; p.lvl = a[7]; p.dead = !!a[8]; p.town = !!a[11]; if (a[9] !== p.gc) { p.gc = a[9]; p.gear = gearDecode(a[9]); } p.aiS = Array.isArray(a[10]) ? a[10] : []; /* build 0034: the host's AI teammates */
+      { const nt = performance.now() / 1000; if (p.sT1 && nt - p.sT1 < .5) { p.sx0 = p.sx1; p.sz0 = p.sz1; p.sT0 = p.sT1; } else { p.sx0 = p.x; p.sz0 = p.z; p.sT0 = nt - .1; } p.sx1 = a[1]; p.sz1 = a[2]; p.sT1 = nt; } p.tx = a[1]; p.tz = a[2]; p.trot = a[3]; p.tmv = a[4]; if (Math.hypot(p.tx - p.x, p.tz - p.z) > 18) { p.x = p.tx; p.z = p.tz; } if (Math.hypot(p.tx - p.x, p.tz - p.z) > 18) p.sx0 = p.sx1, p.sz0 = p.sz1; p.hp = a[6]; p.lvl = a[7]; p.dead = !!a[8]; p.town = !!a[11]; if (a[9] !== p.gc) { p.gc = a[9]; p.gear = gearDecode(a[9]); } p.aiS = Array.isArray(a[10]) ? a[10] : []; p.founder = !!a[12]; /* build 0034: the host's AI teammates */
       if (a[5] !== p.a) { p.a = a[5]; p.swing = 0; p.act = a[5] === 1 ? { sk: { type: 'melee' } } : a[5] === 2 ? { sk: { type: 'nova' } } : null; p.spin = a[5] === 3 ? { sk: SKILLS.whirl } : null; if (!CLASSES[p.cls]) p.cls = 'warden'; p.dash = a[5] === 4; }
     }
     for (const id in N.peers) if (!seen[id]) delete N.peers[id];
@@ -36,7 +45,7 @@ const NET = (() => {
     if (G.inTown && (m.t === 's' || m.t === 'spawn' || m.t === 'die' || m.t === 'dmg' || m.t === 'area' || m.t === 'proj' || m.t === 'fx' || m.t === 'scale' || m.t === 'rest')) { if (m.t === 's' && Array.isArray(m.p)) peersUpd(m.p); return; }
     if (G.inTown && m.t === 'zone' && !m.sync && m.rift === undefined) { hint('Your party has moved deeper. Take the portal to rejoin them.'); return; }
     switch (m.t) {
-      case 'hello': N.id = m.id; N.room = m.room; N.on = true; G.online = true; G.speed = 1; break;
+      case 'hello': N.id = m.id; N.room = m.room; N.on = true; G.online = true; G.speed = 1; if (m.fd === 0) { N.founderSet(''); hint('Your Founder code was not accepted by the server, so the Founder look is off. You can enter it again in Settings.'); } break;
       case 'error': UI.netFail(m.m); break;
       case 'bye': N.bye = true; break; /* build 0070: the server is restarting for an update; reconnect at once */
       case 'note': hint(txt(m.m, 160)); break;
@@ -57,16 +66,17 @@ const NET = (() => {
       case 'area': { const sh = m.sh === 'cone' || m.sh === 'line' || m.sh === 'cross' || m.sh === 'rays' ? m.sh : undefined; addArea({ x: +m.x, z: +m.z, r: +m.r || 0, delay: +m.delay, owner: 'e', vis: 1, dmg: 0, el: 'phys', c: m.c | 0, sh, ang: +m.ang || 0, arc: Math.min(1.6, +m.arc || 0), len: Math.min(40, +m.len || 0), w: Math.min(8, +m.w || 0), n: Math.min(12, m.n | 0), hvy: Math.min(.5, Math.max(0, +m.hv || 0)) }); break; }
       case 'proj': G.projs.push({ x: +m.x, z: +m.z, vx: +m.vx, vz: +m.vz, life: 3, r: .45, dmg: 0, el: 'phys', vis: 1, c: GLX.col(m.c | 0) }); break;
       case 'fx': if (m.k === 'p') G.projs.push({ x: +m.x, z: +m.z, vx: Math.sin(+m.rot) * +m.r, vz: Math.cos(+m.rot) * +m.r, life: clamp(+m.arc || .5, .1, 2), r: .4, dmg: 0, el: 'phys', vis: 1, peer: 1, c: GLX.col(m.c | 0) }); else if (m.k === 's') G.fx.push({ slash: 1, x: +m.x, z: +m.z, rot: +m.rot, r: +m.r, arc: +m.arc, life: .16, max: .16, c: GLX.col(0xfff0d0) }); else ring(+m.x, +m.z, .5, +m.r, .35, m.c || 0xffc890); break;
-      case 'chat': { const bd = typeof m.b === 'string' && ACH.some(a => a[1] === m.b) ? m.b + ' ' : ''; UI.chat(bd + txt(m.n, 16), txt(m.m, 140), m.g ? 'g' : 'p'); break; }
+      case 'chat': { const bd = typeof m.b === 'string' && ACH.some(a => a[1] === m.b) ? m.b + ' ' : ''; UI.chat(bd + txt(m.n, 16), txt(m.m, 140), m.g ? 'g' : 'p', !!m.f); break; }
+      case 'founder': break; /* the server's answer to a code typed mid-game; Settings already asked it over the web */
       case 'found': UI.chat('', txt(m.n, 16) + ' found a ' + (m.r === 4 ? 'Mythic' : 'Legendary') + ' item: ' + txt(m.item, 60), m.r === 4 ? 'm' : 'l'); if (m.r === 4) SFX.play('drop1'); break;
       case 'join': if (m.name !== N.me && N.quiet('j' + m.name)) UI.chat('', txt(m.name, 16) + ' joined the party.', 's'); break;
       case 'leave': delete N.peers[m.id]; if (m.name !== N.me && N.quiet('l' + m.name)) UI.chat('', txt(m.name, 16) + ' left the party.', 's'); break;
-      case 'players': N.names = {}; N.cls = {}; for (const p of m.list) { N.names[p.id] = txt(p.name, 16); N.cls[p.id] = CLASSES[p.cls] ? p.cls : 'warden'; if (N.peers[p.id]) { N.peers[p.id].name = N.names[p.id]; N.peers[p.id].cls = N.cls[p.id]; } } N.count = m.list.length; break;
+      case 'players': N.names = {}; N.cls = {}; N.fd = {}; for (const p of m.list) { N.names[p.id] = txt(p.name, 16); N.cls[p.id] = CLASSES[p.cls] ? p.cls : 'warden'; N.fd[p.id] = !!p.f; if (N.peers[p.id]) { N.peers[p.id].name = N.names[p.id]; N.peers[p.id].cls = N.cls[p.id]; } } N.count = m.list.length; break;
       case 'give': { const it = cleanItem(m.item); if (!it) break; if (addItem(it)) { hint(txt(m.n, 16) + (m.back ? ' could not carry it, so it came back: ' : ' gave you ') + it.name + '.'); UI.invDirty = true; saveGame(); } else if (!m.back) N.send({ t: 'give', to: m.from, item: m.item, back: true }); break; }
     }
   }
-  N.status = async () => { try { if (!/^https?:$/.test(location.protocol)) return null; const r = await fetch('cinderdeep-server', { cache: 'no-store' }); if (!r.ok) return null; const j = await r.json(); return j && j.cinderdeep ? j : null; } catch (e) { return null; } };
-  N.probe = async () => { try { if (!/^https?:$/.test(location.protocol)) return false; const r = await fetch('cinderdeep-server', { cache: 'no-store' }); if (!r.ok) return false; const j = await r.json(); return !!(j && j.cinderdeep); } catch (e) { return false; } };
+  N.status = async () => { try { if (!/^https?:$/.test(location.protocol)) return null; const r = await fetch('oathbyte-server', { cache: 'no-store' }); if (!r.ok) return null; const j = await r.json(); return j && j.oathbyte ? j : null; } catch (e) { return null; } };
+  N.probe = async () => { try { if (!/^https?:$/.test(location.protocol)) return false; const r = await fetch('oathbyte-server', { cache: 'no-store' }); if (!r.ok) return false; const j = await r.json(); return !!(j && j.oathbyte); } catch (e) { return false; } };
   N.close = () => { if (ws) { N.quit = true; N.on = false; G.online = false; N.peers = {}; try { ws.close(); } catch (e) { } ws = null; } };
   N.send = o => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); };
   const seen = {}; N.quiet = k => { const t = Date.now(); if (seen[k] && t - seen[k] < 60000) return false; seen[k] = t; return true; }; // a flaky connection should not flood chat
@@ -79,7 +89,7 @@ const NET = (() => {
     if (!me) { if (N.retry > 0) drop(null); else UI.netFail('Could not reach the server.'); return; }
     const kill = () => { if (ws !== me) return; me.onclose = me.onerror = me.onmessage = null; try { me.close(); } catch (e) { } drop(me); };
     const t1 = setTimeout(() => { if (ws === me && me.readyState !== 1) kill(); }, 8000); /* never opened */
-    me.onopen = () => { clearTimeout(t1); const b = N.retry > 0 && N.back; N.send({ t: 'join', sid: N.sid || (N.sid = Math.random().toString(36).slice(2) + Date.now().toString(36)), name, room, lvl: G.hero.level, cls: G.hero.cls, tier: tierPick(G.hero), dep: b && b.d ? b.d : 0, sd: b && b.seed, px: b ? Math.round(P.x * 10) / 10 : undefined, pz: b ? Math.round(P.z * 10) / 10 : undefined, clr: b && b.clr ? 1 : 0, wb: (() => { try { const j = JSON.parse(localStorage.getItem('oathbyte-wb') || 'null'); return Array.isArray(j) ? [j[0] | 0, j[1] | 0] : undefined; } catch (e) { return undefined; } })() });
+    me.onopen = () => { clearTimeout(t1); const b = N.retry > 0 && N.back; N.send({ t: 'join', sid: N.sid || (N.sid = Math.random().toString(36).slice(2) + Date.now().toString(36)), name, room, lvl: G.hero.level, cls: G.hero.cls, tier: tierPick(G.hero), dep: b && b.d ? b.d : 0, sd: b && b.seed, px: b ? Math.round(P.x * 10) / 10 : undefined, pz: b ? Math.round(P.z * 10) / 10 : undefined, clr: b && b.clr ? 1 : 0, fk: N.founderKey() || undefined, wb: (() => { try { const j = JSON.parse(localStorage.getItem('oathbyte-wb') || 'null'); return Array.isArray(j) ? [j[0] | 0, j[1] | 0] : undefined; } catch (e) { return undefined; } })() });
       setTimeout(() => { if (ws === me && !N.gotZone) kill(); }, 10000); /* opened but the server never sent the floor */ };
     me.onmessage = ev => { if (ws !== me) return; let m; try { m = JSON.parse(ev.data); } catch (e) { return; } handle(m); };
     me.onclose = () => { clearTimeout(t1); if (ws !== me) return; drop(me); };

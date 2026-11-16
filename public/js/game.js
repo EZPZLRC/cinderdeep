@@ -6,7 +6,7 @@ const rnd = (a, b) => b === undefined ? Math.random() * (a === undefined ? 1 : a
 const rint = (a, b) => Math.floor(a + Math.random() * (b - a + 1));
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
-const CS = 3, GW = 60, SAVE_KEY = 'cinderdeep_save_v1';
+const CS = 3, GW = 60, SAVE_KEY = 'oathbyte_save_v1';
 const G = { set: { vol: 70, gfx: 'auto', shake: true, nums: true, map: true, gps: true, joy: true, autoLoot: true, pet: true, weather: true, chat: true, shadows: true, scale: 100, fps: false, ally: true, apSkill: true, apPot: true }, pp: [], online: false, auto: false, speed: 1, state: 'menu', hero: null, zone: null, time: 0, ents: [], projs: [], areas: [], drops: [], fx: [], texts: [], timers: [], shake: 0, zoom: .72, boss: null, hover: null, hoverObj: null, eid: 0, streak: 0, streakT: 0, bestStreak: 0, labels: [], hints: [], hitSfx: 0 };
 const P = { x: 0, z: 0, y: 0, rot: 0, hp: 1, mana: 1, stats: {}, cds: {}, buffs: [], act: null, spin: null, dash: null, move: null, atk: null, inter: null, pick: null, walk: 0, mv: 0, moving: false, iframes: 0, cheatCd: 0, flaskT: 0, dead: false, hurt: 0, oomT: 0, swing: 0 };
 const IN = { sx: 0, sy: 0, gx: 0, gz: 0, lmb: false, rmb: false, keys: {}, shift: false, lmbFresh: false, touch: false, tb: [false, false, false, false], joy: { on: false, x: 0, z: 0 } };
@@ -25,49 +25,85 @@ const SFX = (() => {
     const t = a.currentTime + (delay || 0); const s = a.createBufferSource(); s.buffer = nb; const f = a.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = freq || 1200; const g = a.createGain(); g.gain.setValueAtTime(Math.max(.0002, (vol || .1) * master), t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
     s.connect(f); f.connect(g); g.connect(a.destination); s.start(t, Math.random() * .5, d + .05);
   }
-  /* build 0051: recorded sounds (Kenney's CC0 packs) for hits, kills, footsteps, coins and more. Until they load, or if they can't, the old synth sounds play */
-  const SMP = {}, SLAST = {}, SFILES = ['hit', 'impact', 'kill', 'big_kill', 'boss', 'hurt', 'coin', 'step', 'land', 'dash'], SQ = '?v=' + (typeof BUILD !== 'undefined' ? BUILD : '');
+  /* build 0051: recorded sounds (Kenney's CC0 packs) for hits, kills, footsteps, coins and more. Until they load, or if they can't, the old synth sounds play.
+     oathbyte-sfx (Lee, Nov 15: enhance the sound effects with free packs): many more recorded sounds from CC0 packs (public/sfx/CREDITS.txt; tools/sfx/build_sfx.py makes the files).
+     oathbyte-sfx-bright (Lee, Nov 15: "brighter", like Torchlight Infinite): the recorded sounds are brightened (more top end, less low rumble, hits pitched up a little),
+     crisp metal ticks sit on top of hits, spells get glassy, electric and phaser layers, kills and loot get chimes and sparkles, monster growls on kills are gone,
+     level ups and Mythic drops get a steel-drum fanfare, and a boss kill ends on a bright fanfare instead of a funeral bell.
+     A name in SG is a group: each play picks one of its files (never the same one twice running). Every play gets a small random pitch and volume change so repeats don't sound identical. */
+  const SMP = {}, SLAST = {}, SPREV = {}, SQ = '?v=' + (typeof BUILD !== 'undefined' ? BUILD : '');
+  const SFILES = ['hit', 'impact', 'kill', 'big_kill', 'boss', 'hurt', 'coin', 'step', 'land', 'dash',
+    'hit_p1', 'hit_p2', 'hit_p3', 'tick1', 'tick2', 'tick3', 'cast_blade1', 'cast_blade2', 'cast_blade3', 'cast_fire1', 'cast_fire2', 'cast_fire3', 'cast_cold1', 'cast_cold2', 'cast_arc1', 'cast_arc2', 'cast_zap1',
+    'glass1', 'glass2', 'zap1', 'zap2', 'phase1', 'phase2', 'pluck1', 'pluck2', 'chime1', 'chime2', 'chime3', 'chime4', 'shatter', 'fanfare1', 'fanfare2',
+    'blade1', 'blade2', 'blade3', 'crit_m', 'thud1', 'thud2', 'hurt2', 'hurt3', 'block1', 'block2', 'block3', 'stone1', 'stone2',
+    'st_grass1', 'st_grass2', 'st_grass3', 'st_dirt1', 'st_dirt2', 'st_dirt3', 'st_stone1', 'st_stone2', 'st_stone3', 'st_snow1', 'st_snow2',
+    'cloth1', 'cloth2', 'cloth3', 'leather', 'coins1', 'coins2', 'coins3', 'gem1', 'gem3', 'gem4', 'shimmer', 'bottle', 'bubble',
+    'death_big', 'roar1', 'roar2', 'wind_up', 'boom', 'toll', 'bell_hi', 'bell_lo', 'bell_sm', 'swell', 'warp_ff', 'gate_hum', 'coins_big'];
+  const SG = { hit: ['hit', 'hit_p1', 'hit_p2', 'hit_p3'], tick: ['tick1', 'tick2', 'tick3'], swish: ['cast_blade1', 'cast_blade2', 'cast_blade3'], fire: ['cast_fire1', 'cast_fire2', 'cast_fire3'], cold: ['cast_cold1', 'cast_cold2'],
+    glass: ['glass1', 'glass2'], zap: ['zap1', 'zap2'], phase: ['phase1', 'phase2'], pluck: ['pluck1', 'pluck2'],
+    blade: ['blade1', 'blade2', 'blade3'], thud: ['thud1', 'thud2'], hurt: ['hurt', 'hurt2', 'hurt3'], block: ['block1', 'block2', 'block3'], stone: ['stone1', 'stone2'],
+    st_grass: ['st_grass1', 'st_grass2', 'st_grass3'], st_dirt: ['st_dirt1', 'st_dirt2', 'st_dirt3'], st_stone: ['st_stone1', 'st_stone2', 'st_stone3'], st_snow: ['st_snow1', 'st_snow2'],
+    cloth: ['cloth1', 'cloth2', 'cloth3', 'leather'], coin: ['coin', 'coins1', 'coins2', 'coins3'], gem: ['gem1', 'gem3'], roar: ['roar1', 'roar2'] };
+  const GROUND = { forest: 'st_grass', town: 'st_dirt', crypt: 'st_stone', lava: 'st_stone', void: 'st_stone', ice: 'st_snow' };
   let smpGo = false, sBus = null;
   function getBuf(f, done) { if (typeof fetch === 'undefined') return; fetch(f + SQ).then(r => r.ok ? r.arrayBuffer() : null).then(b => { if (b) ac.decodeAudioData(b, done, () => { }); }).catch(() => { }); }
-  function loadSmp() { if (smpGo || !ac) return; smpGo = true; for (const k of SFILES) getBuf('sfx/' + k + '.mp3', buf => { SMP[k] = buf; }); }
-  function smp(k, vol, rate, delay) {
-    const a = ac, b = SMP[k]; if (!a || !b) return false; if (mute) return true; const now = a.currentTime; if (!delay && now - (SLAST[k] || -1) < .045) return true; SLAST[k] = now;
+  function loadSmp() { if (smpGo || !ac) return; smpGo = true; SFILES.forEach((k, i) => setTimeout(() => getBuf('sfx/' + k + '.mp3', buf => { SMP[k] = buf; }), i < 10 ? 0 : 300 + i * 25)); } // the first ten (the old set) at once, the rest spread over about two and a half seconds
+  function pickS(k) { const g = SG[k]; if (!g) return SMP[k] ? k : null; const have = g.filter(x => SMP[x]); if (!have.length) return null; let x = have[Math.floor(Math.random() * have.length)]; if (have.length > 1 && x === SPREV[k]) x = have[(have.indexOf(x) + 1) % have.length]; SPREV[k] = x; return x; }
+  function smp(k, vol, rate, delay, gap) {
+    const a = ac; if (!a) return false; const x = pickS(k); if (!x) return false; if (mute) return true; const now = a.currentTime; if (!delay && now - (k in SLAST ? SLAST[k] : -99) < (gap || .045)) return true; SLAST[k] = now;
     if (!sBus) { sBus = a.createDynamicsCompressor(); sBus.threshold.value = -10; sBus.ratio.value = 6; sBus.connect(a.destination); }
-    const s = a.createBufferSource(), g = a.createGain(); s.buffer = b; s.playbackRate.value = (rate || 1) * (.93 + Math.random() * .14); g.gain.value = (vol || .5) * master; s.connect(g); g.connect(sBus); s.start(now + (delay || 0)); return true;
+    const s = a.createBufferSource(), g = a.createGain(); s.buffer = SMP[x]; s.playbackRate.value = (rate || 1) * (.93 + Math.random() * .14); g.gain.value = (vol || .5) * master * (.86 + Math.random() * .28); s.connect(g); g.connect(sBus); s.start(now + (delay || 0)); return true;
   }
-  function play(n) {
+  // oathbyte-sfx-bright: a bell-like chime (a sine with two quieter overtones) and a sparkle (a quick shower of high chimes)
+  function chime(f, d, vol, delay) { tone(f, d, 'sine', vol, 1, delay); tone(f * 2.76, d * .5, 'sine', vol * .3, 1, delay); tone(f * 5.4, d * .25, 'sine', vol * .12, 1, delay); }
+  let spLast = -9;
+  function sparkle(vol, n, delay, lo, hi) {
+    if (!ac || mute) return; const now = ac.currentTime; if (!delay && n < 6 && now - spLast < .09) return; spLast = now; // small sparkles don't pile up when many things die at once
+    lo = lo || 2200; hi = hi || 5200; for (let i = 0; i < n; i++) chime(lo + Math.random() * (hi - lo), .1 + Math.random() * .14, vol * (1 - i / (n * 1.6)), (delay || 0) + i * (.022 + Math.random() * .02));
+  }
+  function cast(sk) { // the sound a skill makes as it goes off, by its element
+    const el = sk && sk.el, b = sk && sk.basic ? .7 : 1;
+    if (!sk || sk.arrow) { if (!smp('swish', .28 * b, 1.5)) return false; tone(1300, .1, 'sine', .018 * b, 1.9); return true; }
+    if (el === 'fire') { if (!smp('fire', .38 * b, 1.12)) return false; smp('swish', .15 * b, 1); sparkle(.012 * b, 3, .05, 1800, 3600); return true; }
+    if (el === 'cold') { if (!smp('glass', .3 * b, 1.1)) return false; smp('cold', .2 * b, 1.3); sparkle(.014 * b, 4, .03, 3200, 6400); return true; }
+    if (el === 'arc') { if (!smp('phase', .22 * b, 1.05)) return false; smp('cast_arc2', .14 * b, 1.25); return true; }
+    if (el === 'light') { if (!smp('zap', .24 * b, 1.15)) return false; smp('tick', .2 * b, 1.5); return true; }
+    return smp('swish', .36 * b, sk.basic ? 1.08 : .95);
+  }
+  const arp = (fs, d, type, vol, step, delay) => fs.forEach((f, i) => tone(f, d, type, vol, 1, (delay || 0) + i * step));
+  function play(n, sk) {
     try {
       switch (n) {
-        case 'swing': noise(.12, .07, 2600); break;
-        case 'hit': if (smp('hit', .55)) tone(140, .08, 'triangle', .05, .5); else { noise(.09, .16, 900); tone(140, .1, 'triangle', .12, .5); } break;
-        case 'crit': if (smp('impact', .65, 1.15)) { smp('hit', .45, 1.25); noise(.07, .08, 3200); } else { noise(.14, .22, 1800); tone(220, .16, 'square', .07, .4); } break;
-        case 'taunt': if (!smp('impact', .35, .7)) tone(140, .25, 'square', .08, .6); tone(90, .3, 'sawtooth', .05, .7); break;
-        case 'block': if (!smp('hit', .22, .62)) tone(240, .08, 'square', .05, .6); break;
-        case 'mend': tone(520, .35, 'sine', .07, 1.5); tone(780, .45, 'sine', .05, 1.25, .08); tone(1040, .5, 'sine', .03, 1.1, .16); break;
-        case 'hurt': if (!smp('hurt', .5)) tone(110, .2, 'sawtooth', .12, .5); break;
-        case 'kill': if (smp('kill', .55)) tone(90, .16, 'triangle', .06, .4); else { tone(90, .22, 'triangle', .14, .4); noise(.16, .1, 500); } break;
-        case 'bigkill': if (smp('big_kill', .5)) smp('kill', .55, .85); else { tone(70, .5, 'triangle', .16, .4); noise(.3, .14, 400); } break;
-        case 'step': smp('step', .11, .9 + Math.random() * .25); break;
-        case 'slam': if (smp('impact', .75, .72)) { smp('land', .6, .8); tone(55, .4, 'sine', .22, .5); } else { noise(.4, .3, 320); tone(60, .4, 'sine', .3, .5); } break;
-        case 'leap': if (!smp('dash', .5)) noise(.25, .08, 3000); break;
-        case 'whirl': if (!smp('dash', .38, .78)) noise(.3, .08, 2200); break;
-        case 'gold': if (!smp('coin', .32)) { tone(1568, .06, 'square', .035); tone(2093, .08, 'square', .035, 1, .05); } break;
-        case 'goblin': [1319, 1568, 2093, 1568, 2093, 2637].forEach((f, i) => tone(f, .14, 'triangle', .09, 1, i * .075)); tone(3136, .5, 'sine', .05, 1, .46); break; /* build 0034: a coin jingle when a Treasure Goblin is near */
-        case 'pickup': tone(520, .08, 'triangle', .1, 1.5); break;
-        case 'drop1': tone(660, .25, 'sine', .1); break;
-        case 'drop2': tone(784, .22, 'triangle', .12); tone(1047, .4, 'triangle', .12, 1, .12); break;
-        case 'drop4': [392, 523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone(f, .9, 'triangle', .13, 1, i * .08)); tone(2637, 1.6, 'sine', .07, 1, .5); tone(131, 1.4, 'sine', .12); break;
-        case 'drop3': [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, .7, 'triangle', .13, 1, i * .09)); tone(2093, 1.2, 'sine', .06, 1, .45); break;
-        case 'level': [392, 523, 659, 784].forEach((f, i) => tone(f, .5, 'square', .06, 1, i * .1)); break;
-        case 'flask': tone(300, .3, 'sine', .12, 2); break;
-        case 'boss': if (smp('boss', .7)) { smp('big_kill', .4, .7, .15); tone(55, 1.4, 'sawtooth', .07, .7); } else { tone(55, 1.4, 'sawtooth', .16, .7); noise(1.2, .12, 240); } break;
-        case 'shrine': [440, 554, 659].forEach((f, i) => tone(f, .8, 'sine', .09, 1, i * .05)); break;
-        case 'bossdie': if (smp('big_kill', .8, .55)) { smp('boss', .6, .7, .1); smp('impact', .7, .5); } else { tone(45, 2, 'sawtooth', .2, .5); noise(1.6, .2, 300); } tone(38, 2.2, 'sine', .25, .6); break;
-        case 'die': smp('big_kill', .5, .6); tone(200, 1, 'sawtooth', .14, .25); break;
-        case 'warn': tone(70, .55, 'sawtooth', .07, 1.9); noise(.45, .06, 700); tone(140, .3, 'sine', .05, 1.5, .12); break; // build 0048: a heavy blow is being marked
-        case 'evade': tone(880, .12, 'sine', .05, 1.4); tone(1320, .1, 'sine', .03, 1.2, .05); break;
-        case 'hum': tone(55, 3.4, 'sine', .07); tone(82.4, 3.2, 'triangle', .025, 1.01); tone(110, 3, 'sine', .03, .99, .2); noise(2.6, .025, 260); break; // build 0046: the portal's low hum
-        case 'warp': tone(110, .9, 'sine', .14, 4); tone(220, .7, 'triangle', .06, 3, .1); noise(.8, .12, 1600); [523, 659, 784].forEach((f, i) => tone(f, .6, 'sine', .05, 1, .25 + i * .07)); break;
+        case 'swing': if (!cast(sk)) noise(.12, .07, 2600); break;
+        case 'hit': if (smp('hit', .42, 1.06)) smp('tick', .16, 1.15); else { noise(.09, .16, 900); tone(140, .1, 'triangle', .12, .5); } break;
+        case 'crit': if (smp('impact', .5, 1.25)) { smp('blade', .4, 1.12); smp('glass', .32, 1.15); smp('tick', .22, 1.3); sparkle(.022, 5, .02, 2600, 6000); } else { noise(.14, .22, 1800); tone(220, .16, 'square', .07, .4); } chime(2093, .3, .025, .02); break;
+        case 'taunt': if (!smp('roar', .24, 1.35)) tone(140, .25, 'square', .08, .6); smp('block', .26, 1.2, .05); chime(880, .4, .03, .05); break;
+        case 'block': if (!smp('block', .3, 1.15)) tone(240, .08, 'square', .05, .6); chime(1760, .18, .022); break;
+        case 'mend': smp('phase', .16, 1.2); smp('shimmer', .22, 1.3); arp([784, 988, 1175, 1568], .45, 'sine', .04, .07); sparkle(.014, 5, .15, 2800, 5600); break;
+        case 'hurt': if (!smp('hurt', .45, 1.05)) tone(110, .2, 'sawtooth', .12, .5); break;
+        case 'kill': if (smp('kill', .42, 1.1)) { smp('pluck', .2, 1.1); smp('thud', .14, 1.05); sparkle(.016, 3, .03); } else { tone(90, .22, 'triangle', .14, .4); noise(.16, .1, 500); } break;
+        case 'bigkill': if (smp('big_kill', .45, 1.05)) { smp('kill', .4, .95); smp('shatter', .32, 1.1); } else { tone(70, .5, 'triangle', .16, .4); noise(.3, .14, 400); } arp([1047, 1319, 1568], .25, 'sine', .035, .05, .04); sparkle(.022, 8, .08); break;
+        case 'step': { const gk = GROUND[ambKind]; if (!(gk && smp(gk, .11, 1.05))) smp('step', .1, 1 + Math.random() * .25); } break;
+        case 'slam': if (smp('impact', .65, .85)) { smp('land', .5, .9); smp('stone', .32, 1); smp('shatter', .22, .9, .02); tone(70, .3, 'sine', .14, .5); } else { noise(.4, .3, 320); tone(60, .4, 'sine', .3, .5); } break;
+        case 'leap': if (smp('dash', .45, 1.1)) smp('swish', .22, .9); else noise(.25, .08, 3000); tone(600, .3, 'sine', .025, 3); break;
+        case 'whirl': if (!smp('swish', .3, .9)) { if (!smp('dash', .38, .9)) noise(.3, .08, 2200); } smp('tick', .1, 1.2, .1); break;
+        case 'gold': if (!smp('coin', .28, 1.12)) { tone(1568, .06, 'square', .035); tone(2093, .08, 'square', .035, 1, .05); } chime(2637, .14, .02, .03); break;
+        case 'goblin': smp('coins_big', .35, 1.08); arp([1319, 1568, 2093, 1568, 2093, 2637], .14, 'triangle', .07, .075); chime(3136, .5, .04, .46); break; /* build 0034: a coin jingle when a Treasure Goblin is near */
+        case 'pickup': if (!smp('cloth', .24, 1.1)) tone(520, .08, 'triangle', .1, 1.5); smp('pluck', .16, 1.2); break;
+        case 'drop1': if (smp('chime1', .32)) chime(1568, .35, .03, .05); else tone(660, .25, 'sine', .1); break;
+        case 'drop2': if (smp('chime2', .36)) { smp('gem', .26, 1.1, .05); arp([1175, 1568], .3, 'sine', .04, .1); sparkle(.016, 4, .12); } else { tone(784, .22, 'triangle', .12); tone(1047, .4, 'triangle', .12, 1, .12); } break;
+        case 'drop3': smp('chime3', .36); smp('bell_hi', .3, 1.4); smp('shimmer', .28, 1.15, .1); arp([784, 1047, 1319, 1568, 2093], .6, 'triangle', .07, .08); chime(3136, 1, .035, .42); sparkle(.022, 8, .2, 2600, 6200); break;
+        case 'drop4': smp('fanfare2', .42); smp('swell', .26, 1.1); smp('bell_hi', .32, 1.1, .05); smp('chime3', .3, .9, .3); arp([784, 1047, 1319, 1568, 2093, 2637], .8, 'triangle', .07, .07); chime(3520, 1.4, .04, .48); tone(262, 1.2, 'sine', .05); sparkle(.026, 14, .25, 2400, 6600); break;
+        case 'level': smp('fanfare1', .4); smp('shimmer', .26, 1.2); arp([523, 659, 784, 1047, 1319], .5, 'triangle', .05, .08); sparkle(.022, 10, .3, 2600, 6200); break;
+        case 'flask': if (smp('bottle', .34, 1.1)) { smp('bubble', .2, 1.15, .12); smp('phase', .12, 1.3, .1); } else tone(300, .3, 'sine', .12, 2); chime(1319, .3, .025, .22); break;
+        case 'boss': if (smp('boss', .65)) { smp('roar', .45, .9, .05); smp('big_kill', .35, .85, .15); tone(55, 1.2, 'sawtooth', .05, .7); } else { tone(55, 1.4, 'sawtooth', .16, .7); noise(1.2, .12, 240); } smp('shatter', .25, .8, .1); break;
+        case 'shrine': smp('chime4', .3); smp('shimmer', .28, 1.15); arp([659, 880, 1109, 1319], .7, 'sine', .05, .06); sparkle(.016, 6, .15); break;
+        case 'bossdie': if (smp('big_kill', .7, .7)) { smp('boss', .45, .85, .1); smp('impact', .6, .7); smp('boom', .4, 1.1); smp('shatter', .4, .9, .05); } else { tone(45, 2, 'sawtooth', .2, .5); noise(1.6, .2, 300); } smp('fanfare2', .45, 1, .7); arp([523, 784, 1047, 1319, 1568, 2093], .9, 'triangle', .06, .08, .75); sparkle(.028, 16, .8, 2400, 6600); break;
+        case 'die': smp('big_kill', .45, .7); smp('toll', .35, .8, .2); tone(200, 1, 'sawtooth', .07, .25); break;
+        case 'warn': smp('wind_up', .3, .95, 0, 1.2); tone(70, .5, 'sawtooth', .05, 1.9); noise(.4, .05, 900); chime(1760, .3, .04, .05); chime(1760, .3, .035, .25); break; // build 0048: a heavy blow is being marked
+        case 'evade': smp('swish', .28, 1.5); chime(1760, .15, .03); chime(2637, .12, .02, .05); break;
+        case 'hum': if (smp('gate_hum', .38)) { tone(110, 3, 'sine', .03, .99, .2); tone(880, 2.6, 'sine', .006, 1.01, .4); } else { tone(55, 3.4, 'sine', .07); tone(82.4, 3.2, 'triangle', .025, 1.01); tone(110, 3, 'sine', .03, .99, .2); noise(2.6, .025, 260); } break; // build 0046: the portal's low hum
+        case 'warp': if (smp('phase', .3, .95)) { smp('warp_ff', .28, 1.1); smp('shimmer', .3, 1, .1); } else { tone(110, .9, 'sine', .14, 4); tone(220, .7, 'triangle', .06, 3, .1); noise(.8, .12, 1600); } arp([659, 880, 1047, 1319], .6, 'sine', .045, .07, .2); sparkle(.02, 8, .3); break;
       }
     } catch (e) { }
   }
@@ -91,14 +127,14 @@ const SFX = (() => {
   }
 
   // background music (build 0020): a driving rock loop written on the fly. Drums, distorted power chords, bass and a lead riff in E minor.
-  let mBus = null, gBus = null, mLvl = .4, mNext = 0, mStep = 0, mOn = true;
+  let mBus = null, gBus = null, mLvl = .4, mNext = 0, mStep = 0, mOn = true, bossLv = 0, fadeTo = 0;
   const MF = n => 82.41 * Math.pow(2, n / 12), RIFF = [0, 0, -4, -2, 0, 0, 3, 5], PENT = [0, 3, 5, 7, 10, 12, 15, 17], BPM = 138;
-  const mVol = () => (mute || !mOn ? 0 : mLvl * master * .5 * (fBuf ? 1 - .9 * Math.min(1, fLvl * 1.6) : 1));
+  const mVol = () => (mute || !mOn ? 0 : mLvl * master * .5 * (fBuf && !bossLv ? 1 - .9 * Math.min(1, fLvl * 1.6) : 1));
   /* build 0051: fight music. "Battle Theme A" by cynicmusic (CC0) fades in over the area tune when a fight starts, and its sound opens up as the fight grows */
   let fBuf = null, fSrc = null, fG = null, fLp = null, fLvl = 0, fGo = false, fT0 = 0, fOff = 0;
   function loadFight() { if (fGo || !ac) return; fGo = true; getBuf('sfx/battle.mp3', b => { fBuf = b; }); }
   function fight(k, dt) {
-    if (!ac || !(dt > 0)) return; fLvl += (k - fLvl) * Math.min(1, dt * (k > fLvl ? 1.4 : .3)); if (fLvl < .003 && k <= 0) fLvl = 0; if (!fBuf) return;
+    if (!ac || !(dt > 0)) return; if (bossLv) k = 0; /* build 0095: the boss theme takes over from the battle track */ fLvl += (k - fLvl) * Math.min(1, dt * (k > fLvl || bossLv ? 1.4 : .3)); if (fLvl < .003 && k <= 0) fLvl = 0; if (!fBuf) return;
     const v = mute || !mOn ? 0 : Math.min(1, fLvl * 1.3) * mLvl * master * .8, now = ac.currentTime;
     if (v > .001 && !fSrc) { fG = ac.createGain(); fG.gain.value = 0; fLp = ac.createBiquadFilter(); fLp.type = 'lowpass'; fLp.frequency.value = 600; fSrc = ac.createBufferSource(); fSrc.buffer = fBuf; fSrc.loop = true; fSrc.connect(fLp); fLp.connect(fG); fG.connect(ac.destination); fSrc.start(now, fOff % fBuf.duration); fT0 = now - fOff; }
     if (!fSrc) return; fG.gain.setTargetAtTime(v, now, .25); fLp.frequency.setTargetAtTime(500 + fLvl * fLvl * 14000, now, .3);
@@ -161,10 +197,24 @@ const SFX = (() => {
       lead: { horn: 1, v: .046, lp: 1500, oct: 24, m: [0, _, _, 2, 3, _, 2, _, 0, _, _, _, -1, _, 0, _, 4, _, _, 3, 2, _, 0, _, 2, _, _, _, _, _, _, _] },
       mB: [4, _, _, _, 7, _, 6, 4, 5, _, _, _, 3, _, _, _, 4, _, 5, _, 7, _, 8, _, 9, _, _, 7, 6, _, _, _] }
   });
+  /* build 0095 (Lee: change the music at the boss fight, more epic and sped up): the boss theme. D harmonic minor at 168 bpm, pounding drums and timpani,
+     driving strings, full brass, a low choir and the horn call. hot skips the quiet intro so it hits at once. s_boss2 is the enrage: a semitone up, faster, more drums and a racing string arp */
+  Object.assign(THEMES, {
+    s_boss: { bpm: 168, base: 73.42, len: 8, sc: 'hmin', hot: 1, prog: [0, 0, -4, -4, -2, -2, -5, -5], q: [3, 3, 4, 4, 4, 4, 4, 4], progB: [-4, -4, -2, -2, 0, 0, 1, 1], qB: [4, 4, 4, 4, 3, 3, 4, 4], kick: [0, 2, 3, 4, 6], snare: [2, 6], tom: [5, 7], timp: [0, 3, 4, 6], hat: [0, 1, 2, 3, 4, 5, 6, 7], hv: .035, bass: 'pulse', bw: 'triangle', echo: .22,
+      ost: { v: .032, lp: 2600, p: DRV, n: [0, 12, 7, 12, 0, 12, 7, 12] }, brass: { v: .028, lp: 2000 }, pad: { w: 'sawtooth', v: .018, lp: 1300, iv: [0, 7, 12, 15], det: 10 },
+      lead: { horn: 1, v: .056, lp: 2100, oct: 24, m: [0, _, _, 4, 3, _, 2, _, 4, _, _, 7, 6, _, 4, _, 5, _, _, 4, 3, _, 2, 1, 2, _, _, _, _, _, _, _] },
+      mB: [7, _, _, _, 8, _, 7, _, 9, _, _, _, 8, _, 7, _, 6, _, _, 7, 8, _, 9, _, 11, _, _, _, _, _, 10, _] },
+    s_boss2: { bpm: 184, base: 77.78, len: 8, sc: 'hmin', hot: 3, prog: [0, 0, -4, -4, -2, -2, -5, -5], q: [3, 3, 4, 4, 4, 4, 4, 4], progB: [-4, -4, -2, -2, 0, 0, 1, 1], qB: [4, 4, 4, 4, 3, 3, 4, 4], kick: [0, 2, 3, 4, 6, 7], snare: [2, 6], tom: [3, 5, 7], timp: [0, 2, 4, 6], hat: [0, 1, 2, 3, 4, 5, 6, 7], hv: .045, bass: 'pulse', bw: 'triangle', echo: .2,
+      arp: { w: 'sawtooth', v: .02, d: .12, oct: 24, n: [0, 7, 12, 7, 15, 12, 7, 12], split: 1 }, ost: { v: .036, lp: 2800, p: DRV, n: [0, 12, 7, 12, 0, 12, 7, 12] }, brass: { v: .033, lp: 2300 }, pad: { w: 'sawtooth', v: .02, lp: 1500, iv: [0, 7, 12, 15], det: 12 },
+      lead: { horn: 1, v: .058, lp: 2300, oct: 24, m: [0, _, _, 4, 3, _, 2, _, 4, _, _, 7, 6, _, 4, _, 5, _, _, 4, 3, _, 2, 1, 2, _, _, _, _, _, _, _] },
+      mB: [7, _, _, _, 8, _, 7, _, 9, _, _, _, 8, _, 7, _, 6, _, _, 7, 8, _, 9, _, 11, _, _, _, _, _, 10, _] }
+  });
   let gameSong = '';
   let theme = null, themeK = '', cBus = null;
   if (typeof setInterval !== 'undefined' && typeof document !== 'undefined') setInterval(() => { try { musTick(); } catch (e) { } }, 90); /* keeps the music steady when frames are slow */
-  function setTheme(k) { k = THEMES[k] ? k : ''; if (k === themeK) return; themeK = k; theme = THEMES[k] || null; if (mBus && ac) { mBus.gain.cancelScheduledValues(ac.currentTime); mBus.gain.setValueAtTime(0, ac.currentTime); } mStep = 0; if (ac) mNext = ac.currentTime + .25; }
+  function setTheme(k) { k = THEMES[k] ? k : ''; if (k === themeK) return; const was = themeK; themeK = k; theme = THEMES[k] || null; mStep = theme && theme.hot ? theme.len * 4 * theme.hot : 0;
+    const xf = /^s_boss/.test(k) || /^s_boss/.test(was); /* build 0095: into and out of the boss theme the music fades across instead of cutting */
+    if (mBus && ac) { const now = ac.currentTime; mBus.gain.cancelScheduledValues(now); if (xf) { mBus.gain.setValueAtTime(mBus.gain.value, now); mBus.gain.linearRampToValueAtTime(0, now + .45); fadeTo = now + .5; mNext = now + .5; return; } mBus.gain.setValueAtTime(0, now); } if (ac) mNext = ac.currentTime + .25; }
   function tom(t, f, v) { const o = ac.createOscillator(), g = ac.createGain(); o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * .55, t + .3); env(g, t, .003, v, .45); o.connect(g); g.connect(mBus); o.start(t); o.stop(t + .5); hit(t, 600, 'lowpass', v * .3, .08, mBus); }
   function filt(out, f) { const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = f; lp.connect(out); return lp; }
   /* build 0034: songs now move through sections (intro, verse, a bridge with its own chords and tune, then a big last verse) and every other time round they lift up a key, so they keep changing */
@@ -198,7 +248,7 @@ const SFX = (() => {
     if (!mBus) { mBus = ac.createGain(); mBus.gain.value = 0; const comp = ac.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 4; mBus.connect(comp); comp.connect(ac.destination);
       gBus = ac.createGain(); gBus.gain.value = .5; const ws = ac.createWaveShaper(), cv = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = i / 512 - 1; cv[i] = Math.tanh(x * 6) * .8; } ws.curve = cv; ws.oversample = '2x'; const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2600; const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 90; gBus.connect(ws); ws.connect(hp); hp.connect(lp); lp.connect(mBus); mNext = ac.currentTime + .1; }
     if (!cBus) { cBus = ac.createGain(); cBus.gain.value = 1; const dl = ac.createDelay(1), fb = ac.createGain(), wet = ac.createGain(); dl.delayTime.value = .33; fb.gain.value = .32; wet.gain.value = .3; cBus.connect(mBus); cBus.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(wet); wet.connect(mBus); cBus.wet = wet; }
-    mBus.gain.setTargetAtTime(mVol(), ac.currentTime, .5); if (mVol() <= 0) { mNext = ac.currentTime + .1; return; }
+    if (ac.currentTime >= fadeTo) mBus.gain.setTargetAtTime(mVol(), ac.currentTime, bossLv ? .25 : .5); if (mVol() <= 0) { mNext = ac.currentTime + .1; return; }
     const st = 60 / (theme ? theme.bpm : BPM) / 2; if (mNext < ac.currentTime - .5) mNext = ac.currentTime + .05;
     if (theme) { cBus.wet.gain.value = theme.echo || .2; while (mNext < ac.currentTime + .25) { themeStep(mNext, st); mStep++; mNext += st; } return; }
     while (mNext < ac.currentTime + .25) {
@@ -216,7 +266,7 @@ const SFX = (() => {
       mStep++; mNext += st;
     }
   }
-  return { unlock: ctx, play, fight, ambient, ambTick(dt) { setTheme(gameSong); ambTick(dt); musTick(); }, musTick, theme: setTheme, music(v) { mLvl = v; }, toggle() { mute = !mute; setAmb(); return mute; }, vol(v) { master = v; mute = v <= 0; setAmb(); } };
+  return { unlock: ctx, play, fight, ambient, ambTick(dt) { setTheme(bossLv ? (bossLv > 1 ? 's_boss2' : 's_boss') : gameSong); ambTick(dt); musTick(); }, boss(v) { bossLv = v; }, musTick, theme: setTheme, music(v) { mLvl = v; }, toggle() { mute = !mute; setAmb(); return mute; }, vol(v) { master = v; mute = v <= 0; setAmb(); } };
 })();
 
 // ---------- items ----------
@@ -276,6 +326,12 @@ function dropGold(x, z, amt, exact) { const a = rnd(6.28), d = exact ? 0 : rnd(.
 function lootFan(x, z, i, n) { const toP = typeof P !== 'undefined' && isFinite(P.x) ? Math.atan2(P.z - z, P.x - x) : rnd(6.28), spread = n > 1 ? 2.4 : 0, a0 = toP + (n > 1 ? (i / (n - 1) - .5) * spread : 0), R0 = 3.6 + (i % 3);
   for (const R of [R0, R0 - .6, R0 + .8, 3.4, 3]) for (const da of [0, .35, -.35, .8, -.8, 1.4, -1.4, 2.2, -2.2, 3.14]) { const a = a0 + da, px = x + Math.cos(a) * R, pz = z + Math.sin(a) * R; if (!blocked(px, pz, .4) && los(x, z, px, pz)) return [px, pz]; } return null; }
 const DROP_MOB = .03, DRY_MAX = 20; /* build 0034 (Lee, Nov 14): loot is scarcer so each drop matters. Plain monsters 9% -> 3% and the dry-spell guarantee 14 -> 20 kills, which halves what plain monsters drop. Champions, guardians, goblins, vaults and wells stay the big loot moments */
+/* build 0096 (Lee: "make the teleporter for the next level spawn away from the loot"): a guardian's loot fans out toward you, so the gate opens on the far side of where it fell,
+   about 7 m out on open ground in sight of the spot, at least 7 m from every drop. If nothing is that clear it takes the open spot farthest from the loot */
+function gatePlace(x, z) { const toP = isFinite(P.x) ? Math.atan2(P.z - z, P.x - x) : 0, away = toP + Math.PI; let best = null, bs = -1;
+  for (const R of [7, 8, 6, 9, 5]) for (const off of [0, .35, -.35, .7, -.7, 1.05, -1.05, 1.4, -1.4, 1.75, -1.75]) { const a = away + off, gx = x + Math.cos(a) * R, gz = z + Math.sin(a) * R;
+    if (blocked(gx, gz, 1.6) || !los(x, z, gx, gz)) continue; let md = 99; for (const d of G.drops) md = Math.min(md, Math.hypot(d.x - gx, d.z - gz)); if (md >= 7) return [gx, gz]; if (md > bs) { bs = md; best = [gx, gz]; } }
+  return best || [x, z]; }
 function dropLoot(e) {
   const lv = Math.max(e.lvl, G.hero.level), x = e.x, z = e.z; let n = 0, bonus = 0, minR = 0;
   if (e.boss) { n = 5; bonus = 3; minR = 2; } else if (e.elite === 2) { n = 2; bonus = 1.5; minR = 2; } else if (e.elite === 1) { n = 1 + (Math.random() < .5 ? 1 : 0); bonus = .8; minR = 2; } /* build 0027: a champion's first item is always rare or better */ else if (e.arch === 'goblin') { n = 4; bonus = 2; minR = 2; for (let i = 0; i < 8; i++) dropGold(x, z, (15 + lv * 7) * rnd(.8, 1.3)); if (Math.random() < .2) dropItem(x, z, makeItem(lv, null, 3)); if (typeof UI !== 'undefined') UI.zoneBanner('Treasure Goblin caught!', 'Its whole sack spills out for you'); } else if (Math.random() < DROP_MOB || (G.dry || 0) >= DRY_MAX) n = 1; /* Lee, Nov 13: a guaranteed item after a dry spell (14 kills then, 20 since build 0034) */ G.dry = n ? 0 : (G.dry || 0) + 1;
@@ -373,7 +429,7 @@ function gainXp(v) { if (v > 0 && G.hero && G.hero.level < MAX_LEVEL) { G.xpPop 
     floatText(P.x, 3, P.z, 'LEVEL ' + h.level, '#ffd84a', 1.8, 22); { computeStats(); hint('Level ' + h.level + '! More life, harder hits. Life and ' + CLASSES[h.cls].res.n + ' refilled.'); const nt = TIER_LV.find(l => l > h.level); if (nt && skillTiers(h.cls)[TIER_LV.indexOf(nt)]) hint('Next skill choice at level ' + nt + '.'); } applyKit(h, true); if (TAL_LV.includes(h.level)) hint('New talent cards at level ' + h.level + '! Open Skills to pick one.'); /* build 0074 */
   }
 }
-function seasonCheck() { try { if (localStorage.getItem('cinderdeep_season') === SEASON) return false; const old = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.indexOf(SAVE_KEY + '_') === 0) old.push(k); } old.forEach(k => localStorage.removeItem(k)); localStorage.setItem('cinderdeep_season', SEASON); return old.length > 0; } catch (e) { return false; } }
+function seasonCheck() { try { if (localStorage.getItem('oathbyte_season') === SEASON) return false; const old = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.indexOf(SAVE_KEY + '_') === 0) old.push(k); } old.forEach(k => localStorage.removeItem(k)); localStorage.setItem('oathbyte_season', SEASON); return old.length > 0; } catch (e) { return false; } }
 function saveGame() { if (G.hero && G.hero.hc && G.hero.dead) return; /* a fallen hardcore hero is gone for good */ try { localStorage.setItem(SAVE_KEY + '_' + G.hero.cls, JSON.stringify(G.hero)); if (G.stash) localStorage.setItem(SAVE_KEY + '_stash', JSON.stringify(G.stash)); } catch (e) { } }
 function loadStash() { let st = null; try { st = JSON.parse(localStorage.getItem(SAVE_KEY + '_stash')); } catch (e) { } if (!Array.isArray(st) || st.length !== 100) st = new Array(100).fill(null); for (const it of st) if (it) { if (it.id >= itemId) itemId = it.id + 1; if (it.aff) for (const a of it.aff) a.v = Math.max(1, Math.round(a.v)); } G.stash = st; }
 function loadGame(cls) {
@@ -552,7 +608,7 @@ function buildStatic(Z) { Z.torches = [];
   if (Z.def.type === 'town') {
     GLX.statChunk('all', 0, 0, true); const wood = col(0x5a4028), cloth = col(0x7a2a22), canvas2 = col(0xb8a888), stn = col(0x6a6a6e); townDecor(Z);
     for (const o of Z.objs) {
-      if (o.kind === 'vendor') { for (const sx of [-1.6, 1.6]) for (const sz of [-1.2, 1.2]) GLX.obj('stat', 'cyl', o.x + sx, 1.4, o.z + sz - 1.6, 0, .16, 2.8, .16, wood, 0, 1, 3); GLX.obj('stat', 'box', o.x, 2.9, o.z - 1.6, 0, 4, .12, 3.2, cloth); GLX.obj('stat', 'box', o.x, .5, o.z - .2, 0, 3.4, 1, .9, wood, 0, 1, 3); GLX.obj('stat', 'box', o.x - 1, 1.15, o.z - .2, .3, .5, .3, .5, canvas2); GLX.obj('stat', 'sphere', o.x + .9, 1.2, o.z - .2, 0, .4, .4, .4, col(0xc9a030), 0, 1, 4); GLX.obj('stat', 'box', o.x - 2.6, .5, o.z - 2, .4, 1, 1, 1, wood, 0, 1, 3); }
+      if (o.kind === 'vendor') { for (const sx of [-1.6, 1.6]) for (const sz of [-1.2, 1.2]) GLX.obj('stat', 'cyl', o.x + sx, 1.4, o.z + sz - 1.6, 0, .16, 2.8, .16, wood, 0, 1, 3); /* build 0098: the roof is drawn each frame so it can turn see-through over the hero */ GLX.obj('stat', 'box', o.x, .5, o.z - .2, 0, 3.4, 1, .9, wood, 0, 1, 3); GLX.obj('stat', 'box', o.x - 1, 1.15, o.z - .2, .3, .5, .3, .5, canvas2); GLX.obj('stat', 'sphere', o.x + .9, 1.2, o.z - .2, 0, .4, .4, .4, col(0xc9a030), 0, 1, 4); GLX.obj('stat', 'box', o.x - 2.6, .5, o.z - 2, .4, 1, 1, 1, wood, 0, 1, 3); }
       else if (o.kind === 'stash') { GLX.obj('stat', 'box', o.x, .7, o.z, 0, 2.6, 1.4, 1.5, wood, 0, 1, 3); GLX.obj('stat', 'cyl', o.x, 1.4, o.z, 0, 2.6, .5, 1.5, wood, 0, 1, 3); for (const sx of [-1, 0, 1]) GLX.obj('stat', 'box', o.x + sx * 1.1, .9, o.z, 0, .18, 1.9, 1.56, col(0x8a6a2a), 0, 1, 4); GLX.obj('stat', 'box', o.x, .9, o.z + .78, 0, .4, .5, .08, col(0xc9a030), .1, 1, 4); }
       else if (o.kind === 'altar') { GLX.obj('stat', 'cyl', o.x, .15, o.z, 0, 3.4, .3, 3.4, stn, 0, 1, 3); GLX.obj('stat', 'taper', o.x, .9, o.z, 0, 1.6, 1.2, 1.6, stn, 0, 1, 3); GLX.obj('stat', 'cyl', o.x, 1.56, o.z, 0, 1.9, .14, 1.9, col(0x4a4a50), 0, 1, 4); GLX.obj('stat', 'cyl', o.x, 1.7, o.z, 0, 1.2, .2, 1.2, col(0xc9a030), .2, 1, 4); }
     }
@@ -567,10 +623,19 @@ function buildStatic(Z) { Z.torches = [];
       for (let k = 0; k < 44; k++) { const a = k / 44 * 6.2832; if (Math.abs(a - 1.5708) < .22) continue; const px = cx + Math.cos(a) * 20.6, pz = cz + Math.sin(a) * 20.6; GLX.obj('stat', 'taper', px, 1.1, pz, a, .34, 2.2 + (k % 3) * .25, .34, wood, 0, 1, 3); GLX.obj('stat', 'box', px, 1.2, pz, -a, .12, .16, 3, shade(wood, .8), 0, 1, 3); }
       // ---- Emberwatch homes (build 0020): every building is different, and the town grows livelier as you help its people ----
       const gold = col(0xc9a030), steelC = col(0x8e97a8), bladeC = col(0xc8ced8);
-      const done = (G.hero && G.hero.tqd) || [], has = id => !TOWN_QUESTS || done.includes(id), slate = col(0x3a4a5a), stoneW = col(0x7a746a), stoneD = col(0x5a5650), dark = shade(wood, .6), glass = col(0xffc870), flowerC = [0xe84a6a, 0xffd04a, 0xb070e0, 0xff8a3a, 0xf0f0f0];
+      const done = (G.hero && G.hero.tqd) || [], has = id => TOWN_QUESTS ? done.includes(id) : townHas(id), slate = col(0x3a4a5a), stoneW = col(0x7a746a), stoneD = col(0x5a5650), dark = shade(wood, .6), glass = col(0xffc870), flowerC = [0xe84a6a, 0xffd04a, 0xb070e0, 0xff8a3a, 0xf0f0f0];
       const W = (hx, hz, ry) => { const c = Math.cos(ry), sn = Math.sin(ry); return (lx, lz) => [hx + c * lx + sn * lz, hz - sn * lx + c * lz]; };
       const Bx = (g, F, ry, lx, ly, lz, sx, sy, sz, c, e2, rx, rz, em) => { const w = F(lx, lz); GLX.part('stat', g, IDM, w[0], ly, w[1], rx || 0, ry, rz || 0, 0, 0, 0, sx, sy, sz, c, em || 0, 1, e2 || 0); };
       Z.solid = []; Z.smoke = []; const solid = (x, z, hw, hd, ry) => Z.solid.push([x, z, hw, hd, ry]);
+      /* build 0096 (Lee: the town starts small and grows as you finish the story): a home that is not rebuilt yet is a burnt shell. Scorched floor, broken wall stubs, a fallen charred beam and rubble, with the same footprint so you walk around it */
+      const ruin = (hx, hz, ry, w, d) => { solid(hx, hz, w / 2 + .2, d / 2 + .2, ry); const F = W(hx, hz, ry), rb = [stoneW, stoneD, shade(stoneW, .8)], char = col(0x2a2018);
+        Bx('box', F, ry, 0, .05, 0, w + .6, .1, d + .6, col(0x2e2a26), 3);
+        for (const [lx, lz, sx, sz, sh, k] of [[-w / 2, 0, .45, d, 1.7, 0], [w / 2, -d / 4, .45, d / 2, 1, 1], [0, -d / 2, w, .45, 1.25, 2], [-w / 4, d / 2, w / 2, .45, .7, 0], [w * .3, d / 2, w * .25, .45, .45, 1]]) Bx('box', F, ry, lx, sh / 2, lz, sx, sh, sz, rb[k], 3);
+        Bx('box', F, ry, -w * .1, .75, d * .05, .26, .26, w * .85, char, 0, .5, .25); Bx('box', F, ry, w * .2, .4, -d * .15, .24, .24, d * .7, shade(char, .85), 0, -.25, 1.2);
+        for (let k = 0; k < 10; k++) Bx('blob', F, ry, ((k * .618) % 1 - .5) * w * .8, .2, ((k * .381 + .3) % 1 - .5) * d * .8, .5 + (k % 3) * .2, .3 + (k % 2) * .15, .5, rb[k % 3], 3); };
+      const millRuin = (hx, hz) => { solid(hx, hz, 2.2, 2.2, 0); GLX.obj('stat', 'taper', hx, 1.1, hz, 0, 4.2, 2.2, 4.2, stoneW, 0, 1, 3); GLX.obj('stat', 'cyl', hx, 2.25, hz, 0, 3.7, .12, 3.7, col(0x2e2a26), 0, 1, 3);
+        for (const [a, L] of [[.4, 4.4], [2.1, 2.6]]) GLX.obj('stat', 'box', hx + 3 + Math.cos(a) * .4, .14, hz + 1.8 + Math.sin(a) * .6, a, .2, .16, L, col(0x3a2a1a), 0, 1, 3);
+        for (let k = 0; k < 7; k++) GLX.obj('stat', 'blob', hx - 2.6 + (k % 4) * 1.1, .22, hz + 2.4 + (k % 2) * .5, k, .55, .32, .5, k % 2 ? stoneD : stoneW, 0, 1, 3); };
       const gable = (F, ry, w, d, h, rise, roofC, over) => { // a pitched roof: two sloped panels over a triangular gable
         const a = rise * 1.414; Bx('box', F, ry, 0, h, 0, w * .98, a, a, shade(roofC, .7), 0, .785); const th = Math.atan2(rise, d / 2), L = Math.hypot(d / 2, rise) + (over || .45);
         for (const sd of [1, -1]) Bx('box', F, ry, 0, h + rise / 2 + .08, sd * d / 4, w + .7, .2, L, roofC, 3, sd * th); Bx('box', F, ry, 0, h + rise + .06, 0, w + .76, .22, .3, shade(roofC, .8), 3); };
@@ -584,7 +649,7 @@ function buildStatic(Z) { Z.torches = [];
       // build 0046: with the village pack loaded, the inn and both cottages are real buildings: stone and plaster walls, tiled roofs, lit windows
       const HS = 1.15, ROOF = { red: [.62, .4, .36], slate: [.42, .47, .55], brown: [.62, .5, .4] }, WALL = [.86, .84, .8];
       const lamp2 = (F, ry, lx, lz) => { const p = F(lx, lz); Mx('Lantern_Wall', p[0], 1.1, p[1], ry, 1.1); const q = F(lx, lz + 1.05); GLX.obj('stat', 'sphere', q[0], 1.95, q[1], 0, .16, .2, .16, glass, 1.6); };
-      if (EV) { const hx = cx - 8.8, hz = cz - 14.6, ry = .3, F = W(hx, hz, ry), fz = 2 * HS + .1; solid(hx, hz, 3 * HS + .3, 2 * HS + .3, ry); Mx('inn', hx, 0, hz, ry, HS, WALL); Mx('inn_roof', hx, 0, hz, ry, HS, ROOF.red);
+      if (!has('inn')) ruin(cx - 8.8, cz - 14.6, .3, 7.4, 5); else if (EV) { const hx = cx - 8.8, hz = cz - 14.6, ry = .3, F = W(hx, hz, ry), fz = 2 * HS + .1; solid(hx, hz, 3 * HS + .3, 2 * HS + .3, ry); Mx('inn', hx, 0, hz, ry, HS, WALL); Mx('inn_roof', hx, 0, hz, ry, HS, ROOF.red);
         for (const lx of [-1.6, 1.6]) { const p = F(lx * HS, -1 * HS); Z.smoke.push([p[0], (6.24 + .3 + 3.18) * HS, p[1]]); } lamp2(F, ry, -1.05, fz); lamp2(F, ry, 1.05, fz);
         Bx('box', F, ry, 3.2, 3.0, fz + .2, 1.2, .08, .08, iron); Bx('box', F, ry, 3.6, 2.55, fz + .2, .9, .7, .08, col(0x3a2a1a)); Bx('cyl', F, ry, 3.6, 2.55, fz + .26, .28, .36, .28, col(0xe0a030), 0, 1.5708); // sign: a frothy mug
         for (const sx of [-2.4, 2.4]) { const p = F(sx, fz + 1.3); Mx('Bench', p[0], 0, p[1], ry, 1.05); }
@@ -598,7 +663,7 @@ function buildStatic(Z) { Z.torches = [];
         for (const sx of [-2.6, 2.4]) { Bx('box', F, ry, sx, .45, d / 2 + 1.5, 1.8, .12, .5, wood, 3); Bx('box', F, ry, sx, .22, d / 2 + 1.5, 1.6, .44, .1, shade(wood, .8), 3); }
         for (const [bx, bz] of [[3.8, d / 2 + .7], [4.4, d / 2 + 1.4]]) { Bx('cyl', F, ry, bx, .55, bz, .8, 1.1, .8, wood, 3); Bx('cyl', F, ry, bx, .3, bz, .84, .08, .84, iron, 4); Bx('cyl', F, ry, bx, .8, bz, .84, .08, .84, iron, 4); } }
       // 2. Doran's smithy: open front, glowing forge, anvil, quench barrel, weapon rack, lean-to roof
-      { const hx = cx + 8.8, hz = cz - 14.6, ry = -.3, F = W(hx, hz, ry), w = 6, d = 4.4; solid(hx, hz - .4, w / 2 + .2, d / 2, ry); Z.forge = F(-1.6, -.8);
+      if (!has('smithy')) ruin(cx + 8.8, cz - 14.6, -.3, 6.2, 4.6); else { const hx = cx + 8.8, hz = cz - 14.6, ry = -.3, F = W(hx, hz, ry), w = 6, d = 4.4; solid(hx, hz - .4, w / 2 + .2, d / 2, ry); Z.forge = F(-1.6, -.8);
         Bx('box', F, ry, 0, 1.5, -d / 2 + .2, w, 3, .4, stoneW, 3); for (const sx of [-1, 1]) Bx('box', F, ry, sx * (w / 2 - .2), 1.5, 0, .4, 3, d, stoneW, 3); for (const sx of [-1, 1]) Bx('cyl', F, ry, sx * (w / 2 - .2), 1.6, d / 2, .32, 3.2, .32, dark, 3);
         Bx('box', F, ry, 0, 3.6, .2, w + .8, .22, d + 1.4, slate, 3, .28); Bx('box', F, ry, -1.6, .7, -.8, 2, 1.4, 1.6, stoneD, 3); Bx('box', F, ry, -1.6, 1.42, -.8, 1.6, .06, 1.2, col(0xff5a1a), 0, 0, 0, 1.4); chimney(F, ry, -1.6, -1.2, 1.4, 5.8);
         if (EV) { let p = F(1.2, .6); Mx('Anvil', p[0], 0, p[1], ry, 1.6); p = F(2.3, -1.2); Mx('Barrel', p[0], 0, p[1], ry, 1.3); p = F(-.2, -1.5); Mx('Workbench', p[0], 0, p[1], ry, 1.1); p = F(2.4, .9); Mx('Bucket_Wooden_1', p[0], 0, p[1], ry, 1.3); }
@@ -607,10 +672,10 @@ function buildStatic(Z) { Z.torches = [];
         Bx('box', F, ry, -2.4, 1.4, d / 2 + .8, .1, 1.6, 1.8, wood, 3); for (let k = 0; k < (has('steel') ? 5 : 2); k++) Bx('box', F, ry, -2.34, 1.5, d / 2 + .2 + k * .32, .06, 1.6, .1, bladeC, 4);
         if (has('steel')) { Bx('box', F, ry, 0, 3.1, d / 2 + .25, 1.6, 1.0, .06, col(0xd8a040), 0, 0, 0, .1); Bx('box', F, ry, 0, 3.1, d / 2 + .28, .6, .6, .06, iron, 4); } }
       // 3. Bram's windmill: round stone tower, cone roof, sails that turn once the grain is home
-      { const hx = cx - .4, hz = cz - 18.4; Z.mill = [hx, 7.2, hz + 2.05]; solid(hx, hz, 2.2, 2.2, 0); GLX.obj('stat', 'taper', hx, 3.2, hz, 0, 4.2, 6.4, 4.2, stoneW, 0, 1, 3); GLX.obj('stat', 'cyl', hx, 6.5, hz, 0, 3.4, .3, 3.4, dark, 0, 1, 3); GLX.obj('stat', 'cone', hx, 7.8, hz, 0, 3.6, 2.6, 3.6, thatch); GLX.obj('stat', 'box', hx, 1.0, hz + 1.95, 0, 1, 2, .2, dark); GLX.obj('stat', 'box', hx + .9, 4, hz + 1.7, 0, .6, .7, .1, glass, .8); GLX.obj('stat', 'cyl', hx, 7.2, hz + 2.0, 0, .5, .5, .5, dark, 0, 1, 3);
+      if (!has('mill')) millRuin(cx - .4, cz - 18.4); else { const hx = cx - .4, hz = cz - 18.4; Z.mill = [hx, 7.2, hz + 2.05]; solid(hx, hz, 2.2, 2.2, 0); GLX.obj('stat', 'taper', hx, 3.2, hz, 0, 4.2, 6.4, 4.2, stoneW, 0, 1, 3); GLX.obj('stat', 'cyl', hx, 6.5, hz, 0, 3.4, .3, 3.4, dark, 0, 1, 3); GLX.obj('stat', 'cone', hx, 7.8, hz, 0, 3.6, 2.6, 3.6, thatch); GLX.obj('stat', 'box', hx, 1.0, hz + 1.95, 0, 1, 2, .2, dark); GLX.obj('stat', 'box', hx + .9, 4, hz + 1.7, 0, .6, .7, .1, glass, .8); GLX.obj('stat', 'cyl', hx, 7.2, hz + 2.0, 0, .5, .5, .5, dark, 0, 1, 3);
         for (let k = 0; k < (has('grain') ? 5 : 1); k++) GLX.obj('stat', 'sphere', hx + 2.4 + (k % 3) * .7, .4 + (k > 2 ? .55 : 0), hz + 1.6 + (k % 2) * .4, k, .8, .7, .7, col(0xd8c090)); }
       // 4. Stone cottage: grey walls, slate roof, round window, ivy
-      if (EV) { const hx = cx - 15.6, hz = cz - 9.6, ry = .95, F = W(hx, hz, ry), w = 4 * HS; solid(hx, hz, w / 2 + .3, w / 2 + .3, ry); Mx('cottage_stone', hx, 0, hz, ry, HS, WALL); Mx('cottage_stone_roof', hx, 0, hz, ry, HS, ROOF.slate);
+      if (!has('stone')) ruin(cx - 15.6, cz - 9.6, .95, 4.8, 4.4); else if (EV) { const hx = cx - 15.6, hz = cz - 9.6, ry = .95, F = W(hx, hz, ry), w = 4 * HS; solid(hx, hz, w / 2 + .3, w / 2 + .3, ry); Mx('cottage_stone', hx, 0, hz, ry, HS, WALL); Mx('cottage_stone_roof', hx, 0, hz, ry, HS, ROOF.slate);
         { const p = F(-1.2 * HS, -1 * HS); Z.smoke.push([p[0], (3.12 + .3 + 3.18) * HS, p[1]]); } lamp2(F, ry, -.95, 2 * HS + .1);
         for (let k = 0; k < 6; k++) Bx('cyl', F, ry, -w / 2 - .6, .25 + Math.floor(k / 3) * .4, -1 + (k % 3) * .45, .4, 1.4, .4, col(0x7a5a3a), 3, 1.5708); }
       else { const hx = cx - 15.6, hz = cz - 9.6, ry = .95, F = W(hx, hz, ry), w = 4.6, d = 3.8; solid(hx, hz, w / 2 + .2, d / 2 + .2, ry);
@@ -618,7 +683,7 @@ function buildStatic(Z) { Z.torches = [];
         Bx('cyl', F, ry, 0, 3.2, d / 2 + .1, .6, .6, .1, glass, 0, 1.5708, 0, .8); for (let k = 0; k < 7; k++) Bx('blob', F, ry, w / 2 - .1, .4 + k * .32, -d / 2 + .6 + (k % 3) * .5, .5, .5, .5, col(0x3a6a2a), 2);
         for (let k = 0; k < 6; k++) Bx('cyl', F, ry, -w / 2 - .5, .25 + Math.floor(k / 3) * .4, -1 + (k % 3) * .45, .4, 1.4, .4, col(0x7a5a3a), 3, 1.5708); }
       // 5. Timber-frame cottage: white plaster, dark beams, deep thatch
-      if (EV) { const hx = cx + 15.6, hz = cz - 9.6, ry = -.95, F = W(hx, hz, ry), w = 4 * HS; solid(hx, hz, w / 2 + .3, w / 2 + .3, ry); Mx('cottage_timber', hx, 0, hz, ry, HS, WALL); Mx('cottage_timber_roof', hx, 0, hz, ry, HS, ROOF.brown);
+      if (!has('timber')) ruin(cx + 15.6, cz - 9.6, -.95, 4.8, 4.4); else if (EV) { const hx = cx + 15.6, hz = cz - 9.6, ry = -.95, F = W(hx, hz, ry), w = 4 * HS; solid(hx, hz, w / 2 + .3, w / 2 + .3, ry); Mx('cottage_timber', hx, 0, hz, ry, HS, WALL); Mx('cottage_timber_roof', hx, 0, hz, ry, HS, ROOF.brown);
         { const p = F(1.2 * HS, -1 * HS); Z.smoke.push([p[0], (3.12 + .3 + 3.18) * HS, p[1]]); } lamp2(F, ry, -.95, 2 * HS + .1);
         for (let k = 0; k < 3; k++) Bx('sphere', F, ry, -1.4 + k * .5, .3, w / 2 + .8, .5, .5, .5, col(0x6a4a2a)); }
       else { const hx = cx + 15.6, hz = cz - 9.6, ry = -.95, F = W(hx, hz, ry), w = 4.4, d = 3.8; solid(hx, hz, w / 2 + .2, d / 2 + .2, ry);
@@ -633,15 +698,16 @@ function buildStatic(Z) { Z.torches = [];
       { const tx = cx + 17.5, tz = cz + 5.5; GLX.obj('stat', 'cone', tx, 1.3, tz, 0, 3.4, 2.6, 3.4, canvas2); GLX.obj('stat', 'cyl', tx, 1.5, tz, 0, .1, 3.1, .1, wood, 0, 1, 3); GLX.obj('stat', 'cyl', tx - 2.4, 2, tz - 1.6, 0, .12, 4, .12, wood, 0, 1, 3); GLX.obj('stat', 'box', tx - 2.0, 3.2, tz - 1.6, 0, .8, 1.4, .05, blue); GLX.obj('stat', 'box', tx - 2.0, 3.3, tz - 1.58, 0, .3, .3, .05, col(0xd8a040), .2);
         if (EV) { Mx('WeaponStand', tx - 2.3, 0, tz + 2.2, 0, 1.3); Mx('Dummy', tx + 2.4, 0, tz + 2.6, -.5, 1.3); } else for (let k = 0; k < 3; k++) GLX.obj('stat', 'cyl', tx - 2.6 + k * .3, 1.1, tz + 2.2, 0, .06, 2.2, .06, k === 1 ? steelC : wood, 0, 1, k === 1 ? 4 : 3); }
       // 8. Gardens by the gate: vegetables with a scarecrow, and flowers with beehives
-      { const fence = (x0, z0, w, d) => { if (EV) { for (const [ax, az, L, rr] of [[x0, z0, w, 0], [x0, z0 + d, w, 0], [x0, z0, d, 1.5708], [x0 + w, z0, d, 1.5708]]) { const n = Math.max(1, Math.round(L / 2)), sl = L / n; for (let k = 0; k < n; k++) { const u = (k + .5) * sl; GLX.obj('stat', 'm:Prop_WoodenFence_Single', cx + ax + (rr ? 0 : u), 0, cz + az + (rr ? u : 0), rr, sl / 2.06, 1, 1, ENV_W, 0, 1, 0); } } return; } for (let k = 0; k <= w; k += 1) for (const zz of [z0, z0 + d]) GLX.obj('stat', 'box', cx + x0 + k, .35, cz + zz, 0, .1, .7, .1, wood, 0, 1, 3); for (let k = 0; k <= d; k += 1) for (const xx of [x0, x0 + w]) GLX.obj('stat', 'box', cx + xx, .35, cz + z0 + k, 0, .1, .7, .1, wood, 0, 1, 3); for (const zz of [z0, z0 + d]) GLX.obj('stat', 'box', cx + x0 + w / 2, .5, cz + zz, 0, w, .08, .06, wood, 0, 1, 3); for (const xx of [x0, x0 + w]) GLX.obj('stat', 'box', cx + xx, .5, cz + z0 + d / 2, 0, .06, .08, d, wood, 0, 1, 3); };
+      if (!has('garden')) for (const gx of [-11.5, 11.5]) { GLX.obj('stat', 'box', cx + gx, .05, cz + 11, 0, 4.8, .08, 3.8, col(0x3a3024), 0, 1, 3); for (let k = 0; k < 7; k++) GLX.obj('stat', 'blob', cx + gx - 2 + (k * .618 % 1) * 4, .18, cz + 9.6 + (k * .381 % 1) * 2.8, k, .5, .3, .5, col(0x4a5428), 0, 1, 3); for (const sx of [-2.3, 2.3]) GLX.obj('stat', 'cyl', cx + gx + sx, .4, cz + 9, sx, .1, .8, .1, col(0x3a2a1a), 0, 1, 3); } /* build 0096: weeds in bare plots until the gardens are replanted */
+      else { const fence = (x0, z0, w, d) => { if (EV) { for (const [ax, az, L, rr] of [[x0, z0, w, 0], [x0, z0 + d, w, 0], [x0, z0, d, 1.5708], [x0 + w, z0, d, 1.5708]]) { const n = Math.max(1, Math.round(L / 2)), sl = L / n; for (let k = 0; k < n; k++) { const u = (k + .5) * sl; GLX.obj('stat', 'm:Prop_WoodenFence_Single', cx + ax + (rr ? 0 : u), 0, cz + az + (rr ? u : 0), rr, sl / 2.06, 1, 1, ENV_W, 0, 1, 0); } } return; } for (let k = 0; k <= w; k += 1) for (const zz of [z0, z0 + d]) GLX.obj('stat', 'box', cx + x0 + k, .35, cz + zz, 0, .1, .7, .1, wood, 0, 1, 3); for (let k = 0; k <= d; k += 1) for (const xx of [x0, x0 + w]) GLX.obj('stat', 'box', cx + xx, .35, cz + z0 + k, 0, .1, .7, .1, wood, 0, 1, 3); for (const zz of [z0, z0 + d]) GLX.obj('stat', 'box', cx + x0 + w / 2, .5, cz + zz, 0, w, .08, .06, wood, 0, 1, 3); for (const xx of [x0, x0 + w]) GLX.obj('stat', 'box', cx + xx, .5, cz + z0 + d / 2, 0, .06, .08, d, wood, 0, 1, 3); };
         fence(-14, 9, 5, 4); GLX.obj('stat', 'box', cx - 11.5, .06, cz + 11, 0, 4.6, .08, 3.6, col(0x4a3420), 0, 1, 3); for (let r2 = 0; r2 < 3; r2++) for (let k = 0; k < 5; k++) GLX.obj('stat', r2 === 1 ? 'sphere' : 'blob', cx - 13.4 + k * .9, .25, cz + 9.8 + r2 * 1.2, k, r2 === 1 ? .5 : .45, r2 === 1 ? .4 : .4, r2 === 1 ? .5 : .45, col(r2 === 1 ? 0xd87a2a : 0x4a8a3a), 0, 1, r2 === 1 ? 0 : 2);
         GLX.obj('stat', 'cyl', cx - 10, 1.0, cz + 12.4, 0, .1, 2, .1, wood, 0, 1, 3); GLX.obj('stat', 'box', cx - 10, 1.6, cz + 12.4, 0, 1.4, .1, .1, wood, 0, 1, 3); GLX.obj('stat', 'sphere', cx - 10, 2.1, cz + 12.4, 0, .4, .45, .4, col(0xd8c090)); GLX.obj('stat', 'cone', cx - 10, 2.45, cz + 12.4, 0, .7, .3, .7, thatch); GLX.obj('stat', 'box', cx - 10, 1.4, cz + 12.4, 0, .7, .7, .3, col(0x8a3a3a));
         fence(9, 9, 5, 4); for (let k = 0; k < (has('herbs') ? 26 : 10); k++) { const fx = cx + 9.5 + (k * 0.618 % 1) * 4, fz = cz + 9.5 + ((k * 0.381 + .2) % 1) * 3; GLX.obj('stat', 'sphere', fx, .3, fz, 0, .26, .26, .26, col(flowerC[k % 5])); GLX.obj('stat', 'cyl', fx, .14, fz, 0, .05, .28, .05, col(0x3a6a2a)); }
         for (const bx of [13, 13.9]) { GLX.obj('stat', 'taper', cx + bx, .5, cz + 12.4, 0, .7, .8, .7, col(0xd8b048), 0, 1, 3); GLX.obj('stat', 'box', cx + bx, .95, cz + 12.4, 0, .8, .1, .8, wood, 0, 1, 3); } }
       // 9. Washing line, a cart of hay, a notice board by the gate
-      { const p1 = [cx - 18.5, cz - 5.4], p2 = [cx - 17.3, cz - 2.4]; /* build 0075: it used to run through the trader's awning */ for (const q of [p1, p2]) GLX.obj('stat', 'cyl', q[0], 1.2, q[1], 0, .1, 2.4, .1, wood, 0, 1, 3); const a = Math.atan2(p2[0] - p1[0], p2[1] - p1[1]), L = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]); GLX.obj('stat', 'box', (p1[0] + p2[0]) / 2, 2.25, (p1[1] + p2[1]) / 2, a, .03, .03, L, col(0xd8d0c0)); for (let k = 0; k < 4; k++) { const t2 = .2 + k * .2; GLX.obj('stat', 'box', p1[0] + (p2[0] - p1[0]) * t2, 1.85, p1[1] + (p2[1] - p1[1]) * t2, a + 1.5708, .7, .75, .04, col([0xc8d8f0, 0xe0b0a0, 0xf0e8d0, 0x9ab07a][k])); } }
-      /* build 0084 (Lee, Nov 15: "The cart at the trader is going into the tent. Move it"): the hay cart stood in the Trader's tent and on the path to it. It now stands on the grass west of the stall, by the town wall, clear of the tent, the washing line and Old Hesta */ if (EV) { Mx('Prop_Wagon', cx - 18.5, 0, cz - 1.5, 3.1416, 1); } else { const kx = cx - 18.5, kz = cz - .4, a = 1.5708, ca = Math.cos(a), sa = Math.sin(a); GLX.obj('stat', 'box', kx, .7, kz, a, 2.2, .5, 1.3, wood, 0, 1, 3); for (const sd of [-1, 1]) GLX.part('stat', 'cyl', IDM, kx + ca * .9 * sd, .55, kz - sa * .9 * sd, 0, a, 1.5708, 0, 0, 0, 1.1, .12, 1.1, dark, 0, 1, 3); GLX.obj('stat', 'box', kx, 1.25, kz, a, 1.9, .6, 1.1, col(0xc8a850), 0, 1, 2); GLX.obj('stat', 'box', kx + ca * 1.5 + sa * .6, .55, kz - sa * 1.5 + ca * .6, a, 1.4, .1, .1, wood, 0, 1, 3); }
-      { const nx = cx - 4.4, nz = cz + 13.4; for (const sd of [-1, 1]) GLX.obj('stat', 'cyl', nx + sd * .9, 1.1, nz, 0, .12, 2.2, .12, wood, 0, 1, 3); GLX.obj('stat', 'box', nx, 1.6, nz, 0, 2, 1.2, .1, shade(wood, 1.2), 0, 1, 3); for (let k = 0; k < 4; k++) GLX.obj('stat', 'box', nx - .6 + (k % 2) * 1.1, 1.75 - Math.floor(k / 2) * .5, nz + .07, (k - 1.5) * .1, .5, .38, .02, col(0xf0e8d0)); GLX.obj('stat', 'box', nx, 2.3, nz, 0, 2.3, .16, .3, red, 0, 1, 3); solid(nx, nz, 1.1, .3, 0); }
+      if (has('garden')) { const p1 = [cx - 18.5, cz - 5.4], p2 = [cx - 17.3, cz - 2.4]; /* build 0075: it used to run through the trader's awning */ for (const q of [p1, p2]) GLX.obj('stat', 'cyl', q[0], 1.2, q[1], 0, .1, 2.4, .1, wood, 0, 1, 3); const a = Math.atan2(p2[0] - p1[0], p2[1] - p1[1]), L = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]); GLX.obj('stat', 'box', (p1[0] + p2[0]) / 2, 2.25, (p1[1] + p2[1]) / 2, a, .03, .03, L, col(0xd8d0c0)); for (let k = 0; k < 4; k++) { const t2 = .2 + k * .2; GLX.obj('stat', 'box', p1[0] + (p2[0] - p1[0]) * t2, 1.85, p1[1] + (p2[1] - p1[1]) * t2, a + 1.5708, .7, .75, .04, col([0xc8d8f0, 0xe0b0a0, 0xf0e8d0, 0x9ab07a][k])); } }
+      if (has('cart')) { /* build 0084 (Lee, Nov 15: "The cart at the trader is going into the tent. Move it"): the hay cart stood in the Trader's tent and on the path to it. It now stands on the grass west of the stall, by the town wall, clear of the tent, the washing line and Old Hesta */ if (EV) { Mx('Prop_Wagon', cx - 18.5, 0, cz - 1.5, 3.1416, 1); } else { const kx = cx - 18.5, kz = cz - .4, a = 1.5708, ca = Math.cos(a), sa = Math.sin(a); GLX.obj('stat', 'box', kx, .7, kz, a, 2.2, .5, 1.3, wood, 0, 1, 3); for (const sd of [-1, 1]) GLX.part('stat', 'cyl', IDM, kx + ca * .9 * sd, .55, kz - sa * .9 * sd, 0, a, 1.5708, 0, 0, 0, 1.1, .12, 1.1, dark, 0, 1, 3); GLX.obj('stat', 'box', kx, 1.25, kz, a, 1.9, .6, 1.1, col(0xc8a850), 0, 1, 2); GLX.obj('stat', 'box', kx + ca * 1.5 + sa * .6, .55, kz - sa * 1.5 + ca * .6, a, 1.4, .1, .1, wood, 0, 1, 3); } }
+      if (has('cart')) { const nx = cx - 4.4, nz = cz + 13.4; for (const sd of [-1, 1]) GLX.obj('stat', 'cyl', nx + sd * .9, 1.1, nz, 0, .12, 2.2, .12, wood, 0, 1, 3); GLX.obj('stat', 'box', nx, 1.6, nz, 0, 2, 1.2, .1, shade(wood, 1.2), 0, 1, 3); for (let k = 0; k < 4; k++) GLX.obj('stat', 'box', nx - .6 + (k % 2) * 1.1, 1.75 - Math.floor(k / 2) * .5, nz + .07, (k - 1.5) * .1, .5, .38, .02, col(0xf0e8d0)); GLX.obj('stat', 'box', nx, 2.3, nz, 0, 2.3, .16, .3, red, 0, 1, 3); solid(nx, nz, 1.1, .3, 0); }
       { const ro = Z.objs.find(o => o.kind === 'rift'); if (ro) { const rk = col(0x2a2038); GLX.obj('stat', 'cyl', ro.x, .15, ro.z, 0, 2.6, .3, 2.6, col(0x4a4a50), 0, 1, 3); GLX.obj('stat', 'taper', ro.x, 1.8, ro.z, .4, 1.1, 3.4, .8, rk, 0, 1, 3); for (let k = 0; k < 4; k++) GLX.obj('stat', 'box', ro.x + Math.cos(k * 1.57 + .4) * .48, 1.2 + k * .5, ro.z - Math.sin(k * 1.57 + .4) * .38, .4 + k * 1.57, .08, .3, .08, col(0xb070ff), 1.2); solid(ro.x, ro.z, .7, .7, 0); } } // the rift stone
       if (has('lily')) for (let k = 0; k < 10; k++) { const a = k * .628, lx = cx + 6.5 + Math.cos(a) * 2.9, lz = cz + 6 + Math.sin(a) * 2.9; GLX.obj('stat', 'cyl', lx, .2, lz, 0, .07, .4, .07, col(0x3a8a4a)); GLX.obj('stat', 'gem', lx, .5, lz, a, .26, .36, .2, col(0xbfe8ff), .9); } // chapter 2: lilies round the well
       if (has('feast')) for (const tz of [-4.6, -6.6]) { GLX.obj('stat', 'box', cx, .8, cz + tz, 0, 7, .14, 1.2, wood, 0, 1, 3); for (const lx of [-3, 0, 3]) GLX.obj('stat', 'box', cx + lx, .4, cz + tz, 0, .14, .8, 1, shade(wood, .8), 0, 1, 3); for (let k = 0; k < 7; k++) { const fx = cx - 3 + k, c2 = [0xb86a4a, 0xd8a040, 0xe84a4a, 0xf0e8d8, 0x7aa040][k % 5]; GLX.obj('stat', k % 2 ? 'sphere' : 'cyl', fx, .98, cz + tz, k, .34, .22, .34, col(c2)); } for (const sd of [-1, 1]) GLX.obj('stat', 'box', cx, .45, cz + tz + sd * 1.05, 0, 6.6, .1, .4, shade(wood, .9), 0, 1, 3); } // chapter 2: the feast tables
@@ -716,8 +782,8 @@ function genTown() {
   const cx = c0 * CS, cz = c0 * CS; Z.start = [cx, cz + 9]; Z.bossAt = [cx, cz]; Z.dist = new Int16Array(GW * GW);
   Z.lamps.push({ x: cx, z: cz, big: 1 }, { x: cx - 11, z: cz - 8 }, { x: cx + 11, z: cz - 8 }, { x: cx - 8, z: cz + 10 }, { x: cx + 8, z: cz + 10 }, { x: cx - 16, z: cz + 1 }, { x: cx + 16, z: cz + 1 }, { x: cx - 4, z: cz - 15 }, { x: cx + 4, z: cz - 15 });
   Z.objs.push({ kind: 'stash', x: cx, z: cz - 13, name: 'Stash', used: false }, { kind: 'vendor', x: cx - 13, z: cz - 2, name: 'Mirel the Trader', used: false }, { kind: 'altar', x: cx + 13, z: cz - 2, name: 'Altar of Embers', used: false }, { kind: 'tportal', x: cx, z: cz + 14, name: 'Return to the floor', used: false }, { kind: 'planner', x: cx + 6.5, z: cz + 10.5, name: 'Town Planner', used: false });
-  for (const id in FOLK) { const f = FOLK[id]; Z.objs.push({ kind: 'npc', id, x: cx + f.at[0], z: cz + f.at[1], name: f.n, used: false }); }
-  Z.objs.push({ kind: 'rift', x: cx + 11.6, z: cz + 4.4, name: 'Rift Stone', used: false });
+  for (const id in FOLK) { if (!townFolk(id)) continue; /* build 0096: Bram, Doran and Lysa come home when their windmill, smithy and inn are rebuilt */ const f = FOLK[id]; Z.objs.push({ kind: 'npc', id, x: cx + f.at[0], z: cz + f.at[1], name: f.n, used: false }); }
+  /* build 0098 (Lee: get rid of the rift stone): the Rift Stone is gone from Emberwatch. The timed rift code stays, unused, in case rifts come back another way */
   return Z;
 }
 function setEnv(Z) { const e = GLX.env, th = Z.th, n = Math.hypot(.55, .66, .42); e.sun = [.55 / n, .66 / n, .42 / n]; e.sunC = th.sunC; e.sky = th.sky; e.gnd = th.gnd; e.fog = GLX.col(th.fog); e.lightR = th.lightR; if (th !== THEMES.forest && th !== THEMES.town && th !== THEMES.ice) { e.lightR *= 1.3; e.sky = e.sky.map(v => v * 1.45); e.gnd = e.gnd.map(v => v * 1.3);  } /* deeper regions were too dark to read */ e.wet = th.wet === undefined ? .4 : th.wet; e.mist = th.mist === undefined ? .35 : th.mist; e.gr = th.gr || [.45, .2, .05, 0]; e.scat = th.scat !== undefined ? th.scat : .012 + e.mist * .03; e.ge = GLX.col(th.lamp || 0xff7a2a); SFX.ambient(Object.keys(THEMES).find(k => THEMES[k] === th)); }
@@ -727,7 +793,7 @@ function enterTown() {
   G.away = { zone: G.zone, ents: G.ents, drops: G.drops, boss: G.boss, x: P.x, z: P.z, seed: G.zone.def.seed }; G.ents = []; G.drops = []; G.projs = []; G.pp = []; G.areas = []; G.fx = []; G.texts = []; G.timers = []; G.boss = null; G.wboss = null; G.streak = 0;
   G.zone = genTown(); G.inTown = true; buildStatic(G.zone); setEnv(G.zone); P.x = G.zone.start[0]; P.z = G.zone.start[1]; P.y = 0; P.rot = Math.PI; P.act = P.spin = P.dash = P.move = P.atk = P.inter = P.pick = null; BOT.path = null; P.hp = P.stats.maxLife; addDummy();
   const h = G.hero; if (!h.stock || Math.abs(h.kills - (h.stockK || 0)) >= 25 || h.stockL !== h.level) { h.stock = []; for (let i = 0; i < 10; i++) h.stock.push(makeItem(h.level, null, Math.random() < .12 ? 3 : Math.random() < .5 ? 2 : 1)); h.stockK = h.kills; h.stockL = h.level; }
-  SFX.play('shrine'); UI.zoneBanner('Emberwatch', 'Stash · Trader · Altar'); saveGame();
+  SFX.play('shrine'); UI.zoneBanner('Emberwatch', 'Stash · Trader · Altar'); townNews(h); saveGame();
 }
 // jump straight to a party member; from town it walks you out through the portal first
 function peerHere(q) { return G.inTown ? !!q.town : !q.dead && !q.town; } // a party member you can see: in town with you, or alive on your floor (build 0075)
@@ -779,11 +845,20 @@ function altarCost(it) { const n = it.rr || 0; return { shards: Math.round((3 + 
 // The altar now forges an item stronger, up to +5. Every step raises its damage or armor and every line on it. No gamble: it always works.
 function upCost(it) { const n = it.up || 0; return { shards: (2 + it.rar * 2) * (n + 1), gold: Math.round(itemValue(it) * .5 * (n + 1)) }; }
 function upPreview(it) { const k = 1.08, o = { dmg: it.dmg ? [Math.max(it.dmg[0] + 1, Math.round(it.dmg[0] * k)), Math.max(it.dmg[1] + 1, Math.round(it.dmg[1] * k))] : null, armor: it.armor ? Math.max(it.armor + 1, Math.round(it.armor * k)) : 0, aff: it.aff.map(a => ({ k: a.k, v: Math.max(a.v + 1, Math.round(a.v * 1.06)) })) }; return o; }
-function altarUpgrade(sel) {
-  const h = G.hero, it = typeof sel === 'string' ? h.eq[sel] : h.inv[sel]; if (!it || (it.up || 0) >= MAX_UP) return false; const c = upCost(it); if ((h.shards || 0) < c.shards || h.gold < c.gold) { hint('Not enough shards or gold.'); return false; }
-  const p = upPreview(it); h.shards -= c.shards; h.gold -= c.gold; if (p.dmg) it.dmg = p.dmg; if (p.armor) it.armor = p.armor; it.aff = p.aff; it.up = (it.up || 0) + 1; it.name = it.name.replace(/ \+\d$/, '') + ' +' + it.up;
+/* build 0096 (Lee picked "upgrade progress" for the Altar): offer an item you don't need and the flame keeps its Ember. 100 Ember forges one +1 for free on any item, the same +1 the shards and gold buy.
+   Slow on purpose: a common gives 1, magic 2, rare 4, legendary 10, mythic 25, so a free +1 takes about 50 magic or 25 rare offerings */
+const EMBER_UP = 100, EMBER_OF = [1, 2, 4, 10, 25];
+function altarOffer(i) { const h = G.hero, it = h.inv[i]; if (!it) return 0; if (it.lock) { hint('That item is locked. Unlock it first to offer it.'); return 0; } const v = EMBER_OF[it.rar] || 1; h.inv[i] = null; h.ember = (h.ember || 0) + v;
+  SFX.play('shrine'); if (G.zone) { const al = G.zone.objs.find(o => o.kind === 'altar'); if (al) { ring(al.x, al.z, 0, 5, .6, 0xff7a2a); burst(al.x, 2.2, al.z, 0xff9a3a, 18 + v * 2, 6); } } saveGame(); return v; }
+function altarUpgrade(sel, ember) {
+  const h = G.hero, it = typeof sel === 'string' ? h.eq[sel] : h.inv[sel]; if (!it || (it.up || 0) >= MAX_UP) return false; const c = upCost(it);
+  if (ember) { if ((h.ember || 0) < EMBER_UP) { hint('Not enough Ember yet.'); return false; } } else if ((h.shards || 0) < c.shards || h.gold < c.gold) { hint('Not enough shards or gold.'); return false; }
+  const p = upPreview(it); if (ember) h.ember -= EMBER_UP; else { h.shards -= c.shards; h.gold -= c.gold; } if (p.dmg) it.dmg = p.dmg; if (p.armor) it.armor = p.armor; it.aff = p.aff; it.up = (it.up || 0) + 1; it.name = it.name.replace(/ \+\d$/, '') + ' +' + it.up; const lucky = forgeRoll(it); if (lucky) hint('Lucky forging: ' + lucky + '.');
   if (typeof sel === 'string') computeStats(); SFX.play('level'); G.shake = .6; if (G.zone) { const al = G.zone.objs.find(o => o.kind === 'altar'); if (al) { ring(al.x, al.z, 0, 12, 1, 0xffb03a); ring(al.x, al.z, 0, 7, .7, 0xfff0c0); burst(al.x, 2, al.z, 0xffb03a, 70, 12); } } saveGame(); return true;
 }
+// build 0105: on top of the fixed boost, each forging gives one random line an extra 1 to 5% (at least +1 only where 5% of the line is worth a whole point)
+function forgeRoll(it) { const pct = 1 + Math.floor(Math.random() * 5), L = []; if (it.dmg) L.push('dmg'); if (it.armor) L.push('armor'); it.aff.forEach((a, k) => L.push(k)); const gain = v => Math.round(v * pct / 100), ok = L.filter(l => gain(l === 'dmg' ? it.dmg[1] : l === 'armor' ? it.armor : it.aff[l].v) >= 1); if (!ok.length) return '';
+  const l = pick(ok); if (l === 'dmg') { const a = gain(it.dmg[0]), b = gain(it.dmg[1]); it.dmg = [it.dmg[0] + a, it.dmg[1] + b]; return `+${a}–${b} Damage extra`; } if (l === 'armor') { const g = gain(it.armor); it.armor += g; return `+${g} Armor extra`; } const af = it.aff[l], g = gain(af.v); af.v += g; return statText(af.k, g).replace(/^Adds /, '+') + ' extra'; }
 function altarReroll(sel, idx) {
   const h = G.hero, it = typeof sel === 'string' ? h.eq[sel] : h.inv[sel]; if (!it || !it.aff[idx]) return false; if (it.ench !== undefined && it.ench !== idx) { hint('Only the line you first changed can be rerolled on this item.'); return false; }
   const c = altarCost(it); if ((h.shards || 0) < c.shards) { hint('Not enough shards. Scrap items to get more.'); return false; } if (h.gold < c.gold) { hint('Not enough gold.'); return false; }
@@ -811,7 +886,7 @@ function townDecor(Z) { const cx = GW / 2 * CS, cz = GW / 2 * CS, O = (g, x, y, 
 }
 function townLv(k) { return (G.hero && G.hero.town && G.hero.town[k]) || 0; }
 function townCost(k, lvl) { const c = TOWN_COST[lvl], m = k === 'plaza' ? 1.5 : 1; return { gold: Math.round(c[0] * m), shards: Math.round(c[1] * m) }; }
-function townBuild(k) { if (k === 'tower') return false; /* build 0087: the Watchtower only helped AI teammates, which are gone */ const h = G.hero, lv = townLv(k); if (lv >= 3) return false; const c = townCost(k, lv); if (h.gold < c.gold || (h.shards || 0) < c.shards) return false; h.gold -= c.gold; h.shards -= c.shards; h.town = h.town || {}; h.town[k] = lv + 1; computeStats(); if (typeof ALLY_SK !== 'undefined') ALLY_SK.m = allyPower(); saveGame(); if (G.inTown) buildStatic(G.zone); SFX.play('level'); ring(P.x, P.z, 0, 8, .8, 0xffd84a); burst(P.x, 1.5, P.z, 0xffd84a, 30, 7); UI.zoneBanner(TOWN_UP[k].n + (lv ? ' upgraded' : ' built') + '!', 'Level ' + (lv + 1) + ' of 3 · ' + TOWN_UP[k].d); return true; }
+function townBuild(k) { if (k === 'tower') return false; if (townLock(k) && !townLv(k)) return false; /* build 0096: a project waits for its building */ /* build 0087: the Watchtower only helped AI teammates, which are gone */ const h = G.hero, lv = townLv(k); if (lv >= 3) return false; const c = townCost(k, lv); if (h.gold < c.gold || (h.shards || 0) < c.shards) return false; h.gold -= c.gold; h.shards -= c.shards; h.town = h.town || {}; h.town[k] = lv + 1; computeStats(); if (typeof ALLY_SK !== 'undefined') ALLY_SK.m = allyPower(); saveGame(); if (G.inTown) buildStatic(G.zone); SFX.play('level'); ring(P.x, P.z, 0, 8, .8, 0xffd84a); burst(P.x, 1.5, P.z, 0xffd84a, 30, 7); UI.zoneBanner(TOWN_UP[k].n + (lv ? ' upgraded' : ' built') + '!', 'Level ' + (lv + 1) + ' of 3 · ' + TOWN_UP[k].d); return true; }
 function goblinGone(e) { if (typeof UI === 'undefined') return; ring(e.x, e.z, 0, 4, .6, 0xb48cff); burst(e.x, 1.2, e.z, 0xb48cff, 30, 6); SFX.play('shrine'); hint('The Treasure Goblin escaped through a portal! Catch the next one faster.'); }
 function jackpot(it) { if (typeof UI === 'undefined' || !it || it.rar < 3) return; G.slowT = .9; G.shake = Math.max(G.shake || 0, .35); UI.zoneBanner(it.rar >= 4 ? 'MYTHIC!' : 'LEGENDARY!', it.name || RAR[it.rar].n + ' ' + it.slot); SFX.play('drop4'); }
 // ---- build 0057: spells that look like their element. Fire bolts are licking flame with embers and smoke, frost is a spinning ice shard
@@ -858,6 +933,12 @@ function hitSpray(e, sk, crit, heavy) { if (typeof document === 'undefined' || !
 /* build 0065: monsters die by their region. As the body sinks it breaks apart: crypt dead crumble to bone dust and leave bones, forest things burst into rot spores,
    lava monsters fall to glowing ash, ice monsters shatter, void monsters fold inward. A soul wisp drifts up and the remains lie a few seconds before they sink away */
 function deathFx(e) { if (typeof document === 'undefined' || e.boss || e.dummy || e.escaped || !e.md || !G.zone) return; const th = G.zone.def.theme, lo = LOWQ ? .5 : 1, x = e.x, z = e.z, sc = e.sc || 1, big = e.elite ? 1.5 : 1, C = GLX.col, n = k => Math.max(1, Math.round(k * lo * big));
+  if (e.arch === 'goblin') { if (e.gobFx) return; e.gobFx = 1; /* build 0104: the Treasure Goblin bursts in a fountain of coins and the strongbox breaks apart (looks only, the loot is unchanged) */
+    G.fx.push({ flash: 1, x, y: .9, z, r: 2.4, life: .25, max: .25, c: C(0xffd860) }); ring(x, z, .2, 3.2, .5, 0xffc840); burst(x, 1, z, 0xfff0a0, n(16), 7);
+    for (let i = 0; i < n(26); i++) { const a = rnd(6.28), s = rnd(1, 4.5); G.fx.push({ chunk: 1, g: 'cyl', x: x + Math.cos(a) * .2, y: rnd(.7, 1.1), z: z + Math.sin(a) * .2, vx: Math.cos(a) * s, vy: rnd(5, 9), vz: Math.sin(a) * s, life: rnd(1.2, 1.8), max: 1.8, size: rnd(.09, .13), ar: .22, spin: rnd(6, 14), c: C(i % 4 ? 0xffc83a : 0xfff0a0), em: .9, mat: 4 }); }
+    for (let i = 0; i < n(7); i++) { const a = rnd(6.28), s = rnd(1.5, 4); G.fx.push({ chunk: 1, g: 'box', x, y: .7, z, vx: Math.cos(a) * s, vy: rnd(3, 6), vz: Math.sin(a) * s, life: rnd(1.1, 1.6), max: 1.6, size: rnd(.1, .16), ar: rnd(.25, .5), spin: rnd(4, 9), c: C(i % 3 ? 0x6a4422 : 0x5a5a62), em: 0, mat: i % 3 ? 3 : 4 }); }
+    for (let i = 0; i < n(10); i++) G.fx.push({ ember: 1, x: x + rnd(-.5, .5), y: rnd(.4, 1.2), z: z + rnd(-.5, .5), vx: rnd(-.8, .8), vy: rnd(1, 3), vz: rnd(-.8, .8), life: rnd(.8, 1.4), max: 1.4, size: rnd(.04, .08), c: C(0xffe070) });
+    if (G.fx.length > 900) G.fx.splice(0, G.fx.length - 900); return; }
   const smoke = (c, k, sp) => { for (let i = 0; i < n(k); i++) G.fx.push({ smoke: 1, x: x + rnd(-.4, .4) * sc, y: rnd(.2, .8) * sc, z: z + rnd(-.4, .4) * sc, vx: rnd(-sp, sp), vy: rnd(.6, 2), vz: rnd(-sp, sp), life: rnd(.7, 1.2), max: 1.2, size: rnd(.25, .45) * sc, c: C(c) }); };
   const wisp = (c, k) => { for (let i = 0; i < n(k); i++) G.fx.push({ wisp: 1, x: x + rnd(-.3, .3), y: .8 * sc, z: z + rnd(-.3, .3), ph: rnd(6.28), life: rnd(1, 1.5), max: 1.5, c: C(c), s: rnd(.12, .2) * sc }); };
   const rem = (c, k, kind) => { const pcs = []; for (let i = 0; i < n(k); i++) { const a = rnd(6.28), d = rnd(.1, .7) * sc; pcs.push([Math.cos(a) * d, Math.sin(a) * d, rnd(6.28), rnd(.1, .2) * sc, rnd(.06, .12) * sc, rnd(.25, .5) * sc]); } G.fx.push({ rem: 1, kind, x, z, pcs, c: C(c), life: 5, max: 5 }); { let m = 0; for (let i = G.fx.length - 1; i >= 0; i--) if (G.fx[i].rem && ++m > 20) G.fx[i].life = Math.min(G.fx[i].life, 1); } };
@@ -900,6 +981,13 @@ function partyBonus() { if (!G.online || G.inTown) return 0; let n = 0; for (con
 function dodge(tx, tz) { if (G.state !== 'play' || P.dead || P.dash || (P.dodgeCd || 0) > 0 || G.inTown && false) return false; let dx = (tx === undefined ? P.x + Math.sin(P.rot) : tx) - P.x, dz = (tz === undefined ? P.z + Math.cos(P.rot) : tz) - P.z; const d = Math.hypot(dx, dz); if (d < .3) { dx = Math.sin(P.rot); dz = Math.cos(P.rot); } else { dx /= d; dz /= d; }
   let ex = P.x, ez = P.z; for (let t = .5; t <= 5; t += .5) { const nx = P.x + dx * t, nz = P.z + dz * t; if (blocked(nx, nz, .55)) break; ex = nx; ez = nz; } if (Math.hypot(ex - P.x, ez - P.z) < .4) return false;
   P.act = P.move = P.atk = null; P.rot = Math.atan2(dx, dz); P.dash = { x0: P.x, z0: P.z, x1: ex, z1: ez, t: 0, dur: .22, sk: { flat: 1 } }; P.iframes = Math.max(P.iframes || 0, .35); P.dodgeCd = 1; for (let i = 0; i < 6; i++) G.fx.push({ smoke: 1, x: P.x - dx * i * .3 + rnd(-.3, .3), y: .3, z: P.z - dz * i * .3 + rnd(-.3, .3), vx: rnd(-.5, .5), vy: rnd(.3, .9), vz: rnd(-.5, .5), life: rnd(.4, .7), max: .7, size: rnd(.3, .5), c: GLX.col(0xa89a80) }); SFX.play('leap'); return true; }
+/* build 0095: which music the boss fight wants. 0 none, 1 a boss is awake and near (act guardians and the world boss), 2 it is enraged (half life).
+   It holds 3 s after the boss leaves reach so the theme does not flicker, and ends at once on a kill or a death */
+function bossMus(dt) {
+  let lv = 0; if (G.state === 'play' && !G.inTown && !P.dead && G.ents) for (const e of G.ents) { if (!e.alive || !e.boss || !e.awake) continue; if (Math.hypot(e.x - P.x, e.z - P.z) > 26) continue; lv = Math.max(lv, e.p2 || (e.wb && e.hp < e.maxHp * .5) ? 2 : 1); }
+  if (lv) { G.bossMuL = Math.max(lv, G.bossMuT > 0 ? G.bossMuL || 0 : 0); G.bossMuT = 3; } else if (G.bossMuT > 0 && !P.dead && G.state === 'play' && G.ents && G.ents.some(e => e.alive && e.boss)) { G.bossMuT -= dt; lv = G.bossMuL || 0; } else { G.bossMuT = 0; G.bossMuL = 0; }
+  return lv;
+}
 /* build 0051: how hot the fight is, from 0 (calm) to 1 (a boss), for the fight music. It holds a few seconds after the last foe so the music doesn't cut in and out */
 function fightHeat(dt) {
   let k = 0; if (G.state === 'play' && !G.inTown && !P.dead && G.ents) { let n = 0, el = 0; for (const e of G.ents) { if (!e.alive || !e.awake || e.dummy) continue; if (Math.hypot(e.x - P.x, e.z - P.z) > 17) continue; if (e.boss) { n = -1; break; } n++; if (e.elite) el = 1; } k = n < 0 ? 1 : n ? Math.min(.85, .38 + n * .06 + el * .22) : 0; }
@@ -922,7 +1010,7 @@ function addDummy() { const cx = GW / 2 * CS, cz = GW / 2 * CS; let x = cx - 6.5
 function dummyHit(e, v) { if (G.time - e.lastT > 4) { e.t0 = G.time; e.tot = 0; e.big = 0; e.n = 0; } e.tot += v; e.big = Math.max(e.big, v); e.n++; e.lastT = G.time; e.wob = 1; e.hp = e.maxHp; }
 function dummyDps(e) { if (!e.tot) return 0; const live = G.time - e.lastT <= 4, span = (live ? G.time : e.lastT) - e.t0; return e.tot / Math.max(1, span); }
 function hitEnemy(e, sk, mult, noProc) { if (e && e.alive && e.arch === 'goblin' && typeof UI !== 'undefined' && Math.random() < .55) dropGold(e.x, e.z, (4 + (G.hero ? G.hero.level : 1) * 2) * rnd(.8, 1.3)); /* build 0027: coins fly out with every hit */
-  if (!e.alive) return; e.byAlly = !!(sk && sk.type === 'ally'); if (sk.type !== 'ally') { const s0 = P.stats; let k = 1; const ex = (sk.exec || 0) + (s0.exec || 0), vc = (sk.vsCtl || 0) + (s0.vsCtl || 0), gp = sk.grp || 0; if (ex && e.hp < e.maxHp / 3) k *= 1 + ex / 100; if (vc && (e.frozen > 0 || e.chill > 0)) k *= 1 + vc / 100; if (gp) { let n = 0; for (const o of G.ents) if (o !== e && o.alive && !o.dummy && Math.hypot(o.x - e.x, o.z - e.z) < 4 && ++n >= 5) break; k *= 1 + gp * n / 100; } if (k !== 1) mult = (mult || 1) * k; } /* build 0074: talent cards */
+  if (!e.alive) return; if (!e.boss && sk.type !== 'ally') { G.tgtE = e; G.tgtT = G.time; } /* build 0097: the enemy you last hit shows its life in numbers */ e.byAlly = !!(sk && sk.type === 'ally'); if (sk.type !== 'ally') { const s0 = P.stats; let k = 1; const ex = (sk.exec || 0) + (s0.exec || 0), vc = (sk.vsCtl || 0) + (s0.vsCtl || 0), gp = sk.grp || 0; if (ex && e.hp < e.maxHp / 3) k *= 1 + ex / 100; if (vc && (e.frozen > 0 || e.chill > 0)) k *= 1 + vc / 100; if (gp) { let n = 0; for (const o of G.ents) if (o !== e && o.alive && !o.dummy && Math.hypot(o.x - e.x, o.z - e.z) < 4 && ++n >= 5) break; k *= 1 + gp * n / 100; } if (k !== 1) mult = (mult || 1) * k; } /* build 0074: talent cards */
   const s = P.stats, d = rollDmg(sk, mult); let v = d.v; if (e.armored) v *= .6; if (e.shock > 0) v *= 1.15; if (!e.boss && !e.elite && e.hp > e.maxHp * .95) v = Math.min(v, e.maxHp * .65); v = Math.max(1, Math.round(v)); if (e.wb) { v = Math.min(v, Math.max(1, Math.ceil(e.maxHp * WB_HIT))); if (!sk || sk.type !== 'ally') G.wbHit = 1; } /* build 0075: the world boss is the one long fight, and landing a hit yourself is what earns the Mythic */ // house rule: ordinary monsters always take at least 2 hits
   if (sk.type === 'ally' && e.boss) v = Math.max(1, Math.round(v * .4)); /* build 0062: teammates chip a guardian, the hero brings it down */ if (!e.boss && !e.elite && !e.dummy) { if (!noProc) e.nh = (e.nh || 0) + 1; if (e.nh < 2) v = Math.min(v, Math.max(1, Math.floor(e.hp - 1))); } /* build 0062 (playtest): nothing finishes an ordinary monster before its second hit */ if (sk.type === 'ally' && !e.dummy) { const cap = Math.floor(e.hp - e.maxHp * .12); if (cap < 1) { e.flash = .06; wake(e); return; } v = Math.min(v, cap); } // build 0054: teammates soften monsters up, the hero lands the kill
   const over = v > 3 * Math.max(1, e.hp); /* Sprint 1: overkill, more than three times the life it had left */ meterHit(v); if (e.dummy) dummyHit(e, v);
@@ -936,8 +1024,8 @@ function hitEnemy(e, sk, mult, noProc) { if (e && e.alive && e.arch === 'goblin'
     if (!G.online && !e.dummy && !e.boss) { const kb = 7 * pw; e.kvx = (e.kvx || 0) + e.hdx * kb; e.kvz = (e.kvz || 0) + e.hdz * kb; }
     if (!G.online && !e.boss && !e.dummy && (heavy || d.crit) && (!e.elite || d.crit) && (e.st === 'wind' || e.st === 'hwind' || e.st === 'cwind') && e.arch !== 'bomber') { e.st = 'rec'; e.t = .45; e.atk = 0; for (const a of G.areas) if (a.src === e && !a.done && a.owner === 'e') { a.done = true; a.t = a.delay; } floatText(e.x, 2.2 * e.sc + .4, e.z, 'Staggered', '#ffd27a', .7, 13); } }
   burst(e.x, 1.1 * e.sc, e.z, d.crit ? 0xffe14a : EL_COL[sk.el], d.crit ? 12 : 6, d.crit ? 7 : 5); hitSpray(e, sk, d.crit, sk.type === 'melee' || !!sk.land || sk.type === 'nova');
-  { const heavy = sk.type === 'melee' || !!sk.land || sk.type === 'nova'; G.fx.push({ flash: 1, x: e.x, y: 1.1 * e.sc, z: e.z, r: d.crit ? 3.2 : heavy ? 2.2 : 1.4, life: .12, max: .12, c: GLX.col(d.crit ? 0xfff2b0 : EL_COL[sk.el]) }); if (heavy && !G.auto) G.hitStop = Math.max(G.hitStop || 0, d.crit ? .085 : .04); if (d.crit) G.shake = Math.min(.5, G.shake + .12); }
-  if (over) { burst(e.x, 1.1 * e.sc, e.z, e.md.c2, 30, 10); burst(e.x, .4, e.z, 0x7a1010, 18, 6); ring(e.x, e.z, 0, 3.4 * e.sc, .35, 0xffd0a0); G.fx.push({ scorch: 1, x: e.x, z: e.z, r: 1.6 * e.sc, life: 2, max: 2, c: GLX.col(0x5a0c0c) }); if (!G.auto) G.hitStop = Math.max(G.hitStop || 0, .14); G.shake = Math.min(.6, G.shake + .2); }
+  { const heavy = sk.type === 'melee' || !!sk.land || sk.type === 'nova'; G.fx.push({ flash: 1, x: e.x, y: 1.1 * e.sc, z: e.z, r: d.crit ? 3.2 : heavy ? 2.2 : 1.4, life: .12, max: .12, c: GLX.col(d.crit ? 0xfff2b0 : EL_COL[sk.el]) }); if (d.crit) G.shake = Math.min(.5, G.shake + .12); }
+  if (over) { burst(e.x, 1.1 * e.sc, e.z, e.md.c2, 30, 10); burst(e.x, .4, e.z, 0x7a1010, 18, 6); ring(e.x, e.z, 0, 3.4 * e.sc, .35, 0xffd0a0); G.fx.push({ scorch: 1, x: e.x, z: e.z, r: 1.6 * e.sc, life: 2, max: 2, c: GLX.col(0x5a0c0c) }); G.shake = Math.min(.6, G.shake + .2); }
   if (G.time - G.hitSfx > .05) { G.hitSfx = G.time; SFX.play(d.crit ? 'crit' : 'hit'); }
   if (!noProc && s.procLight && Math.random() * 100 < s.procLight) addArea({ x: e.x, z: e.z, r: 2.6, delay: .15, owner: 'p', sk: { el: 'light', m: 1.5 }, c: 0xfff07a, proc: 1 });
   if (e.dummy) return;
@@ -965,7 +1053,7 @@ function killEnemy(e) {
   else if (e.boss) {
     if (G.zone.def.rift && !G.riftDone && !G.online) riftDone((G.time - G.riftT0) * 1000, G.zone.def.lvl);
     if (typeof GPS !== 'undefined') GPS.t = 0; G.zone.cleared = true; G.shake = .9; ring(e.x, e.z, 0, 16, 1.1, e.md.e); burst(e.x, 2, e.z, e.md.e, 60, 11); SFX.play('level'); h.runs++; h.maxClear = Math.max(h.maxClear || 0, G.zone.def.depth || 1); /* deepest floor you have completed, for the leaderboard */
-    G.zone.objs.push({ kind: 'portal', x: e.x, z: e.z, name: 'Next floor', used: false }); h.depthMax = Math.max(h.depthMax || 0, G.zone.def.depth || 1); if (!G.zone.def.rift) UI.zoneBanner('Guardian slain', (G.bossXp ? '+' + G.bossXp.toLocaleString() + ' XP · ' : '') + 'a great gate opens to the next floor'); ring(e.x, e.z, 0, 16, 1.2, 0x7ad0ff); ring(e.x, e.z, 0, 9, .8, 0xb48cff); burst(e.x, 2, e.z, 0x7ad0ff, 60, 12); G.shake = .9; SFX.play('shrine'); saveGame(); tierWin(); if (!G.zone.def.rift) stBoss(G.zone.def.depth || 1);
+    { const gp = gatePlace(e.x, e.z); G.zone.objs.push({ kind: 'portal', x: gp[0], z: gp[1], name: 'Next floor', used: false }); } h.depthMax = Math.max(h.depthMax || 0, G.zone.def.depth || 1); if (!G.zone.def.rift) UI.zoneBanner('Guardian slain', (G.bossXp ? '+' + G.bossXp.toLocaleString() + ' XP · ' : '') + 'a great gate opens to the next floor'); ring(e.x, e.z, 0, 16, 1.2, 0x7ad0ff); ring(e.x, e.z, 0, 9, .8, 0xb48cff); burst(e.x, 2, e.z, 0x7ad0ff, 60, 12); G.shake = .9; SFX.play('shrine'); saveGame(); tierWin(); if (!G.zone.def.rift) stBoss(G.zone.def.depth || 1);
   }
 }
 // ---- first steps ----
@@ -985,6 +1073,7 @@ function tryCast(slot, tx, tz) {
   const h = G.hero, s = P.stats; let id = h.bar[slot];
   if (!h.eq.weapon) { if (slot !== 0) { if (G.time - P.oomT > 1.5) { P.oomT = G.time; hint('Unarmed: you can only punch until you equip a weapon.'); } return false; } id = 'punch'; }
   if (!id) return false; const sk = talSk(id);
+  if (slot > 0) goalDone('skill'); /* build 0097 (Lee): pressing a skill counts for First Steps even when it can't fire yet (not enough Fury, on cooldown), and so does an autocast */
   if (P.act || P.dash || (P.cds[id] || 0) > 0) return false; if (sk.type === 'spin' && P.spin) return false;
   if (P.mana < (sk.cost || 0)) { if (G.time - P.oomT > 1.5) { P.oomT = G.time; hint('Not enough ' + CLASSES[h.cls].res.n + '.'); } return false; }
   if (tx === undefined) { tx = IN.gx; tz = IN.gz; }
@@ -992,10 +1081,9 @@ function tryCast(slot, tx, tz) {
   if (sk.buff && sk.buff.s) { P.buffs = P.buffs.filter(b => b.n !== sk.buff.n); P.buffs.push({ s: sk.buff.s, t: sk.buff.t, n: sk.buff.n }); computeStats(); } /* build 0074: a talent card's short boost */
   const sp = (1 + s.aspd / 100) * aspdK();
   if (sk.type === 'spin') { P.spin = { t: sk.dur, tk: 0, sk }; return true; }
-  if (slot > 0 && !P._auto) goalDone('skill'); /* build 0062 (playtest): only a skill you cast yourself ticks First Steps, not autocast */
   if (sk.type === 'buff') { P.buffs = P.buffs.filter(b => b.n !== sk.n); P.buffs.push({ s: sk.s, t: sk.dur, n: sk.n }); computeStats(); ring(P.x, P.z, 0, 7, .5, 0xffb03a); SFX.play('shrine'); P.mana = Math.min(s.maxMana, P.mana + 20); return true; }
   P.rot = Math.atan2(tx - P.x, tz - P.z); const dur = sk.basic ? 1 / (s.wspd * sp * (sk.as || 1)) : (sk.ct || .35) / sp;
-  P.act = { sk, id, t: 0, dur, fireAt: dur * .42, fired: false, tx, tz }; P.swing = 0; SFX.play('swing'); return true;
+  P.act = { sk, id, t: 0, dur, fireAt: dur * .42, fired: false, tx, tz }; P.swing = 0; SFX.play('swing', sk); return true;
 }
 function shoot(ang, sk) {
   const sx = Math.sin(ang), cz = Math.cos(ang), c = sk.c || EL_COL[sk.el];
@@ -1037,7 +1125,7 @@ function fireSkill(a) {
     }
     if (G.online) NET.send({ t: 'fx', k: 'r', x: px, z: pz, r: 2.5, c: EL_COL[sk.el] });
   } else if (sk.type === 'barrage') {
-    for (let w = 0; w < sk.waves; w++) G.timers.push({ t: w * .22, fn: () => { if (P.dead) return; const n = sk.cnt + (s.projExtra || 0); for (let i = 0; i < n; i++) shoot(i / n * 6.2832 + w * .17, sk); SFX.play('swing'); } });
+    for (let w = 0; w < sk.waves; w++) G.timers.push({ t: w * .22, fn: () => { if (P.dead) return; const n = sk.cnt + (s.projExtra || 0); for (let i = 0; i < n; i++) shoot(i / n * 6.2832 + w * .17, sk); SFX.play('swing', sk); } });
   }
 }
 
@@ -1057,10 +1145,44 @@ function questTarget() {
   const po = Z.objs.find(o => o.kind === 'portal' && !o.used); if (po) return { x: po.x, z: po.z, text: 'Take the portal deeper' };
   const b = G.boss; return { x: b ? b.x : Z.bossAt[0], z: b ? b.z : Z.bossAt[1], text: 'Find and slay ' + (b ? b.name : bossFor(Z.def.theme, Z.def.depth, Z.def.rift).n) };
 }
+/* build 0104 (Lee: make the arrow pathing on the floor nicer and more fluid): the route is pulled tight with room to spare from walls, its corners
+   are rounded into curves, and it is kept as points every GPS_ST from the goal back to the hero. What is drawn eases toward each new route, so
+   it bends smoothly instead of jumping, and a new goal fades the old path out and the new one in */
+const GPS_ST = .25;
+function gpsRoute(q) { const f = botField(), gc = cellOf(q.x, q.z); if (f.prev[gc] < 0) return null;
+  const raw = [[q.x, q.z]]; let k = gc; while (k !== f.s) { k = f.prev[k]; if (k !== f.s) raw.push([(k % GW + .5) * CS, ((k / GW | 0) + .5) * CS]); } raw.push([P.x, P.z]); /* goal first */
+  const clear = (a, b) => { const d = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.ceil(d / .5); for (let i = 1; i < n; i++) { const t = i / n; if (blocked(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, .75)) return false; } return true; };
+  const pl = [raw[0]]; for (let i = 0; i < raw.length - 1;) { let j = i + 1; while (j + 1 < raw.length && clear(raw[i], raw[j + 1])) j++; pl.push(raw[j]); i = j; }
+  const cv = [pl[0]]; for (let i = 1; i < pl.length - 1; i++) { const a = pl[i - 1], p = pl[i], b = pl[i + 1], la = Math.hypot(a[0] - p[0], a[1] - p[1]) || 1, lb = Math.hypot(b[0] - p[0], b[1] - p[1]) || 1, c = Math.min(2, la * .45, lb * .45),
+      p1 = [p[0] + (a[0] - p[0]) / la * c, p[1] + (a[1] - p[1]) / la * c], p2 = [p[0] + (b[0] - p[0]) / lb * c, p[1] + (b[1] - p[1]) / lb * c];
+    for (let s = 0; s <= 8; s++) { const t = s / 8, u = 1 - t; cv.push([u * u * p1[0] + 2 * u * t * p[0] + t * t * p2[0], u * u * p1[1] + 2 * u * t * p[1] + t * t * p2[1]]); } }
+  cv.push(pl[pl.length - 1]);
+  const out = [cv[0].slice()]; let need = GPS_ST; for (let i = 1; i < cv.length; i++) { const a = cv[i - 1], b = cv[i], L = Math.hypot(b[0] - a[0], b[1] - a[1]); let at = 0; while (L - at >= need) { at += need; const t = at / L; out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]); need = GPS_ST; } need -= L - at; }
+  out.push(cv[cv.length - 1].slice()); return out; }
 function updGps(dt) {
-  GPS.t -= dt; if (GPS.t > 0) return; GPS.t = .4; const q = questTarget(); GPS.goal = q; GPS.text = q ? q.text : ''; GPS.pts = []; if (!q || !G.set.gps) return;
-  const f = botField(), gc = cellOf(q.x, q.z); if (f.prev[gc] < 0) return; const out = [[q.x, q.z]]; let k = gc; while (k !== f.s) { k = f.prev[k]; if (k !== f.s) out.push([(k % GW + .5) * CS, ((k / GW | 0) + .5) * CS]); } out.push([P.x, P.z]); GPS.pts = out.reverse();
-}
+  GPS.t -= dt; if (GPS.t <= 0) { GPS.t = .2; const q = questTarget(); GPS.goal = q; GPS.text = q ? q.text : ''; GPS.pts = []; GPS.T = null;
+    if (q && G.set.gps) { const r = gpsRoute(q); if (r) { GPS.T = r; GPS.pts = r.slice().reverse(); } } }
+  const T = GPS.T; if (!GPS.D) { GPS.D = []; GPS.a = 0; }
+  if (!T) { GPS.a = Math.max(0, GPS.a - dt * 3); return; }
+  const fresh = !GPS.D.length || !GPS.gq || Math.hypot(T[0][0] - GPS.gq[0], T[0][1] - GPS.gq[1]) > 2.5;
+  if (fresh && GPS.a > .02 && GPS.D.length) { GPS.a = Math.max(0, GPS.a - dt * 5); return; } /* a new goal: the old path fades away first */
+  if (fresh) { GPS.D = T.map(p => p.slice()); GPS.gq = T[0].slice(); }
+  else { const D = GPS.D, k = 1 - Math.exp(-dt * 6), n = Math.min(D.length, T.length); for (let i = 0; i < n; i++) { D[i][0] += (T[i][0] - D[i][0]) * k; D[i][1] += (T[i][1] - D[i][1]) * k; } if (T.length < D.length) D.length = T.length; else for (let i = D.length; i < T.length; i++) D.push(T[i].slice()); GPS.gq[0] += (T[0][0] - GPS.gq[0]) * k; GPS.gq[1] += (T[0][1] - GPS.gq[1]) * k; }
+  GPS.a = Math.min(1, GPS.a + dt * 2.5); }
+// the path on the floor: a soft glowing line with chevrons that flow steadily toward the goal. They are fixed to the route, not to the hero,
+// so walking does not drag them along; they fade in a little ahead of the hero, fade out far away, and give way to the gold ring at the goal
+function drawGps() { const D = GPS.D, a0 = GPS.a || 0; if (!D || D.length < 4 || a0 < .01 || !G.set.gps) return;
+  const col = GLX.col, n = D.length, L = (n - 1) * GPS_ST, t = G.time, SP = 1.5, VIS = 34, cA = col(0xffd84a), cB = col(0xffa040), cS = col(0xffc060);
+  const at = d => { const f = clamp(d / GPS_ST, 0, n - 1.0001), i = f | 0, u = f - i; return [D[i][0] + (D[i + 1][0] - D[i][0]) * u, D[i][1] + (D[i + 1][1] - D[i][1]) * u]; };
+  const ss = (a, b, x) => { const u = clamp((x - a) / (b - a), 0, 1); return u * u * (3 - 2 * u); };
+  const vis = (d, p) => { const fromHero = L - d, hp = Math.hypot(p[0] - P.x, p[1] - P.z); if (fromHero > VIS) return 0; return a0 * ss(.9, 2.4, hp) * ss(VIS, VIS - 8, fromHero) * ss(.4, 2, d); };
+  for (let d = 0; d < L; d += .5) { const p = at(d), q = at(Math.min(L, d + .5)), al = vis(d, p); if (al < .01) continue; const dx = q[0] - p[0], dz = q[1] - p[1], ln = Math.hypot(dx, dz); if (ln < .01) continue;
+    GLX.obj('glow', 'box', (p[0] + q[0]) / 2, .025, (p[1] + q[1]) / 2, Math.atan2(dx, dz), .09, .01, ln + .04, cS, 1.2, al * .22); } /* the soft line under the arrows */
+  for (let d = SP - (t * 2.2) % SP; d < L; d += SP) { const p = at(d), al = vis(d, p); if (al < .01) continue; const a = at(d + .3), b = at(Math.max(0, d - .3)), gx = b[0] - a[0], gz = b[1] - a[1], gl = Math.hypot(gx, gz) || 1;
+    if ((p[0] - P.x) * gx + (p[1] - P.z) * gz < 0) continue; /* never behind the hero */
+    const ry = Math.atan2(gx, gz), fx = gx / gl, fz = gz / gl, sx = fz, sz = -fx, br = .8 + .2 * Math.sin(d * 1.3 - t * 5);
+    for (const sd of [1, -1]) GLX.obj('glow', 'box', p[0] - fx * .17 + sx * sd * .23, .04, p[1] - fz * .17 + sz * sd * .23, ry - sd * .64, .17, .012, .68, cB, 2 * br, al);
+    GLX.obj('glow', 'disc', p[0], .03, p[1], 0, .62, 1, .62, cA, 1, al * .12, -1); } }
 
 // ---------- autoplay ----------
 const BOT = { t: 0, path: null, rv: 0, dodge: 0, kite: 0 };
@@ -1139,6 +1261,7 @@ function updAlly(dt) {
 }
 function aiNet() { return ALLIES.map(a => [Math.max(0, AI_ORDER.indexOf(a.cls)), Math.round(a.x * 100) / 100, Math.round(a.z * 100) / 100, Math.round(a.rot * 100) / 100, a.mv ? 1 : 0, aiTier(), a.act ? 1 : 0]); }
 function aiAll() { if (!ALLIES.length) return []; /* build 0087: no AI teammates, and none drawn for players on an older build */ const out = ALLIES.slice(); if (G.online && !G.inTown) for (const id in NET.peers) { const q = NET.peers[id]; if (q.aiH && (G.inTown ? q.town : !q.town)) out.push(...q.aiH); } return out; } // every AI teammate you can see
+const ROOF_C = GLX.col(0x7a2a22);
 const NPCV = { x: 0, y: 0, z: 0, rot: 0, walk: 0, mv: 0, hurt: 0, act: null, swing: 0, spin: null, dash: false, buffs: null, flaskT: 0, cls: 'vendor', hair: 0x5a4030, beard: 1, gear: { chest: [2, 0], pants: [1, 0], boots: [1, 0], belt: [1, 0] } }; // build 0042: the merchant is a townsman, not a Ranger
 function itemScore(it) { return it.dmg ? (it.dmg[0] + it.dmg[1]) / 2 * it.spd * (1 + it.aff.length * .06) : (it.armor || 0) + it.ilvl * (2 + it.aff.length * 2) + (it.power ? it.ilvl * 4 : 0); }
 function botField() {
@@ -1166,6 +1289,8 @@ function navStep(tx, tz, dt) { if (!G.zone || !G.zone.cell) return [tx, tz]; nav
   const pts = NAV.pts; while (pts.length > 1 && (Math.hypot(pts[0][0] - P.x, pts[0][1] - P.z) < .25 || (!NAV.hold && navClear(P.x, P.z, pts[1][0], pts[1][1])))) pts.shift(); if (pts.length === 1 && navClear(P.x, P.z, tx, tz)) { pts[0][0] = tx; pts[0][1] = tz; } return pts[0]; }
 const cellOf = (x, z) => clamp(Math.floor(z / CS), 0, GW - 1) * GW + clamp(Math.floor(x / CS), 0, GW - 1);
 function los(x1, z1, x2, z2) { const d = Math.hypot(x2 - x1, z2 - z1), n = Math.ceil(d / .4); for (let i = 1; i < n; i++) { const t = i / n; if (cellAt(x1 + (x2 - x1) * t, z1 + (z2 - z1) * t)) return false; } return true; }
+/* build 0104 (Lee: the boss needs line of sight to hurt you, no cheap shots over walls): a blow from a floor boss or the world boss only lands if a wall is not between it and you. Its shots already stop at walls */
+function bossSees(src, x, z) { return !src || !src.boss || los(src.x, src.z, x, z); }
 function botGear() {
   const h = G.hero; let ch = false;
   h.inv.forEach((it, i) => { if (!it || !canUse(it)) return; let cur; cur = h.eq[it.slot === 'ring' ? 'ring1' : it.slot]; if (!cur || itemScore(it) > itemScore(cur) * 1.02) { if (equipFromInv(i)) ch = true; } });
@@ -1226,15 +1351,16 @@ function updPlayer(dt) {
     return;
   }
   if (P.spin) { const sp = P.spin; sp.t -= dt; sp.tk -= dt; if (sp.tk <= 0) { sp.tk = sp.sk.tick / ((1 + s.aspd / 100) * aspdK()); areaHit(P.x, P.z, sp.sk.r * (1 + s.area / 100), sp.sk); SFX.play('whirl'); } if (sp.t <= 0) P.spin = null; }
-  if (P.act) { const a = P.act; a.t += dt; P.swing = a.t / a.dur; if (!a.fired && a.t >= a.fireAt) { a.fired = true; fireSkill(a); } if (a.t >= a.dur) P.act = null; else return; }
+  if (P.act) { const a = P.act; a.t += dt; P.swing = a.t / a.dur; if (!a.fired && a.t >= a.fireAt) { a.fired = true; fireSkill(a); } if (a.t >= a.dur) P.act = null; } /* build 0093 (Lee): heroes keep walking while an attack or skill plays; the legs run and the arms swing */
   if (G.auto && botStep(dt)) return;
-  if (IN.rmb && tryCast(1)) return; if (IN.keys.q && tryCast(2)) return; if (IN.keys.w && tryCast(3)) return;
+  if ((IN.rmb && h.bar[1]) || (IN.keys.q && h.bar[2]) || (IN.keys.w && h.bar[3])) goalDone('skill'); /* build 0097 (Lee): pressing a skill counts for First Steps even mid-swing */
+  if (!P.act) void ((IN.rmb && tryCast(1)) || (IN.keys.q && tryCast(2)) || (IN.keys.w && tryCast(3))); /* build 0093: a skill no longer stops the hero where they stand */
   // thumb joystick + attack buttons: aim at the nearest foe by itself; a melee button held with the stick at rest walks you into reach
   { const K = IN.keys, kx = (K.arrowright ? 1 : 0) - (K.arrowleft ? 1 : 0), kz = (K.arrowdown ? 1 : 0) - (K.arrowup ? 1 : 0); if (kx || kz) { const l = Math.hypot(kx, kz); IN.joy.on = true; IN.joy.x = kx / l; IN.joy.z = kz / l; IN.joy.kb = true; } else if (IN.joy.kb) { IN.joy.kb = false; IN.joy.on = false; IN.joy.x = IN.joy.z = 0; } } // arrow keys steer like the thumb stick
   const jx = IN.joy.x, jz = IN.joy.z, jm = IN.joy.on ? Math.hypot(jx, jz) : 0; let chase = null;
   // auto-cast: skills switched to auto fire by themselves at the nearest foe, only while foes are near
   if (h.autoPot && !P.dead && P.stats && P.hp < P.stats.maxLife * .5 && (P.fl === undefined || P.fl > 0) && !(P.flaskT > 0)) useFlask();
-  if (h.autoc && !P.act) for (let i = 1; i < 4; i++) { if (!h.autoc[i] || !h.bar[i]) continue; const sk = SKILLS[h.bar[i]], e = nearFoe(sk.type === 'melee' || sk.type === 'nova' || sk.type === 'spin' ? (sk.range || sk.r || 3) * .8 : 11); if (!e || (e.dummy && G.time - (P.manT || -99) > 1.5) /* build 0034: autocast only joins in while you are attacking the Training Dummy yourself */ || (P.cds[h.bar[i]] || 0) > 0 || P.mana < (sk.cost || 0)) continue; const esc = sk.type === 'dash' && !sk.land; if (esc) continue; if (autoCast(i, e.x, e.z)) return; }
+  if (h.autoc && !P.act) for (let i = 1; i < 4; i++) { if (!h.autoc[i] || !h.bar[i]) continue; const sk = SKILLS[h.bar[i]], e = nearFoe(sk.type === 'melee' || sk.type === 'nova' || sk.type === 'spin' ? (sk.range || sk.r || 3) * .8 : 11); if (!e || (e.dummy && G.time - (P.manT || -99) > 1.5) /* build 0034: autocast only joins in while you are attacking the Training Dummy yourself */ || (P.cds[h.bar[i]] || 0) > 0 || P.mana < (sk.cost || 0)) continue; const esc = sk.type === 'dash' && !sk.land; if (esc) continue; if (autoCast(i, e.x, e.z)) break; }
   if ((IN.lmb && P.atk && P.atk.dummy) || IN.rmb || IN.tb[0] || IN.tb[1] || IN.tb[2] || IN.tb[3]) P.manT = G.time; /* the last moment you attacked by hand */
   for (let i = 0; i < 4; i++) if (IN.tb[i]) {
     const e = nearFoe(15), sk = SKILLS[i === 0 && !h.eq.weapon ? 'punch' : h.bar[i]];
@@ -1242,9 +1368,10 @@ function updPlayer(dt) {
     if (e && melee) { const d = Math.hypot(e.x - P.x, e.z - P.z); if (d > sk.range * .78 + e.r) { if (steer) continue; chase = e; break; } } // out of reach: the stick steers, or at rest the hero closes in
     if (!e && steer && sk && (melee || sk.basic)) continue; // nothing to hit while running: keep running
     const t = steer && (dash || !e) ? [P.x + jx / jm * far, P.z + jz / jm * far] : e && !(dash && !sk.land) ? [e.x, e.z] : [P.x + Math.sin(P.rot) * far, P.z + Math.cos(P.rot) * far];
-    if (tryCast(i, t[0], t[1])) return;
+    if (P.act || tryCast(i, t[0], t[1])) break; /* build 0093: cast and keep moving with the stick */
   }
-  if (IN.lmb || IN.lmbFresh) {
+  if ((IN.lmb || IN.lmbFresh) && IN.joy.kb && jm >= .18 && !G.hoverObj && !P.pickNow && !G.hoverPet) { IN.lmbFresh = false; if (!P.act) { const e = G.hover && G.hover.alive ? G.hover : null; tryCast(0, e ? e.x : IN.gx, e ? e.z : IN.gz); } } /* build 0095 (Lee: cast spells while moving): steering with the arrow keys, a left click attacks or casts at the cursor and the hero keeps walking */
+  else if (IN.lmb || IN.lmbFresh) {
     if (IN.shift) { P.atk = P.move = P.inter = P.pick = null; IN.lmbFresh = false; tryCast(0); return; }
     if (IN.lmbFresh) { IN.lmbFresh = false; if (G.hoverPet && !P.pickNow) { petSell(); } else if (P.pickNow) { P.pick = P.pickNow; P.pickNow = null; P.atk = P.inter = P.move = null; } else if (G.hoverObj) { P.inter = G.hoverObj; P.gateGo = (G.hoverObj.kind === 'portal' || G.hoverObj.kind === 'pback') ? G.hoverObj : null; P.atk = P.move = P.pick = null; } else if (G.hover) { P.atk = G.hover; P.inter = P.move = P.pick = null; } else { P.atk = P.inter = P.pick = null; P.move = [IN.gx, IN.gz]; } }
     else if (!P.atk && !P.inter && !P.pick) { if (G.hover) P.atk = G.hover; else P.move = [IN.gx, IN.gz]; }
@@ -1253,14 +1380,14 @@ function updPlayer(dt) {
   if (P.atk && !P.atk.alive) { P.atk = null; }
   if (jm >= .18) { P.atk = P.inter = P.pick = P.move = null; tx = P.x + jx / jm * 4; tz = P.z + jz / jm * 4; spK = Math.min(1, .45 + jm * .7); }
   else if (chase) { P.atk = P.inter = P.pick = P.move = null; tx = chase.x; tz = chase.z; }
-  else if (P.atk) { const e = P.atk, d = Math.hypot(e.x - P.x, e.z - P.z); if (d <= (talSk(G.hero.bar[0]) || SKILLS.cleave).range * .78 + e.r) { tryCast(0, e.x, e.z); if (!IN.lmb) P.atk = null; return; } tx = e.x; tz = e.z; }
+  else if (P.atk) { const e = P.atk, d = Math.hypot(e.x - P.x, e.z - P.z); if (d <= (talSk(G.hero.bar[0]) || SKILLS.cleave).range * .78 + e.r) { if (!P.act) { tryCast(0, e.x, e.z); if (!IN.lmb) P.atk = null; } return; } /* build 0093: a click on a foe mid-skill waits for the skill, then swings */ tx = e.x; tz = e.z; }
   else if (P.pick) { if (!G.drops.includes(P.pick)) P.pick = null; else { if (Math.hypot(P.pick.x - P.x, P.pick.z - P.z) < 2.3) { pickup(P.pick); P.pick = null; return; } tx = P.pick.x; tz = P.pick.z; } }
   else if (P.inter) { const o = P.inter; if (Math.hypot(o.x - P.x, o.z - P.z) < (P.gateGo === o ? 3.4 : 2.6)) { interact(o); P.inter = null; return; } tx = o.x; tz = o.z; }
   else if (P.move) { tx = P.move[0]; tz = P.move[1]; if (Math.hypot(tx - P.x, tz - P.z) < .3) { P.move = null; tx = undefined; } }
   if (tx !== undefined && jm < .18) { const w = navStep(tx, tz, dt); P.navTo = w; tx = w[0]; tz = w[1]; } else { NAV.key = -1; NAV.pts = null; P.navTo = null; }
   if (tx !== undefined) {
     const dx = tx - P.x, dz = tz - P.z, d = Math.hypot(dx, dz) || 1, sp = s.msT * (P.spin ? .8 : 1) * spK, st = Math.min(d, sp * dt);
-    if (!P.spin) { let da = Math.atan2(dx, dz) - P.rot; while (da > Math.PI) da -= 6.2832; while (da < -Math.PI) da += 6.2832; P.rot += da * Math.min(1, dt * 18); }
+    if (!P.spin && !P.act) { let da = Math.atan2(dx, dz) - P.rot; /* build 0093: mid-attack the hero keeps facing the target and walks on */ while (da > Math.PI) da -= 6.2832; while (da < -Math.PI) da += 6.2832; P.rot += da * Math.min(1, dt * 18); }
     const ox = P.x, oz = P.z, mx = dx / d * st, mz = dz / d * st; if (P.navTo && !blocked(P.x + mx, P.z + mz, .55)) { P.x += mx; P.z += mz; } else moveEnt(P, mx, mz, .55); let moved = Math.hypot(P.x - ox, P.z - oz); /* build 0071: a clear diagonal step is taken whole, so the hero does not catch on corners */
     if (moved < st * .5 && !P.navTo) { const ccx = (Math.floor(P.x / CS) + .5) * CS, ccz = (Math.floor(P.z / CS) + .5) * CS; if (Math.abs(dx) > Math.abs(dz)) moveEnt(P, 0, Math.sign(ccz - P.z) * Math.min(st, Math.abs(ccz - P.z)), .55); else moveEnt(P, Math.sign(ccx - P.x) * Math.min(st, Math.abs(ccx - P.x)), 0, .55); moved = Math.hypot(P.x - ox, P.z - oz); }
     if (moved < st * .15) { NAV.stuck += dt; if (P.move && !IN.lmb && NAV.stuck > 1.2) { P.move = null; NAV.stuck = 0; } } else { NAV.stuck = Math.max(0, NAV.stuck - dt); P.moving = true; P.walk += moved * 1.5; const sn = Math.floor(P.walk / Math.PI); if (sn !== P.stepN) { P.stepN = sn; SFX.play('step'); } }
@@ -1324,7 +1451,7 @@ const FOLKGEAR = { bram: { chest: [2, 0], pants: [1, 0], boots: [1, 0], belt: [1
 const TOWNIES = [{ cls: 'vil6', hair: 0x5a3a20, path: [[-6, -4], [-2, -8], [4, -7], [7, -2], [5, 4], [-1, 6], [-6, 3]] }, { cls: 'vil1', hair: 0x6a4a2a, path: [[-11.5, 7.6], [-8.2, -1.4], [-5, 2.5]] }, { cls: 'vil5', hair: 0x2a1a10, path: [[5, 9], [10.5, -7.5], [3, -6.5], [1, 4]] }].map(t => Object.assign({ x: 0, z: 0, y: 0, rot: 0, walk: 0, mv: 0, hurt: 0, act: null, swing: 0, spin: null, dash: false, buffs: null, flaskT: 0, wp: 0, wait: 0, gear: { chest: [2, 0], pants: [1, 0], boots: [1, 0] } }, t));
 const PIPK = { cls: 'kid', sc: .68, hair: 0xc08040, x: 0, z: 0, y: 0, rot: 0, walk: 0, mv: 1, hurt: 0, act: null, swing: 0, spin: null, dash: false, buffs: null, flaskT: 0, gear: { chest: [2, 0], pants: [1, 0] } };
 function drawTownLife() {
-  const Z = G.zone, col = GLX.col, t = G.time, cx = Z.bossAt[0], cz = Z.bossAt[1], done = G.hero.tqd || [], has = id => !TOWN_QUESTS || done.includes(id), dt = Math.min(.1, t - (Z.lifeT === undefined ? t : Z.lifeT)); Z.lifeT = t;
+  const Z = G.zone, col = GLX.col, t = G.time, cx = Z.bossAt[0], cz = Z.bossAt[1], done = G.hero.tqd || [], has = id => TOWN_QUESTS ? done.includes(id) : townHas(id), dt = Math.min(.1, t - (Z.lifeT === undefined ? t : Z.lifeT)); Z.lifeT = t;
   if (Z.mill) { const [mx, my, mz] = Z.mill, a0 = has('grain') ? t * .9 : .35; for (let k = 0; k < 4; k++) { const a = a0 + k * 1.5708, broken = !has('grain') && k === 2; GLX.part('dyn', 'box', IDM, mx, my, mz + .2, 0, 0, a, 0, broken ? 1.2 : 2.3, 0, .16, broken ? 2.4 : 4.6, .12, col(0x5a4028), 0, 1, 3); if (!broken) GLX.part('dyn', 'box', IDM, mx, my, mz + .26, 0, 0, a, .42, 2.6, 0, .8, 3.6, .04, col(0xe8e0c8), 0, 1, 0); } GLX.obj('dyn', 'sphere', mx, my, mz + .3, 0, .5, .5, .5, col(0x3a2a1a)); }
   if (Z.smoke) for (const [sx, sy, sz] of Z.smoke) for (let k = 0; k < 5; k++) { const ph = (t * .22 + k / 5 + sx * .07) % 1, r = .35 + ph * 1.1; GLX.obj('glow', 'sphere', sx + ph * 1.6 + Math.sin(t + k) * .2, sy + ph * 4.5, sz - ph * .6, 0, r, r, r, col(0x9a948c), .2, (1 - ph) * .1); }
   if (Z.forge) { const [fx, fz] = Z.forge, hot = has('steel') ? 1.5 : 1, fl = .8 + Math.sin(t * 13) * .1 + Math.sin(t * 7.3) * .1; GLX.obj('glow', 'sphere', fx, 1.5, fz, 0, .9 * hot, .35, .7 * hot, col(0xff7a2a), 2, .8 * fl); GLX.halo(fx, 1.7, fz, 2.4 * hot, col(0xff6a1a), .6 * fl); GLX.light(fx, 2, fz, 7 * hot, col(0xff7a2a), 1.6 * fl * hot, 8);
@@ -1335,7 +1462,7 @@ function drawTownLife() {
     for (const [a, b] of [[[-11, -8], [0, -.5]], [[0, -.5], [11, -8]], [[-8, 10], [0, -.5]], [[0, -.5], [8, 10]]]) { const L = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.round(L / 1.3); for (let k = 1; k < n; k++) { const u = k / n, x = cx + a[0] + (b[0] - a[0]) * u, z = cz + a[1] + (b[1] - a[1]) * u, y = 4.6 - Math.sin(u * Math.PI) * 1.2, c = col([0xff5a4a, 0xffd04a, 0x6ad0ff, 0x9aff6a, 0xff8ad0][k % 5]);
       if (k % 2) { GLX.obj('glow', 'sphere', x, y - .3, z, 0, .26, .32, .26, c, 1.8, .9); GLX.halo(x, y - .3, z, .9, c, .35); } else GLX.part('dyn', 'cone', IDM, x, y - .25, z, 3.14159, Math.atan2(b[0] - a[0], b[1] - a[1]) + 1.5708, 0, 0, 0, 0, .34, .45, .04, c, .3, 1, 0); } } }
   // villagers out for a walk
-  for (const v of TOWNIES) { if (!v.init) { v.init = 1; v.x = cx + v.path[0][0]; v.z = cz + v.path[0][1]; } const w = v.path[v.wp], tx = cx + w[0], tz = cz + w[1], dx = tx - v.x, dz = tz - v.z, d = Math.hypot(dx, dz);
+  for (const [vi, v] of TOWNIES.entries()) { if (!TOWN_QUESTS && stCount() < [5, 11, 17][vi]) continue; /* build 0096: the square fills up as the story goes on */ if (!v.init) { v.init = 1; v.x = cx + v.path[0][0]; v.z = cz + v.path[0][1]; } const w = v.path[v.wp], tx = cx + w[0], tz = cz + w[1], dx = tx - v.x, dz = tz - v.z, d = Math.hypot(dx, dz);
     if (v.wait > 0) { v.wait -= dt; v.mv = 0; } else if (d < .3) { v.wp = (v.wp + 1) % v.path.length; v.wait = 1 + Math.random() * 2.5; } else { const st = Math.min(d, 1.7 * dt); v.x += dx / d * st; v.z += dz / d * st; let da = Math.atan2(dx, dz) - v.rot; while (da > Math.PI) da -= 6.2832; while (da < -Math.PI) da += 6.2832; v.rot += da * Math.min(1, dt * 6); v.walk += st * 2.6; v.mv = .7; } drawHero(v, false); }
   if (has('pip')) { const a = t * 1.4, k = PIPK; const nx = cx + 6.5 + Math.cos(a) * 3.2, nz = cz + 6 + Math.sin(a) * 3.2; k.rot = Math.atan2(nx - k.x, nz - k.z); k.walk += Math.hypot(nx - k.x, nz - k.z) * 3; k.x = nx; k.z = nz; drawHero(k, false); }
   // the townsfolk, each by their home, with a mark over their head when they have work for you
@@ -1423,6 +1550,28 @@ function tqAccept() { const h = G.hero, q = tqNext(); if (!q) return; h.tq = { i
 function tqClaim() { const h = G.hero, q = tqCur(); if (!q || h.tq.n < q.goal.n) return null; const r = tqReward(q); h.gold += r.gold; h.shards = (h.shards || 0) + r.shards; const it = makeItem(h.level, null, r.rar); if (!addItem(it)) dropItem(P.x, P.z, it);
   h.tqd = h.tqd || []; if (!q.repeat && !h.tqd.includes(q.id)) h.tqd.push(q.id); h.tq = null; saveGame(); UI.invDirty = true; SFX.play('level'); ring(P.x, P.z, 0, 8, .8, 0xffd84a); burst(P.x, 1.5, P.z, 0xffd84a, 30, 7); if (G.inTown) buildStatic(G.zone); return { r, it, q }; }
 // ---- story campaign (build 0068, Lee Nov 15): one story per hero. Guardians carry Vaeloth's brand, townsfolk tell what it means, and each act opens with a title. Steps give no extra loot or XP ----
+/* build 0096 (Lee, Nov 15: "the town starts small, and you upgrade it slowly over time by doing quests"; picked: story steps): every finished story step can rebuild part of Emberwatch or bring someone home.
+   at is how many story steps must be finished (27 in all). n is the line on the banner when you next come home; parts without n come with the one above */
+const TOWN_GROW = [
+  { k: 'mill', at: 2, n: "Bram's windmill turns again, and Bram is home" }, { k: 'grain', at: 2 },
+  { k: 'garden', at: 5, n: 'The gardens are replanted' }, { k: 'herbs', at: 5 },
+  { k: 'smithy', at: 7, n: "Doran's smithy is rebuilt, and Doran is home" },
+  { k: 'stone', at: 9, n: 'The stone cottage is rebuilt' },
+  { k: 'cart', at: 11, n: 'The hay cart and notice board are back' },
+  { k: 'inn', at: 14, n: 'The Sleeping Ember inn reopens, and Lysa is home' }, { k: 'pip', at: 14 },
+  { k: 'timber', at: 17, n: 'The timber cottage is rebuilt' },
+  { k: 'lily', at: 19, n: 'Lilies bloom in the well pond' },
+  { k: 'steel', at: 22, n: "Doran's forge burns hotter" },
+  { k: 'feast', at: 24, n: 'Feast tables are set in the square' },
+  { k: 'siege', at: 26, n: 'Lanterns and bunting hang across the square' },
+  { k: 'deep', at: 27, n: 'A statue in your honour stands by the gate' }];
+const TOWN_FOLK_AT = { bram: 'mill', doran: 'smithy', lysa: 'inn' }, TOWN_LOCK = { forge: 'smithy', garden: 'garden' };
+function stCount() { const st = stState(); if (!st) return 99; let n = 0; for (let i = 0; i < Math.min(st.a, STORY.length); i++) n += STORY[i].steps.length; return n + (st.a < STORY.length ? st.s : 0); }
+function townHas(k) { const g = TOWN_GROW.find(x => x.k === k); return !g || stCount() >= g.at; }
+function townFolk(id) { return TOWN_QUESTS || !TOWN_FOLK_AT[id] || townHas(TOWN_FOLK_AT[id]); }
+function townLock(k) { const b = TOWN_LOCK[k]; if (TOWN_QUESTS || !b || townHas(b)) return ''; const g = TOWN_GROW.find(x => x.k === b); return 'Needs ' + (b === 'smithy' ? "Doran's smithy" : 'the gardens') + ' rebuilt (' + g.at + ' story steps)'; }
+function townNews(h) { if (TOWN_QUESTS || !h) return; const n = stCount(); if (h.townSeen === undefined || h.townSeen > n) { h.townSeen = n; if (n < 2 && typeof setTimeout === 'function') setTimeout(() => hint('Emberwatch lies in ruins. Every step of the story rebuilds part of it.'), 2600); return; }
+  const add = TOWN_GROW.filter(g => g.n && g.at > h.townSeen && g.at <= n).map(g => g.n); h.townSeen = n; if (!add.length || typeof setTimeout !== 'function' || !UI.zoneBanner) return; const txt = add.length > 3 ? add.slice(-3).join(' · ') + ' · and ' + (add.length - 3) + ' more' : add.join(' · '); setTimeout(() => UI.zoneBanner('Emberwatch grows', txt), 2600); }
 function stState() { const h = G.hero; if (!h || typeof STORY === 'undefined') return null; if (!h.story || h.story.v !== STORY_V) stInit(h); return h.story; } /* build 0075: the acts grew, so a hero from an older build is put back at the right place for the floors they have cleared */
 function stAct() { const st = stState(); return st ? STORY[st.a] || null : null; }
 function stCur() { const A = stAct(); return A ? A.steps[G.hero.story.s] || null : null; }
@@ -1436,7 +1585,7 @@ function stCatch() { const h = G.hero, st = stState(), out = []; let c; while ((
 // build 0075: a hunt step counts kills (the whole party's) on its floor or deeper. Champions-only hunts count guardians too
 function stKill(e) { if (typeof UI === 'undefined') return; const c = stCur(); if (!c || c.k !== 'hunt' || G.inTown || !G.zone || !G.zone.def || G.zone.def.rift || (G.zone.def.depth || 1) < c.d || e.noLoot || e.dummy || e.wb || (c.el && !e.elite)) return;
   const st = stState(); st.n = (st.n || 0) + 1; if (st.n < c.n) return; stNext(); saveGame(); SFX.play('shrine'); floatText(P.x, 3.2, P.z, '\u2713 ' + c.goal, '#9effa8', 2.2, 15); if (typeof setTimeout === 'function') setTimeout(() => stAfter([]), e.boss ? 3200 : 1400); }
-function stGoalBanner() { const A = stAct(), c = stCur(); if (!UI.zoneBanner) return; if (!A) UI.zoneBanner('The story is complete', 'The Rifts are open at the Rift Stone in Emberwatch'); else if (c) UI.zoneBanner(A.n + ' · ' + A.t, c.goal); }
+function stGoalBanner() { const A = stAct(), c = stCur(); if (!UI.zoneBanner) return; if (!A) UI.zoneBanner('The story is complete', 'Push deeper: every floor is tougher than the last'); else if (c) UI.zoneBanner(A.n + ' · ' + A.t, c.goal); }
 function stAfter(lines) { const st = stState(); lines = (lines || []).concat(st.open ? stCatch() : []); saveGame(); if (typeof GPS !== 'undefined') GPS.t = 0;
   const fin = () => { if (STORY[st.a] && !st.open) stOpen(); else stGoalBanner(); }; if (lines.length && UI.scene) UI.scene(lines, fin); else fin(); }
 function stOpen() { const st = stState(), A = st && STORY[st.a]; if (!A || st.open) return; st.open = 1; const c = A.steps[st.s], lines = ((c && c.open) || []).concat(stCatch()); saveGame(); if (typeof setTimeout !== 'function') return; /* after the floor's own name has had its moment; heroes already past part of the act get those parts as a recap */
@@ -1495,7 +1644,7 @@ function riftDone(ms, tier) { G.riftDone = 1; const s2 = Math.round(ms / 1000), 
 function pickupNear() { for (const d of G.drops.slice()) if (d.item && Math.hypot(d.x - P.x, d.z - P.z) < 5 && d.item.rar >= G.hero.filter) pickup(d); }
 function interact(o) {
   if (o.used) return;
-  if (o.kind === 'chest') { o.used = true; const lv = G.hero.level; dropItem(o.x, o.z, makeItem(lv, null, Math.max(1, rollRarity(1)))); /* build 0034: one item instead of two, and never a grey one */ dropGold(o.x, o.z, (10 + lv * 5) * rnd(.8, 1.5)); burst(o.x, 1, o.z, 0xffd84a, 20, 6); SFX.play('pickup'); }
+  if (o.kind === 'chest') { o.used = true; o.openT = G.time; const lv = G.hero.level; dropItem(o.x, o.z, makeItem(lv, null, Math.max(1, rollRarity(1)))); /* build 0034: one item instead of two, and never a grey one */ dropGold(o.x, o.z, (10 + lv * 5) * rnd(.8, 1.5)); burst(o.x, 1, o.z, 0xffd84a, 20, 6); SFX.play('pickup'); }
   else if (o.kind === 'gchest') { o.used = true; const lv = G.hero.level; for (let i = 0; i < 2; i++) dropItem(o.x, o.z, makeItem(lv, null, Math.max(2, rollRarity(2)))); dropGold(o.x, o.z, (20 + lv * 9) * rnd(.9, 1.4)); burst(o.x, 1, o.z, 0xffd84a, 30, 7); SFX.play('drop2'); if (G.zone.objs.filter(q => q.kind === 'gchest' && !q.used).length === 0) UI.zoneBanner('Treasure Vault emptied!', 'Every chest was yours'); }
   else if (o.kind === 'well') { o.used = true; const lv = G.hero.level; for (let i = 0; i < 3; i++) dropItem(o.x, o.z, makeItem(lv, null, i === 0 && Math.random() < .15 ? 3 : Math.max(2, rollRarity(2)))); for (let i = 0; i < 6; i++) dropGold(o.x, o.z, (12 + lv * 6) * rnd(.8, 1.3)); for (let i = 0; i < 3; i++) ring(o.x, o.z, 0, 4 + i * 3, .6 + i * .2, 0xffd84a); burst(o.x, 2, o.z, 0xffd84a, 60, 9); burst(o.x, 2, o.z, 0x9ad0ff, 30, 7); SFX.play('drop4'); UI.zoneBanner('Your wish is granted!', 'The Wishing Well showers you with treasure'); }
   else if (o.kind === 'shrine') { o.used = true; P.buffs.push({ s: o.sh.s, t: 45, n: o.sh.n }); computeStats(); ring(o.x, o.z, 0, 8, .7, o.sh.c); SFX.play('shrine'); hint(o.sh.n + ' empowers you for 45 seconds.'); }
@@ -1564,7 +1713,7 @@ function updEnemy(e, dt) {
   if (e.burnT > 0) { e.burnT -= dt; e.hp = Math.max(!e.boss && !e.elite && (e.nh || 0) < 2 ? 1 : -1e9, e.hp - e.burn * dt); if (e.hp <= 0) { killEnemy(e); return; } }
   if (e.tnt) { e.tnt.t -= dt; if (e.tnt.t <= 0 || !ALLIES.includes(e.tnt.a) || G.online) e.tnt = null; } // build 0054: a taunted monster turns on the tank
   const T = e.tnt ? e.tnt.a : P, dx = T.x - e.x, dz = T.z - e.z, d = Math.hypot(dx, dz) || .001;
-  const hitT = (v, el) => T === P ? dmgPlayer(v, el, e) : tankHit(T, e);
+  const hitT = (v, el) => T === P ? (bossSees(e, P.x, P.z) ? dmgPlayer(v, el, e) : 0) : tankHit(T, e);
   if (!e.awake) { if (Math.hypot(P.x - e.x, P.z - e.z) < (e.boss ? 17 : 14) && !P.dead && !(e.dozeT > G.time && !los(e.x, e.z, P.x, P.z))) wake(e); else return; }
   if (P.dead) return; if (e.frozen > 0) { e.frozen -= dt; return; }
   if (e.boss) { e.pt -= dt; e.tt = (e.tt === undefined ? 1.4 : e.tt) - dt; if (e.bd && e.bd.sig) e.sigT = (e.sigT === undefined ? 4.5 : e.sigT) - dt; } /* build 0089: a guardian's attack clocks keep running while it swings or recovers, so standing in its reach no longer stops its big moves */
@@ -1627,9 +1776,9 @@ function update(dt) {
   if (typeof UI !== 'undefined' && UI.panelOpen && UI.panelOpen()) { if (!G.online) return; G.menuHold = true; P.iframes = Math.max(P.iframes || 0, .4); P.move = P.atk = null; } else G.menuHold = false; // menus pause the game; online, where the world cannot stop, they shield you instead
   if (G.cine) { const c = G.cine; c.t += dt; if (c.t >= c.dur) G.cine = null; else if (!G.online) dt *= c.kind === 'intro' ? .3 : .15 + .85 * Math.pow(c.t / c.dur, 2); } /* build 0053: boss moments slow the world (solo only, so online play stays in step) */
   if (G.boss && G.boss.alive && G.boss.awake && !G.inTown && !G.cine) { const bk = G.zone && G.zone.def ? G.zone.def.seed + ':' + (G.zone.def.depth || 0) : ''; if (G.cineKey !== bk) { G.cineKey = bk; const b = G.boss; /* build 0075: no intro camera or slow motion; the name card, the ring and the shake stay */ P.iframes = Math.max(P.iframes || 0, 4); /* build 0072 (Lee's playtest): nothing can hurt you for a moment when a guardian wakes */ if (stBrand(b) && UI.zoneBanner) UI.zoneBanner(b.name, b.bd && b.bd.phases ? 'The Prophet himself, at the Heart of Cinders' : 'Bound to ' + STORY_VILLAIN); ring(b.x, b.z, .5, 9, .9, (b.md && b.md.e) || 0xff5a2a); burst(b.x, 1.5, b.z, (b.md && b.md.c2) || 0x6a4a2a, 24, 8); G.shake = Math.min(.7, (G.shake || 0) + .4); } }
-  if (G.hitStop > 0) { G.hitStop -= dt; dt *= .12; } // a heavy blow lands: the world holds its breath for a few frames
+  /* build 0102 (Lee: a brief stutter whenever an enemy takes damage): the hit-stop that slowed the whole world to 12% for 40 to 140 ms on heavy hits, crits and kills is gone. The flash, shake and sounds stay */
   if (G.auto && G.hero && G.hero.picks) { const i = pendingPick(G.hero); if (i >= 0) pickSkill(i, skillTiers(G.hero.cls)[i][Math.random() * 2 | 0]); }
-  SFX.ambTick(dt); SFX.fight(fightHeat(dt), dt); updAlly(dt); G.time += dt; if (G.shake > 0) G.shake = Math.max(0, G.shake - dt * 1.8);
+  SFX.boss(bossMus(dt)); SFX.ambTick(dt); SFX.fight(fightHeat(dt), dt); updAlly(dt); G.time += dt; if (G.shake > 0) G.shake = Math.max(0, G.shake - dt * 1.8);
   P.mv += ((P.moving ? 1 : 0) - P.mv) * Math.min(1, dt * 12);
   updPlayer(dt); if (G.online) NET.tick(dt); updGps(dt); updPet(dt); if (!G.online && !G.inTown) repop(dt, [P]); if (G.zone && !G.inTown && !P.dead) for (const o of G.zone.objs) if ((o.kind === 'lost' || o.kind === 'captive') && !o.used && Math.hypot(o.x - P.x, o.z - P.z) < 2.4) interact(o); G.achT = (G.achT || 0) - dt; if (G.achT <= 0) { G.achT = 1; achCheck(); }
   if (G.auto && P.dead) { BOT.rv += dt; if (BOT.rv > 2.5) { BOT.rv = 0; UI.revive(); } }
@@ -1655,7 +1804,7 @@ function update(dt) {
   // areas
   for (let i = G.areas.length - 1; i >= 0; i--) {
     const a = G.areas[i]; a.t += dt; if (a.hvy && !a.done && !a.was && a.t < a.delay * .8 && !P.dead && inArea(a, P.x, P.z, 0)) a.was = 1;
-    if (!a.done && a.t >= a.delay) { a.done = true; if (a.owner === 'p') { for (const e of G.ents) if (e.alive && Math.hypot(e.x - a.x, e.z - a.z) <= a.r + e.r) hitEnemy(e, a.sk, a.mult, a.proc); } else { const inn = !P.dead && inArea(a, P.x, P.z, .3) && P.y < 1.5; if (!a.vis && inn) dmgPlayer(a.dmg, a.el, a.src, a.hvy); else if (a.hvy && a.was && !inn && !P.dead) { floatText(P.x, 2.8, P.z, 'Evaded', '#9fe', .8, 15); SFX.play('evade'); } } areaLand(a); if (a.owner === 'p' && !a.proc) impact(a.x, a.z, a.r * .8, a.c, a.r >= 2.5); if (a.owner === 'e') G.shake = Math.min(.5, G.shake + .08); }
+    if (!a.done && a.t >= a.delay) { a.done = true; if (a.owner === 'p') { for (const e of G.ents) if (e.alive && Math.hypot(e.x - a.x, e.z - a.z) <= a.r + e.r) hitEnemy(e, a.sk, a.mult, a.proc); } else { const inn = !P.dead && inArea(a, P.x, P.z, .3) && P.y < 1.5, seen = bossSees(a.src, P.x, P.z); if (!a.vis && inn && seen) dmgPlayer(a.dmg, a.el, a.src, a.hvy); else if (!a.vis && inn && !seen) floatText(P.x, 2.8, P.z, 'Blocked', '#cdb', .8, 15); else if (a.hvy && a.was && !inn && !P.dead) { floatText(P.x, 2.8, P.z, 'Evaded', '#9fe', .8, 15); SFX.play('evade'); } } areaLand(a); if (a.owner === 'p' && !a.proc) impact(a.x, a.z, a.r * .8, a.c, a.r >= 2.5); if (a.owner === 'e') G.shake = Math.min(.5, G.shake + .08); }
     if (a.t >= a.delay + .05) G.areas.splice(i, 1);
   }
   // drops
@@ -1671,10 +1820,17 @@ function update(dt) {
   const Z = G.zone, pcx = Math.floor(P.x / CS), pcz = Math.floor(P.z / CS); for (let j = -7; j <= 7; j++) for (let i = -7; i <= 7; i++) { const x = pcx + i, y = pcz + j; if (x >= 0 && y >= 0 && x < GW && y < GW && i * i + j * j <= 49) Z.seen[y * GW + x] = 1; }
   computeHover();
 }
+const TOWN_USE = { vendor: 1, stash: 1, altar: 1, tportal: 1 };
+/* build 0098 (Lee's playtest): the whole Trader stall, roof included, and every service's floating name can be clicked */
+function hitTownObj(o, k) {
+  const lb = GLX.toScreen(o.x, 3.6, o.z); if (lb && Math.abs(lb[0] - IN.sx) < 70 * k && IN.sy > lb[1] - 16 * k && IN.sy < lb[1] + 28 * k) return true;
+  if (o.kind !== 'vendor') return false; const q = [[-2.1, -3.3], [2.1, -3.3], [2.1, .1], [-2.1, .1]].map(c => GLX.toScreen(o.x + c[0], 2.9, o.z + c[1])); if (q.some(v => !v)) return false;
+  let inside = false; for (let i = 0, j = 3; i < 4; j = i++) { const a = q[i], b = q[j]; if ((a[1] > IN.sy) !== (b[1] > IN.sy) && IN.sx < (b[0] - a[0]) * (IN.sy - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside; } return inside;
+}
 function computeHover() {
   const Z = G.zone, k = IN.touch ? 1.7 : 1; G.hover = null; G.hoverObj = null; let best = 1e9;
   for (const e of G.ents) { if (!e.alive || !e.awake) continue; const sp = GLX.toScreen(e.x, e.sc * .9, e.z); if (!sp) continue; const d = Math.hypot(sp[0] - IN.sx, sp[1] - IN.sy); if (d < (26 * e.sc + 14) * k && d < best) { best = d; G.hover = e; } }
-  if (!G.hover) for (const o of Z.objs) { if (o.used) continue; const sp = GLX.toScreen(o.x, 1, o.z); if (sp && Math.hypot(sp[0] - IN.sx, sp[1] - IN.sy) < 44 * k) G.hoverObj = o; }
+  if (!G.hover) for (const o of Z.objs) { if (o.used) continue; const sp = GLX.toScreen(o.x, 1, o.z); if (sp && Math.hypot(sp[0] - IN.sx, sp[1] - IN.sy) < 44 * k) G.hoverObj = o; else if (G.inTown && TOWN_USE[o.kind] && hitTownObj(o, k)) G.hoverObj = o; }
   /* build 0046: the floor's portal is easy to click or tap anywhere on its arch or glow */
   for (const o of Z.objs) { if (o.kind !== 'portal' && o.kind !== 'pback') continue; const c = GLX.toScreen(o.x, 2.6, o.z), e = GLX.toScreen(o.x + 3.2, 2.6, o.z); if (!c || !e) continue; const r = Math.max(50, Math.hypot(e[0] - c[0], e[1] - c[1])) * (IN.touch ? 1.15 : 1), d = Math.hypot((c[0] - IN.sx) * .9, (c[1] - IN.sy) * .62);
     if (d < r && (!G.hover || best > 22 * k)) { G.hover = null; G.hoverObj = o; } }
@@ -1686,8 +1842,8 @@ function autoTarget() { let b = null, bd = 15; for (const e of G.ents) { if (!e.
 const BM = new Float32Array(16), BM2 = new Float32Array(16), IDM = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
 // What the hero is wearing, as a compact look the model (and other players) can read.
 const GSL = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet'];
-function gearCode(eq) { let c = ''; for (const sl of GSL) { const it = eq[sl]; if (!it) { c += 'xx'; continue; } let b = 0; if (sl === 'weapon') b = Math.max(0, WEAPONS.findIndex(w => w.n === it.base)); else if (ARMOR[sl]) b = Math.max(0, ARMOR[sl].findIndex(a => a.n === it.base)); c += b + '' + it.rar; } return c; }
-function gearDecode(c) { const g = {}; if (typeof c !== 'string' || c.length !== GSL.length * 2) return null; GSL.forEach((sl, i) => { const b = c.charCodeAt(i * 2) - 48, r = c.charCodeAt(i * 2 + 1) - 48; g[sl] = b >= 0 && b <= 9 && r >= 0 && r <= 4 ? [b, r] : null; }); return g; }
+function gearCode(eq) { let c = ''; for (const sl of GSL) { const it = eq[sl]; if (!it) { c += 'xx'; continue; } let b = 0; if (sl === 'weapon') b = Math.max(0, WEAPONS.findIndex(w => w.n === it.base)); else if (ARMOR[sl]) b = Math.max(0, ARMOR[sl].findIndex(a => a.n === it.base)); c += b + '' + it.rar; } /* build 0105: one extra digit, only when the weapon is forged, so friends see its ember glow */ const fu = eq.weapon && eq.weapon.up ? Math.min(MAX_UP, eq.weapon.up | 0) : 0; return fu ? c + fu : c; }
+function gearDecode(c) { const g = {}; if (typeof c !== 'string' || (c.length !== GSL.length * 2 && c.length !== GSL.length * 2 + 1)) return null; g.fu = c.length > GSL.length * 2 ? Math.max(0, Math.min(5, c.charCodeAt(GSL.length * 2) - 48)) : 0; GSL.forEach((sl, i) => { const b = c.charCodeAt(i * 2) - 48, r = c.charCodeAt(i * 2 + 1) - 48; g[sl] = b >= 0 && b <= 9 && r >= 0 && r <= 4 ? [b, r] : null; }); return g; }
 const DEFGEAR = gearDecode('0101011101010101010100');
 const TRIMC = [0x77726a, 0x5878d8, 0xd8b030, 0xff8a2a, 0xb060ff];
 // ---- build 0039: real hero models (free CC0 Quaternius characters), baked by tools/model/build.mjs into public/models ----
@@ -1767,7 +1923,8 @@ function drawHero(o, self) {
   const mat = (it, base0, alt) => !it ? null : it[0] === 0 ? [steelC, 4] : [alt || leatherC, 0], tr = it => { const r = it ? it[1] : 0; return [col(TRIMC[r]), r >= 3 ? .7 : r === 2 ? .15 : 0]; };
   const cm = g.chest ? (g.chest[0] === 0 ? [steelC, 4] : g.chest[0] === 2 ? [cloth, 0] : [leatherC, 0]) : [under, 0], ac = cm[0], am = cm[1], ct = tr(g.chest), trim = ct[0], te = ct[1];
   const pm = mat(g.pants) || [under, 0], bm = mat(g.boots, 0, dkLeather), gm = mat(g.gloves), brm = mat(g.bracers), sm = mat(g.shoulders), plate = !!g.chest && g.chest[0] === 0;
-  const wb = g.weapon ? g.weapon[0] : -1, wt = wb < 0 ? 'none' : WEAPONS[wb] ? WEAPONS[wb].t : 'sword', wr = g.weapon ? g.weapon[1] : 0, wglow = wr >= 2 ? col(TRIMC[wr]) : null;
+  const wb = g.weapon ? g.weapon[0] : -1, wt = wb < 0 ? 'none' : WEAPONS[wb] ? WEAPONS[wb].t : 'sword', wr = g.weapon ? g.weapon[1] : 0, fu = g.weapon ? g.fu || 0 : 0, wglow = wr >= 2 ? col(TRIMC[wr]) : fu ? col(0xff8a3a) : null;
+  if (fu && !o.dead && G.fx && G.fx.length < 500 && Math.random() < fu * .02) { /* build 0105: a forged weapon sheds a few embers, more with each +1 */ const a = (o.rot || 0) + 1.57 + rnd(-.5, .5), d = rnd(.35, .7); G.fx.push({ smoke: 1, x: o.x + Math.sin(a) * d, y: rnd(1.1, 2.1), z: o.z + Math.cos(a) * d, vx: rnd(-.2, .2), vy: rnd(.5, 1.1), vz: rnd(-.2, .2), life: rnd(.6, 1.1), max: 1.1, size: rnd(.035, .06), c: col(Math.random() < .5 ? 0xff8a3a : 0xffc060), mote: 1 }); }
   const spin = !!o.spin, rot = spin ? G.time * 20 : o.rot, w = o.walk, mv = o.mv, bob = Math.abs(Math.sin(w)) * .07 * mv, em = o.hurt > 0 ? .9 : 0, sw2 = Math.sin(G.time * 2.2 + o.x) * .06;
   // attack animation (build 0018): wind-up, fast strike, follow-through, blended in and out so poses never snap
   const eo = t => 1 - Math.pow(1 - clamp(t, 0, 1), 3), smo = t => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
@@ -1956,6 +2113,12 @@ function drawHero(o, self) {
         for (const [rr, w, c2, em2, a2] of [[1.7, .09, col(0xffffff), 2.2, .9], [1.45, .22, tc, 1.6, .55], [1.15, .3, tc, 1.2, .25]]) { const A = pt(q0, rr), B = pt(q1, rr), dx = B[0] - A[0], dz = B[2] - A[2], L = Math.hypot(dx, dz) + .02; GLX.part('glow', 'box', IDM, (A[0] + B[0]) / 2, (A[1] + B[1]) / 2, (A[2] + B[2]) / 2, 0, Math.atan2(dx, dz), 0, 0, 0, 0, .04, w, L, c2, em2, al * a2); } } }
     // weapons shine by rarity: rare and up glow, legendary and mythic trail sparks
     if (wr >= 2 && wt !== 'none' && wt !== 'bow') { const h = hand(1, rx), rc = col(TRIMC[wr]); GLX.halo(h[0], h[1] + .3, h[2], wr >= 4 ? 1.6 : 1.1, rc, wr >= 4 ? .5 : .3); if (wr >= 4) for (let k = 0; k < 3; k++) { const ph = (t * 1.2 + k / 3) % 1; GLX.obj('glow', 'gem', h[0] + Math.sin(k * 2 + t) * .3, h[1] + .2 + ph * 1.2, h[2] + Math.cos(k * 2 + t) * .3, t, .05, .09, .05, rc, 2, 1 - ph); } }
+    // Founder Pack (Lee, Nov 15): an ember-red cape with a gold hem and a glowing sigil, and embers rising from the weapon hand. Looks only
+    if ((self ? G.founder : o.founder) && HERO && !o.dead) { const FR = col(0x7a1c12), FG = col(0xd8a840), FE = col(0xff8a2a), cw = Math.sin((o.walk || 0) * .9) * .05 + sway * .6 + .06;
+      if (!MDL || MDL.back()) { const by = MDL ? 1.66 : 1.7, bz = MDL ? -.2 : -.24, bl = MDL ? 0 : lean * .4; p('rbox', 0, by, bz, bl + cw, 0, 0, 0, -.56, -.03, .66, 1.08, .035, FR, 6); p('rbox', 0, by, bz, bl + cw, 0, 0, 0, -1.1, -.035, .68, .06, .04, FG, 4, .35);
+        p('rbox', 0, by, bz, bl, 0, 0, 0, 0, 0, .7, .07, .06, FG, 4, .2); for (const sd of [1, -1]) p('sphere', .3 * sd, by, bz + .05, bl, 0, 0, 0, 0, 0, .07, .07, .05, FG, 4, .5);
+        p('gem', 0, by, bz, bl + cw, 0, 0, 0, -.48, -.06, .1, .14, .03, FE, 0, 1.3 + .3 * Math.sin(t * 2.2 + o.x)); if (MDL) MDL.done(); }
+      if (wt !== 'none') { const h = hand(1, rx); GLX.halo(h[0], h[1] + .2, h[2], .9, FE, .22 + .06 * Math.sin(t * 3 + o.x)); for (let k = 0; k < 3; k++) { const ph = (t * .8 + k / 3 + o.x * .07) % 1; GLX.obj('glow', 'gem', h[0] + Math.sin(k * 2.1 + t * 1.3) * .22, h[1] + .1 + ph * 1.1, h[2] + Math.cos(k * 1.7 + t) * .22, t * 2, .035, .06, .035, k === 1 ? FG : FE, 2, (1 - ph) * .9); } } }
     // see your hero through walls: a soft class-coloured ghost drawn only where walls hide you
     if (self && GLX.cam.eye && typeof blocked === 'function') { const E = GLX.cam.eye, dx = E[0] - o.x, dz = E[2] - o.z, dl = Math.hypot(dx, dz) || 1; let hid = false; for (let d = 1; d <= 5 && !hid; d += .5) hid = blocked(o.x + dx / dl * d, o.z + dz / dl * d, .1);
       o.xrK = (o.xrK || 0) + ((hid ? 1 : 0) - (o.xrK || 0)) * .12; const k = o.xrK; if (k > .02) { GLX.obj('xr', 'sphere', o.x, o.y + 1.3, o.z, rot, .62, 1.05, .5, CC, 1, .5 * k); GLX.obj('xr', 'sphere', o.x, o.y + 2.08, o.z, rot, .3, .32, .3, CC, 1, .5 * k); GLX.obj('xr', 'sphere', o.x, o.y + .5, o.z, rot, .42, .7, .36, CC, 1, .45 * k); } }
@@ -2002,6 +2165,64 @@ function monModel(e, sc, y, tilt, ox, oz, em, wind, at) {
     if (cast) { const r = .16 + wind * .3; GLX.obj('glow', 'sphere', hx, hy, hz, 0, r, r, r, ec, 1 + wind * .8, 1); GLX.halo(hx, hy, hz, .8 + wind * 1.4, ec, .28 + wind * .2); }
   }
   return true;
+}
+// ---- build 0104 (Lee: the treasure goblin needs a graphic upgrade): the Treasure Goblin on a real animated body. A small, hunched
+// thief with long ears, a hooked nose and ember-gold eyes, scurrying under a stolen iron-banded strongbox strapped to its back. The lid
+// rattles open as it runs and coins spill out behind it, a little lantern swings from the box, and when it dies the box bursts in a
+// fountain of coins. Looks only: its life, speed, escape and loot are unchanged. Far away, or before the model loads, the code-built
+// goblin below is drawn ----
+const GOB_FAR = 46, GB = new Float32Array(16), GH = new Float32Array(16);
+function gobKit(B, t, run, open, alive, em, hop) { /* the strongbox, its straps, lid, coins and lantern, in a body frame B: +z forward, +y up, model units */
+  const col = GLX.col, iron = col(0x3a3634), wood = col(0x5a3a22), gold = col(0xe0b040), lth = col(0x3a261a), p = (g, ox, oy, oz, rx, ry, rz, sx, sy, sz, c, m, ee) => GLX.part('dyn', g, B, ox, oy + hop, oz, rx, ry, rz, 0, 0, 0, sx, sy, sz, c, ee === undefined ? em : ee, 1, m || 0);
+  const lean = .35 * run, bz = -.27, by = .02;
+  p('rbox', 0, by, bz, lean, 0, 0, .5, .36, .32, wood, 3); /* the box */
+  for (const x of [-.2, 0, .2]) p('rbox', x, by, bz, lean, 0, 0, .05, .38, .34, iron, 4); /* iron bands */
+  p('rbox', 0, by - .17, bz, lean, 0, 0, .52, .04, .34, iron, 4);
+  for (const sx of [1, -1]) for (const sy of [1, -1]) p('sphere', .24 * sx, by + .16 * sy, bz + .15, lean, 0, 0, .035, .035, .035, gold, 4, em + .2); /* corner studs */
+  p('rbox', 0, by - .02, bz - .17, lean, 0, 0, .1, .12, .03, gold, 4, em + .3); p('cyl', 0, by - .08, bz - .19, lean + 1.57, 0, 0, .06, .02, .06, gold, 4, em + .3); /* the padlock */
+  const lid = -(.18 + open * .55); p('rbox', 0, by + .21 + Math.sin(lean) * .02, bz + .15, lean + lid, 0, 0, .5, .05, .02, wood, 3); /* the lid hinges at the front edge, flapping open */
+  GLX.part('dyn', 'rbox', B, 0, by + .19 + hop, bz + .15, lean + lid, 0, 0, 0, 0, -.15, .5, .05, .3, wood, em, 1, 3);
+  for (let k = 0; k < 5; k++) p('cyl', -.16 + k * .08, by + .19 + (k % 2) * .03, bz - .02 + (k % 3) * .05, lean + .3 * (k % 2), k, 0, .07, .02, .07, gold, 4, em + .25); /* coins heaped inside */
+  GLX.part('glow', 'rbox', B, 0, by + .19 + hop, bz, lean, 0, 0, 0, 0, 0, .44, .04, .26, gold, 1.6, .5 + .3 * open);
+  for (const sd of [1, -1]) { p('rbox', .15 * sd, by + .14, bz + .2, lean - .5, 0, 0, .06, .04, .3, lth, 7); p('rbox', .15 * sd, by - .14, bz + .2, lean + .4, 0, 0, .06, .04, .26, lth, 7); } /* shoulder straps */
+  const sw = Math.sin(t * 9) * .5 * run + Math.sin(t * 2) * .12; /* the lantern swings from the box's corner */
+  GLX.part('dyn', 'rbox', B, -.27, by + .1 + hop, bz - .12, sw, 0, .2, 0, -.1, 0, .012, .2, .012, iron, em, 1, 4);
+  GLX.part('dyn', 'rbox', B, -.27, by + .1 + hop, bz - .12, sw, 0, .2, 0, -.25, 0, .09, .12, .09, iron, em, 1, 4);
+  if (alive) GLX.part('glow', 'sphere', B, -.27, by + .1 + hop, bz - .12, sw, 0, .2, 0, -.25, 0, .055, .08, .055, col(0xffb84a), 2.6, 1);
+}
+function gobAlert(e) { if (!e.alert || !e.alive) return; const gd = GLX.col(0xd8a838), t = G.time, pu = .6 + .4 * Math.sin(t * 6); GLX.obj('glow', 'ring', e.x, .07, e.z, t * 2, 2.6, 1, 2.6, gd, 1, .7 * pu, -1); GLX.obj('glow', 'box', e.x, 3.2, e.z, .78, .12, 6.4, .12, gd, 1, .3 * pu); GLX.halo(e.x, 1.4, e.z, 4.5, gd, .35 * pu); } /* the gold ring and beam once it has been spotted */
+function gobModel(e, sc, y, tilt, ox, oz, em) {
+  if (!MODELS_ON || !GLX.model || G.realModels === false || G.monModels === false || e.escaped) return false;
+  if (Math.hypot(e.x - P.x, e.z - P.z) > GOB_FAR) return false;
+  const M = GLX.model('risen', 'models/risen.cdm?v=' + BUILD); if (!M || !M.anims || !M.anims.idle) return false;
+  const A = M.anims, t = G.time, col = GLX.col, s = sc * MSC * .7, lay = [];
+  if (!e.alive) { sc = e.sc; tilt = 0; y = (e.fly ? e.fly.y : 0) - Math.max(0, 1 - e.deadT / .3) * .6; }
+  const moved = Math.abs((e.walk || 0) - (e._mw === undefined ? e.walk : e._mw)); e._mw = e.walk; e._mv = (e._mv || 0) + ((moved > .001 ? 1 : 0) - (e._mv || 0)) * .2; const mv = e.alive ? clamp(e._mv, 0, 1) : 0;
+  if (!e.alive) { if (e._dT0 === undefined) e._dT0 = t; lay.push(['die', Math.min(A.die.dur * .92, (t - e._dT0) * 2.6), false, 1]); }
+  else { e._dT0 = undefined; const ph = (e.walk || 0) / 6.2832 * .62; /* a fast, low scurry */
+    if (mv < 1) lay.push(['crouchi', t * 1.3 + e.id * .37, true, 1 - mv]); if (mv > 0) lay.push(['crouch', ph * A.crouch.dur, true, mv]);
+    if (e.hf > 0) lay.push(['hit', (.22 - e.hf) * 2.4, false, Math.min(1, e.hf * 6) * .7]); }
+  GLX.base(BMm, e.x + ox, y - M.head.minY * s, e.z + oz, e.rot, s); if (tilt) tiltBase(BMm, e.rot, s, tilt);
+  const skin = 0x4e6e5e, look = (gi, gr) => { const k = gr.kind;
+    if (k === 'plain') return [[3, 2.1, .6], 2.8, 0]; // ember-gold eyes
+    if (k === 'skin') return [mdye(gr, skin, .92, .8), em, 8];
+    if (k === 'cloth') return [mdye(gr, 0x4a2638, .9, .85), em, 6]; // patched plum breeches
+    return [MLIFT, em, gr.mat]; };
+  if (!GLX.drawModel(M, BMm, lay, look)) return false;
+  const sk = col(skin), skD = col(0x8a5a5a), hd = GLX.attach(M, 'Head', MAT), flap = e.alive ? Math.sin(t * 16) * .12 * mv + Math.sin(t * 2.3 + e.id) * .05 : .4;
+  if (hd) { m4mul(GH, BMm, hd); const q = (g, x, yy, z, rx, ry, rz, a, b, c, sx, sy, sz, cc, m, ee) => GLX.part('dyn', g, GH, x, yy, z, rx, ry, rz, a, b, c, sx, sy, sz, cc, ee === undefined ? em : ee, 1, m || 0);
+    for (const sd of [1, -1]) { q('cone', .085 * sd, .12, -.02, .25 + flap, 0, -sd * (1.25 - flap), 0, .13, 0, .055, .26, .03, sk, 8); q('cone', .085 * sd, .12, -.01, .25 + flap, 0, -sd * (1.25 - flap), 0, .115, .012, .03, .2, .012, skD, 8); } /* long ears that flap as it runs */
+    q('cone', 0, .06, .1, 1.35, 0, 0, 0, .06, 0, .03, .12, .03, sk, 8); /* a hooked nose */
+    q('sphere', 0, .15, -.01, -.2, 0, 0, 0, 0, 0, .15, .09, .16, col(0x5a2a3a), 6); q('cone', 0, .17, -.1, -2.3, 0, 0, 0, .12, 0, .06, .24, .045, col(0x5a2a3a), 6); /* a ragged cap with a drooping tail */ }
+  const sp = GLX.attach(M, 'spine_03', MAT); if (!sp) return true; m4mul(GH, BMm, sp); GB.set(BMm); GB[12] = GH[12]; GB[13] = GH[13]; GB[14] = GH[14];
+  const open = e.alive ? Math.max(0, Math.sin(t * 13)) * mv : 1, hop = 0; gobKit(GB, t, mv, open, e.alive, em, hop);
+  const gd = col(0xe0b040);
+  if (e.alive) { const fw = [Math.sin(e.rot), Math.cos(e.rot)]; /* coins spill out of the lid behind it as it runs, arc, and bounce away */
+    if (mv > .2) for (let k = 0; k < 6; k++) { const u = (t * 1.7 + k / 6 + e.id * .13) % 1, bx = GB[12] - fw[0] * .3 * s, bzz = GB[14] - fw[1] * .3 * s, d = u * 1.6, hgt = GB[13] + .25 * s + u * 1.2 - u * u * (2.2 + GB[13] * 1.1), side = Math.sin(k * 2.4) * .5 * u;
+      GLX.obj('dyn', 'cyl', bx - fw[0] * d + fw[1] * side, Math.max(.04, hgt), bzz - fw[1] * d - fw[0] * side, t * 9 + k, .09, .025, .09, gd, .6, 1, 4); if (k % 2 === 0) GLX.obj('glow', 'gem', bx - fw[0] * d + fw[1] * side, Math.max(.06, hgt) + .05, bzz - fw[1] * d - fw[0] * side, t * 6, .04, .07, .04, col(0xfff0b0), 2.4, (1 - u) * .9); }
+    for (let k = 0; k < 3; k++) { const ph = (t * 1.1 + k * .37) % 1, a = Math.sin(ph * Math.PI); GLX.obj('glow', 'gem', GB[12] + Math.sin(k * 2.1) * .25 * s, GB[13] + (.1 + k * .08) * s, GB[14] + Math.cos(k * 1.7) * .25 * s, t * 3, .05 * a, .1 * a, .05 * a, col(0xfff4c0), 2.6, a); } /* glints on the box */
+    GLX.halo(GB[12], GB[13], GB[14], 2.4, gd, .32); GLX.light(e.x, 1.6, e.z, 6, col(0xffb84a), .8, 3); }
+  gobAlert(e); return true;
 }
 // ---- build 0058: guardians on real models. The armoured champions (Warden of Bones, the Ashen Tyrant) wear the knight's plate, dyed
 // to their floor, with a horned helm and a greatsword; the shrouded ones (Hollow Choir, Pale Matriarch, Null) are hooded robes that
@@ -2057,12 +2278,12 @@ function drawEnemy(e) {
   if (e.alive && e.hf > 0) { e.hf -= fdt; const k = Math.max(0, e.hf / .22), q = Math.sin(k * Math.PI) * Math.min(1.4, e.hp0 || 1); tilt = -.32 * q; ox = (e.hdx || 0) * .28 * q; oz = (e.hdz || 0) * .28 * q; } // the flinch: a quick lean back and a small step away from the blow
   GLX.base(BM, e.x + ox, y, e.z + oz, e.rot, sc); if (tilt) tiltBase(BM, e.rot, sc, tilt); const p = (g, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, cc, mat, ee) => GLX.part('dyn', g, BM, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, cc, ee === undefined ? em : ee, 1, mat || 0);
   const eyes = (ex, ey, ez, r) => { p('sphere', ex, ey, ez, 0, 0, 0, 0, 0, 0, r, r, r, ec, 0, 3); p('sphere', -ex, ey, ez, 0, 0, 0, 0, 0, 0, r, r, r, ec, 0, 3); };
-  if (monModel(e, sc, y, tilt, ox, oz, em, wind, at) || (e.boss && bossModel(e, sc, y, tilt, ox, oz, em, wind, at))) { /* build 0055: drawn on a real model */ }
+  if (e.arch === 'goblin' && e.awake && e.alive && !e.ann && typeof UI !== 'undefined') { e.ann = 1; UI.zoneBanner('Treasure Goblin!', 'Catch it before it escapes: 30 seconds'); SFX.play('drop3'); }
+  if (monModel(e, sc, y, tilt, ox, oz, em, wind, at) || (e.boss && bossModel(e, sc, y, tilt, ox, oz, em, wind, at)) || (e.arch === 'goblin' && gobModel(e, sc, y, tilt, ox, oz, em))) { /* build 0055: drawn on a real model */ }
   else if (e.arch === 'goblin') { const gd = col(0xd8a838), sk2 = col(0x5a8a3a), t = G.time, hop = Math.abs(Math.sin(w * 1.4)) * .14;
-    if (e.awake && e.alive && !e.ann && typeof UI !== 'undefined') { e.ann = 1; UI.zoneBanner('Treasure Goblin!', 'Catch it before it escapes: 30 seconds'); SFX.play('drop3'); }
     for (const sd of [1, -1]) p('cap', .16 * sd, .4 + hop, 0, sd * sw * .9, 0, 0, 0, -.2, 0, .14, .36, .14, sk2);
     p('sphere', 0, .82 + hop, .05, .5, 0, 0, 0, 0, 0, .5, .5, .45, c, 0); p('sphere', 0, 1.18 + hop, .38, .2, 0, 0, 0, 0, 0, .34, .3, .32, sk2, 0); for (const sd of [1, -1]) p('cone', .3 * sd, 1.28 + hop, .34, 0, 0, sd * 1.2, 0, 0, 0, .08, .34, .08, sk2); eyes(.1, 1.24 + hop, .62, .05); p('sphere', 0, 1.12 + hop, .66, 0, 0, 0, 0, 0, 0, .1, .08, .12, sk2);
-    p('sphere', 0, 1.2 + hop, -.32, .1, 0, 0, 0, 0, 0, .62, .66, .58, c2, 0, .25); p('cap', 0, 1.62 + hop, -.32, 0, 0, 0, 0, 0, 0, .2, .14, .2, col(0x6a4a24)); for (let k = 0; k < 4; k++) { const an = k * 1.57 + t * 2; GLX.obj('glow', 'gem', e.x + Math.cos(an) * .7 * sc, (1.3 + Math.sin(t * 3 + k) * .3) * sc, e.z + Math.sin(an) * .7 * sc, t * 4, .07, .12, .07, gd, 2, .9); } GLX.halo(e.x, 1.1 * sc, e.z, 2.2, gd, .4); if (e.alert && e.alive) { const pu = .6 + .4 * Math.sin(t * 6); GLX.obj('glow', 'ring', e.x, .07, e.z, t * 2, 2.6, 1, 2.6, gd, 1, .7 * pu, -1); GLX.obj('glow', 'box', e.x, 3.2, e.z, .78, .12, 6.4, .12, gd, 1, .3 * pu); GLX.halo(e.x, 1.4, e.z, 4.5, gd, .35 * pu); } }
+    p('sphere', 0, 1.2 + hop, -.32, .1, 0, 0, 0, 0, 0, .62, .66, .58, c2, 0, .25); p('cap', 0, 1.62 + hop, -.32, 0, 0, 0, 0, 0, 0, .2, .14, .2, col(0x6a4a24)); for (let k = 0; k < 4; k++) { const an = k * 1.57 + t * 2; GLX.obj('glow', 'gem', e.x + Math.cos(an) * .7 * sc, (1.3 + Math.sin(t * 3 + k) * .3) * sc, e.z + Math.sin(an) * .7 * sc, t * 4, .07, .12, .07, gd, 2, .9); } GLX.halo(e.x, 1.1 * sc, e.z, 2.2, gd, .4); gobAlert(e); }
   else if (e.arch === 'grunt') {
     for (const sd of [1, -1]) { p('cap', .16 * sd, .82, 0, sd * sw * .7, 0, 0, 0, -.2, 0, .2, .42, .22, c2); p('cap', .16 * sd, .82, 0, sd * sw * .9, 0, 0, 0, -.6, .03, .16, .42, .17, c); }
     p('taper', 0, 1.18, .04, .35, 0, 0, 0, 0, 0, .56, -.72, .36, c, 3); p('sphere', 0, 1.0, 0, .3, 0, 0, 0, 0, 0, .5, .36, .36, c2); p('sphere', 0, 1.66, .2, .3, 0, 0, 0, 0, 0, .36, .4, .38, c, 3); p('rbox', 0, 1.52, .36, .5, 0, 0, 0, 0, 0, .2, .1, .12, c2);
@@ -2228,8 +2449,8 @@ function drawWorld() {
   G._mN = 0; for (const e of G.ents) { if (Math.abs(e.x - P.x) > 34 || Math.abs(e.z - P.z) > 34) continue; drawEnemy(e); }
   for (const L of Z.lamps) { const d = Math.hypot(L.x - P.x, L.z - P.z); if (d > 32) continue; const c = col(L.big ? 0xff9a3a : Z.th.lamp), fl = fireFl(G.time, L.x + L.z); GLX.light(L.x, L.big ? 2.2 : 1.2, L.z, L.big ? 13 : 7, c, (L.big ? 1.3 : .8) * fl); GLX.halo(L.x, L.big ? 1.6 : .5, L.z, L.big ? 3.2 : 1.8, c, .4 * fl); }
   for (const o of Z.objs) {
-    if (Math.hypot(o.x - P.x, o.z - P.z) > 34) continue; const hov = G.hoverObj === o ? .5 : 0;
-    if (o.kind === 'vendor') { NPCV.x = o.x; NPCV.z = o.z - 1.1; NPCV.rot = Math.atan2(P.x - NPCV.x, P.z - NPCV.z); drawHero(NPCV, false); if (hov) GLX.obj('glow', 'ring', o.x, .07, o.z, G.time, 4.6, 1, 4.6, col(0xffd84a), 1, .5, -1); continue; }
+    if (Math.hypot(o.x - P.x, o.z - P.z) > (o.kind === 'vendor' ? 70 : 34)) continue; const hov = G.hoverObj === o ? .5 : 0;
+    if (o.kind === 'vendor') { const und = Math.abs(P.x - o.x) < 2.5 && P.z > o.z - 3.7 && P.z < o.z + .9; o.roofK = (o.roofK || 0) + ((und ? 1 : 0) - (o.roofK || 0)) * .2; if (o.roofK < .5) GLX.obj('dyn', 'box', o.x, 2.9, o.z - 1.6, 0, 4, .12, 3.2, ROOF_C); else GLX.obj('glow', 'box', o.x, 2.9, o.z - 1.6, 0, 4, .12, 3.2, ROOF_C, 1, .22 * o.roofK); NPCV.x = o.x; NPCV.z = o.z - 1.1; NPCV.rot = Math.atan2(P.x - NPCV.x, P.z - NPCV.z); drawHero(NPCV, false); if (hov) GLX.obj('glow', 'ring', o.x, .07, o.z, G.time, 4.6, 1, 4.6, col(0xffd84a), 1, .5, -1); continue; }
     if (o.kind === 'stash') { GLX.halo(o.x, 1.4, o.z + .8, 2 + hov * 2, col(0xffd84a), .3 + hov * .4); continue; }
     if (o.kind === 'altar') { const c = col(0xff7a2a), c2 = col(0xffd84a), t = G.time; GLX.obj('dyn', 'gem', o.x, 3 + Math.sin(t * 2) * .2, o.z, t, .8, 1.3, .8, c, 2.6); GLX.obj('glow', 'cyl', o.x, 9, o.z, t, .7, 16, .7, c, 1, .2); GLX.obj('glow', 'cyl', o.x, 9, o.z, -t, 1.8, 16, 1.8, c2, .6, .06);
       for (let k = 0; k < 6; k++) { const a = k * 1.0472 + .5, px = o.x + Math.cos(a) * 3.6, pz = o.z + Math.sin(a) * 3.6; GLX.obj('dyn', 'gem', px, 3.5 + Math.sin(t * 2 + k) * .12, pz, t + k, .26, .4, .26, k % 2 ? c2 : c, 2.2); GLX.halo(px, 3.5, pz, 1.4, c, .5); }
@@ -2242,6 +2463,7 @@ function drawWorld() {
     if (o.kind === 'well') { const st = col(0x6a6660), st2 = col(0x8a857c), wd = col(0x5a3a22), t = G.time, wc = o.used ? col(0x2a4a5a) : col(0xffd25a); GLX.obj('dyn', 'cyl', o.x, .45, o.z, 0, 2.6, .9, 2.6, st, hov, 1, 3); GLX.obj('dyn', 'cyl', o.x, .93, o.z, 0, 2.8, .14, 2.8, st2, hov, 1, 3); GLX.obj('glow', 'cyl', o.x, .82, o.z, t, 2.1, .04, 2.1, wc, o.used ? .3 : 1.6, o.used ? .5 : .9);
       for (const sd of [1, -1]) GLX.obj('dyn', 'box', o.x + sd * 1.2, 1.9, o.z, 0, .18, 2.2, .18, wd, hov, 1, 3); GLX.obj('dyn', 'taper', o.x, 3.25, o.z, .785, 2.4, .9, 1.6, col(0x6a2a1a), hov, 1, 3); GLX.obj('dyn', 'cyl', o.x, 2.6, o.z, 1.5708, .14, 2.3, .14, wd, hov, 1, 3);
       if (!o.used) { GLX.halo(o.x, 1.4, o.z, 4.2, wc, .5 + Math.sin(t * 2.4) * .12); GLX.light(o.x, 1.6, o.z, 9, wc, 1.1, 3); for (let k = 0; k < 8; k++) { const ph = (t * .45 + k / 8) % 1, an = k * .785 + t * .7; GLX.obj('glow', 'gem', o.x + Math.cos(an) * .8 * (1 - ph * .3), 1 + ph * 3.2, o.z + Math.sin(an) * .8 * (1 - ph * .3), t * 4 + k, .08, .14, .08, k & 1 ? col(0x9ad0ff) : wc, 2, 1 - ph); } } continue; }
+    if (o.kind === 'chest' && o.used && G.time - (o.openT === undefined ? -99 : o.openT) > 2.5) { if (o.openT !== undefined && !o.poof) { o.poof = 1; burst(o.x, .5, o.z, 0x8a6a4a, 12, 4); } continue; } /* build 0098: an opened chest used to look shut and could not be clicked again; now it pops open, then crumbles away */
     if (o.kind === 'chest') { const wd = col(0x6a4426), wd2 = col(0x4e3018), ir = col(0x3a3c44), gd = col(0xc9a030), ry = .4, cs = Math.cos(ry), sn = Math.sin(ry), at = (lx, lz) => [o.x + lx * cs + lz * sn, o.z - lx * sn + lz * cs];
       GLX.obj('dyn', 'box', o.x, .42, o.z, ry, 1.5, .84, .95, wd, hov, 1, 3); for (const lx of [-.5, 0, .5]) { const q = at(lx, 0); GLX.obj('dyn', 'box', q[0], .42, q[1], ry, .03, .86, .97, wd2, hov, 1, 3); }
       const ly = o.used ? 1.2 : .98; GLX.obj('dyn', 'box', o.x, ly, o.z - (o.used ? .35 : 0), ry, 1.56, .3, 1, wd, hov, 1, 3); GLX.obj('dyn', 'box', o.x, ly + .17, o.z - (o.used ? .35 : 0), ry, 1.4, .08, .84, wd2, hov, 1, 3);
@@ -2375,7 +2597,7 @@ function drawWorld() {
 else GLX.obj('glow', 'gem', f.x, f.y, f.z, f.life * 9, f.size, f.size, f.size, f.c, 1, k);
   }
   GLX.glowK && GLX.glowK(1);
-  if (GPS.pts.length > 1 && G.set.gps) { const c = col(0xffd84a), c2g = col(0xffa040); let acc = (G.time * 3) % 1.6, tot = 0; for (let i = 1; i < GPS.pts.length && tot < 34; i++) { const a = GPS.pts[i - 1], b = GPS.pts[i], L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, ry = Math.atan2(b[0] - a[0], b[1] - a[1]); while (acc < L && tot + acc < 34) { const t = acc / L, k = 1 - (tot + acc) / 34; if (tot + acc > 1.6) { const x = a[0] + (b[0] - a[0]) * t, z = a[1] + (b[1] - a[1]) * t, al = Math.min(1, .35 + .85 * k); for (const sd of [1, -1]) { const fx = Math.sin(ry), fz = Math.cos(ry), sx = fz, sz = -fx; GLX.obj('glow', 'box', x - fx * .16 + sx * sd * .21, .07, z - fz * .16 + sz * sd * .21, ry - sd * .62, .15, .03, .62, c2g, 1.6, al); } } acc += 1.3; } acc -= L; tot += L; } } /* build 0075 (Lee, Nov 15): the path arrows are bigger and brighter */
+  drawGps(); /* build 0104: the quest path, see drawGps */
   if (GPS.goal && G.set.gps) { const q = GPS.goal, onBoss = G.boss && G.boss.alive && G.boss.awake && Math.hypot(q.x - G.boss.x, q.z - G.boss.z) < 2; if (!onBoss && Math.hypot(q.x - P.x, q.z - P.z) > 2.5) { const c = col(0xffd84a), t = G.time, pu = .5 + .5 * Math.sin(t * 4), R = 2 + pu * .6; GLX.obj('glow', 'ring', q.x, .09, q.z, t * .6, R, 1, R, c, 1.6, .85, -1); GLX.obj('glow', 'cyl', q.x, 6, q.z, 0, .14 + pu * .05, 12, .14 + pu * .05, c, 2, .42); GLX.halo(q.x, 1.4, q.z, 3.4, c, .3 + pu * .15); } } /* a gold beam and ring mark where the quest leads: the townsfolk to report to, the captive, the gate */
   if (P.move && !P.atk) GLX.obj('glow', 'ring', P.move[0], .06, P.move[1], 0, .8, 1, .8, col(0xffffff), 1, .25, -1);
   if (G.tj && !G.auto && !P.dead) { const e = nearFoe(15); if (e && e !== G.hover) GLX.obj('glow', 'ring', e.x, .06, e.z, G.time * 1.5, e.r * 2.5, 1, e.r * 2.5, col(0xffb03a), 1, .55, -1); }

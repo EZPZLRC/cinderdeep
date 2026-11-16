@@ -79,7 +79,7 @@ function srvTick(dt) {
   }
   for (let i = G.areas.length - 1; i >= 0; i--) {
     const a = G.areas[i]; a.t += dt;
-    if (!a.done && a.t >= a.delay) { a.done = true; if (a.owner === 'e' && !a.vis) for (const q of pl) if (inArea(a, q.x, q.z, .3)) __emit(q.id, { t: 'dmg', v: Math.round(a.dmg), el: a.el, src: a.src ? a.src.id : 0, hv: a.hvy || undefined }); }
+    if (!a.done && a.t >= a.delay) { a.done = true; if (a.owner === 'e' && !a.vis) for (const q of pl) if (inArea(a, q.x, q.z, .3) && bossSees(a.src, q.x, q.z)) __emit(q.id, { t: 'dmg', v: Math.round(a.dmg), el: a.el, src: a.src ? a.src.id : 0, hv: a.hvy || undefined }); }
     if (a.t >= a.delay + .05) G.areas.splice(i, 1);
   }
   G.fx.length = 0; G.texts.length = 0; G.hints.length = 0; G.drops.length = 0;
