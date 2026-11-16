@@ -841,9 +841,12 @@ function altarOffer(i) { const h = G.hero, it = h.inv[i]; if (!it) return 0; if 
 function altarUpgrade(sel, ember) {
   const h = G.hero, it = typeof sel === 'string' ? h.eq[sel] : h.inv[sel]; if (!it || (it.up || 0) >= MAX_UP) return false; const c = upCost(it);
   if (ember) { if ((h.ember || 0) < EMBER_UP) { hint('Not enough Ember yet.'); return false; } } else if ((h.shards || 0) < c.shards || h.gold < c.gold) { hint('Not enough shards or gold.'); return false; }
-  const p = upPreview(it); if (ember) h.ember -= EMBER_UP; else { h.shards -= c.shards; h.gold -= c.gold; } if (p.dmg) it.dmg = p.dmg; if (p.armor) it.armor = p.armor; it.aff = p.aff; it.up = (it.up || 0) + 1; it.name = it.name.replace(/ \+\d$/, '') + ' +' + it.up;
+  const p = upPreview(it); if (ember) h.ember -= EMBER_UP; else { h.shards -= c.shards; h.gold -= c.gold; } if (p.dmg) it.dmg = p.dmg; if (p.armor) it.armor = p.armor; it.aff = p.aff; it.up = (it.up || 0) + 1; it.name = it.name.replace(/ \+\d$/, '') + ' +' + it.up; const lucky = forgeRoll(it); if (lucky) hint('Lucky forging: ' + lucky + '.');
   if (typeof sel === 'string') computeStats(); SFX.play('level'); G.shake = .6; if (G.zone) { const al = G.zone.objs.find(o => o.kind === 'altar'); if (al) { ring(al.x, al.z, 0, 12, 1, 0xffb03a); ring(al.x, al.z, 0, 7, .7, 0xfff0c0); burst(al.x, 2, al.z, 0xffb03a, 70, 12); } } saveGame(); return true;
 }
+// build 0105: on top of the fixed boost, each forging gives one random line an extra 1 to 5% (at least +1 only where 5% of the line is worth a whole point)
+function forgeRoll(it) { const pct = 1 + Math.floor(Math.random() * 5), L = []; if (it.dmg) L.push('dmg'); if (it.armor) L.push('armor'); it.aff.forEach((a, k) => L.push(k)); const gain = v => Math.round(v * pct / 100), ok = L.filter(l => gain(l === 'dmg' ? it.dmg[1] : l === 'armor' ? it.armor : it.aff[l].v) >= 1); if (!ok.length) return '';
+  const l = pick(ok); if (l === 'dmg') { const a = gain(it.dmg[0]), b = gain(it.dmg[1]); it.dmg = [it.dmg[0] + a, it.dmg[1] + b]; return `+${a}–${b} Damage extra`; } if (l === 'armor') { const g = gain(it.armor); it.armor += g; return `+${g} Armor extra`; } const af = it.aff[l], g = gain(af.v); af.v += g; return statText(af.k, g).replace(/^Adds /, '+') + ' extra'; }
 function altarReroll(sel, idx) {
   const h = G.hero, it = typeof sel === 'string' ? h.eq[sel] : h.inv[sel]; if (!it || !it.aff[idx]) return false; if (it.ench !== undefined && it.ench !== idx) { hint('Only the line you first changed can be rerolled on this item.'); return false; }
   const c = altarCost(it); if ((h.shards || 0) < c.shards) { hint('Not enough shards. Scrap items to get more.'); return false; } if (h.gold < c.gold) { hint('Not enough gold.'); return false; }
@@ -1827,8 +1830,8 @@ function autoTarget() { let b = null, bd = 15; for (const e of G.ents) { if (!e.
 const BM = new Float32Array(16), BM2 = new Float32Array(16), IDM = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
 // What the hero is wearing, as a compact look the model (and other players) can read.
 const GSL = ['weapon', 'offhand', 'helm', 'shoulders', 'chest', 'gloves', 'bracers', 'belt', 'pants', 'boots', 'amulet'];
-function gearCode(eq) { let c = ''; for (const sl of GSL) { const it = eq[sl]; if (!it) { c += 'xx'; continue; } let b = 0; if (sl === 'weapon') b = Math.max(0, WEAPONS.findIndex(w => w.n === it.base)); else if (ARMOR[sl]) b = Math.max(0, ARMOR[sl].findIndex(a => a.n === it.base)); c += b + '' + it.rar; } return c; }
-function gearDecode(c) { const g = {}; if (typeof c !== 'string' || c.length !== GSL.length * 2) return null; GSL.forEach((sl, i) => { const b = c.charCodeAt(i * 2) - 48, r = c.charCodeAt(i * 2 + 1) - 48; g[sl] = b >= 0 && b <= 9 && r >= 0 && r <= 4 ? [b, r] : null; }); return g; }
+function gearCode(eq) { let c = ''; for (const sl of GSL) { const it = eq[sl]; if (!it) { c += 'xx'; continue; } let b = 0; if (sl === 'weapon') b = Math.max(0, WEAPONS.findIndex(w => w.n === it.base)); else if (ARMOR[sl]) b = Math.max(0, ARMOR[sl].findIndex(a => a.n === it.base)); c += b + '' + it.rar; } /* build 0105: one extra digit, only when the weapon is forged, so friends see its ember glow */ const fu = eq.weapon && eq.weapon.up ? Math.min(MAX_UP, eq.weapon.up | 0) : 0; return fu ? c + fu : c; }
+function gearDecode(c) { const g = {}; if (typeof c !== 'string' || (c.length !== GSL.length * 2 && c.length !== GSL.length * 2 + 1)) return null; g.fu = c.length > GSL.length * 2 ? Math.max(0, Math.min(5, c.charCodeAt(GSL.length * 2) - 48)) : 0; GSL.forEach((sl, i) => { const b = c.charCodeAt(i * 2) - 48, r = c.charCodeAt(i * 2 + 1) - 48; g[sl] = b >= 0 && b <= 9 && r >= 0 && r <= 4 ? [b, r] : null; }); return g; }
 const DEFGEAR = gearDecode('0101011101010101010100');
 const TRIMC = [0x77726a, 0x5878d8, 0xd8b030, 0xff8a2a, 0xb060ff];
 // ---- build 0039: real hero models (free CC0 Quaternius characters), baked by tools/model/build.mjs into public/models ----
@@ -1908,7 +1911,8 @@ function drawHero(o, self) {
   const mat = (it, base0, alt) => !it ? null : it[0] === 0 ? [steelC, 4] : [alt || leatherC, 0], tr = it => { const r = it ? it[1] : 0; return [col(TRIMC[r]), r >= 3 ? .7 : r === 2 ? .15 : 0]; };
   const cm = g.chest ? (g.chest[0] === 0 ? [steelC, 4] : g.chest[0] === 2 ? [cloth, 0] : [leatherC, 0]) : [under, 0], ac = cm[0], am = cm[1], ct = tr(g.chest), trim = ct[0], te = ct[1];
   const pm = mat(g.pants) || [under, 0], bm = mat(g.boots, 0, dkLeather), gm = mat(g.gloves), brm = mat(g.bracers), sm = mat(g.shoulders), plate = !!g.chest && g.chest[0] === 0;
-  const wb = g.weapon ? g.weapon[0] : -1, wt = wb < 0 ? 'none' : WEAPONS[wb] ? WEAPONS[wb].t : 'sword', wr = g.weapon ? g.weapon[1] : 0, wglow = wr >= 2 ? col(TRIMC[wr]) : null;
+  const wb = g.weapon ? g.weapon[0] : -1, wt = wb < 0 ? 'none' : WEAPONS[wb] ? WEAPONS[wb].t : 'sword', wr = g.weapon ? g.weapon[1] : 0, fu = g.weapon ? g.fu || 0 : 0, wglow = wr >= 2 ? col(TRIMC[wr]) : fu ? col(0xff8a3a) : null;
+  if (fu && !o.dead && G.fx && G.fx.length < 500 && Math.random() < fu * .02) { /* build 0105: a forged weapon sheds a few embers, more with each +1 */ const a = (o.rot || 0) + 1.57 + rnd(-.5, .5), d = rnd(.35, .7); G.fx.push({ smoke: 1, x: o.x + Math.sin(a) * d, y: rnd(1.1, 2.1), z: o.z + Math.cos(a) * d, vx: rnd(-.2, .2), vy: rnd(.5, 1.1), vz: rnd(-.2, .2), life: rnd(.6, 1.1), max: 1.1, size: rnd(.035, .06), c: col(Math.random() < .5 ? 0xff8a3a : 0xffc060), mote: 1 }); }
   const spin = !!o.spin, rot = spin ? G.time * 20 : o.rot, w = o.walk, mv = o.mv, bob = Math.abs(Math.sin(w)) * .07 * mv, em = o.hurt > 0 ? .9 : 0, sw2 = Math.sin(G.time * 2.2 + o.x) * .06;
   // attack animation (build 0018): wind-up, fast strike, follow-through, blended in and out so poses never snap
   const eo = t => 1 - Math.pow(1 - clamp(t, 0, 1), 3), smo = t => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
