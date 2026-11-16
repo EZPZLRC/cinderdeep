@@ -2411,12 +2411,32 @@ function drawHero(o, self) {
         for (const [rr, w, c2, em2, a2] of [[1.7, .09, col(0xffffff), 2.2, .9], [1.45, .22, tc, 1.6, .55], [1.15, .3, tc, 1.2, .25]]) { const A = pt(q0, rr), B = pt(q1, rr), dx = B[0] - A[0], dz = B[2] - A[2], L = Math.hypot(dx, dz) + .02; GLX.part('glow', 'box', IDM, (A[0] + B[0]) / 2, (A[1] + B[1]) / 2, (A[2] + B[2]) / 2, 0, Math.atan2(dx, dz), 0, 0, 0, 0, .04, w, L, c2, em2, al * a2); } } }
     // weapons shine by rarity: rare and up glow, legendary and mythic trail sparks
     if (wr >= 2 && wt !== 'none' && wt !== 'bow') { const h = hand(1, rx), rc = col(TRIMC[wr]); GLX.halo(h[0], h[1] + .3, h[2], wr >= 4 ? 1.6 : 1.1, rc, wr >= 4 ? .5 : .3); if (wr >= 4) for (let k = 0; k < 3; k++) { const ph = (t * 1.2 + k / 3) % 1; GLX.obj('glow', 'gem', h[0] + Math.sin(k * 2 + t) * .3, h[1] + .2 + ph * 1.2, h[2] + Math.cos(k * 2 + t) * .3, t, .05, .09, .05, rc, 2, 1 - ph); } }
-    // Founder Pack (Lee, Nov 15): an ember-red cape with a gold hem and a glowing sigil, and embers rising from the weapon hand. Looks only
-    if ((self ? G.founder : o.founder) && HERO && !o.dead) { const FR = col(0x7a1c12), FG = col(0xd8a840), FE = col(0xff8a2a), cw = Math.sin((o.walk || 0) * .9) * .05 + sway * .6 + .06;
-      if (!MDL || MDL.back()) { const by = MDL ? 1.66 : 1.7, bz = MDL ? -.2 : -.24, bl = MDL ? 0 : lean * .4; p('rbox', 0, by, bz, bl + cw, 0, 0, 0, -.56, -.03, .66, 1.08, .035, FR, 6); p('rbox', 0, by, bz, bl + cw, 0, 0, 0, -1.1, -.035, .68, .06, .04, FG, 4, .35);
-        p('rbox', 0, by, bz, bl, 0, 0, 0, 0, 0, .7, .07, .06, FG, 4, .2); for (const sd of [1, -1]) p('sphere', .3 * sd, by, bz + .05, bl, 0, 0, 0, 0, 0, .07, .07, .05, FG, 4, .5);
-        p('gem', 0, by, bz, bl + cw, 0, 0, 0, -.48, -.06, .1, .14, .03, FE, 0, 1.3 + .3 * Math.sin(t * 2.2 + o.x)); if (MDL) MDL.done(); }
-      if (wt !== 'none') { const h = hand(1, rx); GLX.halo(h[0], h[1] + .2, h[2], .9, FE, .22 + .06 * Math.sin(t * 3 + o.x)); for (let k = 0; k < 3; k++) { const ph = (t * .8 + k / 3 + o.x * .07) % 1; GLX.obj('glow', 'gem', h[0] + Math.sin(k * 2.1 + t * 1.3) * .22, h[1] + .1 + ph * 1.1, h[2] + Math.cos(k * 1.7 + t) * .22, t * 2, .035, .06, .035, k === 1 ? FG : FE, 2, (1 - ph) * .9); } } }
+    // Founder Pack, build 0137 (Lee picked "Oathkeeper's Regalia" on the Founder Looks page): a royal crimson velvet cape that sways as you move, gold embroidery down the edges,
+    // gold studs, a gold hem set with red and blue gems, a white fur collar, a gold chain with a glowing oath medallion, a floating gold crown, and gold runes circling the weapon hand. Looks only
+    if ((self ? G.founder : o.founder) && HERO && !o.dead) { const FG = col(0xd8a840), FE = col(0xff8a2a), FUR = col(0xf2ece0), FK = col(0x1a1a1a), GR = col(0xff3a3a), GB = col(0x4a8aff), RU = col(0xffe08a);
+      const near = self || typeof P === 'undefined' || Math.hypot(o.x - P.x, o.z - P.z) < 14, cw = Math.sin((o.walk || 0) * .9) * .05 + sway * .6 + .06; /* Founders far from the camera get a simpler cape */
+      if (!MDL || MDL.back()) { const by = MDL ? 1.66 : 1.7, bz = MDL ? -.2 : -.24, bl = MDL ? 0 : lean * .4, rows = near ? 6 : 3, cols = near ? 3 : 1, W = .78, FL = .26, Lr = 1.2 / rows;
+        for (let c = 0; c < cols; c++) { const xc = -W / 2 + (c + .5) * W / cols; let y = by, z = bz, a = bl + cw + .02;
+          for (let r = 0; r < rows; r++) { const u = r / rows; a += .05 * Math.sin(t * 2.1 - r * .9 + c * 1.1 + o.x) * u + cw * .1; const x = xc * (1 + FL * u), pw = W / cols * (1 + FL * u) * 1.06;
+            p('box', x, y, z, a, 0, 0, 0, -Lr / 2, 0, pw * 1.04, Lr * 1.16, .045, col(hexMix(0x7a0e18, 0x4a0810, u * .8)), 6);
+            if (c === 0 || c === cols - 1) for (const e of cols === 1 ? [-1, 1] : [c === 0 ? -1 : 1]) p('rbox', x + e * pw / 2, y, z, a, 0, 0, 0, -Lr / 2, -.005, .035, Lr * 1.1, .057, FG, 4, .2);
+            if (near && r > 0 && r < rows - 1 && r % 2 === 0) p('gem', x, y, z, a, 0, 0, 0, -.06, -.03, .045, .06, .02, FG, 4, .25);
+            y -= Lr * Math.cos(a); z -= Lr * Math.sin(a); }
+          const ew = W / cols * (1 + FL) * 1.06; p('rbox', xc * (1 + FL), y, z, a, 0, 0, 0, 0, 0, ew + .01, .06, .06, FG, 4, .35);
+          if (near) for (let k = -1; k <= 1; k += 2) p('gem', xc * (1 + FL) + k * ew * .25, y + .06, z - .03, a, 0, 0, 0, 0, 0, .05, .06, .03, k < 0 ? GR : GB, 0, 1.3); }
+        if (MDL) { // the fur collar, chain and medallion sit on the real model's shoulders and chest
+          for (let k = 0; k < 11; k++) { const a = -1.5 + k * .3; p('sphere', Math.sin(a) * .27, 1.77 - Math.abs(Math.sin(a)) * .05, -.02 - Math.cos(a) * .15, 0, 0, 0, 0, 0, 0, .16, .13, .16, FUR, 0); if (near && k % 3 === 1) p('sphere', Math.sin(a) * .3, 1.8, -.02 - Math.cos(a) * .2, 0, 0, 0, 0, 0, 0, .025, .04, .025, FK, 0); }
+          if (near) for (let k = 0; k < 11; k++) { const u = k / 10; p('sphere', .24 - u * .48, 1.7 - Math.sin(u * 3.1416) * .26, .2 + Math.sin(u * 3.1416) * .05, 0, 0, 0, 0, 0, 0, .05, .04, .05, FG, 4, .1); }
+          p('cyl', 0, 1.41, .27, 1.5708, 0, 0, 0, 0, 0, .16, .03, .16, FG, 4, .2); p('gem', 0, 1.41, .29, 0, 0, t * .8, 0, 0, 0, .07, .09, .03, FE, 0, 1.4 + .3 * Math.sin(t * 2 + o.x)); }
+        if (MDL) MDL.done(); }
+      // the floating gold crown: above the helm's horns on a Warden, around the hat on an Arcanist
+      if (!MDL || MDL.head()) { const hat = cls === 'arcanist' && !g.helm, cy = (cls === 'warden' ? 2.7 : hat ? 2.3 : 2.47) + Math.sin(t * 1.6 + o.x) * .02 + (MDL ? 0 : .1), cr = hat ? 1.45 : 1, hpp = MDL ? p : hp;
+        hpp('cyl', 0, cy, 0, 0, t * .3, 0, 0, 0, 0, .44 * cr, .05, .44 * cr, FG, 4, .35);
+        for (let k = 0; k < 8; k++) { const a = t * .3 + k * .785; hpp('cone', Math.sin(a) * .21 * cr, cy + .02, Math.cos(a) * .21 * cr, 0, 0, 0, 0, .06, 0, .045, .12, .045, FG, 4, .35); if (near && k % 2 === 0) hpp('gem', Math.sin(a) * .225 * cr, cy, Math.cos(a) * .225 * cr, 0, a, 0, 0, 0, 0, .035, .045, .02, k % 4 ? GB : GR, 0, 1.4); }
+        if (MDL) MDL.done(); }
+      if (wt !== 'none') { const h = hand(1, rx); GLX.halo(h[0], h[1] + .1, h[2], .9, FG, .2 + .05 * Math.sin(t * 3 + o.x));
+        for (let k = 0; k < 3; k++) { const a = t * 2.2 + k * 2.094; GLX.obj('glow', 'gem', h[0] + Math.cos(a) * .24, h[1] + .1 + Math.sin(t * 3 + k) * .06, h[2] + Math.sin(a) * .24, a, .05, .07, .02, RU, 2, .95); }
+        if (near) for (let k = 0; k < 4; k++) { const ph = (t * .5 + k / 4 + o.x * .07) % 1; GLX.obj('glow', 'gem', h[0] + Math.sin(k * 2.1 + t) * .15, h[1] + .2 + ph * .8, h[2] + Math.cos(k * 1.7 + t) * .15, t * 2, .025, .04, .025, FG, 2, (1 - ph) * .8); } } }
     // see your hero through walls: a soft class-coloured ghost drawn only where walls hide you
     if (self && GLX.cam.eye && typeof blocked === 'function') { const E = GLX.cam.eye, dx = E[0] - o.x, dz = E[2] - o.z, dl = Math.hypot(dx, dz) || 1; let hid = false; for (let d = 1; d <= 5 && !hid; d += .5) hid = blocked(o.x + dx / dl * d, o.z + dz / dl * d, .1);
       /* build 0115 (play test: the Rootmother's model covered the hero completely): a guardian or a big monster standing over you or between you and the camera shows your ghost too */
