@@ -1131,8 +1131,8 @@ function hitEnemy(e, sk, mult, noProc) { if (e && e.alive && e.arch === 'goblin'
   if (G.online) { const cl = !e.boss && s.cull && e.hp < e.maxHp * s.cull / 100; NET.send({ t: 'hit', id: e.id, v: cl ? e.maxHp * 2 : v, el: sk.el, fz: sk.freeze || 0 }); if (e.hp < 0) e.hp = 0; return; }
   if (e.hp <= 0 || (!e.boss && s.cull && e.hp < e.maxHp * s.cull / 100)) killEnemy(e);
 }
-function flingCorpse(e) { /* build 0048: kills go flying, away from the hero; heavy hits and crits throw them further. Bosses fall where they stand */ if (e.boss || e.dummy || typeof document === 'undefined') return; let dx = e.hdx, dz = e.hdz; if (dx === undefined) { const x = e.x - P.x, z = e.z - P.z, l = Math.hypot(x, z) || 1; dx = x / l; dz = z / l; }
-  const w = e.arch === 'brute' || e.elite ? .55 : e.arch === 'swarm' ? 1.3 : 1, sp = (e.lheavy ? 9 : 5.5) * w * rnd(.85, 1.15); e.fly = { vx: dx * sp, vz: dz * sp, vy: (e.lheavy ? 5.5 : 3.5) * Math.min(1.2, w), y: 0, tilt: 0, tv: -(e.lheavy ? 9 : 6), side: rnd(-.6, .6) }; e.deadT = .95; e.dmax = .95; }
+function flingCorpse(e) { /* build 0048: kills go flying, away from the hero; heavy hits and crits throw them further. Bosses fall where they stand */ const L = typeof ENL !== 'undefined' && !e.dummy ? ENL.death(e) : null; /* build 0148: a picked look's death plays for its own length; some fall their own way instead of flying */ if (L && (e.boss || L.noFling)) { e.deadT = e.dmax = L.dead; return; } if (e.boss || e.dummy || typeof document === 'undefined') return; let dx = e.hdx, dz = e.hdz; if (dx === undefined) { const x = e.x - P.x, z = e.z - P.z, l = Math.hypot(x, z) || 1; dx = x / l; dz = z / l; }
+  const w = e.arch === 'brute' || e.elite ? .55 : e.arch === 'swarm' ? 1.3 : 1, sp = (e.lheavy ? 9 : 5.5) * w * rnd(.85, 1.15); e.fly = { vx: dx * sp, vz: dz * sp, vy: (e.lheavy ? 5.5 : 3.5) * Math.min(1.2, w), y: 0, tilt: 0, tv: -(e.lheavy ? 9 : 6), side: rnd(-.6, .6) }; e.deadT = e.dmax = L ? L.dead : .95; }
 function flyStep(e, dt) { const f = e.fly; if (!f) return; if (!moveEnt(e, f.vx * dt, f.vz * dt, .3)) { f.vx *= -.25; f.vz *= -.25; } f.vy -= 22 * dt; f.y += f.vy * dt; if (f.y <= 0) { if (f.vy < -4 && !f.thud) { f.thud = 1; burst(e.x, .2, e.z, 0x8a7a60, 6, 3); } f.y = 0; f.vy = Math.abs(f.vy) * .25; f.vx *= .55; f.vz *= .55; if (f.vy < 1) f.vy = 0; } f.tilt = Math.max(-1.5, f.tilt + f.tv * dt); if (f.tilt <= -1.5) f.tv = 0; }
 function xpPf(lvl) { const diff = G.hero.level - lvl; return diff > 4 ? Math.max(.1, 1 - (diff - 4) * .15) : 1; }
 function xpFor(lvl, mult, elite) { return 22 * Math.pow(1.13, lvl) * mult * (elite === 1 ? 3 : elite === 2 ? 6 : 1) * xpPf(lvl); }
@@ -2585,6 +2585,7 @@ function bossModel(e, sc, y, tilt, ox, oz, em, wind, at) {
   return true;
 }
 function drawEnemy(e) {
+  if (typeof ENL !== 'undefined' && ENL.draw(e)) return; /* build 0148: Lee's picked enemy looks (enemylook.js) */
   if (e.dummy) { const col = GLX.col, wood = col(0x5a4028), straw = col(0xc8a868), sack = col(0xb89a72), rope = col(0x8a6a3a), red = col(0xb03a2a), wht = col(0xe8e0cc), fl = e.flash > 0 ? .6 : 0, w = (e.wob || 0), tx = Math.sin(G.time * 22) * w * .22, tz = Math.cos(G.time * 17) * w * .12;
     GLX.base(BM, e.x, 0, e.z, Math.PI, 1); const q = (g, ox, oy, oz, sx, sy, sz, c, m, em) => GLX.part('dyn', g, BM, 0, .2, 0, tx, 0, tz, ox, oy, oz, sx, sy, sz, c, (em || 0) + fl * .5, 1, m || 0);
     GLX.part('dyn', 'cyl', BM, 0, 0, 0, 0, 0, 0, 0, .1, 0, 1.1, .2, 1.1, col(0x4a3a2a), 0, 1, 3); q('cyl', 0, .9, 0, .14, 1.9, .14, wood, 3); q('rbox', 0, 1.75, 0, 1.6, .12, .12, wood, 3);
