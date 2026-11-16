@@ -144,7 +144,7 @@ const SFX = (() => {
   // background music (build 0020): a driving rock loop written on the fly. Drums, distorted power chords, bass and a lead riff in E minor.
   let mBus = null, gBus = null, mLvl = .4, mNext = 0, mStep = 0, mOn = true, bossLv = 0, fadeTo = 0;
   const MF = n => 82.41 * Math.pow(2, n / 12), RIFF = [0, 0, -4, -2, 0, 0, 3, 5], PENT = [0, 3, 5, 7, 10, 12, 15, 17], BPM = 138;
-  const mVol = () => (mute || !mOn ? 0 : mLvl * master * .5 * (fBuf && !bossLv ? 1 - .9 * Math.min(1, fLvl * 1.6) : 1));
+  const mVol = () => (mute || !mOn ? 0 : mLvl * master * .5 * (fBuf && !bossLv ? 1 - .9 * Math.min(1, fLvl * 1.6) : 1) * (bossLv ? (bossLv > 1 ? .63 : .73) : 1)); /* build 0125 (Lee, Nov 16: "dont increase the volume while the end boss is near by"): the boss theme played about 3 dB louder than the floor's own music, and about 4 dB louder once the boss is enraged; it is turned down to match */
   /* build 0051: fight music. "Battle Theme A" by cynicmusic (CC0) fades in over the area tune when a fight starts, and its sound opens up as the fight grows */
   let fBuf = null, fSrc = null, fG = null, fLp = null, fLvl = 0, fGo = false, fT0 = 0, fOff = 0;
   function loadFight() { if (fGo || !ac) return; fGo = true; getBuf('sfx/battle.mp3', b => { fBuf = b; }); }
