@@ -1904,17 +1904,25 @@ const TOWN_USE = { vendor: 1, stash: 1, altar: 1, tportal: 1, atlas: 1 };
 /* build 0098 (Lee's playtest): the whole Trader stall, roof included, and every service's floating name can be clicked */
 function hitTownObj(o, k) {
   const lb = GLX.toScreen(o.x, 3.6, o.z); if (lb && Math.abs(lb[0] - IN.sx) < 70 * k && IN.sy > lb[1] - 16 * k && IN.sy < lb[1] + 28 * k) return true;
-  if (o.kind !== 'vendor') return false; const q = [[-2.1, -3.3], [2.1, -3.3], [2.1, .1], [-2.1, .1]].map(c => GLX.toScreen(o.x + c[0], 2.9, o.z + c[1])); if (q.some(v => !v)) return false;
-  let inside = false; for (let i = 0, j = 3; i < 4; j = i++) { const a = q[i], b = q[j]; if ((a[1] > IN.sy) !== (b[1] > IN.sy) && IN.sx < (b[0] - a[0]) * (IN.sy - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside; } return inside;
+  if (o.kind !== 'vendor') return false; /* build 0124: the roof outline and the floor outline both count, so the whole stall, top to bottom, can be clicked */
+  for (const hy of [2.9, 1.45, 0]) { const q = [[-2.1, -3.3], [2.1, -3.3], [2.1, .1], [-2.1, .1]].map(c => GLX.toScreen(o.x + c[0], hy, o.z + c[1])); if (q.some(v => !v)) continue;
+  let inside = false; for (let i = 0, j = 3; i < 4; j = i++) { const a = q[i], b = q[j]; if ((a[1] > IN.sy) !== (b[1] > IN.sy) && IN.sx < (b[0] - a[0]) * (IN.sy - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside; } if (inside) return true; } return false;
+}
+/* build 0124 (Lee: "make target hit boxes more forgiving and larger"): a target is picked anywhere along its body, from its feet
+   to its head, with a margin that grows with how big it looks on screen, and a near miss goes to the closest target. */
+function pickDist(x, z, y0, y1, rw, minPx) {
+  const a = GLX.toScreen(x, y0, z), b = GLX.toScreen(x, y1, z); if (!a || !b) return 1e9; const m = GLX.toScreen(x, (y0 + y1) / 2, z), e = GLX.toScreen(x + rw, (y0 + y1) / 2, z);
+  const r = Math.max(minPx, m && e ? Math.hypot(e[0] - m[0], e[1] - m[1]) : 0), vx = b[0] - a[0], vy = b[1] - a[1], L = vx * vx + vy * vy, t = L > 0 ? Math.max(0, Math.min(1, ((IN.sx - a[0]) * vx + (IN.sy - a[1]) * vy) / L)) : 0;
+  return Math.hypot(IN.sx - a[0] - vx * t, IN.sy - a[1] - vy * t) / r;
 }
 function computeHover() {
   const Z = G.zone, k = IN.touch ? 1.7 : 1; G.hover = null; G.hoverObj = null; let best = 1e9;
-  for (const e of G.ents) { if (!e.alive || !e.awake) continue; const sp = GLX.toScreen(e.x, e.sc * .9, e.z); if (!sp) continue; const d = Math.hypot(sp[0] - IN.sx, sp[1] - IN.sy); if (d < (26 * e.sc + 14) * k && d < best) { best = d; G.hover = e; } }
-  if (!G.hover) for (const o of Z.objs) { if (o.used) continue; const sp = GLX.toScreen(o.x, 1, o.z); if (sp && Math.hypot(sp[0] - IN.sx, sp[1] - IN.sy) < 44 * k) G.hoverObj = o; else if (G.inTown && TOWN_USE[o.kind] && hitTownObj(o, k)) G.hoverObj = o; }
+  for (const e of G.ents) { if (!e.alive || !e.awake) continue; const d = pickDist(e.x, e.z, 0, e.sc * 1.7, .7 * e.sc + .4, (30 * e.sc + 20) * k); if (d < 1 && d < best) { best = d; G.hover = e; } }
+  if (!G.hover) { let ob = 1e9; for (const o of Z.objs) { if (o.used) continue; let d = pickDist(o.x, o.z, 0, 2.2, 1.2, 54 * k); if (o.kind === 'vendor') d = Math.min(d, pickDist(o.x, o.z - 1.1, 0, 2.6, .9, 40 * k)); /* the Trader himself, feet to head */ if (d < 1 && d < ob) { ob = d; G.hoverObj = o; } else if (!G.hoverObj && G.inTown && TOWN_USE[o.kind] && hitTownObj(o, k)) G.hoverObj = o; } }
   /* build 0046: the floor's portal is easy to click or tap anywhere on its arch or glow */
   for (const o of Z.objs) { if (o.kind !== 'portal' && o.kind !== 'pback') continue; const c = GLX.toScreen(o.x, 2.6, o.z), e = GLX.toScreen(o.x + 3.2, 2.6, o.z); if (!c || !e) continue; const r = Math.max(50, Math.hypot(e[0] - c[0], e[1] - c[1])) * (IN.touch ? 1.15 : 1), d = Math.hypot((c[0] - IN.sx) * .9, (c[1] - IN.sy) * .62);
-    if (d < r && (!G.hover || best > 22 * k)) { G.hover = null; G.hoverObj = o; } }
-  G.hoverPet = false; if (!G.hover && !G.hoverObj && PET.init && !(PET.away > 0) && G.set.pet !== false && !P.dead) { const sp = GLX.toScreen(PET.x, .5, PET.z); if (sp && Math.hypot(sp[0] - IN.sx, sp[1] - IN.sy) < 30 * k) G.hoverPet = true; } /* build 0075: the pet can be clicked */
+    if (d < r && (!G.hover || best > .45)) { G.hover = null; G.hoverObj = o; } }
+  G.hoverPet = false; if (!G.hover && !G.hoverObj && PET.init && !(PET.away > 0) && G.set.pet !== false && !P.dead) { const sp = GLX.toScreen(PET.x, .5, PET.z); if (sp && Math.hypot(sp[0] - IN.sx, sp[1] - IN.sy) < 40 * k) G.hoverPet = true; } /* build 0075: the pet can be clicked */
 }
 function autoTarget() { let b = null, bd = 15; for (const e of G.ents) { if (!e.alive || !e.awake) continue; const d = Math.hypot(e.x - P.x, e.z - P.z); if (d < bd) { bd = d; b = e; } } return b ? [b.x, b.z] : [P.x + Math.sin(P.rot) * 6, P.z + Math.cos(P.rot) * 6]; }
 

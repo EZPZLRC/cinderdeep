@@ -644,8 +644,9 @@ function forgeBox(it) { const F = G.lastForge; if (!F || F.it !== it) return '';
     IN.touch = touch; pos(e);
     if (touch || e.button === 0) {
       if (G.camReady) { const g = GLX.groundAt(IN.sx, IN.sy); if (isFinite(g[0]) && isFinite(g[1])) { IN.gx = g[0]; IN.gz = g[1]; } computeHover(); }
-      IN.lmb = true; IN.lmbFresh = true; P.pickNow = null; const pad = touch ? 10 : 0;
+      IN.lmb = true; IN.lmbFresh = true; P.pickNow = null; const pad = touch ? 14 : 5; /* build 0124: a little more room around item names */
       for (const l of G.labels) if (IN.sx >= l.x - pad && IN.sx <= l.x + l.w + pad && IN.sy >= l.y - pad && IN.sy <= l.y + l.h + pad) { P.pickNow = l.d; break; }
+      if (!P.pickNow && !G.hover && G.camReady) { let bd = (touch ? 34 : 24); for (const dr of G.drops) { if (!dr.item || dr.item.rar < G.hero.filter) continue; const sp = GLX.toScreen(dr.x, .3, dr.z); if (!sp) continue; const d = Math.hypot(sp[0] - IN.sx, sp[1] - IN.sy); if (d < bd) { bd = d; P.pickNow = dr; } } } /* build 0124: clicking the item lying on the ground picks it up too, not only its name */
     } else if (e.button === 2) IN.rmb = true;
   });
   const up = e => { if (e.pointerId === joyId && joyId !== null) { const tap = e.type === 'pointerup' && joy0.far < 9 && e.timeStamp - joy0.t < 260, x = joy0.x0, y = joy0.y0; joyEnd(); if (tap && G.state === 'play') tapAt(x, y); return; } if (e.pointerType === 'touch') { tch.delete(e.pointerId); if (tch.size < 2) pinch = null; if (e.pointerId === mvId) { mvId = null; IN.lmb = false; IN.sx = IN.sy = -9999; } return; } if (e.button === 0) IN.lmb = false; else if (e.button === 2) IN.rmb = false; };
