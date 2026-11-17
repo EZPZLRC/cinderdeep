@@ -1421,6 +1421,10 @@ function botStep(dt) {
   for (const a of G.areas) if (a.owner === 'e' && !a.done && inArea(a, P.x, P.z, .8)) { const o = areaOut(a, P.x, P.z); P.atk = null; P.move = [P.x + o[0] * 4, P.z + o[1] * 4]; BOT.dodge = .2; if (a.hvy && a.delay - a.t < .45 && !(P.dodgeCd > 0)) dodge(P.x + o[0] * 4, P.z + o[1] * 4); return false; }
   if (BOT.dodge > 0) { BOT.dodge -= dt; return false; }
   let tgt = null, bd = 17, goal = null, act = null; for (const e of G.ents) { if (!e.alive || !e.awake || e.dummy) continue; const d = Math.hypot(e.x - P.x, e.z - P.z); if (d < bd) { bd = d; tgt = e; } }
+  /* build 0153 (Lee: "Yes, fixes 1 to 3"; play test: auto-play walked away from the world boss at 23% and again at 4%, off to a shrine): once auto-play is fighting a boss
+     it stays on that boss until it dies, even when the boss charges off or steps back out of the usual 17 range, and it picks up no loot and uses no shrine meanwhile */
+  if (BOT.boss && (!BOT.boss.alive || !G.ents.includes(BOT.boss) || Math.hypot(BOT.boss.x - P.x, BOT.boss.z - P.z) > 45)) BOT.boss = null;
+  if (tgt && tgt.boss) BOT.boss = tgt; else if (!tgt && BOT.boss) { tgt = BOT.boss; bd = Math.hypot(tgt.x - P.x, tgt.z - P.z); }
   if (tgt) {
     const clear = los(P.x, P.z, tgt.x, tgt.z), bs = talSk(h.bar[0]) || SKILLS.cleave;
     if (bs.range > 5 && bd < 4 && (BOT.kite || 0) <= 0 && tgt.arch !== 'caster' && !tgt.boss) BOT.kite = .7;
@@ -1443,7 +1447,10 @@ function botStep(dt) {
   }
   if (BOT.t <= 0 || !BOT.path) {
     BOT.t = .35; const f = botField();
-    if (!goal) { let bdist = 1e9, be = null; for (const e of G.ents) { if (!e.alive || e.dummy) continue; const dc = f.dist[cellOf(e.x, e.z)]; if (dc >= 0 && dc < bdist) { bdist = dc; be = e; } } if (be) goal = [be.x, be.z]; else { const po = G.zone.objs.find(o => o.kind === 'portal' && !o.used); if (po) { goal = [po.x, po.z]; act = () => { po.gone = true; interact(po); }; } } }
+    /* build 0153 (same play test: with the world boss up, auto-play went to it instead of the floor's guardian, The Rootmother): with nothing to fight close by it now heads for
+       the floor's own guardian, the quest target, while it lives. It never walks off to find the world boss; it still fights it when the world boss comes to it */
+    if (!goal) { const fb = G.ents.find(e => e.alive && e.boss && !e.wb && !e.dummy && f.dist[cellOf(e.x, e.z)] >= 0); if (fb) goal = [fb.x, fb.z]; }
+    if (!goal) { let bdist = 1e9, be = null; for (const e of G.ents) { if (!e.alive || e.dummy || e.wb) continue; const dc = f.dist[cellOf(e.x, e.z)]; if (dc >= 0 && dc < bdist) { bdist = dc; be = e; } } if (be) goal = [be.x, be.z]; else { const po = G.zone.objs.find(o => o.kind === 'portal' && !o.used); if (po) { goal = [po.x, po.z]; act = () => { po.gone = true; interact(po); }; } } }
     if (!goal) { BOT.path = null; return false; }
     const g = cellOf(goal[0], goal[1]), out = [goal]; if (f.prev[g] >= 0) { let k = g; while (k !== f.s) { k = f.prev[k]; if (k !== f.s) out.push([(k % GW + .5) * CS, ((k / GW | 0) + .5) * CS]); } } BOT.path = out.reverse(); BOT.act = act; BOT.goal = goal;
   }
