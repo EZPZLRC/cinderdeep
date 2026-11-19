@@ -457,6 +457,10 @@ body.dockI #dock{display:grid;grid-template-columns:repeat(4,auto);align-items:e
 #more{position:fixed;right:136px;bottom:30px;z-index:31;display:flex;flex-direction:column;gap:4px;padding:6px;background:rgba(10,10,13,.94);border:1px solid #4a4f5b;border-radius:5px;box-shadow:0 6px 22px #000}
 #more button{min-width:170px;box-shadow:none}#more #bInvite{color:#9effa8}#more #bLeave{color:#ff9a8a}#more #bMenu{margin-top:4px;border-color:#5a3a34}
 #more #bAuto,#more #bSpd{display:none!important}
+/* build 0156: red dot on the Bag button while the bag holds an item that is better than what you wear */
+#dock #bInv,#tbtns #tBag{position:relative}
+#dock #bInv.upg::after,#tbtns #tBag.upg::after{content:"";position:absolute;top:-4px;right:-4px;width:11px;height:11px;border-radius:50%;background:#ff3b30;border:1.5px solid #14100b;box-shadow:0 0 7px #ff3b30;pointer-events:none}
+#tbtns #tBag.upg::after{top:3px;right:3px;width:13px;height:13px}
 @media (pointer:coarse){#dock #bInv,#dock #bSkl,#dock #bTown{display:none}}
 body.tj #dock #bInv,body.tj #dock #bSkl,body.tj #dock #bTown{display:none}
 @media (pointer:coarse){#dock{right:auto;bottom:auto;left:calc(8px + env(safe-area-inset-left));top:calc(46px + env(safe-area-inset-top))}#dock #bMore{min-width:0;width:40px;height:40px;padding:0;border-radius:50%;font-size:0;justify-content:center}#dock #bMore::before{font-size:18px;width:auto;height:auto}#more{right:auto;bottom:auto;left:calc(8px + env(safe-area-inset-left));top:calc(92px + env(safe-area-inset-top));max-height:calc(100vh - 110px);overflow:auto}#more button{padding:10px 12px;font-size:13px}}
@@ -525,9 +529,9 @@ body.tj #dock{z-index:25}@media (pointer:coarse){#dock{z-index:25}} /* phones: o
 #bTown.tbusy,#tTown.tbusy{opacity:.42!important;filter:grayscale(1)!important;cursor:not-allowed}/* build 0122: enemies too close to leave */
 .srow2.poor{opacity:.42;filter:grayscale(.9)}.srow2.poor:hover{border-color:#3a3226}/* build 0127: items you cannot afford */
 </style>
-<link rel="stylesheet" href="css/oathbyte.css?v=0155">
-<link rel="stylesheet" href="css/keyart.css?v=0155">
-<link rel="stylesheet" href="css/advisor.css?v=0155">
+<link rel="stylesheet" href="css/oathbyte.css?v=0156">
+<link rel="stylesheet" href="css/keyart.css?v=0156">
+<link rel="stylesheet" href="css/advisor.css?v=0156">
 </head>
 <body>
 <canvas id="gl"></canvas><canvas id="ov"></canvas>
@@ -634,17 +638,17 @@ body.tj #dock{z-index:25}@media (pointer:coarse){#dock{z-index:25}} /* phones: o
 @media (max-width:520px){.ifoot button.act2,.ifoot.sbar button.act2{width:170px;height:44px;font-size:10px!important;letter-spacing:.03em!important}}/* build 0133: Salvage all and the pet's whole-bag button are the same size */
 #bLee.on,#tLee.on{border-color:#7ad06a!important;box-shadow:0 0 12px rgba(120,220,100,.45)!important;color:#c8ffb8}/* build 0135: hidden auto-play, only for the name Lee */
 </style>
-<script src="js/move.js?v=0155"></script>
-<script src="js/models.js?v=0155"></script>
-<script src="js/gl.js?v=0155"></script>
-<script src="js/data.js?v=0155"></script>
-<script src="js/cg.js?v=0155"></script>
-<script src="js/icons.js?v=0155"></script>
-<script src="js/game.js?v=0155"></script>
-<script src="js/fxlook.js?v=0155"></script>
-<script src="js/enemylook.js?v=0155"></script>
-<script src="js/net.js?v=0155"></script>
-<script src="js/ui.js?v=0155"></script>
-<script src="js/advisor.js?v=0155"></script>
+<script src="js/move.js?v=0156"></script>
+<script src="js/models.js?v=0156"></script>
+<script src="js/gl.js?v=0156"></script>
+<script src="js/data.js?v=0156"></script>
+<script src="js/cg.js?v=0156"></script>
+<script src="js/icons.js?v=0156"></script>
+<script src="js/game.js?v=0156"></script>
+<script src="js/fxlook.js?v=0156"></script>
+<script src="js/enemylook.js?v=0156"></script>
+<script src="js/net.js?v=0156"></script>
+<script src="js/ui.js?v=0156"></script>
+<script src="js/advisor.js?v=0156"></script>
 <div id="mtags"></div></body>
 </html>

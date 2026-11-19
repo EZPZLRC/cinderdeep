@@ -763,6 +763,12 @@ function forgeBox(it) { const F = G.lastForge; if (!F || F.it !== it) return '';
         else { if (e.classList.contains('hide') || getComputedStyle(e).display === 'none') continue; q = e.getBoundingClientRect(); if (!q.height) continue; } if (q.bottom + 6 > r.top && q.top < r.bottom && q.left < r.right && q.right > r.left) return true; } return false; };
     if (!keep) B.classList.remove('dockG', 'dockI'); else if (B.classList.contains('dockI')) return; if (!hit()) return; B.classList.add('dockG'); if (!hit()) return; B.classList.remove('dockG'); B.classList.add('dockI'); }
   addEventListener('resize', () => dockFit(false)); setInterval(() => { if (G.state === 'play') dockFit(true); }, 700); /* while playing it only ever folds further (say when the World boss button appears); a resize starts over */
+  /* build 0156 (Lee, Nov 19: "put a red indicator dot on the bag when there is a better item in inventory"): the Bag button (and the round Bag button on phones) gets a red dot
+     while any item in the bag has the green up arrow, the same verdict() the bag itself uses. Checked once a second, and only worked out again when the bag, the worn gear, a forge level or the hero's level changed. */
+  { const ids = new WeakMap(); let idN = 0, sig = '', has = false; const id = it => { if (!it) return 0; let n = ids.get(it); if (!n) ids.set(it, n = ++idN); return n + (it.up ? '^' + it.up : ''); };
+    const bagDot = () => { const h = G.hero, play = G.state === 'play' && h && h.inv; if (play && P.stats) { const s = h.level + '|' + h.inv.map(id).join() + '|' + Object.keys(h.eq || {}).map(k => k + id(h.eq[k])).join(); if (s !== sig) { sig = s; has = h.inv.some(it => it && verdict(it) > 0); } }
+      for (const b of [$('bInv'), $('tBag')]) if (b) { const on = !!(play && has); b.classList.toggle('upg', on); if (b.id === 'bInv') b.title = on ? 'Bag (I): an item here is better than what you wear' : 'Bag (I)'; } };
+    setInterval(bagDot, 1000); }
   $('build').textContent = 'Build ' + BUILD; document.title = 'OathByte · build ' + BUILD;
   // build 0073 (Lee): "Build 0073 · updated 12 min ago", timed by the server, so it is right on every device, and it ticks up while the page is open
   { let upAt = null; const ago = ms => { const m = Math.floor(ms / 60000); if (m < 1) return 'just now'; if (m < 60) return m + ' min ago'; const h = Math.floor(m / 60); if (h < 48) return h + (h === 1 ? ' hour ago' : ' hours ago'); const d = Math.floor(h / 24); return d + ' days ago'; };
