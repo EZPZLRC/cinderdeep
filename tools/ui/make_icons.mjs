@@ -11,7 +11,10 @@ const js = `/* build 0047: high-res interface and skill icons. Shapes from game-
 const ICONS = (() => {
   const D = ${JSON.stringify(D)};
   const SK = ${JSON.stringify(SK)}, UI = ${JSON.stringify(UI)};
-  const url = n => 'url("data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="' + D[n] + '"/></svg>') + '")';
+  /* build 0155: hand-drawn gold coin and shard crystal for the currency counters (even-odd fill cuts the coin rim and the crystal facet) */
+  const EO = {"oath-coin":"M36 256a220 220 0 1 0 440 0a220 220 0 1 0-440 0zM76 256a180 180 0 1 0 360 0a180 180 0 1 0-360 0zM98 256a158 158 0 1 0 316 0a158 158 0 1 0-316 0zM256 166l58 90l-58 90l-58-90z","oath-shard":"M256 20L352 140L316 470L196 470L160 140zM256 64L270 150L256 420L242 150zM120 230L170 300L150 470L96 470L78 300zM392 262L436 320L420 470L372 470L352 320z"};
+  Object.assign(D, EO);
+  const url = n => 'url("data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path' + (EO[n] ? ' fill-rule="evenodd"' : '') + ' d="' + D[n] + '"/></svg>') + '")';
   let css = ''; for (const n in D) css += '.gi-' + n + '{-webkit-mask-image:' + url(n) + ';mask-image:' + url(n) + '}';
   for (const k in UI) css += '.giv-' + k + '{--gi:' + url(UI[k]) + '}';
   try { const st = document.createElement('style'); st.id = 'giCss'; st.textContent = css; document.head.appendChild(st); } catch (e) { }
@@ -21,6 +24,8 @@ const ICONS = (() => {
     skill(id) { const n = SK[id]; if (!n) return ''; const sk = typeof SKILLS !== 'undefined' && SKILLS[id]; return span(n, 'el-' + ((sk && EL[sk.el]) || 'util')); },
     ui(k, tone) { const n = UI[k]; return n ? span(n, 'el-' + (tone || 'util')) : ''; },
     icon(n, tone) { return D[n] ? span(n, 'el-' + (tone || 'util')) : ''; },
+    gold() { return '<span class="cur">' + span('oath-coin', 'el-gold') + '</span>'; },
+    shards() { return '<span class="cur">' + span('oath-shard', 'el-cold') + '</span>'; },
     has: id => !!SK[id]
   };
 })();

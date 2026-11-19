@@ -348,9 +348,9 @@ function makeItem(ilvl, slot, rar, baseName) {
   if (rar >= 3) { { const al = AFF_ALIAS[slot] || slot, ps = Object.keys(POWERS).filter(p => POWERS[p].slots.includes(slot) || POWERS[p].slots.includes(al)); it.power = pick(ps.length ? ps : Object.keys(POWERS)); } it.name = POWERS[it.power].n; }
   it.sd = (Math.random() * 2147483646 | 0) + 1; const L = itemLook(it), r = L.r;
   if (rar >= 3) it.name = it.name + ', ' + I_EPI[r() * I_EPI.length | 0];
-  else if (rar === 2) it.name = RN1[r() * RN1.length | 0] + RN2[r() * RN2.length | 0].toLowerCase() + ', ' + L.mat[0] + ' ' + it.base;
+  else if (rar === 2) it.name = RN1[r() * RN1.length | 0] + RN2[r() * RN2.length | 0].toLowerCase() + ', ' + matBase(L.mat[0], it.base);
   else if (rar === 1) it.name = MAGPRE[r() * MAGPRE.length | 0] + ' ' + it.base + ' of ' + I_OF[r() * I_OF.length | 0];
-  else it.name = I_WEAR[r() * I_WEAR.length | 0] + ' ' + L.mat[0] + ' ' + it.base;
+  else it.name = I_WEAR[r() * I_WEAR.length | 0] + ' ' + matBase(L.mat[0], it.base);
   return it;
 }
 // build 0074 (security): could this item have come out of the game? The highest roll at its item level, rarity and upgrades,
@@ -367,6 +367,9 @@ function itemLegit(it, maxIlvl) {
   if (it.power !== undefined && (rar < 3 || !POWERS[it.power])) return false;
   return true;
 }
+/* build 0155 (play test: "Faded Boiled leather Leather Jerkin"): the material's last word is dropped when the base name already starts with it,
+   so it reads "Boiled Leather Jerkin" and "Silk Robe" instead of "Silk Silk Robe" */
+function matBase(m, b) { const w = m.split(' '), last = w[w.length - 1].toLowerCase(); if ((b || '').split(' ')[0].toLowerCase() !== last) return m + ' ' + b; w.pop(); return (w.length ? w.join(' ') + ' ' : '') + b; }
 // what an item is made of and where it came from, all from its seed, so no two are alike
 function itemKind(it) { const b = it.base || ''; return it.slot === 'amulet' || it.slot === 'ring' || /Circlet|Charm|Orb/.test(b) ? 'jewel' : /Leather|Hood|Quiver|Belt/.test(b) ? 'leather' : /Silk|Sash|Robe|Tome/.test(b) ? 'cloth' : it.wt === 'bow' || it.wt === 'staff' ? 'wood' : 'metal'; }
 function itemLook(it) {
@@ -506,7 +509,7 @@ function loadGame(cls) {
     if (h && h.v === 1 && h.inv && h.eq && CLASSES[h.cls] && h.cls === cls) {
       let m = 0; for (const it of h.inv) if (it) m = Math.max(m, it.id); for (const k in h.eq) m = Math.max(m, h.eq[k].id); itemId = Math.max(itemId, m + 1);
       if (h.bagV !== 2 || h.inv.length !== BAG_N) { const old = h.inv.filter(x => x).sort((a, b) => b.rar - a.rar); h.inv = new Array(BAG_N).fill(null); for (const it of old) if (!bagPut(h.inv, it)) h.gold += itemValue(it); h.bagV = 2; }
-      const rd = it => { if (it && it.aff) for (const a of it.aff) a.v = Math.max(1, Math.round(a.v)); }; h.inv.forEach(rd); for (const k in h.eq) rd(h.eq[k]);
+      const rd = it => { if (it && it.aff) for (const a of it.aff) a.v = Math.max(1, Math.round(a.v)); if (it && it.name) it.name = it.name.replace(/\b([A-Za-z]+) (?=([A-Za-z]+)\b)/g, (w, x, y) => x.toLowerCase() === y.toLowerCase() ? '' : w); }; h.inv.forEach(rd); /* build 0155: items already found keep their name but lose a doubled word ("Boiled leather Leather Jerkin" -> "Boiled Leather Jerkin") */ for (const k in h.eq) rd(h.eq[k]);
       if (h.allyEq) { for (const k in h.allyEq) { const it = h.allyEq[k]; if (!it) continue; rd(it); if (bagPut(h.inv, it)) continue; const st = G.stash, si = st ? st.indexOf(null) : -1; if (si >= 0) { st[si] = it; try { localStorage.setItem(SAVE_KEY + '_stash', JSON.stringify(st)); } catch (e) { } } else h.gold += itemValue(it); } delete h.allyEq; } /* 0031: gear the Sellsword wore comes back to you (bag, then stash) */
       if (h.eq.ring2) { const r2 = h.eq.ring2; delete h.eq.ring2; if (!h.eq.ring1) h.eq.ring1 = r2; else if (!bagPut(h.inv, r2)) h.gold += itemValue(r2); } // the second ring slot is gone: the ring goes back in the bag
       applyKit(h);

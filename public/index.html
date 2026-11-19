@@ -85,7 +85,9 @@ input{font:inherit;color:#f3ead6;background:#14110c;border:1px solid #8a6a3a;bor
 /* build 0105: forged items carry an ember glow that builds from +1 to +5 */.it.f1::before,.it.f2::before,.it.f3::before,.it.f4::before,.it.f5::before{content:"";position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;z-index:0}.it.f1::before{box-shadow:inset 0 -6px 8px -4px #ff7a2a66}.it.f2::before{box-shadow:inset 0 -8px 10px -4px #ff7a2a88,0 0 3px #ff8a3a55}.it.f3::before{box-shadow:inset 0 -10px 12px -4px #ff7a2aaa,0 0 5px #ff8a3a77;border:1px solid #ff9a4a55}.it.f4::before{box-shadow:inset 0 -12px 14px -4px #ff7a2acc,0 0 7px #ff8a3a99;border:1px solid #ffa85a88;animation:fgl 2.4s ease-in-out infinite}.it.f5::before{box-shadow:inset 0 -14px 16px -3px #ff7a2aee,inset 0 0 8px #ffb04a66,0 0 10px #ff8a3acc;border:1px solid #ffc070;animation:fgl 1.8s ease-in-out infinite}@keyframes fgl{50%{opacity:.6}}.it.f1 svg,.it.f2 svg,.it.f3 svg,.it.f4 svg,.it.f5 svg{position:relative;z-index:1}@media (prefers-reduced-motion:reduce){.it.f4::before,.it.f5::before{animation:none}}.odds .lucky{color:#ffb060;font-size:.92em;margin-top:2px}
 
 .ghost{position:fixed;width:40px;height:40px;pointer-events:none;z-index:60;opacity:.9}
-.ifoot{display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap;font-size:13px}.gold{color:#ffd84a}.shards{color:#9ad0ff}#scrapBox{margin-left:auto;border:1px dashed #8a6a3a;border-radius:4px;padding:6px 10px;color:#b9b09a;font-size:12px}.ifoot button{padding:6px 10px;font-size:12px}
+.ifoot{display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap;font-size:13px}
+/* build 0155: coin and shard icons by every amount */
+.cur{display:inline-flex;vertical-align:-.22em;margin-right:.22em}.cur .gw{width:1.15em;height:1.15em}#top .g{display:flex;gap:12px;align-items:center}#top .g .tsh{color:#9ad0ff}button .cur .gw{width:1em;height:1em}.gold{color:#ffd84a}.shards{color:#9ad0ff}#scrapBox{margin-left:auto;border:1px dashed #8a6a3a;border-radius:4px;padding:6px 10px;color:#b9b09a;font-size:12px}.ifoot button{padding:6px 10px;font-size:12px}
 #shop{display:grid;gap:6px;margin-top:8px}.srow2{display:flex;gap:10px;align-items:center;border:1px solid #3a3226;border-radius:4px;padding:6px;cursor:pointer}.srow2:hover{border-color:#8a6a3a}.srow2 .it{width:var(--c);height:var(--c);flex:none}.srow2 .it.tall{height:calc(var(--c)*1.5)}
 .abox{border:1px solid #3a3226;border-radius:4px;padding:8px;margin-top:8px}.abox .srow2{border:none;padding:0;cursor:default;margin-bottom:6px}.aline{display:block;width:100%;text-align:left;margin-top:5px;color:#a8c0ff;font-size:13px;padding:7px 10px}.aline.on{border-color:#ffd84a;background:#2a2114}.aline:disabled,button:disabled{opacity:.4;cursor:default}
 .odds{border:1px solid #6a5636;border-radius:4px;padding:8px;margin:8px 0;background:#17130d}
@@ -200,7 +202,8 @@ body.tj #build{left:6px;right:auto;bottom:3px}
 @media (max-width:520px){#pick .pk2{gap:8px}.pcard{padding:10px 6px}.pcard .pi{font-size:32px}}
 #goals{position:fixed;left:14px;top:118px;width:250px;background:rgba(10,9,7,.78);border:1px solid var(--edge);border-radius:4px;padding:8px 10px;font-size:13px;line-height:1.5;pointer-events:none;z-index:7}
 #goals span{display:block;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold2);margin-bottom:2px}#goals div{color:#a99c80}#goals .ok{color:#7fd08a;text-decoration:line-through;text-decoration-color:#3f7a46}#goals .now{color:#fff;font-weight:600}#goals .how{margin-top:6px;padding-top:6px;border-top:1px solid var(--edge);color:#ffe9b0;font-size:12.5px}#goals .bl{margin-top:4px;color:#9fd8ff;font-size:11.5px}
-#deathBy{font-size:15px;color:#e8dcc0;margin-top:-6px;text-align:center;padding:0 16px}#deathTip{font-size:13px;color:#a99c80;max-width:420px;text-align:center;padding:0 16px;font-style:italic}
+#deathBy{font-size:15px;color:#e8dcc0;margin-top:-6px;text-align:center;padding:0 16px}#deathKeep{font-size:13px;color:#9fe0a0;text-align:center;padding:0 16px} /* build 0155 */
+#deathTip{font-size:13px;color:#a99c80;max-width:420px;text-align:center;padding:0 16px;font-style:italic}
 @media (max-width:760px) and (orientation:portrait){#goals{top:auto;bottom:calc(264px + env(safe-area-inset-bottom));left:8px;width:min(230px,58vw);font-size:12px}body.tj #hints{bottom:auto;top:150px;right:150px}body.tj #chatlog{top:210px}}
 @media (max-height:480px){#goals{top:150px;left:8px;width:230px;font-size:11.5px;line-height:1.35;padding:5px 8px}#goals .bl,#goals span,#goals div:not(.now):not(.how){display:none}#goals .how{border:0;margin:0;padding:0}body.tj #chatlog{display:none}}
 /* ---- build 0008: no auto-play, and a much lighter screen on phones ---- */
@@ -522,9 +525,9 @@ body.tj #dock{z-index:25}@media (pointer:coarse){#dock{z-index:25}} /* phones: o
 #bTown.tbusy,#tTown.tbusy{opacity:.42!important;filter:grayscale(1)!important;cursor:not-allowed}/* build 0122: enemies too close to leave */
 .srow2.poor{opacity:.42;filter:grayscale(.9)}.srow2.poor:hover{border-color:#3a3226}/* build 0127: items you cannot afford */
 </style>
-<link rel="stylesheet" href="css/oathbyte.css?v=0154">
-<link rel="stylesheet" href="css/keyart.css?v=0154">
-<link rel="stylesheet" href="css/advisor.css?v=0154">
+<link rel="stylesheet" href="css/oathbyte.css?v=0155">
+<link rel="stylesheet" href="css/keyart.css?v=0155">
+<link rel="stylesheet" href="css/advisor.css?v=0155">
 </head>
 <body>
 <canvas id="gl"></canvas><canvas id="ov"></canvas>
@@ -572,7 +575,7 @@ body.tj #dock{z-index:25}@media (pointer:coarse){#dock{z-index:25}} /* phones: o
 <div id="parties" class="hide"></div>
 <div id="tip" class="hide"></div>
 <div id="err" class="hide"></div>
-<div id="death" class="ov hide"><h1>You have fallen</h1><div id="deathBy"></div><div id="deathTip"></div><button class="big" id="revive">Rise again · with a second wind</button><button id="deathMenu">Exit to menu</button></div>
+<div id="death" class="ov hide"><h1>You have fallen</h1><div id="deathBy"></div><div id="deathKeep"></div><div id="deathTip"></div><button class="big" id="revive">Rise again · with a second wind</button><button id="deathMenu">Exit to menu</button></div>
 <div id="menu" class="ov ka">
   <canvas id="embers" aria-hidden="true"></canvas>
   <header id="kaNav"><div class="kaWrap"><a class="kaBrand" href="#" data-go="top"><img src="brand/ka/mark.png" alt="" width="30" height="30">OATHBYTE</a><nav class="kaLinks"><a href="#" data-go="heroes">Heroes</a><a href="#" data-go="lb">Leaderboard</a><a href="#" data-go="parties">Parties</a><a href="#" data-go="game">The game</a><a href="#" data-go="news">News</a><a href="#" data-go="ctrls">Controls</a></nav><span class="kaSp"></span><div id="menuOn">Waking the server. This can take up to a minute…</div></div></header>
@@ -631,17 +634,17 @@ body.tj #dock{z-index:25}@media (pointer:coarse){#dock{z-index:25}} /* phones: o
 @media (max-width:520px){.ifoot button.act2,.ifoot.sbar button.act2{width:170px;height:44px;font-size:10px!important;letter-spacing:.03em!important}}/* build 0133: Salvage all and the pet's whole-bag button are the same size */
 #bLee.on,#tLee.on{border-color:#7ad06a!important;box-shadow:0 0 12px rgba(120,220,100,.45)!important;color:#c8ffb8}/* build 0135: hidden auto-play, only for the name Lee */
 </style>
-<script src="js/move.js?v=0154"></script>
-<script src="js/models.js?v=0154"></script>
-<script src="js/gl.js?v=0154"></script>
-<script src="js/data.js?v=0154"></script>
-<script src="js/cg.js?v=0154"></script>
-<script src="js/icons.js?v=0154"></script>
-<script src="js/game.js?v=0154"></script>
-<script src="js/fxlook.js?v=0154"></script>
-<script src="js/enemylook.js?v=0154"></script>
-<script src="js/net.js?v=0154"></script>
-<script src="js/ui.js?v=0154"></script>
-<script src="js/advisor.js?v=0154"></script>
+<script src="js/move.js?v=0155"></script>
+<script src="js/models.js?v=0155"></script>
+<script src="js/gl.js?v=0155"></script>
+<script src="js/data.js?v=0155"></script>
+<script src="js/cg.js?v=0155"></script>
+<script src="js/icons.js?v=0155"></script>
+<script src="js/game.js?v=0155"></script>
+<script src="js/fxlook.js?v=0155"></script>
+<script src="js/enemylook.js?v=0155"></script>
+<script src="js/net.js?v=0155"></script>
+<script src="js/ui.js?v=0155"></script>
+<script src="js/advisor.js?v=0155"></script>
 <div id="mtags"></div></body>
 </html>
