@@ -17,7 +17,7 @@ const CDM = (() => {
     if (head.lib) md.caps = fitCaps(md);
     return md;
   }
-  // build 0115: the body as rounded tubes fitted to the real mesh, one per main bone, in that bone's own frame, so worn gear can keep
+  // build 0165: the body as rounded tubes fitted to the real mesh, one per main bone, in that bone's own frame, so worn gear can keep
   // clear of each hero's own shape (an armoured Warden is broader than a slim Arcanist). Worked out once when the model loads.
   const CAPB = ['pelvis', 'spine_01', 'spine_02', 'spine_03', 'neck_01', 'Head', 'clavicle_l', 'upperarm_l', 'lowerarm_l', 'clavicle_r', 'upperarm_r', 'lowerarm_r', 'thigh_l', 'calf_l', 'foot_l', 'thigh_r', 'calf_r', 'foot_r'];
   function fitCaps(md) {
@@ -100,7 +100,7 @@ const CDM = (() => {
     for (const k of L) { const C = md._ikc[k.s], w = Math.max(0, Math.min(1, k.w)); if (!C || !(w > .001)) continue;
       const Sp = [W[C.ua * 12 + 9], W[C.ua * 12 + 10], W[C.ua * 12 + 11]], Ep = [W[C.la * 12 + 9], W[C.la * 12 + 10], W[C.la * 12 + 11]], Hp = [W[C.ha * 12 + 9], W[C.ha * 12 + 10], W[C.ha * 12 + 11]];
       const a = Math.hypot(Ep[0] - Sp[0], Ep[1] - Sp[1], Ep[2] - Sp[2]), b = Math.hypot(Hp[0] - Ep[0], Hp[1] - Ep[1], Hp[2] - Ep[2]);
-      let kp = k.p; if (k.follow !== undefined && md._ikc.r && H.grip) { /* build 0115: the second hand closes on the haft where it really is, after the first arm has moved */
+      let kp = k.p; if (k.follow !== undefined && md._ikc.r && H.grip) { /* build 0165: the second hand closes on the haft where it really is, after the first arm has moved */
         const ri = md._ikc.r.ha * 12, li = C.ha * 12, gR = H.grip[0], gL = H.grip[1], gp = (o2, g) => [S[o2 + 9] + S[o2] * g[0] + S[o2 + 3] * g[1] + S[o2 + 6] * g[2], S[o2 + 10] + S[o2 + 1] * g[0] + S[o2 + 4] * g[1] + S[o2 + 7] * g[2], S[o2 + 11] + S[o2 + 2] * g[0] + S[o2 + 5] * g[1] + S[o2 + 8] * g[2]];
         const R = [], ib = md.ibm; for (let r = 0; r < 3; r++) R.push(W[ri + r] * ib[ri + 6] + W[ri + 3 + r] * ib[ri + 7] + W[ri + 6 + r] * ib[ri + 8]); const zR = nrm(R), GR = gp(ri, gR), GL = gp(li, gL);
         kp = [GR[0] + zR[0] * k.follow - (GL[0] - Hp[0]), GR[1] + zR[1] * k.follow - (GL[1] - Hp[1]), GR[2] + zR[2] * k.follow - (GL[2] - Hp[2])]; k.d = zR; }
@@ -108,7 +108,7 @@ const CDM = (() => {
       const dc = Math.max(Math.abs(a - b) + 1e-3, Math.min(a + b - 1e-3, d)); const n = d > 1e-6 ? [dv[0] / d, dv[1] / d, dv[2] / d] : [0, -1, 0];
       let h = k.pole || [Ep[0] - Sp[0], Ep[1] - Sp[1], Ep[2] - Sp[2]]; h = [h[0] - n[0] * dot(h, n), h[1] - n[1] * dot(h, n), h[2] - n[2] * dot(h, n)]; if (Math.hypot(h[0], h[1], h[2]) < 1e-4) h = [0, -1, 0]; h = nrm(h);
       const cA = Math.max(-1, Math.min(1, (a * a + dc * dc - b * b) / (2 * a * dc))), sA = Math.sqrt(1 - cA * cA);
-      if (k.d && k.perp) { /* build 0115: a hand grips a haft across the palm, so swing the elbow round until the forearm stands roughly square to the weapon, staying as near the natural elbow as it can */
+      if (k.d && k.perp) { /* build 0165: a hand grips a haft across the palm, so swing the elbow round until the forearm stands roughly square to the weapon, staying as near the natural elbow as it can */
         const dd = nrm(k.d), h2 = crs(n, h), C0 = [Sp[0] + n[0] * a * cA, Sp[1] + n[1] * a * cA, Sp[2] + n[2] * a * cA], Pd = [Sp[0] + n[0] * dc, Sp[1] + n[1] * dc, Sp[2] + n[2] * dc];
         let bt = 0, bc = 1e9; for (let i = -24; i <= 24; i++) { const th = i * .1309, ct = Math.cos(th), st = Math.sin(th), E = [C0[0] + (h[0] * ct + h2[0] * st) * a * sA, C0[1] + (h[1] * ct + h2[1] * st) * a * sA, C0[2] + (h[2] * ct + h2[2] * st) * a * sA];
           const f = nrm([Pd[0] - E[0], Pd[1] - E[1], Pd[2] - E[2]]), g = Math.abs(dot(f, dd)), cost = Math.max(0, g - k.perp) * 6 + Math.abs(th) * .25; if (cost < bc) { bc = cost; bt = th; } }
