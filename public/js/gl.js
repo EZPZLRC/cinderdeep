@@ -364,6 +364,10 @@ void main(){float mat=vE.y;${DITHM}if(vAl>.5&&texture(uTex,vec3(vU,vLy)).a<.5)di
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_MODE, gl.COMPARE_REF_TO_TEXTURE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_FUNC, gl.LEQUAL);
     fbo = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, fbo); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, shTex, 0);
     gl.drawBuffers([gl.NONE]); gl.readBuffer(gl.NONE); gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    try { /* build 0157: a second shadow picture that holds the scenery only (see render) */ shTexS = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, shTexS); gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24, SH, SH, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      fboS = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, fboS); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, shTexS, 0); gl.drawBuffers([gl.NONE]); gl.readBuffer(gl.NONE);
+      if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) shOK = 0; gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.bindTexture(gl.TEXTURE_2D, null); } catch (_) { shOK = 0; }
     gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL);
     resize(); return true;
   }
@@ -456,11 +460,24 @@ void main(){float mat=vE.y;${DITHM}if(vAl>.5&&texture(uTex,vec3(vU,vLy)).a<.5)di
     const dy = b[1] - a[1]; if (Math.abs(dy) < 1e-6) return [a[0], a[2]]; const t = -a[1] / dy; return [a[0] + (b[0] - a[0]) * t, a[2] + (b[2] - a[2]) * t];
   }
   function begin() { env.verts = 0; SKD.length = 0; boneRows = 0; for (const g in sets.dyn) sets.dyn[g].n = 0; for (const g in sets.glow) sets.glow[g].n = 0; for (const g in sets.xr) sets.xr[g].n = 0; for (const g in sets.xr2) sets.xr2[g].n = 0; lights.length = 0; }
-  function statBegin() { for (const k in chunks) { for (const g in chunks[k].b) { gl.deleteBuffer(chunks[k].b[g].buf); gl.deleteVertexArray(chunks[k].b[g].vao); } delete chunks[k]; } statChunk('all', 0, 0, true); }
+  function statBegin() { for (const k in chunks) { for (const g in chunks[k].b) { gl.deleteBuffer(chunks[k].b[g].buf); gl.deleteVertexArray(chunks[k].b[g].vao); } delete chunks[k]; } statVer++; statChunk('all', 0, 0, true); }
   function statChunk(key, x, z, always) { curChunk = chunks[key] || (chunks[key] = { x, z, always: !!always, b: {} }); }
   function upload(set, usage) { const box = typeof set === 'string' ? sets[set] : set; for (const g in box) { const b = box[g]; if (!b.n) continue; gl.bindBuffer(gl.ARRAY_BUFFER, b.buf); gl.bufferData(gl.ARRAY_BUFFER, b.data.subarray(0, b.n * STRIDE), usage); } }
-  function statEnd() { for (const k in chunks) { upload(chunks[k].b, gl.STATIC_DRAW); for (const g in chunks[k].b) { const b = chunks[k].b[g]; b.data = null; } } }
+  function statEnd() { for (const k in chunks) { upload(chunks[k].b, gl.STATIC_DRAW); for (const g in chunks[k].b) { const b = chunks[k].b[g]; b.data = null; } } statVer++; }
   let depthPass = false;
+  /* build 0157 (Lee, Nov 19: "maybe optimize some code"; measured on his laptop's built-in graphics: the scenery was sent to the graphics card up to three times a frame, for shadows, the depth-first pass and the lit pass):
+     1. Scenery shadows are kept. On Low and Medium the trees, rocks and walls are drawn into their own shadow picture only when the hero has moved 5 or more from where it was last drawn (or the floor, the sun or the
+        setting changed). Every frame that picture is copied and only heroes and monsters are drawn on top. High and Ultra, and torch-lit floors, still redraw everything each frame, so leaves keep swaying in their shadows there.
+        If a graphics card refuses the copy, this switches itself off for good (shOK = 0). GLX.env.shCache = false turns it off by hand.
+     2. The depth-first pass (build 0139) is timed. Where the browser reports graphics card time, Medium and up try 30 frames with it and 30 without, and keep whichever is faster on this machine; it checks again
+        every 90 s, on a new floor and when the picture size changes. Without timings it stays on as before. GLX.env.pre = true or false still forces it. */
+  let shTexS = null, fboS = null, shOK = 1, statVer = 0; const SC = { ok: false, x: 0, z: 0, s: [0, 0, 0], ver: -1 };
+  const PA = { key: '', ph: 0, n0: 0, sum: 0, cnt: 0, on: 0, use: true, at: 0, last: -1 };
+  function preAuto() { if (!TQ) return true; const key = env.q + '|' + cv.width + '|' + statVer, N = env.gpuN || 0;
+    if (key !== PA.key || env.t - PA.at > 90 || env.t < PA.at) { PA.key = key; PA.at = env.t; PA.ph = 1; PA.n0 = N + 8; PA.sum = PA.cnt = 0; }
+    if (PA.ph) { if (N > PA.n0 && N !== PA.last) { PA.sum += env.gpuRaw; PA.cnt++; } PA.last = N;
+      if (PA.cnt >= 30) { const avg = PA.sum / PA.cnt; PA.n0 = N + 8; PA.sum = PA.cnt = 0; if (PA.ph === 1) { PA.on = avg; PA.ph = 2; } else { PA.use = !(avg < PA.on * .95); PA.ph = 0; PA.at = env.t; env.preUse = PA.use; } } }
+    return PA.ph === 1 ? true : PA.ph === 2 ? false : PA.use; }
   function drawSet(set, mesh) {
     if (set === 'stat') { const p = env.player; for (const k in chunks) { const c = chunks[k]; if (!c.always && (Math.abs(c.x - p[0]) > 48 || c.z - p[2] > 32 || p[2] - c.z > 56)) continue; if (FR && c.lo && !inFr(FR, c.lo, c.hi)) continue; /* build 0139: nothing of it can land on screen (or in the shadow map) */ drawSet(c.b, mesh); } return; }
     const box = typeof set === 'string' ? sets[set] : set; for (const g in box) { const b = box[g]; if (!b.n || !b.g.mesh !== !mesh || (depthPass && (g === 'blade' || g === 'disc' || g === 'tuft'))) continue; gl.bindVertexArray(b.vao); env.verts += b.g.count * b.n;
@@ -479,16 +496,24 @@ void main(){float mat=vE.y;${DITHM}if(vAl>.5&&texture(uTex,vec3(vU,vLy)).a<.5)di
     if (!TQ) return;
     if (start) { if (tqs.length < 4) { const q = gl.createQuery(); gl.beginQuery(TQ.TIME_ELAPSED_EXT, q); tqs.push(q); tqs.cur = q; } return; }
     if (tqs.cur) { gl.endQuery(TQ.TIME_ELAPSED_EXT); tqs.cur = null; }
-    const q = tqs[0]; if (q && q !== tqs.cur && gl.getQueryParameter(q, gl.QUERY_RESULT_AVAILABLE)) { tqs.shift(); const bad = gl.getParameter(TQ.GPU_DISJOINT_EXT), ms = gl.getQueryParameter(q, gl.QUERY_RESULT) / 1e6; gl.deleteQuery(q); if (!bad && ms > 0 && ms < 1000) env.gpuMs = env.gpuMs ? env.gpuMs * .9 + ms * .1 : ms; }
+    const q = tqs[0]; if (q && q !== tqs.cur && gl.getQueryParameter(q, gl.QUERY_RESULT_AVAILABLE)) { tqs.shift(); const bad = gl.getParameter(TQ.GPU_DISJOINT_EXT), ms = gl.getQueryParameter(q, gl.QUERY_RESULT) / 1e6; gl.deleteQuery(q); if (!bad && ms > 0 && ms < 1000) { env.gpuMs = env.gpuMs ? env.gpuMs * .9 + ms * .1 : ms; env.gpuRaw = ms; env.gpuN = (env.gpuN || 0) + 1; } }
   }
   function render() {
     const H = !!(env.ultra && hdrOK); U2[0] = 0; U2[1] = env.ultra ? 1 : 0; U2[2] = H ? 1 : 0; U2[3] = UL.exp;
     gpuTime(true); resize(); ensurePost(); upload('dyn', gl.DYNAMIC_DRAW); upload('glow', gl.DYNAMIC_DRAW); upload('xr', gl.DYNAMIC_DRAW); upload('xr2', gl.DYNAMIC_DRAW);
     const p = env.player, s = env.sun;
-    if (env.pt) { const t = env.pt; lookAt(t1, [t[0], t[1], t[2]], [p[0], 0, p[2] - .01], [0, 0, -1]); persp(t2, t[3], 1, 1.5, 60); } /* build 0052: a torch's shadows spread out from the hero */ else { lookAt(t1, [p[0] + s[0] * 60, s[1] * 60, p[2] + s[2] * 60], [p[0], 0, p[2]], [0, 1, 0]); ortho(t2, -38, 38, -38, 38, 1, 140); } mul(lvp, t2, t1);
+    const cache = !!fboS && shOK > 0 && !env.pt && env.shadows !== false && env.q < 2 && env.shCache !== false && !env.solo, stale = cache && !(SC.ok && SC.ver === statVer && Math.abs(p[0] - SC.x) < 5 && Math.abs(p[2] - SC.z) < 5 && SC.s[0] === s[0] && SC.s[1] === s[1] && SC.s[2] === s[2]); if (!cache) SC.ok = false;
+    if (env.pt) { const t = env.pt; lookAt(t1, [t[0], t[1], t[2]], [p[0], 0, p[2] - .01], [0, 0, -1]); persp(t2, t[3], 1, 1.5, 60); } /* build 0052: a torch's shadows spread out from the hero */ else { let cx = p[0], cz = p[2], hw = 38; if (cache) { if (stale) { SC.x = p[0]; SC.z = p[2]; SC.s[0] = s[0]; SC.s[1] = s[1]; SC.s[2] = s[2]; SC.ver = statVer; } cx = SC.x; cz = SC.z; hw = 43; /* a little wider, so the hero can walk 5 before it is drawn again */ }
+      lookAt(t1, [cx + s[0] * 60, s[1] * 60, cz + s[2] * 60], [cx, 0, cz], [0, 1, 0]); ortho(t2, -hw, hw, -hw, hw, 1, 140); } mul(lvp, t2, t1);
     gl.enable(gl.DEPTH_TEST);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo); gl.viewport(0, 0, SH, SH); gl.clear(gl.DEPTH_BUFFER_BIT); gl.useProgram(pDepth.p); gl.uniformMatrix4fv(pDepth.u.uLVP, false, lvp); gl.uniform1f(pDepth.u.uT, env.t);
-    gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(2, 4); depthPass = true; upBones(); FR = lvp; if (env.shadows !== false) { env.solo || drawSet('stat'); if (envOn()) { gl.useProgram(pDepthM.p); gl.uniformMatrix4fv(pDepthM.u.uLVP, false, lvp); gl.uniform1i(pDepthM.u.uTex, 5); env.solo || drawSet('stat', 1); gl.useProgram(pDepth.p); } drawSet('dyn'); if (SKD.length) { syncS(pDepthS, 0, { uLVP: lvp, uT: [env.t] }); drawSkinned(pDepthS); gl.useProgram(pDepth.p); } } depthPass = false; gl.disable(gl.POLYGON_OFFSET_FILL);
+    gl.viewport(0, 0, SH, SH); gl.useProgram(pDepth.p); gl.uniformMatrix4fv(pDepth.u.uLVP, false, lvp); gl.uniform1f(pDepth.u.uT, env.t);
+    gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(2, 4); depthPass = true; upBones(); FR = lvp;
+    const statSh = () => { env.solo || drawSet('stat'); if (envOn()) { gl.useProgram(pDepthM.p); gl.uniformMatrix4fv(pDepthM.u.uLVP, false, lvp); gl.uniform1i(pDepthM.u.uTex, 5); env.solo || drawSet('stat', 1); gl.useProgram(pDepth.p); } };
+    if (cache) { if (stale) { gl.bindFramebuffer(gl.FRAMEBUFFER, fboS); gl.clear(gl.DEPTH_BUFFER_BIT); statSh(); SC.ok = true; env.shDraws = (env.shDraws || 0) + 1; }
+      if (shOK === 1) gl.getError(); gl.bindFramebuffer(gl.READ_FRAMEBUFFER, fboS); gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, fbo); gl.blitFramebuffer(0, 0, SH, SH, 0, 0, SH, SH, gl.DEPTH_BUFFER_BIT, gl.NEAREST); if (shOK === 1) shOK = gl.getError() === gl.NO_ERROR ? 2 : 0;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo); if (shOK !== 2) { SC.ok = false; gl.clear(gl.DEPTH_BUFFER_BIT); statSh(); } }
+    else { gl.bindFramebuffer(gl.FRAMEBUFFER, fbo); gl.clear(gl.DEPTH_BUFFER_BIT); if (env.shadows !== false) statSh(); }
+    if (env.shadows !== false) { drawSet('dyn'); if (SKD.length) { syncS(pDepthS, 0, { uLVP: lvp, uT: [env.t] }); drawSkinned(pDepthS); gl.useProgram(pDepth.p); } } depthPass = false; gl.disable(gl.POLYGON_OFFSET_FILL);
     FR = vp; gl.bindFramebuffer(gl.FRAMEBUFFER, post.ms); gl.viewport(0, 0, cv.width, cv.height);
     const tm = v => { v *= 1.3; v = (v * (2.51 * v + .03)) / (v * (2.43 * v + .59) + .14); return Math.pow(Math.min(1, Math.max(0, v)), 1 / 2.2); }; if (H) gl.clearColor(env.fog[0] * 1.3, env.fog[1] * 1.3, env.fog[2] * 1.3, 1); else gl.clearColor(tm(env.fog[0]), tm(env.fog[1]), tm(env.fog[2]), 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     lights.sort((a, b) => (b.pri - a.pri) || ((a.x - p[0]) ** 2 + (a.z - p[2]) ** 2) - ((b.x - p[0]) ** 2 + (b.z - p[2]) ** 2));
@@ -498,7 +523,7 @@ void main(){float mat=vE.y;${DITHM}if(vAl>.5&&texture(uTex,vec3(vU,vLy)).a<.5)di
     gl.uniform3fv(u.uSun, env.sun); gl.uniform3fv(u.uSunC, env.sunC); gl.uniform3fv(u.uSky, env.sky); gl.uniform3fv(u.uGnd, env.gnd); gl.uniform3fv(u.uFog, env.fog);
     gl.uniform3fv(u.uEye, cam.eye); gl.uniform3fv(u.uPl, env.player); gl.uniform2f(u.uFogR, env.fogN, env.fogF); gl.uniform1f(u.uLR, env.lightR); gl.uniform4fv(u.uTP, TPv()); gl.uniform3fv(u.uTC, env.ptc); gl.uniform1f(u.uTR, env.ptr); gl.uniform1f(u.uScat, env.scat); gl.uniform4f(u.uPX, U2[2], 0, 0, 0);
     gl.uniform4fv(u['uLP[0]'], LP); gl.uniform3fv(u['uLC[0]'], LC);
-    const pre = pPre && !env.solo && (env.pre === undefined ? env.q > 0 : env.pre); /* at the lowest setting the picture is small and the extra trip over every corner costs more than it saves */ /* build 0139: scenery depth first (see FSP), then the lit pass only fills what is actually seen */
+    const pre = pPre && !env.solo && (env.pre === undefined ? env.q > 0 && preAuto() : env.pre); /* at the lowest setting the picture is small and the extra trip over every corner costs more than it saves */ /* build 0139: scenery depth first (see FSP), then the lit pass only fills what is actually seen */
     if (pre) { gl.colorMask(false, false, false, false); const po = env.preOff; if (po) { gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(po[0], po[1]); }
       gl.useProgram(pPre.p); gl.uniformMatrix4fv(pPre.u.uVP, false, vp); gl.uniformMatrix4fv(pPre.u.uLVP, false, lvp); gl.uniform1f(pPre.u.uT, env.t); gl.uniform3fv(pPre.u.uPl, env.player); gl.uniform1f(pPre.u.uRim, 0); drawSet('stat');
       if (envOn() && pPreM) { gl.useProgram(pPreM.p); gl.uniformMatrix4fv(pPreM.u.uVP, false, vp); gl.uniformMatrix4fv(pPreM.u.uLVP, false, lvp); gl.uniform1f(pPreM.u.uT, env.t); gl.uniform3fv(pPreM.u.uPl, env.player); gl.uniform1f(pPreM.u.uRim, 0); gl.uniform1i(pPreM.u.uTex, 5); drawSet('stat', 1); }

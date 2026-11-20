@@ -769,6 +769,10 @@ function forgeBox(it) { const F = G.lastForge; if (!F || F.it !== it) return '';
     const bagDot = () => { const h = G.hero, play = G.state === 'play' && h && h.inv; if (play && P.stats) { const s = h.level + '|' + h.inv.map(id).join() + '|' + Object.keys(h.eq || {}).map(k => k + id(h.eq[k])).join(); if (s !== sig) { sig = s; has = h.inv.some(it => it && verdict(it) > 0); } }
       for (const b of [$('bInv'), $('tBag')]) if (b) { const on = !!(play && has); b.classList.toggle('upg', on); if (b.id === 'bInv') b.title = on ? 'Bag (I): an item here is better than what you wear' : 'Bag (I)'; } };
     setInterval(bagDot, 1000); }
+  /* build 0157 (play test in an 800 wide window: the boss's name and life bar sat on top of the hero's name, party code and gold in the top-left corner; it happens in any mouse window narrower than about 1300):
+     when the boss bar would touch the top-left block it drops to just below it. Phones and the touch layout have their own place for the bar and are left alone. */
+  setInterval(() => { const bb = $('bossbar'), tp = $('top'); if (!bb || !tp) return; if (bb.style.top) bb.style.top = ''; if (G.state !== 'play' || bb.classList.contains('hide') || document.body.classList.contains('tj') || (window.matchMedia && matchMedia('(pointer:coarse)').matches)) return;
+    const a = bb.getBoundingClientRect(), b = tp.getBoundingClientRect(); if (a.width && b.width && a.left < b.right + 12 && a.top < b.bottom + 4) bb.style.top = Math.round(b.bottom + 8) + 'px'; }, 500);
   $('build').textContent = 'Build ' + BUILD; document.title = 'OathByte · build ' + BUILD;
   // build 0073 (Lee): "Build 0073 · updated 12 min ago", timed by the server, so it is right on every device, and it ticks up while the page is open
   { let upAt = null; const ago = ms => { const m = Math.floor(ms / 60000); if (m < 1) return 'just now'; if (m < 60) return m + ' min ago'; const h = Math.floor(m / 60); if (h < 48) return h + (h === 1 ? ' hour ago' : ' hours ago'); const d = Math.floor(h / 24); return d + ' days ago'; };
