@@ -224,16 +224,16 @@ void main(){if(uOut>0.){o=vec4(uPX.x>.5?vec3(.0004,.0003,.0002):vec3(.016,.012,.
  vec3 sp=vS.xyz/vS.w*.5+.5;float sh=1.;
  if(sp.x>0.&&sp.x<1.&&sp.y>0.&&sp.y<1.&&sp.z<1.){if(uQ>1.5){sh=0.;float rn=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))))*6.2832;for(int i=0;i<12;i++){float fi=float(i)+.5,an=fi*2.39996+rn;sh+=texture(uSh,vec3(sp.xy+vec2(cos(an),sin(an))*sqrt(fi/12.)*(2.6/2048.),sp.z-.0013));}sh/=12.;}else if(uQ>.5){sh=0.;vec2 t=vec2(1.3/2048.);for(int i=-1;i<=1;i++)for(int j=-1;j<=1;j++)sh+=texture(uSh,vec3(sp.xy+vec2(float(i),float(j))*t,sp.z-.0012));sh/=9.;}else sh=texture(uSh,vec3(sp.xy,sp.z-.0015));}
  vec3 V=normalize(uEye-vW);
- float dif=max((dot(n,uSun)+wrap)/(1.+wrap),0.);float sy=uPX.z;if(sy>1.5){dif=smoothstep(.02,.1,dif)*.5+smoothstep(.42,.5,dif)*.35+dif*.15;} /* build 0162 art styles: Better and Best shade in clean painted bands */
+ float dif=max((dot(n,uSun)+wrap)/(1.+wrap),0.);float sy=uPX.z;if(sy>1.5&&sy<2.5){dif=smoothstep(.02,.1,dif)*.5+smoothstep(.42,.5,dif)*.35+dif*.15;} /* build 0162 art styles: Better and Best shade in clean painted bands */
  float sl=pow(max(dot(n,normalize(uSun+V)),0.),shin)*spec;
  float shS=sh;vec3 tl=vec3(0.);
  if(uTP.w>0.){ /* build 0052: in dark places the hero's torch is the light that casts shadows; the cold moonlight fills in unshadowed */
   vec3 td=uTP.xyz-vW;vec3 TL=td/max(length(td),.001);float tat=clamp(1.-length(vW.xz-uTP.xz)/uTR,0.,1.);tat*=tat;float tdf=max((dot(n,TL)+wrap)/(1.+wrap),0.);
   tl=uTC*tat*(sh*(a*tdf+spec*pow(max(dot(n,normalize(TL+V)),0.),shin))+a*.14*ao);shS=mix(1.,sh,clamp(tat*1.6,0.,1.));sh=.7;}
  vec3 c=a*(mix(uGnd,uSky,n.y*.5+.5)*ao+uSunC*dif*sh)+uSunC*sl*sh+ex*(.4+.6*shS)*ao+tl;
- for(int i=0;i<8;i++){vec3 d=uLP[i].xyz-vW;float dist=length(d);float at=clamp(1.-dist/uLP[i].w,0.,1.);at*=at;if(sy>.5){at*=at*1.5;if(sy>1.5)at=smoothstep(.06,.13,at)*.22+smoothstep(.3,.38,at)*.38+smoothstep(.65,.75,at)*.4;}vec3 L=d/max(dist,.001);c+=uLC[i]*at*(a*max(dot(n,L),.2)+.5*spec*pow(max(dot(n,normalize(L+V)),0.),shin));}
+ for(int i=0;i<8;i++){vec3 d=uLP[i].xyz-vW;float dist=length(d);float at=clamp(1.-dist/uLP[i].w,0.,1.);at*=at;if(sy>.5){at*=at*1.5;if(sy>1.5&&sy<2.5)at=smoothstep(.06,.13,at)*.22+smoothstep(.3,.38,at)*.38+smoothstep(.65,.75,at)*.4;}vec3 L=d/max(dist,.001);c+=uLC[i]*at*(a*max(dot(n,L),.2)+.5*spec*pow(max(dot(n,normalize(L+V)),0.),shin));}
  c+=a*uSky*pow(1.-max(dot(n,V),0.),3.)*1.2*ao;
- if(sy>.5){c*=uRim>0.?1.08:.86;if(uRim>0.){float fr=pow(1.-max(dot(n,V),0.),2.6);c+=mix(vec3(1.,.78,.5),vec3(.55,.75,1.),.5+.5*n.x)*fr*(sy>1.5?.75:.5);}} /* build 0162: the world steps back a little and every character gets a bright two-colour rim, so heroes and monsters pop */
+ if(sy>.5){c*=uRim>0.?1.08:(sy>1.5?1.:.86);if(uRim>0.){float fr=pow(1.-max(dot(n,V),0.),2.6);c+=mix(vec3(1.,.78,.5),vec3(.55,.75,1.),.5+.5*n.x)*fr*(sy>1.5?.75:.5);}} /* build 0162: the world steps back a little and every character gets a bright two-colour rim, so heroes and monsters pop */
  if(uRim>0.){float fr=pow(1.-max(dot(n,V),0.),3.6);c+=(uSunC*.4+uSky*.6)*fr*uRim*(.35+.65*shS)+a*uSunC*.18*uRim*max(dot(n,normalize(vec3(-uSun.x,.6,-uSun.z))),0.);} // characters catch a rim of light so they read against the ground
  c+=wet*uSky*(.24+2.2*pow(1.-max(dot(n,V),0.),4.))*(.45+.55*shS);
  c+=vC.rgb*vE.x;
@@ -284,7 +284,7 @@ void main(){
   float rn=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))))*6.2832;
   for(int i=0;i<10;i++){float fi=float(i)+.5,an=fi*2.39996+rn;vec3 v=vpos(uv+vec2(cos(an)/asp,sin(an))*rad*sqrt(fi/10.))-P;float l=length(v);occ+=max(dot(N,v)/(l+.001)-.14,0.)/(1.+l*l*.7);}
   o=vec4(vec3(clamp(1.-occ*.26,0.,1.)),1.);}
- else{vec2 q=uv-.5;vec3 c=texture(uA,uv).rgb;if(uSt.x>2.5&&uSt.y>.5)c=mix(texture(uE,uv).rgb,c,.3);
+ else{vec2 q=uv-.5;vec3 c=texture(uA,uv).rgb;if(uSt.x>2.5&&uSt.y>.5)c=mix(texture(uE,uv).rgb,c,.08);
   if(uFx.z>0.){float ca=dot(q,q)*uFx.z;c.r=texture(uA,uv+q*ca).r;c.b=texture(uA,uv-q*ca).b;}
   vec3 bl=texture(uC,uv).rgb;float fz=smoothstep(.26,.6,abs(uv.y-.53))*uFx.x;
   c+=(c-bl)*uFx.w*(1.-fz);c=mix(c,bl,fz);
@@ -295,20 +295,34 @@ void main(){
   if(uP2.y>.5){float L=dot(c,vec3(.2126,.7152,.0722));c=mix(c,c*vec3(.84,.97,1.14),(1.-smoothstep(0.,.42,L))*.6);c=mix(c,c*vec3(1.12,1.01,.85),smoothstep(.4,1.,L)*.5);c=max(c-.012,0.)*1.02;c=mix(vec3(L),c,1.1);c=clamp(c,0.,1.);c=mix(c,c*c*(3.-2.*c),.25);}
   {float L=dot(c,vec3(.3,.59,.11));vec3 g=mix(vec3(L),c,.6+.28*uWarm);float warm=clamp((c.r-c.b)*2.2,0.,1.);g=mix(g,c,warm*.65);g=mix(g*mix(vec3(.84,.92,1.08),vec3(.97,.92,.9),uWarm),g*vec3(1.12,1.,.8),smoothstep(.15,.65,L));c=clamp(pow(g,vec3(1.15-.03*uWarm))*(1.04+.01*uWarm),0.,1.);c*=mix(1.,smoothstep(.9,.2,length(q*vec2(1.,1.08))),.35-.15*uWarm);} /* build 0025: the Ashen Gothic look, cold grey world, warm fire and magic */
   c*=mix(1.,smoothstep(.98,.28,length(q*vec2(1.,1.08))),.6-.25*uWarm+(uP2.y>.5?.12:0.)); /* town build: home is warmer, a little more colour and a lighter vignette */
-if(uSt.x>.5){ /* build 0162 art styles (Lee: "invent and perfect a revolutionary new beautiful set of graphics", "Do good better and best"). 1 Good, Golden Hour: light rays from every glow, richer colour, gold highlights and cool shadows. 2 Better, Storybook: Good plus ink outlines, soft painted shading bands and paper. 3 Best, Living Painting: Better on top of the painter's filter, with brush strokes and canvas */
-  vec2 tx=uSt.zw,fc=gl_FragCoord.xy;float L=dot(c,vec3(.3,.59,.11)),dj=hq(fc+fract(uT)*91.);
-  vec3 ry=vec3(0.);vec2 ce=vec2(.5,.47);for(int i=0;i<8;i++){float f=(float(i)+dj)/8.;ry+=texture(uB,mix(uv,ce,f*.24)).rgb*(1.-f);}
-  c+=ry*vec3(1.,.82,.58)*(uSt.x>2.5?.1:.08)+texture(uB,uv).rgb*vec3(.16,.07,.03);{float m=max(c.r,max(c.g,c.b));if(m>.72)c*=(.72+.28*(1.-exp(-(m-.72)*3.6)))/m;}
-  float mx=max(c.r,max(c.g,c.b)),mn=min(c.r,min(c.g,c.b));L=dot(c,vec3(.3,.59,.11));c=mix(vec3(L),c,1.+.4*(1.-clamp((mx-mn)*2.,0.,1.)));
-  c*=mix(vec3(.72,.86,1.1)*mix(.7,1.,smoothstep(.0,.35,L)),vec3(1.07,1.,.88),smoothstep(.15,.8,L));c=max(c,0.);float dl=length((uv-vec2(.5,.47))*vec2(1.6,1.));c*=mix(vec3(1.),mix(vec3(.36,.42,.56),vec3(1.),.35),smoothstep(.18,.85,dl)*.85);c=mix(c,c*c*(3.-2.*c),.35);
-  if(uSt.x>1.5){
-   float s=2.,tl=lA(uv+tx*s*vec2(-1,1)),tt=lA(uv+tx*s*vec2(0,1)),tr=lA(uv+tx*s),ll=lA(uv-tx*s*vec2(1,0)),rr=lA(uv+tx*s*vec2(1,0)),bb=lA(uv-tx*s*vec2(0,1)),bl2=lA(uv-tx*s),br=lA(uv+tx*s*vec2(1,-1));
-   float gx=tr+2.*rr+br-tl-2.*ll-bl2,gy=tl+2.*tt+tr-bl2-2.*bb-br,cl=(tl+tt+tr+ll+rr+bb+bl2+br)*.125,e=length(vec2(gx,gy))/(cl+.3);
-   float ink=smoothstep(.75,1.5,e)*(uSt.x>2.5?.38:.55);if(uSt.y>.5){float z0=zL(uv),zm=max(max(zL(uv+tx*vec2(s,0.)),zL(uv-tx*vec2(s,0.))),max(zL(uv+tx*vec2(0.,s)),zL(uv-tx*vec2(0.,s))));ink=max(ink,smoothstep(.008,.025,(zm-z0)/z0));}
-   L=dot(c,vec3(.3,.59,.11));float b=L*4.5,qq=(floor(b)+smoothstep(.3,.7,fract(b)))/4.5;c*=mix(1.,(qq+.03)/(L+.03),.35);{float l2=dot(c,vec3(.3,.59,.11));c=max(mix(vec3(l2),c,.96),0.);}
-   if(uSt.x>2.5){vec2 tg=normalize(vec2(-gy,gx)+vec2(.0007,.0004));vec2 sp=vec2(dot(fc,tg),dot(fc,vec2(-tg.y,tg.x)));c*=.92+.16*vn(sp*vec2(.03,.22)+vn(fc*.01)*3.);}
-   else{float pp=vn(fc*.9)*.5+vn(fc*.23)*.3+vn(fc*.05)*.2;c*=.96+.05*pp;c=mix(c,vec3(.96,.95,.9),.05*smoothstep(.55,1.,L));}
-   c=mix(c,min(c,vec3(.06,.04,.08)+c*.12),ink);}
+if(uSt.x>.5){ /* build 0171 art styles (Lee: "invent and perfect a revolutionary new beautiful set of graphics", "Do good better and best"; then "those pickers show the same graphics", so each look is now its own bold style).
+   1 Golden Hour: dark, cinematic, warm light rays, teal shadows and gold highlights, a lantern pool of light round the hero.
+   2 Storybook: bright inked comic. Flat bold colour bands, thick ink outlines, halftone dots in the shadows, warm paper.
+   3 Living Painting: a pale watercolour and oil painting. Brush patches from the painter's filter, soft pigment edges, canvas, and edges that fade to paper */
+  vec2 tx=uSt.zw,fc=gl_FragCoord.xy;float L=dot(c,vec3(.3,.59,.11)),dj=hq(fc+fract(uT)*91.),dl=length((uv-vec2(.5,.47))*vec2(1.6,1.));
+  if(uSt.x<1.5){
+   vec3 ry=vec3(0.);vec2 ce=vec2(.5,.47);for(int i=0;i<8;i++){float f=(float(i)+dj)/8.;ry+=texture(uB,mix(uv,ce,f*.3)).rgb*(1.-f);}
+   c+=ry*vec3(1.,.78,.5)*.2+texture(uB,uv).rgb*vec3(.32,.13,.04);{float m=max(c.r,max(c.g,c.b));if(m>.75)c*=(.75+.25*(1.-exp(-(m-.75)*4.)))/m;}
+   L=dot(c,vec3(.3,.59,.11));c=mix(vec3(L),c,1.25);
+   c*=mix(vec3(.5,.78,1.05),vec3(1.16,.98,.72),smoothstep(.08,.7,L));c=max(c,0.);
+   c*=mix(vec3(1.),vec3(.18,.24,.36),smoothstep(.2,.9,dl)*.9);c=clamp(c,0.,1.);c=mix(c,c*c*(3.-2.*c),.55);}
+  else{
+   float s=uSt.x>2.5?1.5:1.25,tl=lA(uv+tx*s*vec2(-1,1)),tt=lA(uv+tx*s*vec2(0,1)),tr=lA(uv+tx*s),ll=lA(uv-tx*s*vec2(1,0)),rr=lA(uv+tx*s*vec2(1,0)),bb=lA(uv-tx*s*vec2(0,1)),bl2=lA(uv-tx*s),br=lA(uv+tx*s*vec2(1,-1));
+   float gx=tr+2.*rr+br-tl-2.*ll-bl2,gy=tl+2.*tt+tr-bl2-2.*bb-br,cl=(tl+tt+tr+ll+rr+bb+bl2+br)*.125,e=length(vec2(gx,gy))/(cl+.25);
+   float ink=smoothstep(.5,1.1,e);if(uSt.y>.5){float z0=zL(uv),zm=max(max(zL(uv+tx*vec2(s,0.)),zL(uv-tx*vec2(s,0.))),max(zL(uv+tx*vec2(0.,s)),zL(uv-tx*vec2(0.,s))));ink=max(ink,smoothstep(.006,.02,(zm-z0)/z0));}
+   if(uSt.x<2.5){
+    c=pow(max(c,0.),vec3(.86))*1.04;L=dot(c,vec3(.3,.59,.11));c=max(mix(vec3(L),c,1.32),0.);{float m=max(c.r,max(c.g,c.b));if(m>.8)c*=(.8+.2*(1.-exp(-(m-.8)*5.)))/m;}L=dot(c,vec3(.3,.59,.11));
+    float b=L*4.,qq=(floor(b)+smoothstep(.42,.58,fract(b)))/4.;c*=mix(1.,(qq+.04)/(L+.04),.8);
+    vec2 r=mat2(.707,-.707,.707,.707)*fc/5.;float d=length(fract(r)-.5),rad=(1.-smoothstep(.05,.42,L))*.55;c*=1.-.55*(1.-smoothstep(rad-.08,rad+.08,d))*step(.01,rad);
+    c*=mix(vec3(1.),vec3(1.04,1.,.9),.6);c=mix(c,vec3(.97,.94,.86),.25*smoothstep(.75,1.,L));
+    c=mix(c,vec3(.03,.02,.05),ink*.95);}
+   else{
+    L=dot(c,vec3(.3,.59,.11));c=mix(vec3(L),c,.98);c=c*.88+vec3(.09,.08,.06);
+    vec2 tg=normalize(vec2(-gy,gx)+vec2(.0007,.0004));vec2 sp=vec2(dot(fc,tg),dot(fc,vec2(-tg.y,tg.x)));
+    c*=.86+.28*vn(sp*vec2(.025,.18)+vn(fc*.008)*3.);
+    c*=mix(vec3(1.),vec3(.62,.5,.48),ink*.6);
+    float pp=vn(fc*.6)*.45+vn(fc*.15)*.35+vn(fc*.03)*.2;c*=.92+.14*pp;c*=.97+.06*(sin(fc.x*.9+vn(fc*.1)*2.)*sin(fc.y*.9)*.5+.5);
+    c=mix(c,vec3(.93,.9,.82),smoothstep(.55,.98,dl+(pp-.5)*.25)*.65);}}
   c=clamp(c,0.,1.);}
   c+=(fract(sin(dot(uv+fract(uT),vec2(12.9898,78.233)))*43758.5453)-.5)*.016;o=vec4(c,1.);}}`;
   // build 0039: skinned variants of the hero shaders. Bone matrices live in a float texture (3 texels a bone, one row per drawn copy),
@@ -582,7 +596,7 @@ void main(){float mat=vE.y;float fa=1.;${DITHM}if(vAl>.5){float ta=texture(uTex,
       gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.uniform1f(pPost.u.uUw, 1); quad(post.u2, 6, post.u3.t, null, 1 / post.u3.w, 1 / post.u3.h); quad(post.u1, 6, post.u2.t, null, 1 / post.u2.w, 1 / post.u2.h); gl.uniform1f(pPost.u.uUw, .8); quad(post.a, 6, post.u1.t, null, 1 / post.u1.w, 1 / post.u1.h); gl.disable(gl.BLEND); }
     if (mid) { quad(post.d, 1, post.sc.t, null, 1.4 / post.c.w, 0); quad(post.c, 1, post.d.t, null, 0, 1.4 / post.c.h); }
     if (hi) { gl.uniform4f(pPost.u.uPI, proj[0], proj[5], proj[10], proj[14]); quad(post.e, 3, post.sc.t, null, 0, 0, null, post.dt); quad(post.f, 1, post.e.t, null, 1 / post.e.w, 0); quad(post.e, 1, post.f.t, null, 0, 1 / post.e.h); }
-    gl.uniform4f(pPost.u.uFx, mid ? env.dof : 0, hi ? env.ao : 0, mid && ST < 3 ? .012 : 0, mid ? .28 : 0); if (ST > 2 && mid) quad(post.k, 7, post.sc.t, null, 1 / post.w, 1 / post.h); /* build 0162: Best paints a copy of the picture first */ gl.uniform1f(pPost.u.uWarm, env.warm || 0);
+    gl.uniform4f(pPost.u.uFx, mid ? env.dof : 0, hi ? env.ao : 0, mid && ST < 3 ? .012 : 0, mid ? .28 : 0); if (ST > 2 && mid) quad(post.k, 7, post.sc.t, null, 2 / post.w, 2 / post.h); /* build 0162: Best paints a copy of the picture first */ gl.uniform1f(pPost.u.uWarm, env.warm || 0);
     quad(null, 2, post.sc.t, post.a.t, 0, 0, mid ? post.c.t : null, hi ? post.e.t : null, ST > 2 && mid ? post.k.t : null, ST > 1 && mid && aoOK === 2 ? post.dt : null); gl.enable(gl.DEPTH_TEST); gpuTime(false);
   }
   // ---- build 0039: real character models (see models.js). The mesh sits on the graphics card once; each frame only the pose is sent ----
