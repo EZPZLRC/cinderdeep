@@ -2182,9 +2182,13 @@ function heroModel(o, cls, rot, tw, lu, dy, mv, AW, wt, wglow, em, wk) {
       else if (hero && wk === 'axe' && A.punch) { /* build 0114: the chop turns the whole body into it; the shield arm keeps its guard */ const ky = nm + '|noL' + (msk ? 'u' : ''); let NL = UPMASK[ky], LA = UPMASK[nm + '|L'];
         if (!NL) { LA = UPMASK[nm + '|L'] = CDM.mask(M, ['clavicle_l'], 0); NL = UPMASK[ky] = LA.map((v, b) => (1 - v) * (msk ? msk[b] : 1)); }
         lay.push(['punch', k * A.punch.dur, false, act, NL]); lay.push([A.cstance ? 'cstance' : 'idle', t, true, act, LA]); }
-      else lay.push([an, k * A[an].dur, false, act, msk]); } }
+      else lay.push([an, an === 'attack' ? beatAt(k) : k * A[an].dur, false, act, msk]); } } /* build 0169: On the Beat */
   if (GFIT.force) { lay.length = 0; for (const L of GFIT.force) lay.push([L[0], L[1], L[2], L[3], L[4] ? (UPMASK[nm + L[4]] || (UPMASK[nm + L[4]] = CDM.mask(M, L[4].split(','), 0))) : null]); } /* test hook */
   GLX.base(BMm, o.x + Math.sin(rot) * lu, o.y + dy - M.head.minY * s, o.z + Math.cos(rot) * lu, rot + tw, s);
+  if (hero && !o.dead && !o.dash) { /* build 0169 (Lee's pick, Grounded Stride): leans into the run, rocks back on the stop, and the hips drop on each footfall and sway */
+    const dtg = Math.min(.1, Math.max(0, t - (o._gsT === undefined ? t : o._gsT))); o._gsT = t; const av = dtg > 0 ? (mv - (o._gsM === undefined ? mv : o._gsM)) / dtg : 0; o._gsM = mv; o._gsA = (o._gsA || 0) + (av - (o._gsA || 0)) * Math.min(1, dtg * 9);
+    const m = Math.min(1, mv * 1.6), ac = clamp((o._gsA || 0) / 6, -1, 1), ph = ((o.walk || 0) / 6.2832) % 1, fall = Math.pow(.5 + .5 * Math.cos(6.2832 * (2 * ph - .14)), 4), ln = .13 * m + .1 * ac;
+    if (ln) tiltBase(BMm, rot + tw, s, ln); if (m > 0) { BMm[13] -= .05 * m * fall; const r = .045 * m * Math.sin(6.2832 * (ph - .07)), c = Math.cos(r), sn = Math.sin(r); for (let i = 0; i < 3; i++) { const a = BMm[i], b = BMm[4 + i]; BMm[i] = a * c + b * sn; BMm[4 + i] = -a * sn + b * c; } } }
   const folk = !hero, alt = HAIR_ALT[cls] ? 1 : 0, L = LOOK[cls] || LOOK.vil1, hairC = o.hair || 0x4a3626, HL = hero && typeof HLOOK !== 'undefined' ? HLOOK[cls] : null;
   const look = (gi, gr) => { const k = gr.kind, mt = gr.mat; if (k === 'beard' && !o.beard && !(HL && HL.beard)) return null; if (k === 'hair' && alt && M.head.groups.some(g => g.kind === 'hairb')) return null; if (k === 'hairb' && !alt) return null;
     if (HL && HL.dye[k] && !o.hair) { const d = HL.dye[k]; return [hdye(gr, d), em + (d[2] || 0), d[3] || mt]; } /* build 0125: Lee's picked look */
@@ -2493,6 +2497,13 @@ function drawHero(o, self) {
   if (o.buffs && o.buffs.length) GLX.obj('glow', 'ring', o.x, .08, o.z, G.time, 2.4, 1, 2.4, col(0xffd84a), 1, .5, -1);
   if (o.flaskT > 0) GLX.halo(o.x, 1.4, o.z, 3.5, col(0xff3a3a), .5);
 }
+// build 0169 (Lee's moves picks): shared timing for the weightier moves.
+// Snap Back: a struck monster is kicked back at once, then eases back up; hitKick(e) is how far (0 to 1.4), and e._hT when the blow landed.
+const KICK_PK = Math.log(45 / 7) / 38, KICK_N = (1 - Math.exp(-KICK_PK * 38)) * Math.exp(-KICK_PK * 7);
+function hitKick(e) { if (!e.alive) return 0; if ((e.hf || 0) > (e._hfp || 0) + .001) e._hT = G.time; e._hfp = e.hf || 0; const u = e._hT === undefined ? 9 : G.time - e._hT; if (u < 0 || u > .7) return 0; return (1 - Math.exp(-u * 38)) * Math.exp(-u * 7) / KICK_N * Math.min(1.4, e.hp0 || 1); }
+// On the Beat: the hero's sword swing winds up slowly, the blade reaches the foe (frame 9 of the attack clip, .45 s) exactly when the hit counts (k = .42), then follows through
+const BEAT_STRIKE = .45, BEAT_END = 1.3;
+function beatAt(k) { k = clamp(k, 0, 1); return k < .42 ? BEAT_STRIKE * Math.pow(k / .42, 1.7) : BEAT_STRIKE + (BEAT_END - BEAT_STRIKE) * (1 - Math.pow(1 - (k - .42) / .58, 2)); }
 function tiltBase(o, ry, s, t) { /* build 0048: lean the whole body back by t radians around its own side axis */ const c = Math.cos(ry), sn = Math.sin(ry), ct = Math.cos(t), st = Math.sin(t); o[4] = st * sn * s; o[5] = ct * s; o[6] = st * c * s; o[8] = ct * sn * s; o[9] = -st * s; o[10] = ct * c * s; }
 // ---- build 0055: monsters on real models. Risen dead (grunts), hulking risen (brutes) and hooded cultists (casters) are the free CC0
 // Quaternius base body and outfits, dyed per floor theme with glowing eyes, on the shared animation file. Far away, or if a model
@@ -2639,7 +2650,7 @@ function drawEnemy(e) {
   const col = GLX.col, md = e.md, c = col(md.c), c2 = col(md.c2), ec = col(md.e); let sc = e.sc, y = 0;
   let tilt = 0, ox = 0, oz = 0; if (!e.alive) { if (e.fly) { const k = Math.min(1, Math.max(0, e.deadT / .3)); sc *= .35 + .65 * k; y = e.fly.y - (1 - k) * .6; tilt = e.fly.tilt; } else { const k = Math.max(0, e.deadT / .45); sc *= .3 + .7 * k; y = -(1 - k) * .8; } }
   const fdt = Math.min(.1, G.time - (e.wkT === undefined ? G.time : e.wkT)); e.wkT = G.time; e.wk = (e.wk || 0) + ((e.st === 'wind' ? 1 : 0) - (e.wk || 0)) * Math.min(1, fdt * 9); /* wind-ups blend in and out instead of snapping */ const em = e.flash > 0 ? 1.4 : 0, w = e.walk, sw = Math.sin(w), at = Math.max(0, e.atk), wind = e.wk;
-  if (e.alive && e.hf > 0) { e.hf -= fdt; const k = Math.max(0, e.hf / .22), q = Math.sin(k * Math.PI) * Math.min(1.4, e.hp0 || 1); tilt = -.32 * q; ox = (e.hdx || 0) * .28 * q; oz = (e.hdz || 0) * .28 * q; } // the flinch: a quick lean back and a small step away from the blow
+  { const q = hitKick(e); if (e.alive && e.hf > 0) e.hf -= fdt; if (q) { tilt = -.42 * q; ox = (e.hdx || 0) * .34 * q; oz = (e.hdz || 0) * .34 * q; } } // the flinch (build 0169, Snap Back): kicked back at once, then eases back up
   GLX.base(BM, e.x + ox, y, e.z + oz, e.rot, sc); if (tilt) tiltBase(BM, e.rot, sc, tilt); const p = (g, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, cc, mat, ee) => GLX.part('dyn', g, BM, px, py, pz, rx, ry, rz, ox, oy, oz, sx, sy, sz, cc, ee === undefined ? em : ee, 1, mat || 0);
   const eyes = (ex, ey, ez, r) => { p('sphere', ex, ey, ez, 0, 0, 0, 0, 0, 0, r, r, r, ec, 0, 3); p('sphere', -ex, ey, ez, 0, 0, 0, 0, 0, 0, r, r, r, ec, 0, 3); };
   if (e.arch === 'goblin' && e.awake && e.alive && !e.ann && typeof UI !== 'undefined') { e.ann = 1; UI.zoneBanner('Treasure Goblin!', 'Catch it before it escapes: 30 seconds'); SFX.play('drop3'); }

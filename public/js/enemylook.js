@@ -22,7 +22,7 @@ const ENL = (function () {
     if (!e.alive && !noShrink) { if (e.fly) { const k = Math.min(1, Math.max(0, e.deadT / .3)); sc *= .35 + .65 * k; y = e.fly.y - (1 - k) * .6; tilt = e.fly.tilt; } else { const k = Math.max(0, e.deadT / .45); sc *= .3 + .7 * k; y = -(1 - k) * .8; } }
     const fdt = Math.min(.1, G.time - (e.wkT === undefined ? G.time : e.wkT)); e.wkT = G.time; e.wk = (e.wk || 0) + ((e.st === 'wind' ? 1 : 0) - (e.wk || 0)) * Math.min(1, fdt * 9);
     const em = e.flash > 0 ? 1.4 : 0, w = e.walk, sw = Math.sin(w), at = Math.max(0, e.atk), wind = e.wk;
-    if (e.alive && e.hf > 0) { e.hf -= fdt; const k = Math.max(0, e.hf / .22), q = Math.sin(k * Math.PI) * Math.min(1.4, e.hp0 || 1); tilt = -.32 * q; ox = (e.hdx || 0) * .28 * q; oz = (e.hdz || 0) * .28 * q; }
+    { const q = hitKick(e); if (e.alive && e.hf > 0) e.hf -= fdt; if (q) { tilt = -.42 * q; ox = (e.hdx || 0) * .34 * q; oz = (e.hdz || 0) * .34 * q; } } /* build 0169 (Lee's pick, Snap Back) */
     const moved = Math.abs((e.walk || 0) - (e._mw === undefined ? e.walk : e._mw)); e._mw = e.walk; e._mv = (e._mv || 0) + ((moved > .001 ? 1 : 0) - (e._mv || 0)) * .2;
     const mv = e.alive ? clamp(e._mv, 0, 1) : 0, hit = e.alive && e.hf > 0 ? Math.sin(Math.max(0, e.hf / .22) * Math.PI) : 0;
     const dk = e.alive ? 0 : clamp(1 - e.deadT / (e.dmax || .45), 0, 1);
@@ -58,6 +58,8 @@ const ENL = (function () {
     X.bm = (m, k, key) => { const id = '_b' + (key || 'u'), b = e[id] || (e[id] = new Float32Array(m.length)); for (let i = 0; i < m.length; i++) b[i] = 1 - k * m[i]; return b; };
     const lay = o.lay(X);
     if (o.body) o.body(X);
+    if (X._wl && !o.ownGait) { X.lean += X._wl[0]; X.fwd += X._wl[1]; X.lift += X._wl[2]; } /* build 0169: Lurch */
+    if (X._cb && e.alive) crushBody(X);
     const y = (o.keep && !e.alive ? (e.fly ? e.fly.y : 0) : P.y) + X.lift - M.head.minY * X.s, ry = e.rot + X.yaw;
     GLX.base(BMm, e.x + P.ox + Math.sin(ry) * X.fwd + Math.cos(ry) * X.side, y, e.z + P.oz + Math.cos(ry) * X.fwd - Math.sin(ry) * X.side, ry, X.s);
     const tl = (o.keep && !e.alive ? 0 : P.tilt) + X.lean; if (tl) tiltBase(BMm, ry, X.s, tl);
@@ -102,15 +104,30 @@ const ENL = (function () {
   function standWalk(X, idle, gait, gs, isp) {
     const e = X.e, A = X.A, lay = [], bm = X.bm(X.up, X.act);
     if (X.mv < 1) lay.push([idle, X.t * (isp || 1) + e.id * .37, true, 1 - X.mv, bm]);
-    if (X.mv > 0) lay.push([gait, (e.walk || 0) / 6.2832 * gs * A[gait].dur, true, X.mv, bm]);
+    if (X.mv > 0) { let ph = (e.walk || 0) / 6.2832 * gs;
+      if (gait === 'walk') { /* build 0169 (Lee's pick, Lurch): throws its weight forward with every step */ ph = ph - Math.floor(ph); ph += .03 * Math.sin(12.566 * ph); const sw = Math.sin(12.566 * ph), k = X.mv * (1 - X.act); X._wl = [(.08 + .13 * Math.max(0, sw)) * k, .07 * sw * k, -.05 * Math.pow(.5 + .5 * Math.cos(12.566 * ph), 3) * k]; }
+      lay.push([gait, ph * A[gait].dur, true, X.mv, bm]); }
     return lay;
   }
   // where an attack animation is: holds at the strike frame while winding up, then plays the follow-through
-  function swingAt(X, an, strike) { const D = X.A[an].dur; return (X.wnd ? strike * clamp(X.wind, 0, 1) : strike + (1 - strike) * clamp(1 - X.at, 0, 1)) * D; }
+  // build 0169 (Lee's pick, Crushing Blow): the sword-and-claw 'attack' winds back during the wind-up and lands its strike frame
+  // (.45 s into the clip) at the moment the hit counts, holds a split second on contact, then follows through
+  const CB_STRIKE = .45, eOut = (k, p) => 1 - Math.pow(1 - clamp(k, 0, 1), p);
+  function swingAt(X, an, strike) { const D = X.A[an].dur;
+    if (an === 'attack') { X._cb = 1; if (X.wnd) return .3 * eOut(X.wind, 1.5); const s = clamp(1 - X.at, 0, 1), h = .12; return s < h ? CB_STRIKE + .03 * s / h : CB_STRIKE + .03 + (D - CB_STRIKE - .03) * eOut((s - h) / (1 - h), 2.2); }
+    return (X.wnd ? strike * clamp(X.wind, 0, 1) : strike + (1 - strike) * clamp(1 - X.at, 0, 1)) * D; }
+  // the body for Crushing Blow: crouch and shiver at the end of the wind-up, a big lunge and a dust ring on contact (a look's own bigger moves win)
+  function crushBody(X) { const e = X.e;
+    if (X.wnd) { const w = clamp(X.wind, 0, 1), pr = e.st === 'wind' && e.a && e.a.wind ? clamp(1 - e.t / e.a.wind, 0, 1) : 0, sh = clamp((pr - .7) / .3, 0, 1); X.lean = Math.min(X.lean, -.1 * w); X.lift = Math.min(X.lift, -.05 * w); X.roll += .035 * Math.sin(X.t * 70) * sh; e._cbD = 0; }
+    else if (X.at > 0) { const s = clamp(1 - X.at, 0, 1); X.fwd = Math.max(X.fwd, .5 * eOut(s / .15, 2) * (1 - ease(clamp((s - .45) / .55, 0, 1)))); X.lean = Math.max(X.lean, .22 * Math.exp(-s * 5)); X.lift = Math.min(X.lift, -.03 * Math.exp(-s * 6));
+      if (!e._cbD) { e._cbD = 1; const r = (e.a && e.a.reach || 1.6) * .7; ring(e.x + Math.sin(e.rot) * r, e.z + Math.cos(e.rot) * r, .2, 1.4 * Math.max(.8, e.sc || 1), .45, 0xc8b8a0); } } }
   // seconds since it died
   const since = e => (e.dmax || .45) - e.deadT;
   // the struck reaction: alternates between the two hit animations so blows don't all look the same
-  function hitLay(X, lay, w) { if (X.e.hf > 0 && !X.act) { const an = (X.e.hn = X.e.hn || (X.e.id & 1 ? 'hit' : 'hit2')), D = X.A[an].dur; lay.push([an, (.22 - X.e.hf) / .22 * D, false, Math.min(1, X.e.hf * 6) * (w || 1), X.up]); } else if (X.e.hf <= 0 && X.e.hn) X.e.hn = X.e.hn === 'hit' ? 'hit2' : 'hit'; }
+  // build 0169 (Snap Back): the hit animation snaps in at full strength and plays out over .45 s; standing still it takes the whole body
+  function hitLay(X, lay, w) { const e = X.e, u = e._hT === undefined ? 9 : X.t - e._hT;
+    if (e.alive && !X.act && u >= 0 && u < .45) { if (e._hnT !== e._hT) { e._hnT = e._hT; e.hn = e.hn === 'hit' ? 'hit2' : e.hn === 'hit2' ? 'hit' : (e.id & 1 ? 'hit' : 'hit2'); }
+      const an = e.hn, D = X.A[an].dur; lay.push([an, Math.min(D, u * (an === 'hit' ? 1 : .9)), false, Math.min(1, (.45 - u) * 4) * (w || 1), X.mv > .3 ? X.up : null]); } }
   // after the death animation, the body settles into the ground
   const sinkAfter = (e, t0, len, d) => -clamp((since(e) - t0) / len, 0, 1) * (d || .9);
 
@@ -244,7 +261,7 @@ const ENL = (function () {
     brute: { n: 'Grave Colossus', d: 'Stone shoulder plates, rusted chains wound round its chest and a huge stone maul. Each step shakes it, it lifts the maul overhead and smashes the ground with a shock ring, and it topples face down with the maul.', dead: 1.6,
         draw(e) {
           const P = pre(e, true), md = e.md, stone = mix3(GLX.col(0x6a6660), P.c, .25), chain = GLX.col(0x4a4440), wood = GLX.col(0x3a2a1c);
-          const X = rig(e, P, 'risen', { s: .95, keep: 1,
+          const X = rig(e, P, 'risen', { s: .95, keep: 1, ownGait: 1, /* its own heavy walk */
             lay(X) { if (!e.alive) return [['die', dieAt(X, 1.9), false, 1]];
               const lay = standWalk(X, 'idle', 'walk', .9, .7);
               if (X.act) lay.push(['attack', swingAt(X, 'attack', .45), false, 1, X.up]); hitLay(X, lay, .7); return lay; },
