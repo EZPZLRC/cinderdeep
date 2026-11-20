@@ -8,7 +8,7 @@ const LIVE_AT = BUILT_AT && STARTED - BUILT_AT > 20 * 60000 ? BUILT_AT + 4 * 600
 // Serves the game from ./public and runs one shared world per party over WebSockets at /ws.
 const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto'), vm = require('vm');
 const PORT = process.env.PORT || 3000, PUB = process.env.PUBLIC_DIR || path.join(__dirname, 'public');
-const zlib = require('zlib'), GZ = new Map(); const MIME = { '.cdm': 'application/octet-stream', '.cde': 'application/octet-stream', '.cdl': 'application/octet-stream', '.jpg': 'image/jpeg', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.ico': 'image/x-icon', '.mp3': 'audio/mpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml' }; // OathByte UI: logo layers are WebP, the favicon is SVG
+const zlib = require('zlib'); const MIME = { '.cdm': 'application/octet-stream', '.cde': 'application/octet-stream', '.cdl': 'application/octet-stream', '.jpg': 'image/jpeg', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.ico': 'image/x-icon', '.mp3': 'audio/mpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml' }; // OathByte UI: logo layers are WebP, the favicon is SVG
 const simSrc = ['js/data.js', 'js/game.js'].map(f => new vm.Script(fs.readFileSync(path.join(PUB, f), 'utf8'), { filename: f }));
 simSrc.push(new vm.Script(fs.readFileSync(path.join(__dirname, 'sim', 'simsrv.js'), 'utf8'), { filename: 'simsrv.js' }));
 const BUILD = (/const BUILD = '([^']+)'/.exec(fs.readFileSync(path.join(PUB, 'js/data.js'), 'utf8')) || [])[1] || '?';
@@ -159,8 +159,11 @@ let INDEX_TXT = '';
 // CrazyGames (branch oathbyte-crazygames): there the game's files come from CrazyGames' own servers, so the title screen asks this server
 // for the player count, parties and leaderboard from another address. Only CrazyGames addresses are let in; nothing else changes.
 const CG_ORIGIN = /^(https:\/\/([a-z0-9-]+\.)*crazygames\.com|capacitor:\/\/([a-z0-9-]+\.)*crazygames\.com)$/i;
+const FC = new Map(); /* build 0158: per file, its change time, content fingerprint and gzipped copy */
 const server = http.createServer((req, res) => {
-  let u = decodeURIComponent(req.url.split('?')[0]);
+  /* build 0158 (fuzz test: one request for a web address that does not decode, such as /% , or one with a zero byte in it, such as /%00 , threw outside any catch and stopped the whole server,
+     dropping every player; scanners on the internet send such addresses all the time): both now get a plain 400 reply */
+  let u; try { u = decodeURIComponent(String(req.url || '/').split('?')[0]); } catch (e) { u = null; } if (u === null || u.indexOf(String.fromCharCode(0)) >= 0) { res.writeHead(400, { 'Content-Type': 'text/plain' }); res.end('Bad request'); return; }
   { const o = String(req.headers.origin || ''); if (o && CG_ORIGIN.test(o) && (u === '/oathbyte-server' || u === '/parties' || u === '/leaderboard')) { res.setHeader('Access-Control-Allow-Origin', o); res.setHeader('Vary', 'Origin'); if (req.method === 'OPTIONS') { res.setHeader('Access-Control-Allow-Methods', 'GET'); res.setHeader('Access-Control-Max-Age', '86400'); res.writeHead(204); res.end(); return; } } }
   if (u === '/oathbyte-server' || u === '/cinderdeep-server') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ oathbyte: 1, cinderdeep: u === '/cinderdeep-server' ? 1 : undefined /* build 0101: the old path stays for pages loaded before the rename */, build: BUILD, players: onlineCount(), names: onlineNames(), upAgo: Date.now() - LIVE_AT, worldBoss: { kills: WB.on ? WB_NEED : WB.k, need: WB_NEED, up: !!WB.on, slain: WB.n } })); /* build 0073: how long this build has been live, by the server's own clock */ return; }
   if (u === '/parties') { const list = []; for (const [code, r] of rooms) { if (!r.players.size || /^(solo|pv)/.test(code)) continue; /* build 0117: pv = private CrazyGames Instant Multiplayer party, friends join by invite */ const pl = [...r.players.values()].map(q => ({ n: q.name, c: q.cls, l: q.lvl | 0 })); list.push({ code, players: pl, floor: r.ctx.srvFloor ? r.ctx.srvFloor() : 1, daily: !!r.daily }); } list.sort((a, b) => b.players.length - a.players.length); res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ parties: list.slice(0, 40), max: PARTY_MAX })); return; } // party browser (build 0021)
@@ -177,9 +180,14 @@ const server = http.createServer((req, res) => {
   if (!f.startsWith(PUB)) { res.writeHead(403); res.end(); return; }
   // build 0039: model files and scripts go out gzipped when the browser accepts it (the hero models are about a third smaller)
   const gz = /\bgzip\b/.test(req.headers['accept-encoding'] || '') && /\.(cdm|cde|cdl|js|html|css|json)$/.test(f);
-  if (gz && GZ.has(f)) { res.writeHead(200, { 'Content-Type': MIME[path.extname(f)] || 'application/octet-stream', 'Cache-Control': 'no-cache', 'Content-Encoding': 'gzip', 'Vary': 'Accept-Encoding' }); res.end(GZ.get(f)); return; }
-  fs.readFile(f, (err, data) => { if (err) { res.writeHead(404); res.end('Not found'); return; } const h = { 'Content-Type': MIME[path.extname(f)] || 'application/octet-stream', 'Cache-Control': 'no-cache' };
-    if (gz) { const z = zlib.gzipSync(data, { level: 9 }); GZ.set(f, z); h['Content-Encoding'] = 'gzip'; h.Vary = 'Accept-Encoding'; data = z; } res.writeHead(200, h); res.end(data); });
+  /* build 0158: every file goes out with a fingerprint of its contents (ETag). A browser that already has the file sends the fingerprint back and gets a short "not changed" reply (304)
+     instead of the whole file again. Before this, files had no fingerprint and no date, so every visit downloaded the scripts, the 2 MB world file, the models and each music track from scratch.
+     The fingerprint is of the contents, so a new build only re-sends the files that really changed. The kept copy is checked against the file's change time, so an edited file is never served stale. */
+  fs.stat(f, (er, st) => { if (er || !st.isFile()) { res.writeHead(404); res.end('Not found'); return; }
+    let c = FC.get(f); if (c && c.m !== st.mtimeMs) c = null; const inm = String(req.headers['if-none-match'] || ''), h = { 'Content-Type': MIME[path.extname(f)] || 'application/octet-stream', 'Cache-Control': 'no-cache' }; if (gz) { h['Content-Encoding'] = 'gzip'; h.Vary = 'Accept-Encoding'; }
+    const send = data => { h.ETag = c.e + (gz ? '-g"' : '"'); if (inm && inm === h.ETag) { delete h['Content-Encoding']; res.writeHead(304, h); res.end(); return; } if (gz && !c.z) c.z = zlib.gzipSync(data, { level: 9 }); res.writeHead(200, h); res.end(gz ? c.z : data); };
+    if (c && (inm === c.e + (gz ? '-g"' : '"') || (gz && c.z))) { send(null); return; }
+    fs.readFile(f, (err, data) => { if (err) { res.writeHead(404); res.end('Not found'); return; } if (!c) { c = { m: st.mtimeMs, e: '"' + crypto.createHash('sha1').update(data).digest('base64').slice(0, 22), z: null }; FC.set(f, c); } send(data); }); });
 });
 class Conn {
   constructor(sock) { this.sock = sock; this.buf = Buffer.alloc(0); this.frag = []; this.open = true; this.alive = true; }
@@ -213,6 +221,8 @@ setInterval(() => { for (const c of conns) { if (!c.alive) { c.close(); continue
 // build 0070: when the host restarts the server for an update, tell everyone first so they reconnect at once to the new one, on the same floor and spot
 let closing = false; function shutdown() { if (closing) return; closing = true; const bye = JSON.stringify({ t: 'bye' }); for (const c of conns) c.sendRaw(bye); setTimeout(() => { for (const c of conns) c.close(); process.exit(0); }, 800); }
 process.on('SIGTERM', shutdown); process.on('SIGINT', shutdown);
+/* build 0158: a last net. An error nobody caught is written to the log and the server keeps running, so one bad request or one bad room can never again disconnect everybody */
+process.on('uncaughtException', e => { try { console.error('uncaught', e && e.stack || e); } catch (_) { } });
 server.listen(PORT, () => console.log('OathByte server build ' + BUILD + ' listening on port ' + PORT));
 // Keep the free host awake (Lee approved a 10-minute ping, Nov 12). GitHub's scheduled ping only ran a few times a day,
 // so the server also calls its own public address every 10 minutes. Render sets RENDER_EXTERNAL_URL; locally SELF_PING_URL can be used.
