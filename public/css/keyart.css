@@ -329,7 +329,9 @@ body:has(#menu.ka:not(.hide)) #build{display:none}
 #menu.ka.qs>#kaHero{margin-top:0}
 #menu.ka.qs #kaHero .kaIn{padding-top:max(16px,3vh);padding-bottom:max(14px,2.5vh);gap:max(12px,2.2vh)}
 #menu.ka.qs #kaLeft{padding:max(18px,3vh) 32px 12px}
-#menu.ka.qs .obLogo{width:min(360px,100%,44vh)!important}
+#menu.ka.qs .obLogo{width:min(340px,100%,36vh)!important}
+#menu.ka.qs #menuMsg,#menu.ka.qs #kaPriv{display:none}
+@media (min-height:760px){#menu.ka.qs #menuMsg,#menu.ka.qs #kaPriv{display:block}}
 #menu.ka.qs #menuMsg{margin:max(6px,1.2vh) auto max(8px,1.4vh);font-size:15px;line-height:1.5}
 #menu.ka.qs #kaGo{margin:6px 0 2px;gap:8px}
 #menu.ka.qs #btnNew{height:64px;font-size:19px}
@@ -356,3 +358,10 @@ body:has(#menu.ka:not(.hide)) #build{display:none}
 #menu.ka #kaToday button.tdRow:disabled{cursor:default;opacity:.75;filter:none}
 #menu.ka #kaToday .tdBar{grid-column:1/-1;display:block;height:5px;margin-top:5px;border-radius:9px;background:rgba(255,255,255,.1);overflow:hidden}
 #menu.ka #kaToday .tdBar>i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#7a3cff,#c070ff)}
+/* build 0159: in the one-tap screen the Today card is one row of small tiles, so the heroes stay in view */
+#menu.ka.qs #kaToday{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:6px;margin-top:10px;padding-top:10px}
+#menu.ka.qs #kaToday h5{display:none}
+#menu.ka.qs #kaToday .tdRow{align-content:start;padding:6px 10px}
+#menu.ka.qs #kaToday .tdRow b{font-size:12.5px}
+#menu.ka.qs #kaToday .tdRow em{grid-row:1;font-size:12px}
+#menu.ka.qs #kaToday .tdRow span{grid-column:1/-1;font-size:11.5px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
