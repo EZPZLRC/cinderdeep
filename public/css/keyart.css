@@ -323,3 +323,22 @@ body:has(#menu.ka:not(.hide)) #build{display:none}
 
 /* build 0117: privacy notice under Play */
 #kaPriv{margin-top:8px;max-width:380px;font-size:12px;line-height:1.5;color:#a8aeb8;text-align:center;letter-spacing:.02em}#menu #kaPriv a{color:#e8c870;text-decoration:underline}
+/* build 0160 (Lee: one-tap play): on CrazyGames and for a first visit the title is a small game screen: logo, Play and the heroes, nothing to scroll */
+#menu.ka #kaFull{display:none}
+#menu.ka.qs>#kaNav,#menu.ka.qs>.kaSec,#menu.ka.qs>#kaFoot,#menu.ka.qs #online,#menu.ka.qs #kaJoin,#menu.ka.qs #kaOpts{display:none!important}
+#menu.ka.qs>#kaHero{margin-top:0}
+#menu.ka.qs #kaHero .kaIn{padding-top:max(16px,3vh);padding-bottom:max(14px,2.5vh);gap:max(12px,2.2vh)}
+#menu.ka.qs #kaLeft{padding:max(18px,3vh) 32px 12px}
+#menu.ka.qs .obLogo{width:min(340px,100%,36vh)!important}
+#menu.ka.qs #menuMsg,#menu.ka.qs #kaPriv{display:none}
+@media (min-height:760px){#menu.ka.qs #menuMsg,#menu.ka.qs #kaPriv{display:block}}
+#menu.ka.qs #menuMsg{margin:max(6px,1.2vh) auto max(8px,1.4vh);font-size:15px;line-height:1.5}
+#menu.ka.qs #kaGo{margin:6px 0 2px;gap:8px}
+#menu.ka.qs #btnNew{height:64px;font-size:19px}
+#menu.ka.qs #kaPriv{font-size:11px;line-height:1.45;opacity:.8}
+#menu.ka.qs #kaFull{display:inline-block;margin:8px auto 0;padding:4px 2px;background:none;border:0;box-shadow:none;border-radius:0;font:600 13px var(--ka-ui);letter-spacing:.02em;text-transform:none;color:#c9ced8;cursor:pointer}
+#menu.ka.qs #kaFull:hover{color:#fff;filter:none}
+#menu.ka.qs #kaRail{max-width:min(900px,150vh);padding:12px 16px 14px}
+#menu.ka.qs #kaRail h4{margin-bottom:8px}
+@media (max-height:620px){#menu.ka.qs #btnNew{height:54px}#menu.ka.qs #kaLeft{padding:12px 24px 8px}#menu.ka.qs #kaRail{max-width:min(900px,125vh);padding:8px 12px 10px}}
+@media (max-width:760px){#menu.ka.qs #kaLeft{padding:20px 16px 10px}#menu.ka.qs #btnNew{height:58px}}

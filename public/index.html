@@ -529,9 +529,9 @@ body.tj #dock{z-index:25}@media (pointer:coarse){#dock{z-index:25}} /* phones: o
 #bTown.tbusy,#tTown.tbusy{opacity:.42!important;filter:grayscale(1)!important;cursor:not-allowed}/* build 0122: enemies too close to leave */
 .srow2.poor{opacity:.42;filter:grayscale(.9)}.srow2.poor:hover{border-color:#3a3226}/* build 0127: items you cannot afford */
 </style>
-<link rel="stylesheet" href="css/oathbyte.css?v=0158">
-<link rel="stylesheet" href="css/keyart.css?v=0158">
-<link rel="stylesheet" href="css/advisor.css?v=0158">
+<link rel="stylesheet" href="css/oathbyte.css?v=0160">
+<link rel="stylesheet" href="css/keyart.css?v=0160">
+<link rel="stylesheet" href="css/advisor.css?v=0160">
 </head>
 <body>
 <canvas id="gl"></canvas><canvas id="ov"></canvas>
@@ -589,6 +589,7 @@ body.tj #dock{z-index:25}@media (pointer:coarse){#dock{z-index:25}} /* phones: o
     <p id="menuMsg">Descend the Blighted Hollow, face the Ashen Tyrant, and keep your oath. Free in your browser, alone or with friends.</p>
     <div id="online" class="hide"><input id="oName" maxlength="16" placeholder="Your name"><input id="oRoom" maxlength="12" placeholder="Party code (optional)" title="Leave blank to start your own party. Friends and other players can join you from Join a party."><label id="soloWrap" title="Play by yourself. Strangers can't join you; only friends you send an invite link to."><input type="checkbox" id="soloChk"> Solo</label><div id="onlineN"></div></div>
     <div id="kaGo"><button class="big" id="btnNew">Play</button><button id="kaJoin" type="button" title="See who is playing and join them, or type a party code">Join a party</button><div id="kaMeta"><b></b><span>Free · No download</span></div><div id="kaPriv">Your heroes save in this browser. Online play shares your hero name and progress with the game server. <a href="#" data-go="priv">Privacy</a></div></div>
+    <button id="kaFull" type="button">Daily challenge, parties and more ▾</button>
     <div id="kaOpts"><button id="kaMore" aria-expanded="false">More options ▾</button><button id="mDaily" title="Same floors for every player today. Type a party code to run it with friends."><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="1.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Daily challenge</button><button id="mParty" title="See every party that is playing right now and join one"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2 20a6 6 0 0 1 12 0M10 20a6 6 0 0 1 12 0"/></svg>Parties</button><button id="mLb"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8M9 17h6"/></svg>Leaderboard</button><button id="mSet"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>Settings</button><label id="hcWrap" class="hide" title="One life only. If this hero dies it is gone for good, and its leaderboard entry gets a skull."><input type="checkbox" id="hcChk"> ☠ Hardcore</label><button id="btnReset" class="hide">Reset this hero</button></div>
   </div>
   <div id="kaRail"><h4>Choose your hero <em id="kaDesc"></em></h4><div id="classes"></div></div></div>
@@ -638,17 +639,17 @@ body.tj #dock{z-index:25}@media (pointer:coarse){#dock{z-index:25}} /* phones: o
 @media (max-width:520px){.ifoot button.act2,.ifoot.sbar button.act2{width:170px;height:44px;font-size:10px!important;letter-spacing:.03em!important}}/* build 0133: Salvage all and the pet's whole-bag button are the same size */
 #bLee.on,#tLee.on{border-color:#7ad06a!important;box-shadow:0 0 12px rgba(120,220,100,.45)!important;color:#c8ffb8}/* build 0135: hidden auto-play, only for the name Lee */
 </style>
-<script src="js/move.js?v=0158"></script>
-<script src="js/models.js?v=0158"></script>
-<script src="js/gl.js?v=0158"></script>
-<script src="js/data.js?v=0158"></script>
-<script src="js/cg.js?v=0158"></script>
-<script src="js/icons.js?v=0158"></script>
-<script src="js/game.js?v=0158"></script>
-<script src="js/fxlook.js?v=0158"></script>
-<script src="js/enemylook.js?v=0158"></script>
-<script src="js/net.js?v=0158"></script>
-<script src="js/ui.js?v=0158"></script>
-<script src="js/advisor.js?v=0158"></script>
+<script src="js/move.js?v=0160"></script>
+<script src="js/models.js?v=0160"></script>
+<script src="js/gl.js?v=0160"></script>
+<script src="js/data.js?v=0160"></script>
+<script src="js/cg.js?v=0160"></script>
+<script src="js/icons.js?v=0160"></script>
+<script src="js/game.js?v=0160"></script>
+<script src="js/fxlook.js?v=0160"></script>
+<script src="js/enemylook.js?v=0160"></script>
+<script src="js/net.js?v=0160"></script>
+<script src="js/ui.js?v=0160"></script>
+<script src="js/advisor.js?v=0160"></script>
 <div id="mtags"></div></body>
 </html>
