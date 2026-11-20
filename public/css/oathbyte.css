@@ -239,3 +239,13 @@ body.tj .sk:active{box-shadow:inset 0 2px 1px rgba(255,255,255,.28),inset 0 -3px
 #qfs.qin,#tq.qin{animation:qIn .8s ease-out}
 @keyframes qIn{0%{opacity:0;transform:translateY(-8px)}60%{opacity:1;box-shadow:0 0 0 1px rgba(255,200,90,.55),0 0 18px rgba(255,170,60,.35)}100%{transform:none;box-shadow:none}}
 @media (prefers-reduced-motion:reduce){#qfs.qin,#tq.qin{animation:none}}
+/* build 0159: the share moment after a first guardian kill or a Legendary */
+#brag{position:fixed;left:50%;top:calc(22% + 100px);z-index:45;display:flex;align-items:center;gap:10px;max-width:calc(100vw - 24px);padding:7px 6px 7px 16px;border:1px solid rgba(255,200,120,.5);border-radius:999px;background:rgba(16,11,8,.9);box-shadow:0 10px 30px -10px #000,0 0 22px -8px rgba(255,170,80,.6);font:600 14px/1.2 system-ui,-apple-system,"Segoe UI",sans-serif;color:#f6ead2;transform:translateX(-50%);animation:bragIn .35s ease-out;pointer-events:auto;white-space:nowrap}
+#brag.hide{display:none}
+#brag button{margin:0;min-height:0;height:auto;box-shadow:none;cursor:pointer}
+#brag #bragGo{padding:7px 16px;border:1px solid #ffcf8a;border-radius:999px;background:linear-gradient(#ffb44a,#e2741c);font:700 13px/1 system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:.02em;color:#1c0d02}
+#brag #bragGo:hover{filter:brightness(1.1)}
+#brag #bragX{padding:2px 8px;border:0;background:none;font:400 20px/1 system-ui,sans-serif;color:#b9a98a}
+#brag #bragX:hover{color:#fff}
+@keyframes bragIn{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+@media (max-width:520px){#brag{font-size:13px;gap:6px;padding-left:12px}}
