@@ -659,7 +659,9 @@ body.tj #dock{z-index:25}@media (pointer:coarse){#dock{z-index:25}} /* phones: o
  #tbtns #tChat,#tbtns #tTown{display:none!important}
  body.qtown #tbtns #tTown{display:flex!important}
  #more .ph:not(.hide){display:flex}
+ #party{overflow-x:hidden}
 }
+@media (orientation:portrait) and (max-width:760px){#questBox{top:calc(102px + env(safe-area-inset-top))!important}}
 </style>
 <script src="js/move.js?v=0161"></script>
 <script src="js/models.js?v=0161"></script>
