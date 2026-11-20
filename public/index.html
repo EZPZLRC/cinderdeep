@@ -533,9 +533,9 @@ body.tj #dock{z-index:25}@media (pointer:coarse){#dock{z-index:25}} /* phones: o
 #set label:has(input[type=checkbox]){flex-wrap:nowrap}#set label input[type=checkbox]{flex:none}
 #party .pth{font-size:11.5px;letter-spacing:.06em}
 </style>
-<link rel="stylesheet" href="css/oathbyte.css?v=0162">
-<link rel="stylesheet" href="css/keyart.css?v=0162">
-<link rel="stylesheet" href="css/advisor.css?v=0162">
+<link rel="stylesheet" href="css/oathbyte.css?v=0164">
+<link rel="stylesheet" href="css/keyart.css?v=0164">
+<link rel="stylesheet" href="css/advisor.css?v=0164">
 </head>
 <body>
 <canvas id="gl"></canvas><canvas id="ov"></canvas>
@@ -565,7 +565,7 @@ body.tj #dock{z-index:25}@media (pointer:coarse){#dock{z-index:25}} /* phones: o
   </div>
   <!-- build 0098 (playtest: the menu bar sat where you click to walk): the four buttons you use most sit in the bottom-right corner; the rest live under Menu -->
   <div id="dock"><button id="bInv" class="giv-inv" title="Bag (I)">Bag</button><button id="bSkl" class="giv-skl" title="Skills (S)">Skills</button><button id="bTown" class="giv-town" title="Town (T)">Town</button><button id="bJoin" class="giv-party" title="Join a party, or see who is playing">Party</button><button id="bAdv" class="giv-adv" title="Advisor: your next best move">Advice</button><button id="bLee" class="hide giv-auto" title="Auto-play">Auto: off</button><button id="bMore" title="Menu (Esc)">Menu</button></div>
-  <div id="more" class="hide"><button id="mTown" class="giv-town ph">Town</button><button id="mChat" class="giv-chat ph hide">Chat</button><button id="bSet" class="giv-set">Settings</button><button id="bPL" class="giv-loot">Pet and loot</button><button id="bParty" class="giv-party">Join a party</button><button id="bInvite" class="giv-invite">Invite a friend</button><button id="bLeave" class="hide giv-leave">Leave party</button><button id="bLb" class="giv-lb">Leaderboard</button><button id="bAch" class="giv-ach">Badges</button><button id="bAuto" class="giv-auto">Auto-play: off</button><button id="bSpd" class="giv-spd">Speed 1×</button><button id="bMenu" class="giv-exit">Exit to title</button></div>
+  <div id="more" class="hide"><button id="mTown" class="giv-town phn">Town</button><button id="mChat" class="giv-chat phn hide">Chat</button><button id="bSet" class="giv-set">Settings</button><button id="bPL" class="giv-loot">Pet and loot</button><button id="bParty" class="giv-party">Join a party</button><button id="bInvite" class="giv-invite">Invite a friend</button><button id="bLeave" class="hide giv-leave">Leave party</button><button id="bLb" class="giv-lb">Leaderboard</button><button id="bAch" class="giv-ach">Badges</button><button id="bAuto" class="giv-auto">Auto-play: off</button><button id="bSpd" class="giv-spd">Speed 1×</button><button id="bMenu" class="giv-exit">Exit to title</button></div>
   <div id="party" class="hide"></div><div id="onl" class="hide"></div><div id="chatlog" class="hide"></div>
   <div id="chatRow" class="hide"><button id="chatCh">Global</button><input id="chat" maxlength="140"><button id="chatX" class="xb" aria-label="Close chat">×</button></div>
   <div id="tbtns"><button id="tLee" class="hide giv-auto">Auto</button><button id="tChat" class="hide giv-chat">Chat</button><button id="tTown" class="giv-town">Town</button><button id="tLoot" class="giv-loot">Loot</button><button id="tSkl" class="giv-skl">Skills</button><button id="tBag" class="giv-inv">Bag</button></div>
@@ -643,7 +643,7 @@ body.tj #dock{z-index:25}@media (pointer:coarse){#dock{z-index:25}} /* phones: o
 @media (max-width:520px){.ifoot button.act2,.ifoot.sbar button.act2{width:170px;height:44px;font-size:10px!important;letter-spacing:.03em!important}}/* build 0133: Salvage all and the pet's whole-bag button are the same size */
 #bLee.on,#tLee.on{border-color:#7ad06a!important;box-shadow:0 0 12px rgba(120,220,100,.45)!important;color:#c8ffb8}/* build 0135: hidden auto-play, only for the name Lee */
 /* build 0161 (Lee: "The screen looks very full on cell phone"): on a phone the quest box is one line (tap it to open it), the map is smaller, and Chat and Town live in the menu */
-#more .ph{display:none}
+#more .phn{display:none}
 @media (orientation:portrait) and (max-width:760px),(orientation:landscape) and (max-height:500px){
  #questBox{pointer-events:auto;cursor:pointer;-webkit-tap-highlight-color:transparent}
  #questBox:not(.qx){max-height:none!important;overflow:hidden;width:auto!important;max-width:min(190px,46vw)!important;padding:4px 20px 4px 7px!important}
@@ -658,7 +658,7 @@ body.tj #dock{z-index:25}@media (pointer:coarse){#dock{z-index:25}} /* phones: o
  #mini{width:80px!important;height:80px!important}
  #tbtns #tChat,#tbtns #tTown{display:none!important}
  body.qtown #tbtns #tTown{display:flex!important}
- #more .ph:not(.hide){display:flex}
+ #more .phn:not(.hide){display:flex}
  #party,body.tj #party{overflow-x:hidden!important}
 }
 @media (orientation:portrait) and (max-width:760px){#questBox{top:calc(102px + env(safe-area-inset-top))!important}}
@@ -676,18 +676,36 @@ body.tj #dock{z-index:25}@media (pointer:coarse){#dock{z-index:25}} /* phones: o
  #party button{text-align:center!important;padding:6px 8px!important;font-size:12px!important}
  #questBox::after{top:50%!important;transform:translateY(-50%)}
 }
+/* build 0164 (Lee: "Button look the same", "Look at all them again"): on a phone the skill, potion and dodge buttons show bigger icons in the middle, their A/AUTO tag and cost sit on the rim instead of over the icon, the cooldown sweeps round the circle, and the build label keeps clear of the XP bar */
+@media (orientation:portrait) and (max-width:760px),(orientation:landscape) and (max-height:500px){
+ body.tj .sk{overflow:visible}
+ body.tj .sk .ic{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+ body.tj .sk .gw{width:1.6em;height:1.6em}
+ body.tj .sk:nth-child(1) .gw{width:1.45em;height:1.45em}
+ body.tj .sk.dg .gw{width:1.45em;height:1.45em}
+ body.tj .sk.use .gw{width:1.2em;height:1.2em}
+ body.tj .sk .cd{inset:-1px;height:auto!important;border-radius:50%;background:conic-gradient(rgba(0,0,0,.72) var(--p,0%),transparent 0);pointer-events:none}
+ body.tj .sk .cdt{z-index:2;font-weight:700;text-shadow:0 1px 3px #000,0 0 6px #000}
+ body.tj .sk .ab{top:-9px!important;z-index:3}
+ body.tj .sk.lock .ab{display:none}body.tj .sk.lock .gw{width:1.25em;height:1.25em}
+ body.tj #build{white-space:pre-line;line-height:1.2}
+ body.tj .sk .cost{bottom:-8px;z-index:3;padding:1px 6px;border-radius:8px;background:#1a140c;border:1px solid #8a7246;font:700 10.5px/1.25 system-ui,sans-serif;color:#ffb85a;white-space:nowrap}
+}
+@media (orientation:portrait) and (max-width:760px){
+ body.tj #build{left:auto!important;right:6px!important;bottom:calc(3px + env(safe-area-inset-bottom))!important;white-space:pre-line;text-align:right;font-size:9.5px!important;line-height:1.2}
+}
 </style>
-<script src="js/move.js?v=0162"></script>
-<script src="js/models.js?v=0162"></script>
-<script src="js/gl.js?v=0162"></script>
-<script src="js/data.js?v=0162"></script>
-<script src="js/cg.js?v=0162"></script>
-<script src="js/icons.js?v=0162"></script>
-<script src="js/game.js?v=0162"></script>
-<script src="js/fxlook.js?v=0162"></script>
-<script src="js/enemylook.js?v=0162"></script>
-<script src="js/net.js?v=0162"></script>
-<script src="js/ui.js?v=0162"></script>
-<script src="js/advisor.js?v=0162"></script>
+<script src="js/move.js?v=0164"></script>
+<script src="js/models.js?v=0164"></script>
+<script src="js/gl.js?v=0164"></script>
+<script src="js/data.js?v=0164"></script>
+<script src="js/cg.js?v=0164"></script>
+<script src="js/icons.js?v=0164"></script>
+<script src="js/game.js?v=0164"></script>
+<script src="js/fxlook.js?v=0164"></script>
+<script src="js/enemylook.js?v=0164"></script>
+<script src="js/net.js?v=0164"></script>
+<script src="js/ui.js?v=0164"></script>
+<script src="js/advisor.js?v=0164"></script>
 <div id="mtags"></div></body>
 </html>
