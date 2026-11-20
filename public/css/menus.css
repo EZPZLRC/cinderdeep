@@ -1,0 +1,55 @@
+/* build 0166 (Lee, Nov 20, his picks on the Menus and Screens 0001 picker: "Window frames = B Ember glass; Buttons = B Ember edge;
+   Settings switches = B Rune boxes; Loading screen = A Hero portrait"). Loaded after every other style so these looks win.
+   Glass is light on the laptop: the see-through blur only runs on High and Ultra. On Low and Medium (and when Automatic drops
+   below High) body gets class fxlite and the panels are the same smoked glass without the blur, which costs nothing to draw. */
+/* Frames B: Ember glass. See-through smoked glass with a soft blur, rounded corners, a thin ember edge and glow. */
+#skl,#inv,#town,#set,#lb,#parties{
+  background:linear-gradient(180deg,rgba(34,26,28,.74),rgba(12,10,13,.80))!important;
+  -webkit-backdrop-filter:blur(10px) saturate(1.2);backdrop-filter:blur(10px) saturate(1.2);
+  border:1px solid rgba(255,120,80,.30)!important;border-top:1px solid rgba(255,150,110,.55)!important;border-radius:14px!important;
+  box-shadow:0 0 0 1px rgba(0,0,0,.55),0 0 34px rgba(255,70,30,.16),inset 0 1px 0 rgba(255,190,160,.18),0 24px 60px rgba(0,0,0,.65)!important}
+#skl .ph,#inv .ph,#town .ph,#set .ph{border-bottom:0!important;padding-bottom:10px;margin-bottom:10px;background:linear-gradient(90deg,rgba(255,90,42,.9),rgba(255,90,42,.15) 60%,rgba(0,0,0,0)) bottom/100% 1px no-repeat}
+#inv .ph h3,#set .ph h3,#town .ph h3,#lb h2{font-family:var(--ob-head)!important;font-size:16px!important;letter-spacing:.2em!important;color:#fff1ea!important;text-shadow:0 0 12px rgba(255,90,42,.55),0 1px 0 #000}
+.xb{border-radius:50%!important;background:rgba(255,255,255,.06)!important;border:1px solid rgba(255,150,110,.45)!important;color:#ffd9cc!important;box-shadow:none!important}
+.xb:hover{background:rgba(255,90,42,.35)!important;border-color:#ff8a6a!important;color:#fff!important}
+#lb .x,#lb button.x{border-radius:999px;padding:8px 26px;background:rgba(255,255,255,.06);border:1px solid rgba(255,150,110,.45)}
+#inv .ds,#inv .bs,#inv .cell{border-radius:8px}
+#inv .hl{border-bottom-color:rgba(255,150,110,.14)!important}
+body.fxlite :is(#skl,#inv,#town,#set,#lb,#parties){-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background:linear-gradient(180deg,rgba(34,26,28,.93),rgba(12,10,13,.95))!important}
+/* Buttons B: Ember edge. Dark see-through pills with a thin ember outline that glows on hover; open panel = lit. */
+#dock button,#more button{min-height:32px;font-family:var(--ob-head)!important;font-weight:700!important;letter-spacing:.14em!important;color:#ffe9e0!important;border-radius:999px!important;padding-left:14px!important;
+  background:rgba(14,10,12,.72)!important;border:1px solid rgba(255,120,80,.42)!important;box-shadow:0 2px 10px rgba(0,0,0,.6),inset 0 0 12px rgba(255,80,40,.06)!important;transition:box-shadow .15s,border-color .15s,background .15s}
+#dock button:not(#bMore)::before,#more button::before{background:linear-gradient(180deg,#fff2ea,#ff9a72)!important}
+#dock #bMore::before{color:#ffe9e0!important}
+#dock button:hover,#more button:hover,#dock button.open{background:linear-gradient(180deg,rgba(255,90,42,.34),rgba(140,20,10,.30))!important;border-color:#ff8a6a!important;box-shadow:0 0 16px rgba(255,80,40,.45),inset 0 1px 0 rgba(255,210,190,.3)!important;color:#fff!important}
+#more{background:rgba(12,9,11,.82)!important;border:1px solid rgba(255,120,80,.3)!important;border-radius:14px!important}
+#tbtns button,#dock #bMore,#dock #bJoin{font-family:var(--ob-head)!important;font-weight:700!important;color:#ffe9e0!important;background:radial-gradient(circle at 50% 35%,rgba(70,30,24,.85),rgba(12,8,10,.85))!important;border:1.5px solid rgba(255,120,80,.6)!important;box-shadow:0 0 14px rgba(255,80,40,.28),0 3px 10px rgba(0,0,0,.7)!important}
+#lb .x,#skl [data-ac],#set button:not(.xb){border-radius:999px!important;background:rgba(14,10,12,.7)!important;border:1px solid rgba(255,120,80,.42)!important;font-weight:600}
+#skl [data-ac].on{border-color:#6fe08a!important;color:#c9ffd0;box-shadow:0 0 12px rgba(90,230,120,.3)!important}
+/* phones: the round buttons stay round */
+body.tj #dock :is(#bJoin,#bAdv,#bMore){border-radius:50%!important;padding:0!important;font-size:0!important;justify-content:center!important}
+@media (pointer:coarse){#dock :is(#bJoin,#bAdv,#bMore){border-radius:50%!important;padding:0!important;font-size:0!important;justify-content:center!important}}
+/* Settings B: Rune boxes. Square bevelled boxes that fill crimson with a white tick, a thin steel track with a diamond handle. */
+#set input[type=checkbox]{-webkit-appearance:none;appearance:none;flex:none;width:20px;height:20px;margin:0;border-radius:3px;background:linear-gradient(180deg,#0a0a0d,#1c1d22);border:1px solid #6a707c;box-shadow:inset 0 2px 3px #000,0 0 0 1px #000;cursor:pointer;display:grid;place-items:center}
+#set input[type=checkbox]:checked{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14'%3E%3Cpath d='M2 7.5l3.2 3.2L12 3.5' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center no-repeat,linear-gradient(180deg,#e0281a,#7a0d07);border-color:#ff8a6a;box-shadow:inset 0 1px 0 rgba(255,220,200,.45),0 0 0 1px #000,0 0 8px rgba(255,60,30,.4)}
+#set input[type=range]{-webkit-appearance:none;appearance:none;height:3px;border-radius:0;border:0;background:linear-gradient(90deg,#e6e9ee,#9aa1ae var(--p,50%),#2a2c32 var(--p,50%))!important;padding:0!important;box-shadow:0 1px 0 #000}
+#set input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;transform:rotate(45deg);background:linear-gradient(135deg,#ffb39a,#e0281a 50%,#5a0a06);border:1px solid #000;box-shadow:0 0 8px rgba(255,60,30,.6);cursor:pointer}
+#set input[type=range]::-moz-range-thumb{width:12px;height:12px;background:#e0281a;border:1px solid #000;border-radius:0}
+#set select{-webkit-appearance:none;appearance:none;padding:6px 28px 6px 10px!important;border-radius:2px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M5 1l4 4-4 4-4-4z' fill='%23e0281a'/%3E%3C/svg%3E") right 9px center no-repeat,#0b0c10!important;border:1px solid #4a4e58!important;border-bottom-color:#8a909c!important;color:#f2f4f8!important;font-family:var(--ob-head);font-weight:700;letter-spacing:.04em}
+/* Loading A: Hero portrait. Your hero's art on the left, where you are going on the right, a steel-and-ember bar and a tip. */
+#ldr{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;gap:5vw;background:radial-gradient(70% 80% at 30% 60%,rgba(184,22,14,.22),rgba(0,0,0,0) 70%),url(../brand/menu-bg.webp) center/cover #07070a;color:#e8e2d4;font-family:Inter,system-ui,sans-serif}
+#ldr::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.2),rgba(0,0,0,.75));pointer-events:none}
+.la-art{position:relative;z-index:1;width:min(34vw,420px);aspect-ratio:3/4;background:url(../brand/ka/cls-warden.webp) center/cover;border:1px solid #6a707c;box-shadow:0 0 0 1px #000,0 0 0 4px #1b1d22,0 0 0 5px #4a4e58,0 0 60px rgba(255,60,30,.35);-webkit-mask:linear-gradient(180deg,#000 75%,transparent);mask:linear-gradient(180deg,#000 75%,transparent)}
+.la-in{position:relative;z-index:1;width:min(40vw,460px)}
+.la-k{font:700 12px var(--ob-head);letter-spacing:.5em;text-transform:uppercase;color:#ff8f72}
+.la-z{font:700 clamp(30px,4.2vw,54px)/1.05 var(--ob-head);letter-spacing:.06em;margin:6px 0;background:linear-gradient(180deg,#fff,#dfe3ea 45%,#8a909c);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 16px rgba(224,40,26,.45))}
+.la-s{color:#a7adb8;letter-spacing:.08em;margin-bottom:22px}
+.la-bar{height:8px;border-radius:999px;background:#0b0c10;border:1px solid #4a4e58;box-shadow:inset 0 1px 3px #000;overflow:hidden}
+.la-bar i{display:block;height:100%;background:linear-gradient(90deg,#7a0d07,#e0281a 60%,#ffb39a);box-shadow:0 0 12px #ff3a14}
+.la-p{margin-top:8px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#9aa1ae}
+.la-t{margin-top:26px;padding:12px 14px;border-left:2px solid #e0281a;background:rgba(10,10,14,.6);color:#d5d9e1;line-height:1.45}
+.la-t b{display:block;font:700 11px var(--ob-head);letter-spacing:.3em;text-transform:uppercase;color:#ff8f72;margin-bottom:3px}
+@media (max-width:700px){#ldr{flex-direction:column;gap:22px;padding:24px}.la-art{width:62vw}.la-in{width:100%;text-align:center}.la-t{text-align:left}}
+#ldr.hide{display:none}
+#ldr .la-bar i{transition:width .25s}
+@media (prefers-reduced-motion:reduce){#ldr .la-bar i{transition:none}}
