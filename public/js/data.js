@@ -1,5 +1,5 @@
 'use strict';
-const BUILD = '0172'; const BUILT_AT = 1795285755610; /* when this build was pushed, so the label stays right after a server restart */
+const BUILD = '0173'; const BUILT_AT = 1795285755610; /* when this build was pushed, so the label stays right after a server restart */
 /* build 0172: sounds, music, models and scenery keep the same address from build to build on the game's own server, so a returning player's browser only checks them (a short "not changed" reply) instead of downloading them all again after every new build. On CrazyGames, whose servers may keep files longer, they still carry the build number. */
 const AV = () => (typeof CG !== 'undefined' && CG.on ? '?v=' + BUILD : '');
 // Fresh start: every hero and the stash are wiped whenever this number changes. It follows the build, so each new build is a new season.
