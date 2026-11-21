@@ -50,7 +50,7 @@ const ENL = (function () {
   const FRS = {};
   function rig(e, P, nm, o) {
     if (!MODELS_ON || !GLX.model) return null;
-    const M = GLX.model(nm, 'models/' + nm + '.cdm?v=' + BUILD); if (!M || !M.anims || !M.anims.idle) return null;
+    const M = GLX.model(nm, 'models/' + nm + '.cdm' + AV()); if (!M || !M.anims || !M.anims.idle) return null;
     const up = UPMASK[nm] || (UPMASK[nm] = CDM.mask(M, ['spine_02'], 0));
     const wnd = e.st === 'wind' || e.st === 'hwind' || e.st === 'cwind', act = Math.max(wnd ? 1 : 0, P.at > 0 ? 1 : 0);
     const X = Object.assign({}, P, { e, M, A: M.anims, up, wnd, act, nm, s: (o.keep ? e.sc : P.sc) * MSC * (o.s || 1), lift: 0, lean: 0, fwd: 0, side: 0, roll: 0, yaw: 0 });
@@ -444,7 +444,7 @@ const ENL = (function () {
     if (busy || G.enemyLooks === false) return false; const L = look(e); if (!L) return false; if (e.escaped) return false;
     const k = key(e), nm = MDL[k], far = Math.hypot(e.x - P.x, e.z - P.z);
     if (nm) { if (!MODELS_ON || !GLX.model || G.realModels === false || G.monModels === false) return false;
-      const M = GLX.model(nm, 'models/' + nm + '.cdm?v=' + BUILD); if (!M || !M.anims || !M.anims.idle) return false;
+      const M = GLX.model(nm, 'models/' + nm + '.cdm' + AV()); if (!M || !M.anims || !M.anims.idle) return false;
       if (!e.boss && (far > MON_FAR || (G._mN = (G._mN || 0) + 1) > 24)) return false; } // the same rule monModel keeps
     const lod = e.boss ? 0 : far > MON_NEAR ? 2 : far > LOD_MID ? 1 : 0;
     busy = true; if (lod) { lodP = GLX.part; lodO = GLX.obj; lodM = LODG[lod]; GLX.part = lodPart; GLX.obj = lodObj; }

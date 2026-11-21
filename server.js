@@ -160,6 +160,11 @@ let INDEX_TXT = '';
 // for the player count, parties and leaderboard from another address. Only CrazyGames addresses are let in; nothing else changes.
 const CG_ORIGIN = /^(https:\/\/([a-z0-9-]+\.)*crazygames\.com|capacitor:\/\/([a-z0-9-]+\.)*crazygames\.com)$/i;
 const FC = new Map(); /* build 0158: per file, its change time, content fingerprint and gzipped copy */
+const fcNew = (m, data) => ({ m, e: '"' + crypto.createHash('sha1').update(data).digest('base64').slice(0, 22), z: null, b: null, bq: 0 });
+const BRQ = []; let brBusy = false; /* build 0172: one brotli job at a time, so packing never ties up the threads that read files for players */
+function brNext() { if (brBusy) return; const j = BRQ.shift(); if (!j) return; brBusy = true; zlib.brotliCompress(j.d, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 9, [zlib.constants.BROTLI_PARAM_LGWIN]: 24, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: j.d.length } }, (e, b) => { brBusy = false; if (!e && b && b.length < j.d.length) j.c.b = b; brNext(); }); }
+function brAsk(c, d) { if (c.bq || !d) return; c.bq = 1; BRQ.push({ c, d }); brNext(); }
+function brWarm(dir) { let list = []; try { list = fs.readdirSync(dir, { withFileTypes: true }); } catch (e) { return; } for (const d of list) { const f = path.join(dir, d.name); if (d.isDirectory()) brWarm(f); else if (/\.(cdm|cde|cdl|js|html|css|json)$/.test(d.name)) { try { const st = fs.statSync(f), data = fs.readFileSync(f); let c = FC.get(f); if (!c || c.m !== st.mtimeMs) { c = fcNew(st.mtimeMs, data); FC.set(f, c); } brAsk(c, data); } catch (e) { } } } }
 const server = http.createServer((req, res) => {
   /* build 0158 (fuzz test: one request for a web address that does not decode, such as /% , or one with a zero byte in it, such as /%00 , threw outside any catch and stopped the whole server,
      dropping every player; scanners on the internet send such addresses all the time): both now get a plain 400 reply */
@@ -179,15 +184,18 @@ const server = http.createServer((req, res) => {
   if (u === '/') u = '/index.html'; const f = path.normalize(path.join(PUB, u));
   if (!f.startsWith(PUB)) { res.writeHead(403); res.end(); return; }
   // build 0039: model files and scripts go out gzipped when the browser accepts it (the hero models are about a third smaller)
-  const gz = /\bgzip\b/.test(req.headers['accept-encoding'] || '') && /\.(cdm|cde|cdl|js|html|css|json)$/.test(f);
+  /* build 0172: and brotli-packed when the browser accepts that (every current browser does over https): about a sixth smaller again than gzip.
+     Packing uses a middle setting (the best one takes 30 times longer, too much for the small server), one file at a time in the background (all of them just after the server starts); until a file's brotli copy is ready it goes out gzipped */
+  const ae = String(req.headers['accept-encoding'] || ''), cz = /\.(cdm|cde|cdl|js|html|css|json)$/.test(f), wb = cz && /\bbr\b/.test(ae), wg = cz && /\bgzip\b/.test(ae);
   /* build 0158: every file goes out with a fingerprint of its contents (ETag). A browser that already has the file sends the fingerprint back and gets a short "not changed" reply (304)
      instead of the whole file again. Before this, files had no fingerprint and no date, so every visit downloaded the scripts, the 2 MB world file, the models and each music track from scratch.
      The fingerprint is of the contents, so a new build only re-sends the files that really changed. The kept copy is checked against the file's change time, so an edited file is never served stale. */
   fs.stat(f, (er, st) => { if (er || !st.isFile()) { res.writeHead(404); res.end('Not found'); return; }
-    let c = FC.get(f); if (c && c.m !== st.mtimeMs) c = null; const inm = String(req.headers['if-none-match'] || ''), h = { 'Content-Type': MIME[path.extname(f)] || 'application/octet-stream', 'Cache-Control': 'no-cache' }; if (gz) { h['Content-Encoding'] = 'gzip'; h.Vary = 'Accept-Encoding'; }
-    const send = data => { h.ETag = c.e + (gz ? '-g"' : '"'); if (inm && inm === h.ETag) { delete h['Content-Encoding']; res.writeHead(304, h); res.end(); return; } if (gz && !c.z) c.z = zlib.gzipSync(data, { level: 9 }); res.writeHead(200, h); res.end(gz ? c.z : data); };
-    if (c && (inm === c.e + (gz ? '-g"' : '"') || (gz && c.z))) { send(null); return; }
-    fs.readFile(f, (err, data) => { if (err) { res.writeHead(404); res.end('Not found'); return; } if (!c) { c = { m: st.mtimeMs, e: '"' + crypto.createHash('sha1').update(data).digest('base64').slice(0, 22), z: null }; FC.set(f, c); } send(data); }); });
+    let c = FC.get(f); if (c && c.m !== st.mtimeMs) c = null; const inm = String(req.headers['if-none-match'] || ''), h = { 'Content-Type': MIME[path.extname(f)] || 'application/octet-stream', 'Cache-Control': 'no-cache' }; if (cz) h.Vary = 'Accept-Encoding';
+    const encOf = () => wb && c.b ? 'br' : wg ? 'gzip' : '', tagOf = enc => c.e + (enc === 'br' ? '-b"' : enc ? '-g"' : '"');
+    const send = data => { const enc = encOf(); h.ETag = tagOf(enc); if (inm && inm === h.ETag) { res.writeHead(304, h); res.end(); return; } if (enc) h['Content-Encoding'] = enc; if (enc === 'gzip' && !c.z) c.z = zlib.gzipSync(data, { level: 9 }); res.writeHead(200, h); res.end(enc === 'br' ? c.b : enc ? c.z : data); };
+    if (c && !(wb && !c.b && !c.bq)) { const enc = encOf(); if (inm === tagOf(enc) || enc === 'br' || (enc === 'gzip' && c.z)) { send(null); return; } }
+    fs.readFile(f, (err, data) => { if (err) { res.writeHead(404); res.end('Not found'); return; } if (!c) { c = fcNew(st.mtimeMs, data); FC.set(f, c); } if (wb) brAsk(c, data); send(data); }); });
 });
 class Conn {
   constructor(sock) { this.sock = sock; this.buf = Buffer.alloc(0); this.frag = []; this.open = true; this.alive = true; }
@@ -223,7 +231,7 @@ let closing = false; function shutdown() { if (closing) return; closing = true; 
 process.on('SIGTERM', shutdown); process.on('SIGINT', shutdown);
 /* build 0158: a last net. An error nobody caught is written to the log and the server keeps running, so one bad request or one bad room can never again disconnect everybody */
 process.on('uncaughtException', e => { try { console.error('uncaught', e && e.stack || e); } catch (_) { } });
-server.listen(PORT, () => console.log('OathByte server build ' + BUILD + ' listening on port ' + PORT));
+server.listen(PORT, () => { console.log('OathByte server build ' + BUILD + ' listening on port ' + PORT); setTimeout(() => brWarm(PUB), 2000); });
 // Keep the free host awake (Lee approved a 10-minute ping, Nov 12). GitHub's scheduled ping only ran a few times a day,
 // so the server also calls its own public address every 10 minutes. Render sets RENDER_EXTERNAL_URL; locally SELF_PING_URL can be used.
 const SELF_URL = process.env.SELF_PING_URL || process.env.RENDER_EXTERNAL_URL;

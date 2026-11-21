@@ -12,8 +12,9 @@ const UI = (() => {
      Flat icons show only where 3D can't run (no WebGL, software drawing, or not ready within 8 s), and then for the whole visit, so they never switch later. */
   let I3 = null, i3s = 'wait', tipIt = null;
   const i3off = () => { if (i3s !== 'wait') return; i3s = 'off'; U.invDirty = true; };
-  setTimeout(i3off, 8000);
-  (window.__i3load || (() => import(new URL('js/items3d.js?v=0136', location.href).href)))().then(m => { const d = m.default; if (!d || !d.ok) return i3off(); return Promise.resolve(d.ready).then(() => { if (i3s !== 'wait' || !d.ok) return i3off(); I3 = d; i3s = 'on'; U.invDirty = true; i3warm(); }); }).catch(i3off);
+  /* build 0172: the 3D item pictures start loading once the page has finished loading and the browser is idle, so they don't hold up the start screen; the 8 s limit counts from then */
+  const i3go = () => { setTimeout(i3off, 8000); (window.__i3load || (() => import(new URL('js/items3d.js?v=0136', location.href).href)))().then(m => { const d = m.default; if (!d || !d.ok) return i3off(); return Promise.resolve(d.ready).then(() => { if (i3s !== 'wait' || !d.ok) return i3off(); I3 = d; i3s = 'on'; U.invDirty = true; i3warm(); }); }).catch(i3off); };
+  { const idle = () => window.requestIdleCallback ? requestIdleCallback(i3go, { timeout: 1500 }) : setTimeout(i3go, 300); if (document.readyState === 'complete') idle(); else addEventListener('load', idle, { once: true }); }
   /* build 0130: every item the hero owns (bag, worn, stash) and the shop's goods get their picture drawn in the background as soon as 3D is ready and again when play starts,
      so it is usually done before a panel opens. Pictures are also kept on the device, so the next visit shows them straight away */
   function i3warm() { if (!I3) return; try { const h = G.hero, all = [].concat(h ? h.inv : [], h ? Object.values(h.eq || {}) : [], G.stash || [], h && h.stock || []); for (const it of all) if (it && it.slot) { I3.icon(it, false); if (itemH(it) === 2) I3.icon(it, true); } } catch (e) { } }
@@ -852,8 +853,8 @@ function forgeBox(it) { const F = G.lastForge; if (!F || F.it !== it) return '';
   /* build 0086 (Lee: the old graphics showed for a moment before the new ones): the scenery pack and the hero and townsfolk models now start
      downloading on the title screen, and Play waits for them (12 seconds at most) so the first frame of the game is already the real world */
   let artOK = false, artWait = 0;
-  const ART_NEED = cls => [MODEL_OF[cls], 'folkm', 'folkf'].filter(Boolean), artUrl = nm => 'models/' + nm + '.cdm?v=' + BUILD, artModels = () => MODELS_ON && GLX.model && G.realModels !== false;
-  function artLoad(cls) { if (!artOK) return; try { if (ENV_ON && GLX.envLoad && GLX.envInfo && GLX.envInfo().state === 'off') GLX.envLoad('env/', BUILD); if (artModels()) for (const nm of ART_NEED(cls).concat(['risen', 'cultist'])) GLX.model(nm, artUrl(nm)); } catch (e) { } }
+  const ART_NEED = cls => [MODEL_OF[cls], 'folkm', 'folkf'].filter(Boolean), artUrl = nm => 'models/' + nm + '.cdm' + AV(), artModels = () => MODELS_ON && GLX.model && G.realModels !== false;
+  function artLoad(cls) { if (!artOK) return; try { if (ENV_ON && GLX.envLoad && GLX.envInfo && GLX.envInfo().state === 'off') GLX.envLoad('env/', AV() ? BUILD : ''); if (artModels()) for (const nm of ART_NEED(cls).concat(['risen', 'cultist'])) GLX.model(nm, artUrl(nm)); } catch (e) { } }
   function artReady(cls) { try { if (!artOK) return true; if (ENV_ON && GLX.envInfo && GLX.envInfo().state === 'loading') return false; if (artModels() && GLX.modelInfo && GLX.modelInfo().state !== 'off' && GLX.modelInfo().state !== 'failed') for (const nm of ART_NEED(cls)) if (!GLX.model(nm, artUrl(nm))) return false; } catch (e) { } return true; }
   /* build 0166 (Lee's pick on the Menus and Screens 0001 picker: Loading screen = A Hero portrait): while Play waits for the world to download,
      a full loading screen shows the hero's art, where they are going, a bar that fills as each piece arrives, and a tip */
@@ -1075,5 +1076,7 @@ function forgeBox(it) { const F = G.lastForge; if (!F || F.it !== it) return '';
   if (!GLX.init(glc)) { $('menuMsg').textContent = 'This game needs WebGL2, which this browser or device does not provide. Try a current desktop Chrome, Edge or Firefox.'; $('btnNew').classList.add('hide'); $('classes').classList.add('hide'); }
   else { requestAnimationFrame(frame); artOK = true; artLoad(selCls); }
   setInterval(() => { if (G.state === 'play' && !P.dead) saveGame(); }, 20000);
+  /* build 0172 (100-hour review: closing the tab lost up to 20 s of play): the hero is also saved the moment the page is hidden or closed, such as switching apps on a phone or closing the tab */
+  { const saveNow = () => { try { if (G.state === 'play' && !P.dead) saveGame(); } catch (e) { } }; document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveNow(); }); addEventListener('pagehide', saveNow); }
   return U;
 })();

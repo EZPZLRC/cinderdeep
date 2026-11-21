@@ -31,7 +31,7 @@ const SFX = (() => {
      crisp metal ticks sit on top of hits, spells get glassy, electric and phaser layers, kills and loot get chimes and sparkles, monster growls on kills are gone,
      level ups and Mythic drops get a steel-drum fanfare, and a boss kill ends on a bright fanfare instead of a funeral bell.
      A name in SG is a group: each play picks one of its files (never the same one twice running). Every play gets a small random pitch and volume change so repeats don't sound identical. */
-  const SMP = {}, SLAST = {}, SPREV = {}, SQ = '?v=' + (typeof BUILD !== 'undefined' ? BUILD : '');
+  const SMP = {}, SLAST = {}, SPREV = {}, SQ = AV();
   const SFILES = ['hit', 'impact', 'kill', 'big_kill', 'boss', 'hurt', 'coin', 'step', 'land', 'dash',
     'hit_p1', 'hit_p2', 'hit_p3', 'tick1', 'tick2', 'tick3', 'cast_blade1', 'cast_blade2', 'cast_blade3', 'cast_fire1', 'cast_fire2', 'cast_fire3', 'cast_cold1', 'cast_cold2', 'cast_arc1', 'cast_arc2', 'cast_zap1',
     'glass1', 'glass2', 'zap1', 'zap2', 'phase1', 'phase2', 'pluck1', 'pluck2', 'chime1', 'chime2', 'chime3', 'chime4', 'shatter', 'fanfare1', 'fanfare2',
@@ -582,7 +582,7 @@ const ENV_ON = !(typeof location !== 'undefined' && /[?&]scenery=0/.test(locatio
 function buildStatic(Z) { Z.torches = [];
   GLX.statBegin(); const th = Z.th, S = GW * CS, c = Z.cell, col = GLX.col;
   const EV = ENV_ON && !!GLX.envOn && GLX.envOn() && (Z.def.type === 'town' || th.wall === 'tree'), Mx = (n, x, y, z, ry, s, cc, sy) => GLX.obj('stat', 'm:' + n, x, y, z, ry, s, sy || s, s, cc || ENV_W, 0, 1, 0);
-  if (ENV_ON && GLX.envLoad && GLX.envInfo && (GLX.envInfo().state === 'off' || GLX.envInfo().state === 'loading') && (Z.def.type === 'town' || th.wall === 'tree')) GLX.envLoad('env/', BUILD).then(ok => { const z2 = G.zone; if (ok && z2 && z2.th && (z2.def.type === 'town' || z2.th.wall === 'tree')) buildStatic(z2); });
+  if (ENV_ON && GLX.envLoad && GLX.envInfo && (GLX.envInfo().state === 'off' || GLX.envInfo().state === 'loading') && (Z.def.type === 'town' || th.wall === 'tree')) GLX.envLoad('env/', AV() ? BUILD : '').then(ok => { const z2 = G.zone; if (ok && z2 && z2.th && (z2.def.type === 'town' || z2.th.wall === 'tree')) buildStatic(z2); });
   GLX.obj('stat', 'box', S / 2, -.5, S / 2, 0, S + 120, 1, S + 120, col(th.ground), 0, 1, th.gdet);
   srand(Z.def.seed ^ 0x5bd1e995);
   const bark = col(th.wc[0]), leaf = [col(th.wc[1]), col(th.wc[2]), col(0x3a4a22)], stone = col(0x6c6a64), grassC = ({ crypt: [0x56604a, 0x4a5644, 0x66684e, 0x3e4a3c], lava: [0x4a3428, 0x5a3a26, 0x3a2a22, 0x6a4428], ice: [0xa8c0c8, 0x90aab8, 0xc0d4d8, 0x7c98a8], void: [0x4a3a6a, 0x3a2e58, 0x5a4680, 0x2e2446] }[Z.def.theme] || [0x5c7a32, 0x688236, 0x748034, 0x4e6c2e]).map(c => col(c));
@@ -2156,7 +2156,7 @@ function qfrom(a, b) { const c = [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] 
 function gfitEase(o, key, q, dtp) { let c = o[key]; if (!c || !(dtp > 0) || dtp > .25) { o[key] = q.slice(); return o[key]; } const k = 1 - Math.exp(-dtp * 28); if (c[0] * q[0] + c[1] * q[1] + c[2] * q[2] + c[3] * q[3] < 0) q = q.map(v => -v); for (let i = 0; i < 4; i++) c[i] += (q[i] - c[i]) * k; const l = Math.hypot(c[0], c[1], c[2], c[3]) || 1; for (let i = 0; i < 4; i++) c[i] /= l; return c; }
 function heroModel(o, cls, rot, tw, lu, dy, mv, AW, wt, wglow, em, wk) {
   const nm = o.mdl || MODEL_OF[cls]; if (!MODELS_ON || !nm || !GLX.model || G.realModels === false) return null;
-  const M = GLX.model(nm, 'models/' + nm + '.cdm?v=' + BUILD); if (!M || !M.anims || !M.anims.idle) return null;
+  const M = GLX.model(nm, 'models/' + nm + '.cdm' + AV()); if (!M || !M.anims || !M.anims.idle) return null;
   const A = M.anims, t = G.time, s = (o.sc || 1.08) * MSC, /* build 0041: as tall as the code-built heroes */ up = UPMASK[nm] || (UPMASK[nm] = CDM.mask(M, ['spine_02'], 0)), hero = !!CLASS_COL[cls];
   const bm = o._bm || (o._bm = new Float32Array(up.length)), act = !o.dead && !o.dash && o.act && AW > .01 ? AW : 0;
   const full = act && mv < .15 && wt !== 'bow' ? 1 : 0; for (let b = 0; b < up.length; b++) bm[b] = 1 - act * (full || up[b]); /* build 0066: standing still, the swing takes the legs too */
@@ -2513,7 +2513,7 @@ function hexMix(a, b, t) { const c = k => Math.round(((a >> k) & 255) * (1 - t) 
 function monModel(e, sc, y, tilt, ox, oz, em, wind, at) {
   const nm = MON_MDL[e.arch]; if (!nm || e.boss || e.dummy || !MODELS_ON || !GLX.model || G.realModels === false || G.monModels === false) return false;
   if (Math.hypot(e.x - P.x, e.z - P.z) > MON_FAR || (G._mN = (G._mN || 0) + 1) > 24) return false; // at most 24 model monsters a frame keeps big packs smooth on phones
-  const M = GLX.model(nm, 'models/' + nm + '.cdm?v=' + BUILD); if (!M || !M.anims || !M.anims.idle) return false;
+  const M = GLX.model(nm, 'models/' + nm + '.cdm' + AV()); if (!M || !M.anims || !M.anims.idle) return false;
   if (!e.alive) { sc = e.sc; tilt = 0; y = (e.fly ? e.fly.y : 0) - Math.max(0, 1 - e.deadT / .3) * .9; } // the death animation does the falling; at the very end the body sinks away
   const A = M.anims, t = G.time, md = e.md, cast = e.arch === 'caster', brute = e.arch === 'brute', s = sc * MSC * (brute ? .95 : cast ? 1.02 : .98), up = UPMASK[nm] || (UPMASK[nm] = CDM.mask(M, ['spine_02'], 0)), lay = [];
   const moved = Math.abs((e.walk || 0) - (e._mw === undefined ? e.walk : e._mw)); e._mw = e.walk; e._mv = (e._mv || 0) + ((moved > .001 ? 1 : 0) - (e._mv || 0)) * .2; const mv = e.alive ? clamp(e._mv, 0, 1) : 0;
@@ -2568,7 +2568,7 @@ function gobAlert(e) { if (!e.alert || !e.alive) return; const gd = GLX.col(0xd8
 function gobModel(e, sc, y, tilt, ox, oz, em) {
   if (!MODELS_ON || !GLX.model || G.realModels === false || G.monModels === false || e.escaped) return false;
   if (Math.hypot(e.x - P.x, e.z - P.z) > GOB_FAR) return false;
-  const M = GLX.model('risen', 'models/risen.cdm?v=' + BUILD); if (!M || !M.anims || !M.anims.idle) return false;
+  const M = GLX.model('risen', 'models/risen.cdm' + AV()); if (!M || !M.anims || !M.anims.idle) return false;
   const A = M.anims, t = G.time, col = GLX.col, s = sc * MSC * .7, lay = [];
   if (!e.alive) { sc = e.sc; tilt = 0; y = (e.fly ? e.fly.y : 0) - Math.max(0, 1 - e.deadT / .3) * .6; }
   const moved = Math.abs((e.walk || 0) - (e._mw === undefined ? e.walk : e._mw)); e._mw = e.walk; e._mv = (e._mv || 0) + ((moved > .001 ? 1 : 0) - (e._mv || 0)) * .2; const mv = e.alive ? clamp(e._mv, 0, 1) : 0;
@@ -2605,7 +2605,7 @@ const BOSS_MDL = { knight: 'warden', wraith: 'cultist' }, MBH = new Float32Array
 function lumHex(h) { return ((h >> 16) & 255) * .3 + ((h >> 8) & 255) * .5 + (h & 255) * .2; }
 function bossModel(e, sc, y, tilt, ox, oz, em, wind, at) {
   const S = e.bd && e.bd.shape, nm = BOSS_MDL[S]; if (!nm || !MODELS_ON || !GLX.model || G.realModels === false || G.monModels === false) return false;
-  const M = GLX.model(nm, 'models/' + nm + '.cdm?v=' + BUILD); if (!M || !M.anims || !M.anims.idle) return false;
+  const M = GLX.model(nm, 'models/' + nm + '.cdm' + AV()); if (!M || !M.anims || !M.anims.idle) return false;
   const col = GLX.col, A = M.anims, t = G.time, md = e.md, kn = S === 'knight', bob = kn ? 0 : Math.sin(t * 1.8) * .18 * sc / 2.3, s = sc * MSC * (kn ? 1.5 : 1.45), up = UPMASK[nm] || (UPMASK[nm] = CDM.mask(M, ['spine_02'], 0)), lay = [];
   if (!e.alive) { sc = e.sc; tilt = 0; y = -Math.max(0, 1 - e.deadT / .45) * 1.2; }
   const moved = Math.abs((e.walk || 0) - (e._mw === undefined ? e.walk : e._mw)); e._mw = e.walk; e._mv = (e._mv || 0) + ((moved > .001 ? 1 : 0) - (e._mv || 0)) * .2; const mv = e.alive ? clamp(e._mv, 0, 1) : 0;
